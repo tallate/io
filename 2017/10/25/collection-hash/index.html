@@ -79,14 +79,17 @@
 
 
 
+<meta name="description" content="哈希容器HashMapHashMap是使用分离链接法实现的哈希容器，使用一个大数组存储键值对，靠hash函数计算key来确定键值对的存储位置。inital capacity（初始容量）初始table大小load factor（负载系数）每个哈希槽（或者说桶）的平均存储元素个数，当存储的元素个数超过capacity  load_factor时，容器将rehash设置inital_capacity和l">
 <meta property="og:type" content="article">
 <meta property="og:title" content="collection_hash">
 <meta property="og:url" content="https://tallate.github.io/2017/10/25/collection-hash/index.html">
 <meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="哈希容器HashMapHashMap是使用分离链接法实现的哈希容器，使用一个大数组存储键值对，靠hash函数计算key来确定键值对的存储位置。inital capacity（初始容量）初始table大小load factor（负载系数）每个哈希槽（或者说桶）的平均存储元素个数，当存储的元素个数超过capacity  load_factor时，容器将rehash设置inital_capacity和l">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2017-10-25T14:58:12.662Z">
+<meta property="og:updated_time" content="2017-11-06T15:38:29.398Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="collection_hash">
+<meta name="twitter:description" content="哈希容器HashMapHashMap是使用分离链接法实现的哈希容器，使用一个大数组存储键值对，靠hash函数计算key来确定键值对的存储位置。inital capacity（初始容量）初始table大小load factor（负载系数）每个哈希槽（或者说桶）的平均存储元素个数，当存储的元素个数超过capacity  load_factor时，容器将rehash设置inital_capacity和l">
 
 
 
@@ -289,6 +292,28 @@
           </span>
 
           
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/collection/" itemprop="url" rel="index">
+                    <span itemprop="name">collection</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
 
           
             
@@ -316,7 +341,48 @@
       
 
       
-        
+        <h2 id="哈希容器"><a href="#哈希容器" class="headerlink" title="哈希容器"></a>哈希容器</h2><h3 id="HashMap"><a href="#HashMap" class="headerlink" title="HashMap"></a>HashMap</h3><p>HashMap是使用分离链接法实现的哈希容器，使用一个大数组存储键值对，靠hash函数计算key来确定键值对的存储位置。<br><strong>inital capacity（初始容量）</strong>初始table大小<br><strong>load factor（负载系数）</strong>每个哈希槽（或者说桶）的平均存储元素个数，当存储的元素个数超过capacity <em> load_factor时，容器将rehash<br>设置inital_capacity和load_factor需要考虑当前场景下是读频繁还是写频繁，若读频繁，不妨把inital_capacity设置得小一些，迭代遍历时能快一些，若写频繁，不妨设置得大一些，以免经常需要rehash。<br><strong>hashCode</strong>哈希表数据结构需要hash函数来计算出一个key应该被插入到哪个位置，在Java中这个函数是每个类重写的hashCode方法<br><em>*equals</em></em>Hash容器不允许重复，当发生冲突时需要使用equals方法来判断key是否重复  </p>
+<ul>
+<li>同步：NO</li>
+<li>null：YES</li>
+<li>重复：NO</li>
+<li>时间复杂度<ul>
+<li>get O(n)/Θ(a)/Θ(a/2 + 1) 分别表示最坏、查找失败的平均情况、查找成功的平均情况，其中a代表负载因子，即每个链表中的平均元素个数</li>
+<li>其他操作类似</li>
+<li>printAll O(l * a) 其中l表示哈希表的长度</li>
+</ul>
+</li>
+</ul>
+<h3 id="Hashtable"><a href="#Hashtable" class="headerlink" title="Hashtable"></a>Hashtable</h3><p>Hashtable原本是过时的一个容器，在Java4中被重写了，实现了Map接口，所以归到集合框架中来了<br>这个容器的核心实现和HashMap几乎是一样的，除了两点：它实现了同步、不可以插入null值。<br>Hashtable也是fail-fast，它并不是使用Iterator实现迭代，而是Enumerator，但是本质上是差不多的，即发现迭代过程中数据被修改即抛出异常。  </p>
+<ul>
+<li>同步：YES</li>
+<li>null：NO</li>
+<li>重复：NO</li>
+</ul>
+<h3 id="ConcurrentHashMap"><a href="#ConcurrentHashMap" class="headerlink" title="ConcurrentHashMap"></a>ConcurrentHashMap</h3><p>ConcurrentHashMap是一个兼顾效率和安全的哈希容器，它的主要区别是：  </p>
+<ol>
+<li>锁是细粒度的，写操作每次只锁住一个哈希槽，而大部分读操作根本没用到锁，只有size()这样的操作才需要锁住全表  </li>
+<li>提供弱一致迭代器，在iterator迭代时，写操作会new新的数据而不影响原有的数据，iterator完成后再将头指针替换为新的数据  </li>
+</ol>
+<p>get操作时，若找到匹配的但是value为null，则可能是别的线程正在修改节点，此时就需要先锁住这个哈希槽再读一次。<br>put操作和remove操作都是锁住一个哈希槽再进行操作。<br>虽然资料[1]上说ConcurrentHashMap使用Segment来保存哈希表，但是现在的版本似乎被废弃了，Segment几乎只是个空对象，HashEntry也不见了，哈希表直接使用Node数组来实现。  </p>
+<h3 id="HashSet"><a href="#HashSet" class="headerlink" title="HashSet"></a>HashSet</h3><p>HashSet和TreeSet的思路一样，它仅仅对HashMap的接口加了一层包装。  </p>
+<h3 id="LinkedHashMap"><a href="#LinkedHashMap" class="headerlink" title="LinkedHashMap"></a>LinkedHashMap</h3><p>LinkedHashMap是HashMap的子类，它将所有Entry按<strong>插入顺序</strong>连接起来，主要目的是为了使迭代顺序跟插入顺序相同，保证迭代的时间复杂度只和元素个数相关。<br>因此实现上和HashMap的差别不大，唯一需要注意的是新增的链表头尾引用header和tail。  </p>
+<h3 id="LinkedHashSet"><a href="#LinkedHashSet" class="headerlink" title="LinkedHashSet"></a>LinkedHashSet</h3><p>LinkedHashSet是对LinkedHashMap的简单封装。  </p>
+<h3 id="WeakHashMap"><a href="#WeakHashMap" class="headerlink" title="WeakHashMap"></a>WeakHashMap</h3><p>WeakHashMap使用哈希表来存储<strong>弱引用</strong>，弱引用的概念在垃圾收集器中出现过，主要用于引用一些有用但不必要的对象，在垃圾回收时会被回收掉<br>这个特性特别适合于缓存场景</p>
+<h3 id="WeakHashSet"><a href="#WeakHashSet" class="headerlink" title="WeakHashSet"></a>WeakHashSet</h3><p>WeakHashSet是不存在的，但是可以通过Collections.newSetFromMap来包装出一个WeakHashSet</p>
+<p><strong>HashMap的简单实现</strong><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div><div class="line">105</div><div class="line">106</div><div class="line">107</div><div class="line">108</div><div class="line">109</div><div class="line">110</div><div class="line">111</div><div class="line">112</div><div class="line">113</div><div class="line">114</div><div class="line">115</div><div class="line">116</div><div class="line">117</div><div class="line">118</div><div class="line">119</div><div class="line">120</div><div class="line">121</div><div class="line">122</div><div class="line">123</div><div class="line">124</div><div class="line">125</div><div class="line">126</div><div class="line">127</div><div class="line">128</div><div class="line">129</div><div class="line">130</div></pre></td><td class="code"><pre><div class="line">public class MHashMap&lt;K, V&gt; implements MMap&lt;K, V&gt; &#123;</div><div class="line">    private Entry&lt;K, V&gt;[] table;</div><div class="line">    float LOAD_FACTOR;</div><div class="line">    int size;</div><div class="line"></div><div class="line">    public MHashMap(int c, float l) &#123;</div><div class="line">        if(c &lt;= 16) &#123; c = 16; &#125;</div><div class="line">        if(l &lt;= 0.75) &#123; l = 0.75f; &#125;</div><div class="line">        LOAD_FACTOR = l;</div><div class="line">        table = new Entry[c];</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public boolean containsKey(Object key) &#123;</div><div class="line">        return get(key) != null;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public V get(Object key) &#123;</div><div class="line">        if(key == null) &#123; return null; &#125;</div><div class="line">        // 取index的操作等价于hash(k) &amp; table.length - 1</div><div class="line">        // 因为HashMap要求capacity必为2的幂</div><div class="line">        Entry&lt;K, V&gt; e = table[key.hashCode() % table.length];</div><div class="line">        while(e != null &amp;&amp; ! key.equals(e.key)) &#123;</div><div class="line">            e = e.next;</div><div class="line">        &#125;</div><div class="line">        return e == null ? null : e.value;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public V put(K key, V value) &#123;</div><div class="line">        // key不能为null，抛出异常比较好</div><div class="line">        if (key == null) &#123; return null; &#125;</div><div class="line">        // 判断是否已经存在</div><div class="line">        V tmp = get(key);</div><div class="line">        if(tmp != null) &#123; return tmp; &#125;</div><div class="line">        // 插入前先扩容</div><div class="line">        if(size &gt;= table.length * LOAD_FACTOR) &#123;</div><div class="line">            rehash(table.length * 2);</div><div class="line">        &#125;</div><div class="line">        // 插入</div><div class="line">        Entry&lt;K, V&gt; e = new Entry&lt;K, V&gt;(key, value);</div><div class="line">        int index = key.hashCode() % table.length;</div><div class="line">        e.next = table[index];</div><div class="line">        table[index] = e;</div><div class="line">        // 修改size，用于扩容</div><div class="line">        size++;</div><div class="line">        return null;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public V remove(Object key) &#123;</div><div class="line">        int index = key.hashCode() % table.length;</div><div class="line">        // 该位置为空的情况</div><div class="line">        if(table[index] == null) &#123; return null; &#125;</div><div class="line">        // 在链表中找（因为Java没有双指针，所以分了两种情况，我不清楚有没有更好的方式）</div><div class="line">        Entry&lt;K, V&gt; target = table[index], prev = null;</div><div class="line">        while(target != null &amp;&amp; ! key.equals(target.getKey())) &#123;</div><div class="line">            prev = target;</div><div class="line">            target = target.next;</div><div class="line">        &#125;</div><div class="line">        // target为找到的元素</div><div class="line">        if(target != null) &#123;</div><div class="line">            if(prev == null) &#123;</div><div class="line">                // 表头的情况</div><div class="line">                table[index] = target.next;</div><div class="line">            &#125; else &#123;</div><div class="line">                prev.next = target.next;</div><div class="line">            &#125;</div><div class="line">            target.next = null; // 防止内存泄露</div><div class="line">            size--;</div><div class="line">            return target.getValue();</div><div class="line">        &#125;</div><div class="line">        return null;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public void printAll() &#123;</div><div class="line">        for(int i = 0; i &lt; table.length; i++) &#123;</div><div class="line">            Entry&lt;K, V&gt; head = table[i];</div><div class="line">            // 遍历该位置的链表</div><div class="line">            System.out.println(&quot;--&quot; + i + &quot;--&quot;);</div><div class="line">            while(head != null) &#123;</div><div class="line">                System.out.println(head.getKey() + &quot;: &quot; + head.getValue());</div><div class="line">                head = head.next;</div><div class="line">            &#125;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    private void rehash(int newSize) &#123;</div><div class="line">        Entry&lt;K, V&gt;[] newTable = new Entry[newSize];</div><div class="line">        for(int i = 0; i &lt; table.length; i++) &#123;</div><div class="line">            Entry&lt;K, V&gt; head = table[i];</div><div class="line">            // 遍历该位置的链表</div><div class="line">            while(head != null) &#123;</div><div class="line">                // 为什么创建一个重新插入？</div><div class="line">                // 原来hash是冲突的，在新的length下不一定是冲突的，可能hash到不同的位置</div><div class="line">                Entry&lt;K, V&gt; tmp = new Entry&lt;K, V&gt;(head.getKey(), head.getValue());</div><div class="line">                int index = tmp.getKey().hashCode() % newTable.length;</div><div class="line">                tmp.next = newTable[index];</div><div class="line">                newTable[index] = tmp;</div><div class="line">                head = head.next;</div><div class="line">            &#125;</div><div class="line">        &#125;</div><div class="line">        table = newTable;</div><div class="line">        // 不用惧怕原table的回收问题，我相信虚拟机君！</div><div class="line">    &#125;</div><div class="line"></div><div class="line"></div><div class="line">    static class Entry&lt;K, V&gt; &#123;</div><div class="line">        K key;</div><div class="line">        V value;</div><div class="line">        Entry&lt;K, V&gt; next;</div><div class="line"></div><div class="line">        public Entry(K key, V value) &#123;</div><div class="line">            this.key = key;</div><div class="line">            this.value = value;</div><div class="line">        &#125;</div><div class="line"></div><div class="line">        public K getKey() &#123;</div><div class="line">            return key;</div><div class="line">        &#125;</div><div class="line">        public V getValue() &#123;</div><div class="line">            return value;</div><div class="line">        &#125;</div><div class="line">        public Entry&lt;K, V&gt; getNext() &#123;</div><div class="line">            return next;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>这是个key类的示例<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div></pre></td><td class="code"><pre><div class="line">class MString &#123;</div><div class="line">    String data;</div><div class="line">    MString(String d) &#123;</div><div class="line">        data = d;</div><div class="line">    &#125;</div><div class="line">    @Override</div><div class="line">    public int hashCode() &#123;</div><div class="line">        int result = 0;</div><div class="line">        for(int i = 0; i &lt; data.length()</div><div class="line">                &amp;&amp; Character.isDigit(data.charAt(i)); i++) &#123;</div><div class="line">            result = result * 10 + data.charAt(i) - &apos;0&apos;;</div><div class="line">        &#125;</div><div class="line">        return result;</div><div class="line">    &#125;</div><div class="line">    @Override</div><div class="line">    public boolean equals(Object s) &#123;</div><div class="line">        return s instanceof MString &amp;&amp; data.equals(((MString)s).data);</div><div class="line">    &#125;</div><div class="line">    @Override</div><div class="line">    public String toString() &#123;</div><div class="line">        return data;</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<ul>
+<li>改进点<ul>
+<li>我并不知道最好的capacity和load_factor初始值是多少，只知道在源码中loadFactor默认值为0.75F，而capacity相当于table.length，而table的空间分配是由一个readObject方法负责的，最后计算会凑成2的幂，得到的值在16~1073741824之间。</li>
+<li>HashMap在插入null的key时不会立刻返回，而是直接尝试保存到table[0]中，在找重时查找key为null的元素，若找不到再插入到头部<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">// 遍历时判断key为null的元素</div><div class="line">// var7为迭代器当前位置，var2为目标key，var11就是var7.key</div><div class="line">((HashMap.Node)var7).key == var2 || var2 != null &amp;&amp; var2.equals(var11)</div></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>HashSet的简单实现</strong><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div></pre></td><td class="code"><pre><div class="line">public class MHashSet&lt;E&gt; implements MSet&lt;E&gt; &#123;</div><div class="line">    private transient MHashMap&lt;E, Object&gt; map;</div><div class="line">    private static final Object DUMMY = new Object();</div><div class="line"></div><div class="line">    public MHashSet() &#123;</div><div class="line">        map = new MHashMap&lt;&gt;(0, 0);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public boolean contains(Object obj) &#123;</div><div class="line">        return map.containsKey(obj);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public boolean add(E obj) &#123;</div><div class="line">        return map.put(obj, DUMMY) != null;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    @Override</div><div class="line">    public boolean remove(E obj) &#123;</div><div class="line">        return map.remove(obj) != null;</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a href="http://blog.csdn.net/wisgood/article/details/19338693" target="_blank" rel="external">http://blog.csdn.net/wisgood/article/details/19338693</a></p>
+
       
     </div>
     
@@ -404,8 +470,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
             
@@ -420,7 +495,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">11</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -431,7 +506,7 @@
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">4</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -458,6 +533,22 @@
         </div>
       </section>
 
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#哈希容器"><span class="nav-number">1.</span> <span class="nav-text">哈希容器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#HashMap"><span class="nav-number">1.1.</span> <span class="nav-text">HashMap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Hashtable"><span class="nav-number">1.2.</span> <span class="nav-text">Hashtable</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ConcurrentHashMap"><span class="nav-number">1.3.</span> <span class="nav-text">ConcurrentHashMap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HashSet"><span class="nav-number">1.4.</span> <span class="nav-text">HashSet</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LinkedHashMap"><span class="nav-number">1.5.</span> <span class="nav-text">LinkedHashMap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LinkedHashSet"><span class="nav-number">1.6.</span> <span class="nav-text">LinkedHashSet</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#WeakHashMap"><span class="nav-number">1.7.</span> <span class="nav-text">WeakHashMap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#WeakHashSet"><span class="nav-number">1.8.</span> <span class="nav-text">WeakHashSet</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">2.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
       
 
       
