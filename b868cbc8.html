@@ -347,7 +347,7 @@
 
       
         <h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
-<li><a href="https://segmentfault.com/q/1010000010446129" target="_blank" rel="external">想了解Aio与Nio的利弊，为什么Netty没有采用Aio实现？</a></li>
+<li><a href="https://segmentfault.com/q/1010000010446129" target="_blank" rel="noopener">想了解Aio与Nio的利弊，为什么Netty没有采用Aio实现？</a></li>
 </ol>
 <h2 id="由来"><a href="#由来" class="headerlink" title="由来"></a>由来</h2><p>因为毕设的关系，在用友实习了整整半年，在这期间参与了司库云这个项目的开发，因此在试用期最后的转正答辩中我就这段经历进行了一些分享和延伸。</p>
 <h2 id="转正答辩过程"><a href="#转正答辩过程" class="headerlink" title="转正答辩过程"></a>转正答辩过程</h2><p>答辩主要分4个阶段：准备5分钟、PPT展示15分钟、成果展示（代码）10分钟、QA10分钟、评委讨论反馈5分钟。</p>
@@ -364,7 +364,7 @@
 <li><p>要区分业务异常和RMI框架抛出的异常</p>
 <ul>
 <li><p>使用返回值表示业务异常（接口本身没有返回值的情况下）</p>
-  <figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">try</span> &#123;</div><div class="line">  <span class="comment">// ...业务操作</span></div><div class="line">&#125; <span class="keyword">catch</span> (Exception e) &#123;</div><div class="line">  <span class="keyword">return</span> <span class="string">"外部放款单出现错误："</span> + e.getMessage();</div><div class="line">&#125; <span class="keyword">finally</span> &#123;</div><div class="line">  <span class="comment">// 释放锁</span></div><div class="line">  infinance.setId(infinance.getInfinancepayid());</div><div class="line">  <span class="comment">//new VOLockOperaor().unlock(infinance);</span></div><div class="line">  infinance.setId(<span class="keyword">null</span>);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">"外部放款单出现错误："</span> + e.getMessage();</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">// 释放锁</span></span><br><span class="line">  infinance.setId(infinance.getInfinancepayid());</span><br><span class="line">  <span class="comment">//new VOLockOperaor().unlock(infinance);</span></span><br><span class="line">  infinance.setId(<span class="keyword">null</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>分别定义业务一场和RMI框架异常，分别捕捉，分别记录到不同的log文件中，或后续使用ELK等系统进行分析</p>
 </li>
@@ -399,7 +399,7 @@
 <li>没有会怎么样？<br>会产生并发风险。<br><img src="http://47.88.24.11/记2018年8月9日的转正答辩/没有分布式锁会怎么样？.png" alt="X"><br>如上图所示，在失去分布式锁之后，两者执行更新命令，但指令执行先后顺序是不确定的，因此某些结果会丢失。</li>
 <li>服务端要求<br>需要有一个高一致性的存储系统。</li>
 <li>客户端要求<br>对客户端的要求比较多，包括lock/unlock操作必须是原子的、无死锁、“解铃还需系铃人”（不会解锁其他人上的锁），因此必须小心实现，当然也可以使用现成的，比如Curator中的实现。</li>
-<li>司库云中的实现<br>司库云中实现了一个给予ZooKeeper的分布式锁，但是没有使用Curator，而是直接使用ZooKeeper客户端操作节点实现的，使用下面的代码来调用。  <figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">Boolean locked = <span class="keyword">false</span>;</div><div class="line"><span class="keyword">try</span> &#123;</div><div class="line">  locked = lock(vo)</div><div class="line">  checkVersion(vo)</div><div class="line">  save(vo)</div><div class="line">&#125; <span class="keyword">catch</span>(VersionException e) &#123;</div><div class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> Exception(“”);</div><div class="line">&#125; <span class="keyword">catch</span>(LockException e) &#123;</div><div class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException();</div><div class="line">&#125; <span class="keyword">finally</span> &#123;</div><div class="line">  <span class="keyword">if</span>(locked) releaseLock(vo);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<li>司库云中的实现<br>司库云中实现了一个给予ZooKeeper的分布式锁，但是没有使用Curator，而是直接使用ZooKeeper客户端操作节点实现的，使用下面的代码来调用。  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Boolean locked = <span class="keyword">false</span>;</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  locked = lock(vo)</span><br><span class="line">  checkVersion(vo)</span><br><span class="line">  save(vo)</span><br><span class="line">&#125; <span class="keyword">catch</span>(VersionException e) &#123;</span><br><span class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> Exception(“”);</span><br><span class="line">&#125; <span class="keyword">catch</span>(LockException e) &#123;</span><br><span class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException();</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="keyword">if</span>(locked) releaseLock(vo);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
 </ul>
 </li>
@@ -407,7 +407,7 @@
 <ul>
 <li>没有会怎么样？<br>执行跨多个库的写操作时会有并发风险。<br><img src="http://47.88.24.11/记2018年8月9日的转正答辩/没有分布式事务会怎么样？.png" alt="X"><br>如上图所示，在调用updateB并返回后服务1内出错了，由于本地事务的存在服务1会回滚，但是服务2就没有办法回滚了。</li>
 <li>分布式事务实现要点<br>需要有一个事务协调者记录执行路径，且分布式事务框架必须记录好事务日志用于出错时的手动回滚。</li>
-<li>司库云中的实现<br>司库云中使用的是事务补偿机制来实现的，示例代码如下。  <figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">Service.approve(vo);</div><div class="line"><span class="keyword">try</span> &#123;</div><div class="line">  <span class="comment">// ...业务操作</span></div><div class="line">&#125; <span class="keyword">catch</span>(Exception e) &#123;</div><div class="line">  <span class="comment">// …记录日志</span></div><div class="line">  service.unapproved(vo);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<li>司库云中的实现<br>司库云中使用的是事务补偿机制来实现的，示例代码如下。  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Service.approve(vo);</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span>(Exception e) &#123;</span><br><span class="line">  <span class="comment">// …记录日志</span></span><br><span class="line">  service.unapproved(vo);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
 </ul>
 </li>
@@ -837,5 +837,8 @@
 
   
 
-</body>
+
+  undefined
+
+<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"modle":"wanko","moblieShow":false,"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>
