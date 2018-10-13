@@ -93,7 +93,13 @@
 <meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/发债管理系统模块图.png">
 <meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/基于微服务的发债管理系统总体实现架构图.png">
 <meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现流程图.png">
-<meta property="og:updated_time" content="2018-10-12T12:19:59.050Z">
+<meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/更新配置文件部分代码.png">
+<meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款更新时序图.png">
+<meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款计算还款计划流程图.png">
+<meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/计算付息还款计划部分关键代码.png">
+<meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款提交流程图.png">
+<meta property="og:image" content="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/根参与者执行TCC部分关键代码.png">
+<meta property="og:updated_time" content="2018-10-12T17:18:32.214Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="基于微服务的资金云系统发债管理子系统总结">
 <meta name="twitter:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，架构方面了解了一些分布式系统相关的概念，另外又抽时间学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。 项目意义随着列出需求的特点：变更快、弹性大等列出单体式（monolithic）应用存在哪些问题、面对一些现实问题有什么硬伤要求">
@@ -366,12 +372,87 @@
 <h3 id="ZooKeeper"><a href="#ZooKeeper" class="headerlink" title="ZooKeeper"></a>ZooKeeper</h3><p>ZooKeeper执行流程？服务发现原理是什么？分布式锁原理是什么？</p>
 <h3 id="RabbitMQ"><a href="#RabbitMQ" class="headerlink" title="RabbitMQ"></a>RabbitMQ</h3><p>RabbitMQ执行流程？消息队列的数据结构是怎样的？</p>
 <h3 id="Elasticsearch"><a href="#Elasticsearch" class="headerlink" title="Elasticsearch"></a>Elasticsearch</h3><p>Elasticsearch执行流程？文档数据结构是怎样的？</p>
-<h2 id="架构设计与实现"><a href="#架构设计与实现" class="headerlink" title="架构设计与实现"></a>架构设计与实现</h2><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/基于微服务的发债管理系统架构图.png" alt="X" title="单体式应用和微服务应用部署图"><br>系统包含哪些功能，讲一下用户大概能做什么，比如：<br>使用权限模块来实现权限分配、功能隔离、租户隔离；<br>用户能够利用该系统进行发债放款、审批、结算等；<br>用户能获得预警信息；<br>系统内需要使用服务发现机制来实现服务的弹性伸缩。</p>
+<h2 id="架构设计与实现"><a href="#架构设计与实现" class="headerlink" title="架构设计与实现"></a>架构设计与实现</h2><h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h3><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/基于微服务的发债管理系统架构图.png" alt="X" title="单体式应用和微服务应用部署图"><br>系统包含哪些功能，讲一下用户大概能做什么，比如：<br>使用权限模块来实现权限分配、功能隔离、租户隔离；<br>用户能够利用该系统进行发债放款、审批、结算等；<br>用户能获得预警信息；<br>系统内需要使用服务发现机制来实现服务的弹性伸缩。</p>
 <p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/发债管理系统模块图.png" alt="X" title="发债管理系统模块图"><br>由上页的功能需求带出模块划分，只说有哪些大模块，不细讲有哪些子模块。<br>给出划分模块的理由：“每个模块其实成为一个独立的服务组件，它们具有明确清晰的功能边界，且相互之间只暴露必要的远程接口“</p>
 <p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/基于微服务的发债管理系统总体实现架构图.png" alt="X" title="基于微服务的发债管理系统总体实现架构图"><br>说明中间件、服务和Docker关系；<br>主要功能模块拥有独立的数据库，它们是独立部署的；<br>业务服务、服务发现服务之间的关系；<br>以一次放款提交请求为例，请求走了Web客户端、Nginx、发债管理、审批管理这几个服务；</p>
 <p>Web客户端部署在哪？在Nginx服务器上。<br>Redis那些呢？因为空间关系省略了。<br>故意漏掉的一些线？各服务需要上传服务信息给ZooKeeper，Nginx还有对消息服务、权限服务的调用。<br>RabbitMQ多此一举？RabbitMQ可以解耦消息管理服务和业务服务，另外，消息队列也是实现异步调用必须的，消息队列提供重试、，有利于实现可靠消息的最终一致性效果。</p>
-<p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现流程图.png" alt="X" title="服务发现流程图"></p>
-<h2 id="总结与展望"><a href="#总结与展望" class="headerlink" title="总结与展望"></a>总结与展望</h2>
+<h3 id="部分功能实现"><a href="#部分功能实现" class="headerlink" title="部分功能实现"></a>部分功能实现</h3><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现流程图.png" alt="X" title="服务发现流程图"><br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/更新配置文件部分代码.png" alt="X" title="更新配置文件部分代码"><br>分成三个阶段，通过定时器来定时执行：<br>从zk服务器获取服务注册信息；<br>构建配置文件，并上传到Nginx服务器<br>远程执行命令，更新Nginx服务器</p>
+<p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款更新时序图.png" alt="X" title="放款更新时序图"></p>
+<ol>
+<li>分布式锁：保证临界区内互斥</li>
+<li>版本号：乐观锁</li>
+</ol>
+<p>描述更新操作的主要流程：</p>
+<ol>
+<li>在后台接收请求后需要先为实体的主键添加分布式锁，分布式锁主要用于防止两个线程同时进入临界区</li>
+<li><p>版本号的作用是避免并发的修改操作，或者说修改旧的数据</p>
+</li>
+<li><p>分布式锁的设计问题，有考虑到加锁操作的原子性、只有自己可以解锁自己、死锁、线程宕掉、耗时、失效时间、阻塞、可重入？</p>
+</li>
+<li>版本号能不加吗？不行，因为业务上后续可能还要进行融资分析等，需要提高安全性</li>
+</ol>
+<p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款计算还款计划流程图.png" alt="X" title="放款计算还款计划流程图"><br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/计算付息还款计划部分关键代码.png" alt="X" title="计算付息还款计划部分关键代码"></p>
+<ol>
+<li>取放款单中的开始日期、结束日期、结息日得到每个月的日期列表，比如1.1、4.1、25号结息，则得到1.25、2.25、3.25</li>
+<li>根据结息单位过滤，比如如果是按季度结息的，则过滤得到3.25</li>
+<li>根据结息周期过滤，比如如果周期是2，则每隔一个日期取一条</li>
+<li>如果结束日期不在日期列表里，则将结束日期添加进来</li>
+<li>如果是计算还本还款计划，则每个日期需要付款的金额是放款金额除以日期个数，如果除不尽则加到最后一个日期上；如果是计算付息还款计划，则每个日期需要付息的金额是利率 x 放款金额 x 距离上一个日期点的天数。</li>
+</ol>
+<p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款提交流程图.png" alt="X" title="放款提交流程图"><br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/根参与者执行TCC部分关键代码.png" alt="X" title="根参与者执行TCC部分关键代码"><br>思路<br>说明提交操作是需要跨服务写库的，除了在修改操作的加锁和版本校验之外，还需要注意TCC的执行流程：</p>
+<ol>
+<li>解释TCC事务需要每个参与者提供try、confirm和cancel三个接口，try执行资源的预留，比如对涉及的实体加锁，也起着服务验活的功能，confirm执行事务的提交，也就是真正地执行业务操作、将数据持久化到数据库，cancel需要释放预留的资源；</li>
+<li>调用ID和链路ID的作用；</li>
+<li>每个事务参与者将自己的信息提交到Redis缓存内，之后根参与者需要取得所有参与者信息，主要是它们的confirm和cancel接口的地址；</li>
+<li>①如果业务操作都成功了，由第一个参与者来调用所有其他参与者的confirm接口来提交事务；<br> ②如果业务操作失败了，同样由第一个参与者来调用所有其他参与者的cancel接口来回滚事务。</li>
+</ol>
+<p>提问点</p>
+<ol>
+<li>TCC没讲明白？用一个常见的用户购买商品场景为例，需要先确保用户能够支付，然后锁住用户和商户的账户，这是try阶段；如果try成功，即预留资源成功了，接下来再对用户账户扣款、商户账户入账，如果因为超时等原因失败了，需要事务补偿，即重试，这是confirm阶段；如果try失败，则释放所有的锁，这是cancel阶段。</li>
+<li>事务补偿时如何保证幂等性？</li>
+<li>本地事务如何处理（对MySQL的理解）？</li>
+</ol>
+<h2 id="总结与展望"><a href="#总结与展望" class="headerlink" title="总结与展望"></a>总结与展望</h2><p>—-总结<br>学习分布式理论基础</p>
+<ol>
+<li>学习进程、虚拟化和服务等概念；</li>
+<li>学习通信的常用方法；</li>
+<li>学习同步和一致性的概念。</li>
+</ol>
+<p>解决系统设计中的难点</p>
+<ol>
+<li>同步服务发现服务器和网关服务器，实现服务弹性伸缩；</li>
+<li>设计基于HTTP的RPC协议，实现服务间通信；</li>
+<li>使用分布式锁、版本控制、TCC事务来保证服务间一致性。</li>
+</ol>
+<p>实现系统</p>
+<ol>
+<li>后台除注释外代码达到近2万行，类近500个；<br>2.独立数据库5个，数据库表共18张；</li>
+<li>系统包含相互独立的微服务6个。</li>
+</ol>
+<p>—-改进<br>服务发现</p>
+<ol>
+<li>使用Eureka等高可用服务发现产品替代ZooKeeper；</li>
+<li>使用复制和DNS等手段工具提升Nginx服务器的可用性。</li>
+</ol>
+<p>服务间通信</p>
+<ol>
+<li>使用TCP等更底层、灵活的协议；</li>
+<li>使用Kryo等更完善的序列化工具。</li>
+</ol>
+<p>服务间一致性</p>
+<ol>
+<li>做好TCC事务的异常日志，供出错时手动执行恢复；</li>
+</ol>
+<p>思路</p>
+<ol>
+<li>介绍从开题到最后论文完成过程中做了什么</li>
+<li>介绍论文里主要解决的三个难点<br>提问点</li>
+<li>概念，Zab协议、选举、容错集群、Eureka、Kyro、redo/undo日志。</li>
+<li>ZooKeeper集群通过Zab协议保证高一致性，重新选举Leader比较耗时，且当节点数量不足以构成容错集群时，ZooKeeper倾向于返回空；故提出改用Eureka等其他倾向于提供高可用性的具有服务发现功能的产品；</li>
+<li>Nginx服务器作为网关，存在单点故障风险，但是这里的服务发现只能保证被Nginx代理的那些服务能弹性伸缩，对Nginx本身却没有什么办法，就算复制了Nginx服务器，客户端也只能发到一个IP上。这里提出使用基于操作系统的方案对Nginx集群实现验活及负载均衡，主要是Keepalived等软件或独立的DNS服务器，但是论文题目限于Saas层展开，本人水平有限没法解释；</li>
+<li>HTTP是应用层的，Spring Boot封装了一个RestTemplate可以很方便地发HTTP请求。而TCP是传输层的，如何包装消息需要另外再讨论，常见的框架如Netty，提供了长连接、心跳检测等功能，可以提高开发效率；<br>Kryo是一个优秀的Java序列化方案，大概用了很多优化方案，这就是很零碎的编程问题了；<br>TCC的confir和cance都有可能出错，一般都需要手动恢复，异常日志指的是redo和undo日志，redo是未执行前的数据值，undo是执行修改后的数据值。</li>
+</ol>
+
       
     </div>
     
@@ -552,7 +633,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#项目意义"><span class="nav-number">1.1.</span> <span class="nav-text">项目意义</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#微服务的相对优势"><span class="nav-number">2.</span> <span class="nav-text">微服务的相对优势</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用到的技术"><span class="nav-number">3.</span> <span class="nav-text">使用到的技术</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Spring-Cloud"><span class="nav-number">3.1.</span> <span class="nav-text">Spring Cloud</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Docker"><span class="nav-number">3.2.</span> <span class="nav-text">Docker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MySQL"><span class="nav-number">3.3.</span> <span class="nav-text">MySQL</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Redis"><span class="nav-number">3.4.</span> <span class="nav-text">Redis</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Nginx"><span class="nav-number">3.5.</span> <span class="nav-text">Nginx</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ZooKeeper"><span class="nav-number">3.6.</span> <span class="nav-text">ZooKeeper</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RabbitMQ"><span class="nav-number">3.7.</span> <span class="nav-text">RabbitMQ</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Elasticsearch"><span class="nav-number">3.8.</span> <span class="nav-text">Elasticsearch</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构设计与实现"><span class="nav-number">4.</span> <span class="nav-text">架构设计与实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结与展望"><span class="nav-number">5.</span> <span class="nav-text">总结与展望</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#项目意义"><span class="nav-number">1.1.</span> <span class="nav-text">项目意义</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#微服务的相对优势"><span class="nav-number">2.</span> <span class="nav-text">微服务的相对优势</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用到的技术"><span class="nav-number">3.</span> <span class="nav-text">使用到的技术</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Spring-Cloud"><span class="nav-number">3.1.</span> <span class="nav-text">Spring Cloud</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Docker"><span class="nav-number">3.2.</span> <span class="nav-text">Docker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MySQL"><span class="nav-number">3.3.</span> <span class="nav-text">MySQL</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Redis"><span class="nav-number">3.4.</span> <span class="nav-text">Redis</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Nginx"><span class="nav-number">3.5.</span> <span class="nav-text">Nginx</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ZooKeeper"><span class="nav-number">3.6.</span> <span class="nav-text">ZooKeeper</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RabbitMQ"><span class="nav-number">3.7.</span> <span class="nav-text">RabbitMQ</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Elasticsearch"><span class="nav-number">3.8.</span> <span class="nav-text">Elasticsearch</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构设计与实现"><span class="nav-number">4.</span> <span class="nav-text">架构设计与实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#整体架构"><span class="nav-number">4.1.</span> <span class="nav-text">整体架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#部分功能实现"><span class="nav-number">4.2.</span> <span class="nav-text">部分功能实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结与展望"><span class="nav-number">5.</span> <span class="nav-text">总结与展望</span></a></li></ol></div>
             
 
           </div>
