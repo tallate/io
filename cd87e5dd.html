@@ -87,7 +87,7 @@
 <meta property="og:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/司库云系统简析/契约测试示意图.png">
-<meta property="og:updated_time" content="2018-10-14T16:22:13.456Z">
+<meta property="og:updated_time" content="2018-10-15T00:57:28.684Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="司库云系统简析">
 <meta name="twitter:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
@@ -334,7 +334,7 @@
 <h3 id="下游功能实现"><a href="#下游功能实现" class="headerlink" title="下游功能实现"></a>下游功能实现</h3><p>实现下游功能似乎会简单一点，但也不尽然：</p>
 <ol>
 <li>和上游开发沟通接口，最基本的，应该提供所需的返回值格式，而上游则需要说明需要传入哪些参数，另外，这个接口最好是批量的，可以提高效率；</li>
-<li>如果上游接口设计不合理，那么会对下游接口的测试造成一定困扰，对微服务架构的项目来说更是如此。<br>假设我们的上游和下游处于不同的两个模块内，这意味着它们会被部署到不同的两个应用实例内，使用RMI的方式来相互调用，这里的关键点是：我们如何区分业务抛出的异常和RMI框架抛出的异常？要知道所有分布式系统都是建立在不稳定的网络条件之上的，超时这种网络异常是家常便饭，对此我们主要有两种方式：<ol>
+<li>如果上游接口设计不合理，那么会对下游接口的测试造成一定困扰，对微服务架构的项目来说更是如此。<br>假设我们的上游和下游处于不同的两个模块内，这意味着它们会被部署到不同的两个应用实例内，使用RMI的方式来相互调用，就像本地方法调用一样，会有方法名、参数、异常抛出等。当时令我们困扰的是如何区分业务抛出的异常和RMI框架抛出的异常。要知道所有分布式系统都是建立在不稳定的网络条件之上的，超时这种网络异常是家常便饭。对此我们主要有两种方式：<ol>
 <li>使用返回值表示业务异常（接口本身没有返回值的情况下）；<div><div class="fold_hider"><div class="close hider_title">显示/折叠代码</div></div><div class="fold">
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">"外部放款单出现错误："</span> + e.getMessage();</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">// 释放锁</span></span><br><span class="line">  infinance.setId(infinance.getInfinancepayid());</span><br><span class="line">  <span class="comment">//new VOLockOperaor().unlock(infinance);</span></span><br><span class="line">  infinance.setId(<span class="keyword">null</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -399,14 +399,15 @@
 </div></div>
 使用策略模式可以减少算法之间的耦合，也可以方便后续加入新的算法，当然坏处是在一定程度上会增加代码冗余度。</li>
 </ol>
-<h3 id="微服务"><a href="#微服务" class="headerlink" title="微服务"></a>微服务</h3><p>微服务软件将各模块划分到不同的项目中，互相通过RMI进行调用，好处是能根据需要来部署模块、利于后期进行扩展，坏处是实现起来复杂很多。应用中，用友希望实现自己的云原生环境，开发了一个类似阿里云的应用实例管理平台，可以调配CPU、内存、硬盘等资源，当然还有最基础的应用生命周期、配置、日志管理等功能。对其中的代码我没有研究过（部门之间相互隔离，代码是不能直接看到的），不过这些功能我设想可以基于Docker开放的REST接口来实现，工作量不会小。<br>既然涉及到微服务的基础设施，就不得不提Spring Boot了，Spring Boot是一个应用启动器，它的主要作用是减少手动配置，其核心是约定大于配置的理念，每个模块都具有默认的功能，只要在pom.xml中引入该模块即可使用，除非有特定需求，否则不需要额外的配置。<br>在司库云中，每个业务项目在web.xml配置文件（Spring配置文件）中，注册了一个MwClientLoader类，用于注册所有微服务的基础设施。<br>，司库云是我经历的第一个微服务架构项目，我无法很自信地说哪里好哪里坏，但我也感觉到有很多不合理的地方，比如：</p>
+<h3 id="微服务"><a href="#微服务" class="headerlink" title="微服务"></a>微服务</h3><p>微服务软件将各模块划分到不同的项目中，互相通过RMI进行调用，好处是能根据需要来部署模块、利于后期进行扩展，坏处是实现起来复杂很多。应用中，用友希望实现自己的云原生环境，开发了一个类似阿里云的应用实例管理平台，可以调配CPU、内存、硬盘等资源，当然还有最基础的应用生命周期、配置、日志管理等功能。对其中的代码我没有研究过（部门之间相互隔离，代码是不能直接看到的），不过这些功能我设想可以基于Docker开放的REST接口来实现，工作量不会小。<br>既然涉及到微服务的基础设施，就不得不提Spring Boot了，Spring Boot是一个应用启动器，它的主要作用是减少手动配置，其核心是约定大于配置的理念，每个模块都具有默认的功能，只要在pom.xml中引入该模块即可使用，除非有特定需求，否则不需要额外的配置。<br>在司库云中，每个业务项目在web.xml配置文件（Spring配置文件）中，注册了一个MwClientLoader类，用于注册所有微服务的基础设施。<br>司库云是我经历的第一个微服务架构项目，我无法很自信地说哪里好哪里坏，但我也感觉到有很多不合理的地方，比如：</p>
 <ol>
 <li>有现成的就是不用，基于ZooKeeper的分布式锁不用Curator而是自己写了个客户端，结果后期出现低级Bug（比如死锁、释放了别的线程占用的锁等）；</li>
 <li>将所有工具类（包括中间件的客户端）都写到一个tmc-utils项目中，供业务模块依赖，虽然方便，但是导致tmc-utils项目颇为臃肿、不稳定，甚至到了后面都没有人知道里面塞了什么东西了；</li>
 <li>将所有实现微服务客户端所需的基础设施写到MwClientLoader这个类里来引入，所以司库云其实并没有依赖Spring Boot；</li>
 </ol>
 <h3 id="RMI远程调用"><a href="#RMI远程调用" class="headerlink" title="RMI远程调用"></a>RMI远程调用</h3><p>RMI是一种将远程调用包装成本地调用形式的技术。在司库云中，即是将接口和参数序列化后通过HTTP协议传过去。在毕设《基于微服务的资金云系统发债管理子系统》中我也有按着这种思路自己实现了一种简单的RMI框架。<br>RMI调用中，框架异常和业务异常默认没有区分，必须得开发自己进行约定，传参只提供对基本类型的转换，如果要传复杂对象，则必须自己将对象属性保存在Map中，然后由接收端取出属性还原对象。</p>
-<h3 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h3><h3 id="事务补偿机制"><a href="#事务补偿机制" class="headerlink" title="事务补偿机制"></a>事务补偿机制</h3>
+<h3 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h3><p>司库云中</p>
+<h3 id="事务补偿机制"><a href="#事务补偿机制" class="headerlink" title="事务补偿机制"></a>事务补偿机制</h3>
       
     </div>
     
