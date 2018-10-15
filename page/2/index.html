@@ -681,90 +681,60 @@
 <li>RabbitMQ集群组成消息队列服务，消息队列可以解耦消息管理服务和业务服务，另外，消息队列也是实现异步调用必须的，消息队列提供重试、备份等功能，有利于实现可靠消息的最终一致性效果。</li>
 </ul>
 <h3 id="部分功能实现"><a href="#部分功能实现" class="headerlink" title="部分功能实现"></a>部分功能实现</h3><p>我将大部分业务功能忽略了，这些功能中大部分都属于简单的CRUD操作，下面介绍一些技术性稍微强一些的功能的实现细节。</p>
-<h4 id="服务发现功能"><a href="#服务发现功能" class="headerlink" title="服务发现功能"></a>服务发现功能</h4><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现功能时序图.png" alt="X" title="服务发现功能时序图"><br>服务发现功能的逻辑主要分成三个阶段，通过定时器来定时执行：<br>从zk服务器获取服务注册信息；<br>构建配置文件，并上传到Nginx服务器<br>远程执行命令，更新Nginx服务器<br>服务发现模块的主要运行流程大体分为三个阶段：第一个阶段是在启动服务实例后，新建的服务实例会向ZooKeeper服务器发送该服务的注册信息，在ZooKeeper中这些信息作为存在于同一命名空间下的临时节点存在；第二阶段，服务发现服务器会定时地从ZooKeeper服务器获取微服务集群内服务的注册情况；第三阶段，在获取到服务的注册信息后，服务发现模块会将数据组织成Nginx配置文件的格式，并上传到Nginx服务器内，因为Nginx是运行在容器之内的，所以客户端需要通过Docker提供的REST API来操作容器来达到间接操作Nginx服务器的目的，在上传完毕后使用Docker容器运行命令的接口来执行Nginx重新加载配置文件的命令，至此完成服务上线的过程。服务发现模块的时序图如图4.2所示。<br>当实例退出集群时，代表其服务注册信息的临时节点会被自动清除，此时Nginx服务器经过同样的刷新过程将该实例移除出代理目标，由此完成服务的自动伸缩。</p>
-<p>在实际环境中启动服务之前，需要先将项目打包成为Docker镜像，利用Docker技术只要服务器上安装有Docker环境即可启动应用，很大程度上减少了重复修改服务本身配置文件的麻烦，因为业务模块的框架是基于SpringCloud的，在启动后利用SpringBoot自动配置的便利，可以在初始化时调用ZooKeeper服务器提供的接口将服务注册到ZooKeeper的服务注册中心。服务发现模块的执行流程图如图5.2所示。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现流程图.png" alt="X" title="服务发现流程图"><br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 构建nginx.conf配置文件</span></span><br><span class="line">String content = buildConf();</span><br><span class="line">String localPath = dockerDiscoveryClient.getLocalNginxConfPath(); <span class="comment">// 本地配置文件保存位置</span></span><br><span class="line">String fileName = dockerDiscoveryClient.getLocalNginxConfFileName(); <span class="comment">// 配置文件名</span></span><br><span class="line">String containerPath = dockerDiscoveryClient.getContainerNginxConfPath(); <span class="comment">// 容器内配置文件位置</span></span><br><span class="line">writeConf(localPath + containerPath, fileName, content);</span><br><span class="line"><span class="comment">// 遍历所有nginx服务器，重载配置文件</span></span><br><span class="line"><span class="keyword">for</span> (Container container : nginxContainerList) &#123;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">long</span> i = sdHelper.getMaxRetries() - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 将配置文件上传到服务器</span></span><br><span class="line">      upload(localPath + containerPath, container.id(), containerPath);</span><br><span class="line">      <span class="comment">// 重新加载nginx服务器</span></span><br><span class="line">      reload(container.id());</span><br><span class="line">    &#125; <span class="keyword">catch</span> (DockerDiscoveryException e) &#123;</span><br><span class="line">      <span class="comment">// 发生错误，重新上传加载</span></span><br><span class="line">      log.info(<span class="string">"Reload Nginx failed, retrying left "</span> + i + <span class="string">" times"</span>, e);</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>在将服务实例信息转换为Nginx配置文件后，需要循环遍历所有现存的Nginx服务器，对服务器地址的请求若出错需要一定次数的重试，尽可能地更新。<br>   客户端或其他模块通过REST协议来访问服务的接口，访问请求由网关服务器进行拦截，再通过负载均衡技术来发布到某个服务的实例上。</p>
-<h4 id="放款更新功能"><a href="#放款更新功能" class="headerlink" title="放款更新功能"></a>放款更新功能</h4><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款更新时序图.png" alt="X" title="放款更新时序图"></p>
+<h4 id="服务发现功能"><a href="#服务发现功能" class="headerlink" title="服务发现功能"></a>服务发现功能</h4><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现功能时序图.png" alt="X" title="服务发现功能时序图"><br>服务发现功能的主要运行流程大体分成三个阶段，通过定时器来定时执行：</p>
 <ol>
-<li>分布式锁：保证临界区内互斥</li>
-<li>版本号：乐观锁</li>
+<li>从zk服务器获取服务注册信息<br>在启动服务实例后，新建的服务实例会向ZooKeeper服务器发送该服务的注册信息，在ZooKeeper中这些信息作为存在于同一命名空间下的临时节点存在。</li>
+<li>构建配置文件，并上传到Nginx服务器<br>服务发现服务器会定时地从ZooKeeper服务器获取微服务集群内服务的注册情况。</li>
+<li>远程执行命令，更新Nginx服务器<br>在获取到服务的注册信息后，服务发现模块会将数据组织成Nginx配置文件的格式，并上传到Nginx服务器内，因为Nginx是运行在容器之内的，所以客户端需要通过Docker提供的REST API来操作容器来达到间接操作Nginx服务器的目的，在上传完毕后使用Docker容器运行命令的接口来执行Nginx重新加载配置文件的命令，至此完成服务上线的过程。</li>
 </ol>
-<p>描述更新操作的主要流程：</p>
-<ol>
-<li>在后台接收请求后需要先为实体的主键添加分布式锁，分布式锁主要用于防止两个线程同时进入临界区</li>
-<li><p>版本号的作用是避免并发的修改操作，或者说修改旧的数据</p>
-</li>
-<li><p>分布式锁的设计问题，有考虑到加锁操作的原子性、只有自己可以解锁自己、死锁、线程宕掉、耗时、失效时间、阻塞、可重入？</p>
-</li>
-<li>版本号能不加吗？不行，因为业务上后续可能还要进行融资分析等，需要提高安全性</li>
-</ol>
-<h4 id="放款提交功能"><a href="#放款提交功能" class="headerlink" title="放款提交功能"></a>放款提交功能</h4><p>发债模块在对单据进行提交操作时实际上需要调用审批服务提供的RPC接口，在提交后用户即可在审批模块中查找到这些单据，并对其进行审批或取消审批、驳回等操作，对结算管理模块的设计是类似的，区别是二者所操作的状态不同，而结算模块更多任务是与外部支付接口的对接，因此这里的讨论集中于审批。首先需要解释的是服务为何如此划分，需要结合企业的具体业务来考虑，因为审批是十分宽泛的场景，不只是发债单据需要审批，为了提高模块的可扩展性，将其划分出来作为单独的服务是合理的。放款提交操作的时序图如图4.6所示。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款提交时序图.png" alt="X" title="放款提交时序图"><br>和其他增删改查操作相同的是，在具体的业务处理之前需要对放款进行加锁和版本校验，成功后发债服务会将该放款信息通过调用服务接口的方式提交到审批服务，审批服务会先根据放款的单据类型从数据库查找其审批流的注册信息及审批流，并成功便新增一条审批流实例到数据库，返回成功信息给发债服务，发债服务再根据返回值来修改放款的审批状态；如果查询或新增失败，审批会返回错误信息，使得发债服务也不会进行任何处理，或者处理后回滚到最初的状态。<br>发债模块并不了解审批模块内部的实现方式，二者使用相互独立的两个数据库，因此在执行审批操作时是可能发生不一致的情况的，为此需要引入TCC补偿机制，对提交操作需要提供一个confirm接口和一个cancel接口，代表统一的提交和回滚。</p>
-<p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款提交流程图.png" alt="X" title="放款提交流程图"><br>在登记放款页面点击提交按钮后会将放款单的ID、版本号等信息发送到后台，程序的初步执行流程仍然是上分布式锁、校验版本号及设置新版本号和更新时间，接下来由于涉及到跨服务的写库操作所以会显得更加复杂。<br>首先服务调用方的发债服务需要生成本次调用的调用ID，其作用之后再作论述，因为发债服务的本次调用是事务内的第一次调用，所以还需要生成一个链路ID，用于标识一次事务，这些ID都需要全局唯一，所以和实体ID一样需要使用分布式唯一ID算法来生成。发债服务在调用审批服务的接口时，除了传递本来需要传递的单据信息之外，还需要将调用ID和链路ID打包一同传递，以便之后审批服务将TCC事务的参与信息上传到缓存中间件。事务的参与者分为根参与者和枝叶参与者，根参与者为事务的发起者，在这里即为发债服务，枝叶参与者包括事务通过传播到达的所有其余服务器，参与者包含的属性包括服务器本身的地址及TCC补偿事务所需的confirm接口和cancel，只要某个服务接口需要添加事务属性，它就需要将自己的参与者信息上传到缓存中间件中，因此这里审批服务还有一个上传参与者信息的过程。实现TCC补偿事务中根参与者执行流程的关键代码如下所示。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> Object <span class="title">interceptRoot</span><span class="params">(Participator participator, MethodWrapper methodWrapper)</span></span></span><br><span class="line"><span class="function">    <span class="keyword">throws</span> TccException </span>&#123;</span><br><span class="line">  Object result;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 执行try</span></span><br><span class="line">    log.info(<span class="string">"-&gt; ROOT.try执行"</span>);</span><br><span class="line">    result = methodWrapper.invoke();</span><br><span class="line">  &#125; <span class="keyword">catch</span> (Throwable cause) &#123;</span><br><span class="line">    <span class="comment">// 执行cancel</span></span><br><span class="line">    log.info(<span class="string">"&lt;- ROOT.try出错.即将执行cancel"</span>, cause);</span><br><span class="line">    tccCoordinateHelper.submitCancel(traceIdHelper.getTraceId());</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> TccException(<span class="string">"Method invocating failed. cause:"</span> + cause.getMessage(), cause);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 执行confirm，结束后会发送确认信息</span></span><br><span class="line">  log.info(<span class="string">"&lt;- ROOT.try完毕.即将执行confirm"</span>);</span><br><span class="line">  tccCoordinateHelper.submitConfirm(traceIdHelper.getTraceId());</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>当实例退出集群时，代表其服务注册信息的临时节点会被自动清除，此时Nginx服务器经过同样的刷新过程将该实例移除出代理目标，由此完成服务的自动伸缩。</p>
+<p>在实际环境中启动服务之前，需要先将项目打包成为Docker镜像，利用Docker技术只要服务器上安装有Docker环境即可启动应用，很大程度上减少了重复修改服务本身配置文件的麻烦，因为业务模块的框架是基于SpringCloud的，在启动后利用SpringBoot自动配置的便利，可以在初始化时调用ZooKeeper服务器提供的接口将服务注册到ZooKeeper的服务注册中心。服务发现模块的执行流程图如下图所示。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/服务发现流程图.png" alt="X" title="服务发现流程图"></p>
+<p>其中，更新Nginx配置文件的主要代码如下所示。<br><div><div class="fold_hider"><div class="close hider_title">折叠/展开代码</div></div><div class="fold">
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 构建nginx.conf配置文件</span></span><br><span class="line">String content = buildConf();</span><br><span class="line">String localPath = dockerDiscoveryClient.getLocalNginxConfPath(); <span class="comment">// 本地配置文件保存位置</span></span><br><span class="line">String fileName = dockerDiscoveryClient.getLocalNginxConfFileName(); <span class="comment">// 配置文件名</span></span><br><span class="line">String containerPath = dockerDiscoveryClient.getContainerNginxConfPath(); <span class="comment">// 容器内配置文件位置</span></span><br><span class="line">writeConf(localPath + containerPath, fileName, content);</span><br><span class="line"><span class="comment">// 遍历所有nginx服务器，重载配置文件</span></span><br><span class="line"><span class="keyword">for</span> (Container container : nginxContainerList) &#123;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">long</span> i = sdHelper.getMaxRetries() - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 将配置文件上传到服务器</span></span><br><span class="line">      upload(localPath + containerPath, container.id(), containerPath);</span><br><span class="line">      <span class="comment">// 重新加载nginx服务器</span></span><br><span class="line">      reload(container.id());</span><br><span class="line">    &#125; <span class="keyword">catch</span> (DockerDiscoveryException e) &#123;</span><br><span class="line">      <span class="comment">// 发生错误，重新上传加载</span></span><br><span class="line">      log.info(<span class="string">"Reload Nginx failed, retrying left "</span> + i + <span class="string">" times"</span>, e);</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</div></div><br>在将服务实例信息转换为Nginx配置文件后，需要循环遍历所有现存的Nginx服务器，对服务器地址的请求若出错需要一定次数的重试，尽可能地更新。<br>   客户端或其他模块通过REST协议来访问服务的接口，访问请求由网关服务器进行拦截，再通过负载均衡技术来发布到某个服务的实例上。</p>
+<h4 id="放款更新功能"><a href="#放款更新功能" class="headerlink" title="放款更新功能"></a>放款更新功能</h4><p><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款更新时序图.png" alt="X" title="放款更新时序图"><br>考虑多用户登录系统并同时对同一实体执行更新操作时，就有可能发生竞态条件。如果使用普通的加锁方式只能保证同一进程内的线程同步、不能保证多个服务实例进程间的互斥访问，解决办法是引入ZooKeeper的分布式锁和时间戳机制，在每次修改实体后更新实体的版本，并在每次对实体ID加锁后再与数据库中保留的最后一次修改时的版本进行校验，加锁将使得临界区代码在集群内只能被一个服务实例的线程调用，在修改完毕退出后更新实体版本，另一个线程进入后再根据版本进行校验，从而保证了服务间的并发写的一致性。<br>时间戳的实现比较简单，而分布式锁的实现则涉及到很多细节，已知的包括：</p>
+<ul>
+<li>加锁操作的原子性、只有自己可以解锁自己、死锁、线程宕掉、耗时、失效时间、阻塞、可重入。</li>
+</ul>
+<h4 id="放款提交功能"><a href="#放款提交功能" class="headerlink" title="放款提交功能"></a>放款提交功能</h4><p>发债模块在对单据进行提交操作时实际上需要调用审批服务提供的RPC接口，在提交后用户即可在审批模块中查找到这些单据，并可以对其进行审批或取消审批、驳回等操作。首先需要解释的是服务为何如此划分，需要结合企业的具体业务来考虑，因为审批是十分宽泛的场景，不只是发债单据需要审批，为了提高模块的可扩展性，将其划分出来作为单独的服务是合理的。放款提交操作的时序图如下图所示。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款提交时序图.png" alt="X" title="放款提交时序图"><br>和其他增删改查操作相同的是，在具体的业务处理之前需要对放款进行加锁和版本校验，成功后发债服务会将该放款信息通过调用服务接口的方式提交到审批服务，审批服务会先根据放款的单据类型从数据库查找其审批流的注册信息及审批流，并成功便新增一条审批流实例到数据库，返回成功信息给发债服务，发债服务再根据返回值来修改放款的审批状态；如果查询或新增失败，审批会返回错误信息，使得发债服务也不会进行任何处理，或者处理后回滚到最初的状态。<br>发债模块并不了解审批模块内部的实现方式，二者使用相互独立的两个数据库，因此在执行审批操作时是可能发生不一致的情况的，为此需要引入TCC补偿机制，对提交操作需要提供一个confirm接口和一个cancel接口，代表统一的提交和回滚。<br>放款提交的具体执行过程如下图所示。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/放款提交流程图.png" alt="X" title="放款提交流程图"><br>在登记放款页面点击提交按钮后会将放款单的ID、版本号等信息发送到后台，程序的初步执行流程仍然是上分布式锁、校验版本号及设置新版本号和更新时间，接下来由于涉及到跨服务的写库操作所以会显得更加复杂。<br>首先服务调用方的发债服务需要生成本次调用的调用ID，其作用之后再作论述，因为发债服务的本次调用是事务内的第一次调用，所以还需要生成一个链路ID，用于标识一次事务，这些ID都需要全局唯一，所以和实体ID一样需要使用分布式唯一ID算法来生成。发债服务在调用审批服务的接口时，除了传递本来需要传递的单据信息之外，还需要将调用ID和链路ID打包一同传递，以便之后审批服务将TCC事务的参与信息上传到缓存中间件。事务的参与者分为根参与者和枝叶参与者，根参与者为事务的发起者，在这里即为发债服务，枝叶参与者包括事务通过传播到达的所有其余服务器，参与者包含的属性包括服务器本身的地址及TCC补偿事务所需的confirm接口和cancel，只要某个服务接口需要添加事务属性，它就需要将自己的参与者信息上传到缓存中间件中，因此这里审批服务还有一个上传参与者信息的过程。实现TCC补偿事务中根参与者执行流程的关键代码如下所示。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> Object <span class="title">interceptRoot</span><span class="params">(Participator participator, MethodWrapper methodWrapper)</span></span></span><br><span class="line"><span class="function">    <span class="keyword">throws</span> TccException </span>&#123;</span><br><span class="line">  Object result;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 执行try</span></span><br><span class="line">    log.info(<span class="string">"-&gt; ROOT.try执行"</span>);</span><br><span class="line">    result = methodWrapper.invoke();</span><br><span class="line">  &#125; <span class="keyword">catch</span> (Throwable cause) &#123;</span><br><span class="line">    <span class="comment">// 执行cancel</span></span><br><span class="line">    log.info(<span class="string">"&lt;- ROOT.try出错.即将执行cancel"</span>, cause);</span><br><span class="line">    tccCoordinateHelper.submitCancel(traceIdHelper.getTraceId());</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> TccException(<span class="string">"Method invocating failed. cause:"</span> + cause.getMessage(), cause);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 执行confirm，结束后会发送确认信息</span></span><br><span class="line">  log.info(<span class="string">"&lt;- ROOT.try完毕.即将执行confirm"</span>);</span><br><span class="line">  tccCoordinateHelper.submitConfirm(traceIdHelper.getTraceId());</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>在前面的准备工作完成后，审批服务正式进入业务处理流程，首先需要根据登记放款的单据类型去数据库中查找审批流注册信息，因为审批存在多级审批的场景，因此每条审批流关联了自己下一阶段的审批流，这里为了创建审批流实例需要找到源头第一条审批流，并将发债传递来的单据信息填入即可得到审批流实例。<br>保存审批流实例时不能直接保存到实体本身代表的数据库表中，而是要暂时保存到一个dr表中暂存，表名为“实体名_dr”，因为此时事务并没有完成，如果直接保存到实体表中，直接去审批流页面查询是能查出的，也就是说会发生“脏读”的现象，暂时保存到这个暂存表中，还可以作为日志，供系统发生故障时手动恢复之用。审批服务执行完毕之后，发债服务需要使用其返还值来更新发债数据库中的放款状态。但是事务还未完成，因为审批服务还没有将审批实例实际保存到实体表中，发债服务需要先使用链路ID从缓存中间件中获取所有事物参与者信息，然后根据提交操作是否成功来决定是调用confirm还是cancel，这里confirm的逻辑是将dr表中的审批流实例转移到实体表中，而cancel是将该审批流实例从dr表中移除、发债服务回滚。<br>为了应对偶尔的网络不稳定等情况，根参与者需要在异常发生时再重试一定的次数，另外，试想如果请求的超时也被当成故障处理了，那么多次的写操作很有可能会为系统引入脏数据了，因此confirm和cancel接口需要额外地保证接口的幂等性，为了校验接口是否被多次调用，需要客户端在发出请求时带上此次请求的调用ID，服务端需要缓存调用ID并对请求的重复性进行校验。<br>最后发债服务释放放款ID上的锁，完成一次提交操作。其他审批接口、结算管理的相应接口实现思路是类似的，在此不另加论述。</p>
-<p>思路<br>说明提交操作是需要跨服务写库的，除了在修改操作的加锁和版本校验之外，还需要注意TCC的执行流程：</p>
+<p><strong>总而言之</strong>，提交操作是需要跨服务写库的，除了在修改操作的加锁和版本校验之外，还需要注意<strong>TCC的执行流程</strong>：</p>
 <ol>
-<li>解释TCC事务需要每个参与者提供try、confirm和cancel三个接口，try执行资源的预留，比如对涉及的实体加锁，也起着服务验活的功能，confirm执行事务的提交，也就是真正地执行业务操作、将数据持久化到数据库，cancel需要释放预留的资源；</li>
-<li>调用ID和链路ID的作用；</li>
+<li>TCC事务需要每个参与者提供try、confirm和cancel三个接口，try执行资源的预留，比如对涉及的实体加锁，也起着服务验活的功能，confirm执行事务的提交，也就是真正地执行业务操作、将数据持久化到数据库，cancel需要释放预留的资源；</li>
 <li>每个事务参与者将自己的信息提交到Redis缓存内，之后根参与者需要取得所有参与者信息，主要是它们的confirm和cancel接口的地址；</li>
-<li>①如果业务操作都成功了，由第一个参与者来调用所有其他参与者的confirm接口来提交事务；<br> ②如果业务操作失败了，同样由第一个参与者来调用所有其他参与者的cancel接口来回滚事务。</li>
+<li>根据confirm执行情况，有：<ol>
+<li>如果业务操作都成功了，由第一个参与者来调用所有其他参与者的confirm接口来提交事务；</li>
+<li>如果业务操作失败了，同样由第一个参与者来调用所有其他参与者的cancel接口来回滚事务。</li>
 </ol>
-<p>提问点</p>
-<ol>
-<li>TCC没讲明白？用一个常见的用户购买商品场景为例，需要先确保用户能够支付，然后锁住用户和商户的账户，这是try阶段；如果try成功，即预留资源成功了，接下来再对用户账户扣款、商户账户入账，如果因为超时等原因失败了，需要事务补偿，即重试，这是confirm阶段；如果try失败，则释放所有的锁，这是cancel阶段。</li>
-<li>事务补偿时如何保证幂等性？</li>
-<li>本地事务如何处理（对MySQL的理解）？</li>
+</li>
 </ol>
+<p><strong>调用ID和链路ID的作用</strong>，前者可以用于保证接口调用的<strong>幂等性</strong>，后者主要用来定位事务内的参与者。</p>
+<p>用一个常见的用户购买商品场景为例，需要先确保用户能够支付，然后锁住用户和商户的账户，这是try阶段；如果try成功，即预留资源成功了，接下来再对用户账户扣款、商户账户入账，如果因为超时等原因失败了，需要事务补偿，即重试，这是confirm阶段；如果try失败，则释放所有的锁，这是cancel阶段。</p>
 <hr>
-<h2 id="测试系统"><a href="#测试系统" class="headerlink" title="测试系统"></a>测试系统</h2><h3 id="安全"><a href="#安全" class="headerlink" title="安全"></a>安全</h3><p>？？？</p>
-<ol>
-<li>私密信息安全<br>户在验证填写的账号、密码有效后可以成功登录系统，用户密码在登录过程中会加密传输，后台会保存加密后的密码。</li>
-<li>单据信息安全<br>用户填制的单据不会意外丢失，填写的数据若不符合格式会有明确的提示，金额等高精度数据不会出现精度丢失。多人同时操作一条单据时不会引起并发风险，比如数据不一致、死锁等。<h3 id="效率"><a href="#效率" class="headerlink" title="效率"></a>效率</h3></li>
-<li>并发效率<br>系统至少支持100的并发数，平均响应时间应该不超过1秒。</li>
-<li>资源利用率<br>系统在所提供的环境内能正常运行，在满足并发效率的前提下系统不会完全占用某个服务器的硬件资源。<h3 id="鲁棒"><a href="#鲁棒" class="headerlink" title="鲁棒"></a>鲁棒</h3></li>
-<li>失效频率<br>每两次系统错误的间隔时间不得短于3周，并且能在12小时内恢复运行。</li>
-<li>易恢复性<br>系统的各服务模块之间应具有较低的耦合度，某个服务出错也不会诱发其他服务的出错，失效服务不会引起上游服务的长期阻塞。出错时，系统内应有良好的日志记录作为快速排查出错原因的依据。另外，应做好数据库周期性的备份以防万一。</li>
-</ol>
-<hr>
-<h2 id="总结与展望"><a href="#总结与展望" class="headerlink" title="总结与展望"></a>总结与展望</h2><h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>学习分布式理论基础</p>
-<ol>
-<li>学习进程、虚拟化和服务等概念；</li>
-<li>学习通信的常用方法；</li>
-<li>学习同步和一致性的概念。</li>
-</ol>
-<p>解决系统设计中的难点</p>
-<ol>
-<li>同步服务发现服务器和网关服务器，实现服务弹性伸缩；</li>
-<li>设计基于HTTP的RPC协议，实现服务间通信；</li>
-<li>使用分布式锁、版本控制、TCC事务来保证服务间一致性。</li>
-</ol>
-<p>实现系统</p>
-<ol>
-<li>后台除注释外代码达到近2万行，类近500个；<br>2.独立数据库5个，数据库表共18张；</li>
-<li>系统包含相互独立的微服务6个。</li>
-</ol>
-<h3 id="改进"><a href="#改进" class="headerlink" title="改进"></a>改进</h3><p>服务发现</p>
-<ol>
-<li>使用Eureka等高可用服务发现产品替代ZooKeeper；</li>
-<li>使用复制和DNS等手段工具提升Nginx服务器的可用性。</li>
-</ol>
-<p>服务间通信</p>
-<ol>
-<li>使用TCP等更底层、灵活的协议；</li>
-<li>使用Kryo等更完善的序列化工具。</li>
-</ol>
-<p>服务间一致性</p>
-<ol>
-<li>做好TCC事务的异常日志，供出错时手动执行恢复；</li>
-</ol>
-<p>思路</p>
-<ol>
-<li>介绍从开题到最后论文完成过程中做了什么</li>
-<li>介绍论文里主要解决的三个难点<br>提问点</li>
-<li>概念，Zab协议、选举、容错集群、Eureka、Kyro、redo/undo日志。</li>
-<li>ZooKeeper集群通过Zab协议保证高一致性，重新选举Leader比较耗时，且当节点数量不足以构成容错集群时，ZooKeeper倾向于返回空；故提出改用Eureka等其他倾向于提供高可用性的具有服务发现功能的产品；</li>
-<li>Nginx服务器作为网关，存在单点故障风险，但是这里的服务发现只能保证被Nginx代理的那些服务能弹性伸缩，对Nginx本身却没有什么办法，就算复制了Nginx服务器，客户端也只能发到一个IP上。这里提出使用基于操作系统的方案对Nginx集群实现验活及负载均衡，主要是Keepalived等软件或独立的DNS服务器，但是论文题目限于Saas层展开，本人水平有限没法解释；</li>
-<li>HTTP是应用层的，Spring Boot封装了一个RestTemplate可以很方便地发HTTP请求。而TCP是传输层的，如何包装消息需要另外再讨论，常见的框架如Netty，提供了长连接、心跳检测等功能，可以提高开发效率；<br>Kryo是一个优秀的Java序列化方案，大概用了很多优化方案，这就是很零碎的编程问题了；<br>TCC的confir和cance都有可能出错，一般都需要手动恢复，异常日志指的是redo和undo日志，redo是未执行前的数据值，undo是执行修改后的数据值。</li>
-</ol>
+<pre><code>## 测试
+### 安全
+1. 私密信息安全
+户在验证填写的账号、密码有效后可以成功登录系统，用户密码在登录过程中会加密传输，后台会保存加密后的密码。
+1. 单据信息安全
+用户填制的单据不会意外丢失，填写的数据若不符合格式会有明确的提示，金额等高精度数据不会出现精度丢失。多人同时操作一条单据时不会引起并发风险，比如数据不一致、死锁等。
+### 效率
+1. 并发效率
+系统至少支持100的并发数，平均响应时间应该不超过1秒。
+1. 资源利用率
+系统在所提供的环境内能正常运行，在满足并发效率的前提下系统不会完全占用某个服务器的硬件资源。
+### 鲁棒
+1. 失效频率
+每两次系统错误的间隔时间不得短于3周，并且能在12小时内恢复运行。
+1. 易恢复性
+系统的各服务模块之间应具有较低的耦合度，某个服务出错也不会诱发其他服务的出错，失效服务不会引起上游服务的长期阻塞。出错时，系统内应有良好的日志记录作为快速排查出错原因的依据。另外，应做好数据库周期性的备份以防万一。
+</code></pre><hr>
+<h2 id="改进思路"><a href="#改进思路" class="headerlink" title="改进思路"></a>改进思路</h2><p>当前的系统仍存在很多可改进的地方。</p>
+<h3 id="服务发现功能-1"><a href="#服务发现功能-1" class="headerlink" title="服务发现功能"></a>服务发现功能</h3><h4 id="使用Eureka等高可用服务发现产品替代ZooKeeper"><a href="#使用Eureka等高可用服务发现产品替代ZooKeeper" class="headerlink" title="使用Eureka等高可用服务发现产品替代ZooKeeper"></a>使用Eureka等高可用服务发现产品替代ZooKeeper</h4><p>ZooKeeper集群通过Zab协议保证高一致性，重新选举Leader比较耗时，且当节点数量不足以构成容错集群时，ZooKeeper倾向于返回空；故提出改用Eureka等其他倾向于提供高可用性的具有服务发现功能的产品。</p>
+<h4 id="使用复制和DNS等手段工具提升Nginx服务器的可用性。"><a href="#使用复制和DNS等手段工具提升Nginx服务器的可用性。" class="headerlink" title="使用复制和DNS等手段工具提升Nginx服务器的可用性。"></a>使用复制和DNS等手段工具提升Nginx服务器的可用性。</h4><p>Nginx服务器作为网关，存在单点故障风险，但是这里的服务发现只能保证被Nginx代理的那些服务能弹性伸缩，对Nginx本身却没有什么办法，就算复制了Nginx服务器，客户端也只能发到一个IP上。这里提出使用基于操作系统的方案对Nginx集群实现验活及负载均衡，主要是Keepalived等软件或独立的DNS服务器，但是论文题目限于Saas层展开，本人水平有限没法解释。</p>
+<h3 id="服务间通信功能（RPC）"><a href="#服务间通信功能（RPC）" class="headerlink" title="服务间通信功能（RPC）"></a>服务间通信功能（RPC）</h3><h4 id="使用TCP等更底层、灵活的协议"><a href="#使用TCP等更底层、灵活的协议" class="headerlink" title="使用TCP等更底层、灵活的协议"></a>使用TCP等更底层、灵活的协议</h4><p>HTTP是应用层的，Spring Boot封装了一个RestTemplate可以很方便地发HTTP请求。而TCP是传输层的，如何包装消息需要另外再讨论，常见的框架如Netty，提供了长连接、心跳检测等功能，可以提高开发效率。</p>
+<h4 id="使用Kryo等更完善的序列化工具"><a href="#使用Kryo等更完善的序列化工具" class="headerlink" title="使用Kryo等更完善的序列化工具"></a>使用Kryo等更完善的序列化工具</h4><p>Kryo是一个优秀的Java序列化方案，大概用了很多优化方案，这就是很零碎的编程问题了。<br>TCC的confir和cance都有可能出错，一般都需要手动恢复，异常日志指的是redo和undo日志，redo是未执行前的数据值，undo是执行修改后的数据值。</p>
+<h3 id="服务间一致性（TCC事务）："><a href="#服务间一致性（TCC事务）：" class="headerlink" title="服务间一致性（TCC事务）："></a>服务间一致性（TCC事务）：</h3><p>考虑TCC事务发生异常的情况，做好redo/undo日志，供出错时手动执行恢复。</p>
 
           
         
