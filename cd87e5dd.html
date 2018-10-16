@@ -87,7 +87,7 @@
 <meta property="og:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/司库云系统简析/契约测试示意图.png">
-<meta property="og:updated_time" content="2018-10-16T03:58:06.988Z">
+<meta property="og:updated_time" content="2018-10-16T04:39:39.045Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="司库云系统简析">
 <meta name="twitter:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
@@ -397,16 +397,17 @@
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (FrameworkException e) &#123;</span><br><span class="line">  <span class="comment">// ...处理框架抛出异常</span></span><br><span class="line">&#125; <span class="keyword">catch</span>(BusinessException e) &#123;</span><br><span class="line">  <span class="comment">// ...处理业务代码抛出的异常</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 </div></div>
-当然，不管是哪种方式，最重要的是上下游开发者的统一。</li>
-<li>下游开发者在自测的时候，需要注意和上游模块之间版本是匹配的，但还有一种情况是，我们并不知道Bug是出在下游还是上游接口里，因此普通打断点跟代码的形式就行不通了，我想到的解决办法主要有以下几点：<ul>
-<li>细心编码、滴水不漏，但不是每个人都是Dijkstra；</li>
-<li>不厌其烦地调试，在发起远程调用的方法处打断点，将请求参数拦截下来，然后另起一个上游模块实例，使用这些数据调用上游接口，再尝试对Bug进行定位；</li>
-<li>搭建私有化环境，所有关联服务都放到localhost里调试，这种方法必须将几乎所有相关项目的配置文件里的IP都改成localhost，动作比较大，而且这样就和微服务没什么关系了；</li>
-<li>契约测试，将服务消费者与服务提供者解耦<br><img src="http://47.88.24.11/司库云系统简析/契约测试示意图.png" alt="X" title="契约测试示意图"></li>
-</ul>
-</li>
+当然，不管是哪种方式，最重要的是接口提供方和调用方开发者的统一。</li>
 </ol>
-<h3 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h3><p>司库云中</p>
+<p>调用方在自测的时候，需要注意接口版本是正确的，有一种情况是，我们并不知道Bug是出在自己的代码里还是RPC接口里，我们本地只有RPC接口的声明，因此普通打断点跟代码的形式就行不通了，我想到的解决办法主要有以下几点：</p>
+<pre><code>* 细心编码、滴水不漏，但不是每个人都是Dijkstra；
+* 不厌其烦地调试，在发起远程调用的方法处打断点，将请求参数拦截下来，然后另起一个上游模块实例，使用这些数据调用上游接口，再尝试对Bug进行定位；
+* 搭建私有化环境，所有关联服务都放到localhost里调试，这种方法必须将几乎所有相关项目的配置文件里的IP都改成localhost，动作比较大，而且这样就和微服务没什么关系了；
+* 契约测试，将服务消费者与服务提供者解耦
+</code></pre><p><img src="http://47.88.24.11/司库云系统简析/契约测试示意图.png" alt="X" title="契约测试示意图"></p>
+<p>RPC远程调用的开销远高于本地调用，过于滥用会对系统性能造成影响，为了避免这个问题，一方面，在设计之初需要由更懂业务的人参与业务模块的划分，减少远程调用；另一方面，可以考虑使用更高效的通信协议、更高效的通信模式（NIO、AIO）和更高效的序列化/反序列化协议，提高RPC协议本身的效率，在分布式系统中，可以说拿下网络协议就是拿下了成功的一半（当然复杂的系统绝不只需要对应用层的考量）。</p>
+<p>RPC涉及到多个独立服务实例间的相互调用，会引入数据一致性风险，我在《基于微服务的资金云系统发债管理子系统》这个课题中也做过初步的探究。</p>
+<h3 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h3><p>司库云中实现了一套基于ZooKeeper的分布式锁，但客户端是自造的轮子，期间也发现了不少问题，比如在测试中曾发生过这么个现象：A修改保存了一条数据，在加锁后后台逻辑出现问题意外退出了，此时锁并没有释放，而B又上来操作了同一条数据，因为锁已经被占用了，因此第一次操作失败了，</p>
 <h3 id="事务补偿机制"><a href="#事务补偿机制" class="headerlink" title="事务补偿机制"></a>事务补偿机制</h3>
       
     </div>
@@ -801,5 +802,5 @@
 
   undefined
 
-<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"modle":"wanko","moblieShow":false,"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"modle":"wanko","pluginModelPath":"assets/","moblie":{"show":false},"display":{"width":150,"height":300},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>
