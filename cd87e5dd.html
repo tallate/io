@@ -87,7 +87,7 @@
 <meta property="og:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/司库云系统简析/契约测试示意图.png">
-<meta property="og:updated_time" content="2018-10-16T07:35:59.215Z">
+<meta property="og:updated_time" content="2018-10-16T15:48:33.814Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="司库云系统简析">
 <meta name="twitter:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
@@ -411,9 +411,16 @@
 <blockquote>
 <p>A修改保存了一条数据，在加锁后后台逻辑出现问题意外退出了，此时锁并没有释放，而B又上来操作了同一条数据，因为锁已经被占用了，因此第一次操作失败了，但是再执行一次操作却正常通过了。</p>
 </blockquote>
-<p>后来阅读分布式锁代码如下所示。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure></p>
-<p>原来加锁不管成功与否都会</p>
-<h3 id="事务补偿机制"><a href="#事务补偿机制" class="headerlink" title="事务补偿机制"></a>事务补偿机制</h3>
+<p>其中一处示例RPC调用代码如下所示。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 加锁、校验时间戳</span></span><br><span class="line">    <span class="keyword">this</span>.lock(values);</span><br><span class="line">    <span class="keyword">this</span>.checkTs(values);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 执行业务操作</span></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 调用审批微服务</span></span><br><span class="line">    service.approve(paralist, message);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 更新到数据库及执行其他业务操作</span></span><br><span class="line">      ...</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">        <span class="comment">// 事务补充.防止审批流服务和业务单据的状态不一致</span></span><br><span class="line">        service.unapprove(paralist);</span><br><span class="line">    &#125;</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    <span class="comment">//释放锁</span></span><br><span class="line">    <span class="keyword">this</span>.unlock(values);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>加锁不管成功与否，都会调用finally块中的unlock方法释放对象的锁，因此会产生上面的现象。解决办法是令lock方法调用返回加锁是否成功，只有成功的情况才能调用unlock。</p>
+<p>当测试对数据的批量操作时，还出现过这样的情况：</p>
+<blockquote>
+<p>A和B同时操作1、2、3三条数据，二人给出数据的顺序是不确定的，结果两个人的界面都一直在转圈圈（表示正在执行），最后两个人都傻等着直到不耐烦、点了刷新页面。</p>
+</blockquote>
+<p>显然这是发生死锁的现象，从操作系统的进程调度中我们学过，为了解决死锁问题，主要解决方式是预防死锁（破坏产生死锁的条件）、避免死锁（银行家算法）和检测解除（资源分配图）这几种策略。<br>以简单起见，我们最后选择破坏一个最显然的产生死锁条件，即资源的占用顺序是不确定的，这样可能会发生A先占用1再占用2，而B先占用2再占用1，它们发生循环等待，产生死锁。解决办法也比较简单，只要对数据的ID统一进行排序后再按顺序进行加锁即可。<br>另外，加锁操作理应有一个超时时间，不管后台正在进行什么样的操作，“一直转圈圈”相对“没执行完就报了个错”来说，是用户更难以接受的。</p>
+<p>涉及同步的代码都是比较难测出隐藏问题的，与其自告奋勇从零开始，不如虚心谨慎采纳现成的方案工具为上，与其将寻找漏洞的任务交给测试，不如在开发时小心谨慎为上。</p>
+<h3 id="事务补偿机制"><a href="#事务补偿机制" class="headerlink" title="事务补偿机制"></a>事务补偿机制</h3><p>之前讨论过，RPC涉及到多个独立服务之间的相互调用，可能会发生某一次调用失败然后导致多个数据库之间数据不一致的情况。<br>如果是单个服务的情况下，可以依赖本地事务的统一提交和回滚，就算把电线忽然拔了，也还是可以用bin-log来恢复出错的数据。<br>在多个服务的情况下，就要依靠分布式事务了。司库云中实现的是最简单但也相当实用的一种，称为<strong>事务补偿</strong>，示例代码已经在上一节中包含，这里单独给出：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">service.approve(vo);</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// 更新到数据库及执行其他业务操作</span></span><br><span class="line">  ...</span><br><span class="line">&#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">  <span class="comment">// 最好记录日志，供发生意外时手动恢复</span></span><br><span class="line">  <span class="comment">// 事务补充.防止审批流服务和业务单据的状态不一致</span></span><br><span class="line">  service.unapprove(paralist);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
       
     </div>
     
