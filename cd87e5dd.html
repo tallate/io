@@ -87,7 +87,7 @@
 <meta property="og:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/司库云系统简析/契约测试示意图.png">
-<meta property="og:updated_time" content="2018-10-15T18:41:58.581Z">
+<meta property="og:updated_time" content="2018-10-16T03:58:06.988Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="司库云系统简析">
 <meta name="twitter:description" content="背景上半年参与一个微服务架构Web服务的开发，期间提交了近2W行Java代码，删除近1W行，虽然只是SaaS层的代码，但是还是学到了不少东西，写代码方面学了一些Java基础和编程规范相关的知识，架构方面了解了一些分布式系统相关的概念，另外又抽时间自学了一些中间件、DevOps（主要是怎么使用Docker简化运维）相关的工具。">
@@ -334,25 +334,7 @@
 <h3 id="下游功能实现"><a href="#下游功能实现" class="headerlink" title="下游功能实现"></a>下游功能实现</h3><p>实现下游功能似乎会简单一点，但也不尽然：</p>
 <ol>
 <li>和上游开发沟通接口，最基本的，应该提供所需的返回值格式，而上游则需要说明需要传入哪些参数，另外，这个接口最好是批量的，可以提高效率；</li>
-<li>如果上游接口设计不合理，那么会对下游接口的测试造成一定困扰，对微服务架构的项目来说更是如此。<br>假设我们的上游和下游处于不同的两个模块内，这意味着它们会被部署到不同的两个应用实例内，使用RMI的方式来相互调用，就像本地方法调用一样，会有方法名、参数、异常抛出等。当时令我们困扰的是如何区分业务抛出的异常和RMI框架抛出的异常。要知道所有分布式系统都是建立在不稳定的网络条件之上的，超时这种网络异常是家常便饭。对此我们主要有两种方式：<ol>
-<li>使用返回值表示业务异常（接口本身没有返回值的情况下）；<div><div class="fold_hider"><div class="close hider_title">显示/折叠代码</div></div><div class="fold">
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">"外部放款单出现错误："</span> + e.getMessage();</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">// 释放锁</span></span><br><span class="line">  infinance.setId(infinance.getInfinancepayid());</span><br><span class="line">  <span class="comment">//new VOLockOperaor().unlock(infinance);</span></span><br><span class="line">  infinance.setId(<span class="keyword">null</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</div></div></li>
-<li>分别定义业务异常和RMI框架异常，分别捕捉。<div><div class="fold_hider"><div class="close hider_title">显示/折叠代码</div></div><div class="fold">
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (FrameworkException e) &#123;</span><br><span class="line">  <span class="comment">// ...处理框架抛出异常</span></span><br><span class="line">&#125; <span class="keyword">catch</span>(BusinessException e) &#123;</span><br><span class="line">  <span class="comment">// ...处理业务代码抛出的异常</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</div></div>
-当然，不管是哪种方式，最重要的是上下游开发者的统一。</li>
-</ol>
-</li>
-<li>下游开发者在自测的时候，需要注意和上游模块之间版本是匹配的，但还有一种情况是，我们并不知道Bug是出在下游还是上游接口里，因此普通打断点跟代码的形式就行不通了，我想到的解决办法主要有以下几点：<ul>
-<li>细心编码、滴水不漏，但不是每个人都是Dijkstra；</li>
-<li>不厌其烦地调试，在发起远程调用的方法处打断点，将请求参数拦截下来，然后另起一个上游模块实例，使用这些数据调用上游接口，再尝试对Bug进行定位；</li>
-<li>搭建私有化环境，所有关联服务都放到localhost里调试，这种方法必须将几乎所有相关项目的配置文件里的IP都改成localhost，动作比较大，而且这样就和微服务没什么关系了；</li>
-<li>契约测试，将服务消费者与服务提供者解耦<br><img src="http://47.88.24.11/司库云系统简析/契约测试示意图.png" alt="X" title="契约测试示意图"></li>
-</ul>
-</li>
+<li>下游开发者需要对RMI远程调用的原理比较熟悉，像调用方法、传参、抛出异常等过程，本质上都是和本地调用不同的。</li>
 </ol>
 <h3 id="复杂功能实现"><a href="#复杂功能实现" class="headerlink" title="复杂功能实现"></a>复杂功能实现</h3><p>对于一些比较复杂的功能，牵扯到的模块比较多、逻辑比较复杂，做好记录就很重要。写代码最难的不是写代码这个过程，因为只需要基础知识过关、有节操（编码规范），写代码是不难的，难的是写代码前的准备工作，。</p>
 <ol>
@@ -405,7 +387,25 @@
 <li>将所有工具类（包括中间件的客户端）都写到一个tmc-utils项目中，供业务模块依赖，虽然方便，但是导致tmc-utils项目颇为臃肿、不稳定，甚至到了后面都没有人知道里面塞了什么东西了；</li>
 <li>将所有实现微服务客户端所需的基础设施写到MwClientLoader这个类里来引入，所以司库云其实并没有依赖Spring Boot；</li>
 </ol>
-<h3 id="RMI远程调用"><a href="#RMI远程调用" class="headerlink" title="RMI远程调用"></a>RMI远程调用</h3><p>RMI是一种将远程调用包装成本地调用形式的技术。在司库云中，即是将接口和参数序列化后通过HTTP协议传过去。在毕设《基于微服务的资金云系统发债管理子系统》中我也有按着这种思路自己实现了一种简单的RMI框架。<br>RMI调用中，框架异常和业务异常默认没有区分，必须得开发自己进行约定，传参只提供对基本类型的转换，如果要传复杂对象，则必须自己将对象属性保存在Map中，然后由接收端取出属性还原对象。</p>
+<h3 id="RMI远程调用"><a href="#RMI远程调用" class="headerlink" title="RMI远程调用"></a>RMI远程调用</h3><p>RMI是一种将远程调用包装成本地调用形式的技术。在司库云中，即是将接口和参数序列化后通过HTTP协议传过去。在毕设《基于微服务的资金云系统发债管理子系统》中我也有按着这种思路自己实现了一种简单的RMI框架。<br>RMI调用中，框架异常和业务异常默认没有区分，必须得开发自己进行约定，传参只提供对基本类型的转换，如果要传复杂对象，则必须自己将对象属性保存在Map中，然后由接收端取出属性还原对象。<br>服务接口提供者和消费者一般处于独立的两个模块内，这意味着它们会被部署到不同的两个应用实例内，使用RMI的方式来相互调用，就像本地方法调用一样，会有方法名、参数、异常抛出等。当时令我们困扰的是如何区分业务抛出的异常和RMI框架抛出的异常。要知道所有分布式系统都是建立在不稳定的网络条件之上的，超时这种网络异常是家常便饭。对此我们主要有两种方式：</p>
+<ol>
+<li>使用返回值表示业务异常（接口本身没有返回值的情况下）；<div><div class="fold_hider"><div class="close hider_title">显示/折叠代码</div></div><div class="fold">
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">"外部放款单出现错误："</span> + e.getMessage();</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">// 释放锁</span></span><br><span class="line">  infinance.setId(infinance.getInfinancepayid());</span><br><span class="line">  <span class="comment">//new VOLockOperaor().unlock(infinance);</span></span><br><span class="line">  infinance.setId(<span class="keyword">null</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</div></div></li>
+<li>分别定义业务异常和RMI框架异常，分别捕捉。<div><div class="fold_hider"><div class="close hider_title">显示/折叠代码</div></div><div class="fold">
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  <span class="comment">// ...业务操作</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (FrameworkException e) &#123;</span><br><span class="line">  <span class="comment">// ...处理框架抛出异常</span></span><br><span class="line">&#125; <span class="keyword">catch</span>(BusinessException e) &#123;</span><br><span class="line">  <span class="comment">// ...处理业务代码抛出的异常</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</div></div>
+当然，不管是哪种方式，最重要的是上下游开发者的统一。</li>
+<li>下游开发者在自测的时候，需要注意和上游模块之间版本是匹配的，但还有一种情况是，我们并不知道Bug是出在下游还是上游接口里，因此普通打断点跟代码的形式就行不通了，我想到的解决办法主要有以下几点：<ul>
+<li>细心编码、滴水不漏，但不是每个人都是Dijkstra；</li>
+<li>不厌其烦地调试，在发起远程调用的方法处打断点，将请求参数拦截下来，然后另起一个上游模块实例，使用这些数据调用上游接口，再尝试对Bug进行定位；</li>
+<li>搭建私有化环境，所有关联服务都放到localhost里调试，这种方法必须将几乎所有相关项目的配置文件里的IP都改成localhost，动作比较大，而且这样就和微服务没什么关系了；</li>
+<li>契约测试，将服务消费者与服务提供者解耦<br><img src="http://47.88.24.11/司库云系统简析/契约测试示意图.png" alt="X" title="契约测试示意图"></li>
+</ul>
+</li>
+</ol>
 <h3 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h3><p>司库云中</p>
 <h3 id="事务补偿机制"><a href="#事务补偿机制" class="headerlink" title="事务补偿机制"></a>事务补偿机制</h3>
       
