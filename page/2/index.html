@@ -635,9 +635,9 @@
 </ol>
 <h3 id="开发、实施和运维"><a href="#开发、实施和运维" class="headerlink" title="开发、实施和运维"></a>开发、实施和运维</h3><p>开发和运维在传统情况下是完全分割开来的，开发主要负责完成功能需求，并且知道如何去优化功能，运维要明白如何部署应用服务集群、中间件集群外，同时对所使用的工具的原理要有一定程度的了解，比如某个服务器的CPU打满了，原因可能是代码写得太差了，也可能是数据库某张热表没有给字段加上索引。现在DevOps的概念盛行，开发有时也需要承担环境的维护。<br>实施，说简单的，就是帮用户装软件的，该人员必须对软件整体具有较好的理解，因为实施会直面用户，如果被用户问倒可不只是丢自己一个人的脸，当然，一定程度的口才也是必要的。实施在ERP时代是很重要的一个职位，在当下云服务盛行的情况，实施往往会被派去为用户部署私有云环境（前提是有这个必要）。</p>
 <h3 id="有状态和无状态服务"><a href="#有状态和无状态服务" class="headerlink" title="有状态和无状态服务"></a>有状态和无状态服务</h3><p>提到无状态我们都会想到HTTP，HTTP协议是一种无状态的协议，这意味着HTTP服务器不会保存任何用户信息，实现登录、购物车等带状态的功能时都需要额外借助Session、分布式缓存、数据库等存储方案。以购物车为例，其中Session相当于将购物车的状态保存到了服务实例的内存中，而分布式缓存和数据库方案则将状态转移到了另一个服务器内（假设应用和缓存、数据库服务器是部署在不同的服务器上的）。<br>如果一个服务是有状态的，随着实例的运行，服务实例在内存中可能会多出一些与业务相关的数据，实例间产生差异后，我们后续就不能随意地对服务进行复制了，两次HTTP的可能会产生不同的结果，如下图所示。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/有状态服务示意图.png" alt="X" title="有状态服务示意图"><br>因此有必要在设计的时候就保证服务是无状态的。<br><img src="http://47.88.24.11/基于微服务的资金云系统发债管理子系统/无状态服务示意图.png" alt="X" title="无状态服务示意图"></p>
+<h3 id="CAP-amp-BASE"><a href="#CAP-amp-BASE" class="headerlink" title="CAP &amp; BASE"></a>CAP &amp; BASE</h3><p><strong>CAP</strong>是描述分布式系统特性常用的一种理论，它使用数据<strong>一致性（Consistency）</strong>、<strong>服务可用性（Availability）</strong>和<strong>分区容错性（Partition-tolerance）</strong>三个指标来定义一个分布式系统，这三个特性不能被同时完全满足，其中，P是必须要满足的，因为一般的业务系统并不允许网络中的消息被随意丢弃，因此多数的讨论都集中于C和A之间的权衡。<br>如果需要满足强一致性，则在对数据进行读写操作时势必都需要进行加锁操作并使用事务来保证分布式一致性，但同时也会对系统的效率产生非常大的影响，起到反作用、影响用户的体验，所以在设计时往往会放宽这个要求，采取<strong>最终一致性</strong>作为实现目标。服务的高可用性要求请求必须能够完成，这可以通过复制服务实例来实现，服务实例的复制需要投入更多地成本与维护人力，需要根据具体场景进行具体分析。<br>eBay的架构师Dan Pritchett源于对大规模分布式系统的实践总结，提出了BASE理论。<strong>BASE</strong>理论是对CAP理论的延伸，核心思想是即使无法做到CAP理论要求的强一致性，但应用可以采用适当的方式达到<strong>最终一致性（Eventual Consitency）</strong>。BASE是指<strong>基本可用（Basically Available）</strong>、<strong>软状态（Soft State）</strong>和<strong>最终一致性（Eventual Consistency）</strong>。基本可用是指分布式系统在出现故障的时候，允许损失部分可用性，即保证核心可用。软状态是指允许系统存在中间状态，而该中间状态不会影响系统整体可用性。最终一致性是指系统中的所有数据副本经过一定时间后，最终能够达到一致的状态。<br>在BASE的提出者Dan Pritchett的论文《BASE: An Acid Alternative》中提出了一种实现BASE的经典模式，概括来讲，就是服务之间是通过消息队列连接的，消息队列会保证将消息传递给目标服务，但不保证送到的时间。</p>
 <hr>
-<h2 id="技术总结"><a href="#技术总结" class="headerlink" title="技术总结"></a>技术总结</h2><h3 id="CAP-amp-BASE"><a href="#CAP-amp-BASE" class="headerlink" title="CAP &amp; BASE"></a>CAP &amp; BASE</h3><p><strong>CAP</strong>是描述分布式系统特性常用的一种理论，它使用数据<strong>一致性（Consistency）</strong>、<strong>服务可用性（Availability）</strong>和<strong>分区容错性（Partition-tolerance）</strong>三个指标来定义一个分布式系统，这三个特性不能被同时完全满足，其中，P是必须要满足的，因为一般的业务系统并不允许网络中的消息被随意丢弃，因此多数的讨论都集中于C和A之间的权衡。<br>如果需要满足强一致性，则在对数据进行读写操作时势必都需要进行加锁操作并使用事务来保证分布式一致性，但同时也会对系统的效率产生非常大的影响，起到反作用、影响用户的体验，所以在设计时往往会放宽这个要求，采取<strong>最终一致性</strong>作为实现目标。服务的高可用性要求请求必须能够完成，这可以通过复制服务实例来实现，服务实例的复制需要投入更多地成本与维护人力，需要根据具体场景进行具体分析。<br>eBay的架构师Dan Pritchett源于对大规模分布式系统的实践总结，提出了BASE理论。<strong>BASE</strong>理论是对CAP理论的延伸，核心思想是即使无法做到CAP理论要求的强一致性，但应用可以采用适当的方式达到<strong>最终一致性（Eventual Consitency）</strong>。BASE是指<strong>基本可用（Basically Available）</strong>、<strong>软状态（Soft State）</strong>和<strong>最终一致性（Eventual Consistency）</strong>。基本可用是指分布式系统在出现故障的时候，允许损失部分可用性，即保证核心可用。软状态是指允许系统存在中间状态，而该中间状态不会影响系统整体可用性。最终一致性是指系统中的所有数据副本经过一定时间后，最终能够达到一致的状态。<br>在BASE的提出者Dan Pritchett的论文《BASE: An Acid Alternative》中提出了一种实现BASE的经典模式，概括来讲，就是服务之间是通过消息队列连接的，消息队列会保证将消息传递给目标服务，但不保证送到的时间。</p>
-<h3 id="REST-amp-RPC"><a href="#REST-amp-RPC" class="headerlink" title="REST &amp; RPC"></a>REST &amp; RPC</h3><p>REST是现今一套比较成熟的API设计理论，主要思想是将网络上的资源抽象为URI，并通过HTTP协议中的字段和动词进行描述和操作，被广泛地应用于WEB应用API的设计当中。<br>RPC是常见的实现服务之间远程调用的协议（在Java这种面向对象的语言上实现的理应称作RMI协议，但是叫习惯了就无所谓了），服务实例作为不同的进程运行于多台服务器上，在发起请求时，请求的发起方称为客户端、接收者称为服务端，它们通过指定的网络层甚至传输层协议进行通信，可以自动对消息进行序列化并包装为底层消息格式进行传输，并在服务端进行反序列化得到请求。因此RPC的可靠性和效率与底层协议本身的效率和对对象进行的序列化和反序列化的效率息息相关。<br>调用RPC接口与调用本地方法形式上是相同的，这大大减少了代码的冗余、提升了开发效率，但是RPC本质上与普通方法调用却有着截然不同的执行流程，因此必须与普通方法区分开来、不能滥用。在设计微服务时，也必须考虑服务划分的粒度，如果分得过细就有可能导致一次请求需要过多的网络开销。</p>
+<h2 id="技术总结"><a href="#技术总结" class="headerlink" title="技术总结"></a>技术总结</h2><h3 id="REST-amp-RPC"><a href="#REST-amp-RPC" class="headerlink" title="REST &amp; RPC"></a>REST &amp; RPC</h3><p>REST是现今一套比较成熟的API设计理论，主要思想是将网络上的资源抽象为URI，并通过HTTP协议中的字段和动词进行描述和操作，被广泛地应用于WEB应用API的设计当中。<br>RPC是常见的实现服务之间远程调用的协议（在Java这种面向对象的语言上实现的理应称作RMI协议，但是叫习惯了就无所谓了），服务实例作为不同的进程运行于多台服务器上，在发起请求时，请求的发起方称为客户端、接收者称为服务端，它们通过指定的网络层甚至传输层协议进行通信，可以自动对消息进行序列化并包装为底层消息格式进行传输，并在服务端进行反序列化得到请求。因此RPC的可靠性和效率与底层协议本身的效率和对对象进行的序列化和反序列化的效率息息相关。<br>调用RPC接口与调用本地方法形式上是相同的，这大大减少了代码的冗余、提升了开发效率，但是RPC本质上与普通方法调用却有着截然不同的执行流程，因此必须与普通方法区分开来、不能滥用。在设计微服务时，也必须考虑服务划分的粒度，如果分得过细就有可能导致一次请求需要过多的网络开销。</p>
 <h3 id="分布式锁、乐观锁与分布式事务"><a href="#分布式锁、乐观锁与分布式事务" class="headerlink" title="分布式锁、乐观锁与分布式事务"></a>分布式锁、乐观锁与分布式事务</h3><p>单机环境下，资源竞争者都是来自机器内部的进程或线程，那么实现锁的方案只需要借助单机资源就可以了，比如借助磁盘、内存、寄存器来实现。而在分布式环境下，资源竞争者生存环境更复杂了，原有依赖单机的方案不再发挥作用，这时候就需要一个大家都认可的协调者出来，帮助解决竞争问题，那这个协调者称之为<strong>分布式锁</strong>。<br>通过在执行修改操作前加分布式锁，可以很好地保证临界区资源的互斥访问，一定程度上维护了数据的一致性，但是在客户端进行读写的复合操作时加锁又是不充分的，因为读和写操作之间存在一定的时间差，如果在这期间数据被其他线程所修改，那么接下来的写操作就会覆盖这个修改，导致业务层面上的不一致，解决办法是引入<strong>乐观锁</strong>，本文的乐观锁是通过为实体类添加版本号来实现的，每次进行修改操作时需要比较对象与数据库中记录的版本，只有大于的情况才能执行。<br>微服务系统中的多个服务往往拥有自己独立部署的数据库，在跨服务对数据进行写操作时若发生错误就有可能产生数据不一致的情况，利用单纯的加锁机制是不能保证安全性的。<strong>分布式事务</strong>是指会涉及到操作多个数据库的事务，目的是为了保证系统中各服务能保持数据一致性。分布式事务处理的关键是必须有一种方法可以知道事务的所有参与者的动作，事务最终必须统一提交或统一回滚。文中采取的解决办法是引入TCC分布式事务，将业务操作划分为try、confirm、cancel三个部分，try负责对业务资源的锁定，confirm负责提交事务、正式执行业务操作，cancel负责回滚事务并释放锁定的资源，在业务流程中执行所有的try完毕后，由协调者根据事务的执行情况来统一调用所有事务参与者的confirm提交或cancel回滚。TCC在本地事务的基础上进行多个实例间的协调，可以在很大程度上保证跨服务业务操作的一致性。</p>
 <h3 id="Spring-Cloud"><a href="#Spring-Cloud" class="headerlink" title="Spring Cloud"></a>Spring Cloud</h3><p><strong>Spring Cloud</strong>为开发人员提供了快速构建分布式系统中一些常见模式的工具，例如配置管理，服务发现，断路器，智能路由，微代理，控制总线等。</p>
 <h4 id="Spring-Boot"><a href="#Spring-Boot" class="headerlink" title="Spring Boot"></a>Spring Boot</h4><p>Sping Cloud的实现基础是<strong>Spring Boot</strong>，在构建项目前需要先引入所需基础设施的依赖。<br>比如若需要使用ZooKeeper的服务发现功能，只需要在Maven的pom.xml文件中添加名为”spring-cloud-starter-zookeeper-discovery”的依赖。<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.cloud<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-cloud-starter-zookeeper-discovery<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
@@ -704,7 +704,7 @@
 <li>TCC事务需要每个参与者提供try、confirm和cancel三个接口，try执行资源的预留，比如对涉及的实体加锁，也起着服务验活的功能，confirm执行事务的提交，也就是真正地执行业务操作、将数据持久化到数据库，cancel需要释放预留的资源；</li>
 <li>每个事务参与者将自己的信息提交到Redis缓存内，之后根参与者需要取得所有参与者信息，主要是它们的confirm和cancel接口的地址；</li>
 <li>根据confirm执行情况，有：<ol>
-<li>如果业务操作都成功了，由第一个参与者来调用所有其他参与者的confirm接口来提交事务；</li>
+<li>如果业务操作都成功了，由第个参与者来调用所有其他参与者的confirm接口来提交事务；</li>
 <li>如果业务操作失败了，同样由第一个参与者来调用所有其他参与者的cancel接口来回滚事务。</li>
 </ol>
 </li>
@@ -712,23 +712,7 @@
 <p><strong>调用ID和链路ID的作用</strong>，前者可以用于保证接口调用的<strong>幂等性</strong>，后者主要用来定位事务内的参与者。</p>
 <p>用一个常见的用户购买商品场景为例，需要先确保用户能够支付，然后锁住用户和商户的账户，这是try阶段；如果try成功，即预留资源成功了，接下来再对用户账户扣款、商户账户入账，如果因为超时等原因失败了，需要事务补偿，即重试，这是confirm阶段；如果try失败，则释放所有的锁，这是cancel阶段。</p>
 <hr>
-<pre><code>## 测试
-### 安全
-1. 私密信息安全
-户在验证填写的账号、密码有效后可以成功登录系统，用户密码在登录过程中会加密传输，后台会保存加密后的密码。
-1. 单据信息安全
-用户填制的单据不会意外丢失，填写的数据若不符合格式会有明确的提示，金额等高精度数据不会出现精度丢失。多人同时操作一条单据时不会引起并发风险，比如数据不一致、死锁等。
-### 效率
-1. 并发效率
-系统至少支持100的并发数，平均响应时间应该不超过1秒。
-1. 资源利用率
-系统在所提供的环境内能正常运行，在满足并发效率的前提下系统不会完全占用某个服务器的硬件资源。
-### 鲁棒
-1. 失效频率
-每两次系统错误的间隔时间不得短于3周，并且能在12小时内恢复运行。
-1. 易恢复性
-系统的各服务模块之间应具有较低的耦合度，某个服务出错也不会诱发其他服务的出错，失效服务不会引起上游服务的长期阻塞。出错时，系统内应有良好的日志记录作为快速排查出错原因的依据。另外，应做好数据库周期性的备份以防万一。
-</code></pre><hr>
+<hr>
 <h2 id="改进思路"><a href="#改进思路" class="headerlink" title="改进思路"></a>改进思路</h2><p>当前的系统仍存在很多可改进的地方。</p>
 <h3 id="服务发现功能-1"><a href="#服务发现功能-1" class="headerlink" title="服务发现功能"></a>服务发现功能</h3><h4 id="使用Eureka等高可用服务发现产品替代ZooKeeper"><a href="#使用Eureka等高可用服务发现产品替代ZooKeeper" class="headerlink" title="使用Eureka等高可用服务发现产品替代ZooKeeper"></a>使用Eureka等高可用服务发现产品替代ZooKeeper</h4><p>ZooKeeper集群通过Zab协议保证高一致性，重新选举Leader比较耗时，且当节点数量不足以构成容错集群时，ZooKeeper倾向于返回空；故提出改用Eureka等其他倾向于提供高可用性的具有服务发现功能的产品。</p>
 <h4 id="使用复制和DNS等手段工具提升Nginx服务器的可用性。"><a href="#使用复制和DNS等手段工具提升Nginx服务器的可用性。" class="headerlink" title="使用复制和DNS等手段工具提升Nginx服务器的可用性。"></a>使用复制和DNS等手段工具提升Nginx服务器的可用性。</h4><p>Nginx服务器作为网关，存在单点故障风险，但是这里的服务发现只能保证被Nginx代理的那些服务能弹性伸缩，对Nginx本身却没有什么办法，就算复制了Nginx服务器，客户端也只能发到一个IP上。这里提出使用基于操作系统的方案对Nginx集群实现验活及负载均衡，主要是Keepalived等软件或独立的DNS服务器，但是论文题目限于Saas层展开，本人水平有限没法解释。</p>
