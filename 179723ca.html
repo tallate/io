@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="参考 What is the difference between dependency injection and dependency look up?  背景情况部门开始推一个大项目NCC，后台几乎沿用原NC（有近十年历史），将原来JavaSwing画的重量前端换成了一种“轻量前端”，其实这种轻量前端一点都不轻量；SQL完全是自己用字符串拼接起来的；开发模式是前后端分离联调的方式，但是因为后">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2018-10-25T18:40:36.110Z">
+<meta property="og:updated_time" content="2018-10-25T20:00:28.456Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="NCC后台简析">
 <meta name="twitter:description" content="参考 What is the difference between dependency injection and dependency look up?  背景情况部门开始推一个大项目NCC，后台几乎沿用原NC（有近十年历史），将原来JavaSwing画的重量前端换成了一种“轻量前端”，其实这种轻量前端一点都不轻量；SQL完全是自己用字符串拼接起来的；开发模式是前后端分离联调的方式，但是因为后">
@@ -414,7 +414,7 @@
 <p>最后再调用一个批量查询的Service接口进行查询。</p>
 <h2 id="技术点"><a href="#技术点" class="headerlink" title="技术点"></a>技术点</h2><h3 id="轻量前端、分层"><a href="#轻量前端、分层" class="headerlink" title="轻量前端、分层"></a>轻量前端、分层</h3><p>轻量前端指的是用React开发的浏览器客户端，既然是轻量前端，那么做的事情肯定不会太多了，那么很多工作就必须要转移到后端了，因此在NCC中又引入了一个Action层，作为Controller。</p>
 <h3 id="读写分离"><a href="#读写分离" class="headerlink" title="读写分离"></a>读写分离</h3><p>后台Service层将读操作和写操作划分到了两个接口内，实际上应用层可以根据读写进行复制，一般来说读操作更频繁，可以多创建几个实例提供服务，并在前头使用负载均衡器进行反向代理。</p>
-<h3 id="SOA"><a href="#SOA" class="headerlink" title="SOA"></a>SOA</h3><p>SOA是一种架构风格，与微服务的主要区别是SOA多了一个ESB（企业服务总线），在SOA中，当一个服务需要调用另一个服务时，它需要先从ESB中获取那个服务的调用方法、消息格式等，而微服务可以看作一种轻量化的SOA，它没有集中的一个ESB，服务之间通过公开的RPC接口来相互调用。</p>
+<h3 id="SOA"><a href="#SOA" class="headerlink" title="SOA"></a>SOA</h3><p>SOA是一种架构风格，与微服务的主要区别是SOA多了一个ESB（企业服务总线），在SOA中，当一个服务需要调用另一个服务时，它需要先从ESB中获取那个服务的调用方法、消息格式等，而微服务可以看作一种轻量化的SOA，它没有集中的一个ESB，服务之间通过公开的RPC接口来相互调用。<br>实际上NC没有ESB这玩意。首先需要将Service接口及其对应的实现类注册到一个xml文件内，服务间调用通过NCLocator.find(class)实现：如果配置文件中没有设置服务器URL，则直接本地反射实例化Service的实现类；如果配置文件中设置了服务器URL，则使用JDK Proxy做动态代理，将本地方法调用转换为远程调用。</p>
 <h3 id="元数据"><a href="#元数据" class="headerlink" title="元数据"></a>元数据</h3><p>元数据是描述数据的数据，实际开发业务前需要先使用相关工具”画”出元数据，NCC的开发极大地依赖于元数据的正确性，老的功能节点的元数据若轻易修改，很有可能导致原功能出错。</p>
 <h3 id="模板"><a href="#模板" class="headerlink" title="模板"></a>模板</h3><p>模板是对页面的抽象，平台的有关部门做了一个画模板的工具，由后端人员登录到工作桌面画模板，可以减轻前端开发人员的工作压力（可能是领导觉得前端比较稀缺?）。可以从元数据导出模板，并根据原型图进行适配。<br>随着业务的复杂化，将许多公共组件抽象出来集中管理是必须的，尤其是NC这么复杂的庞然大物，其业务拿出两个小时来也没办法讲完1%，有点夸张，但是事实是这里的需求很多都是从会计等行业转来的，一次给我们讲需求时从NC上满屏的标签中挑了部分讲了两小时，大家都是崩溃的…因此NC中引入了三大模板的概念，它们分别是：查询模板、打印模板、计算模板，分别对查询sql、打印、？？？进行了抽象。</p>
 <h3 id="依赖查找"><a href="#依赖查找" class="headerlink" title="依赖查找"></a>依赖查找</h3><p>Spring的核心原理是IoC，而IoC的主要实现方式是DI或依赖查找。DI我们比较眼熟，主要有”属性注入”、”构造器注入”及”方法注入”。NCC后台为NC，已经有10来年历史，其中实现了一套依赖查找的模式，如下代码所示。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">IXxxService xxxService = ServiceLocator.find(IXxxService.class);</span><br></pre></td></tr></table></figure></p>
