@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.4k 字
+                  6.7k 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  25 分钟
                 </span>
               
             </div>
@@ -483,12 +483,58 @@
 <ol>
 <li>HashMap的实现原理。<br>HashMap插入重复的元素会覆盖，可以插入null（key和value都可以为null）。HashMap的底层数据结构是散列表，使用一个静态数组来表示，数组每一项是一个哈希槽，哈希槽刚开始使用链表表示，插入操作时对key计算key.hashCode() % length来定位到散列表的某个哈希槽，并插入到链表的首位置，如果长度达到某个程度哈希槽的结构会转换为红黑树。</li>
 <li>为什么要转成红黑树？<br>一方面维持红黑树结构需要一定的时间和空间损耗，所以不会为每个哈希槽都维持一个红黑树；另一方面红黑树的所有操作的时间复杂度都是O(logN)，相对链表来说有更高的查询效率，所以在链表到达一定长度（TREEIFY_THRESHOLD = 8）后会被转换为红黑树，当然在减少到一定数量（UNTREEIFY_THRESHOLD = 6）后会重新转换回链表。</li>
+<li>除了红黑树还认识什么树？<br>AVL树：以高度作为平衡的标准，递归过程中如果碰到两棵子树的高度差大于1的情况则进行一次调整。<br>伸展树：将每次访问到的节点旋转到树的根部。<br>B树、线索树、Trie树、Huffman树、堆（完全二叉树）等。</li>
 <li>HashMap的rehash执行过程。<br>HashMap的resize方法就是rehash函数，它会首先创建一个大一倍的newTab，然后将旧&lt;K, V&gt;插入到newTab中。<br>散列表的大小需要保证为2的幂，这样在计算位置（hash）的时候可以直接用<code>e.hash &amp; (newCap - 1)</code>来计算出位置。</li>
 <li>hashCode和equals的作用？<br>默认情况下，hashCode是个native方法，可以返回对象的地址，equals直接使用’==’比较两个对象的地址，其实也是直接比较两个对象的地址。<br>出于散列函数的有效性，还可以在子类中重写hashCode，比如String中的重写逻辑就是<code>s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]</code>，常见的散列函数有平方散列、双散列等，但是实际中会综合类中的所有关键属性来计算散列值。<br>定义一些自定义类型时，可能没有必要非得地址相同才是相等的对象，比如两个User类型的对象如果ID相同就认为是相等的，由具体业务定义决定。</li>
 <li>hashCode和equals的应用场景？<br>使用HashMap时一般都需要考虑重新定义hashCode和equals方法、提高散列表的利用率。</li>
 <li>创建线程有哪几种方式？<br>三种：继承Thread、实现Runnable、实现Callable。</li>
-<li>线程池有哪几种（下面core表示corePoolSize、maximum表示maximumPoolSize）？<br>newFixedThreadPool：<br>newSingleThreadPool：core = maximum = 1，workQueue为LinkedBlockingQueue，同时只允许一个线程处于执行中状态，后续线程将被添加到阻塞队列中。<br>newCachedThreadPool：<br>newScheduledThreadPool：<br>newWorkStealingPool：</li>
-<li>ThreadPoolExecutor的主要参数corePoolSize、maximumPoolSize、workQueue的作用？<br>corePoolSize：<br>maximumPoolSize：<br>workQueue：<br>添加新线程任务后会发生什么：</li>
+<li>线程池有哪几种（下面core表示corePoolSize、maximum表示maximumPoolSize）？<br>newFixedThreadPool：固定长度的线程池，core = maximum = n，workQueue = LinkedBlockingQueue，同时只允许n个线程处于执行中状态，后续线程任务将被添加到workQueue中。<br>newSingleThreadPool：相当于newFixedThreadPool的特殊情况，core = maximum = 1，workQueue = LinkedBlockingQueue，同时只允许一个线程处于执行中状态，后续线程任务将被添加到workQueue中。<br>newCachedThreadPool：core = 0，maximum = Integer.MAX_VALUE，workQueue = SynchronousQueue是一种无缓冲的等待队列，可以认为它总是满的。因此，线程池只要有一个线程任务进来就会创建一个新线程。<br>newScheduledThreadPool：core = n，maximum = Integer.MAX_VALUE，workQueue = DelayedWorkQueue，这是一种按照超时时间排序的队列结构。主要用于执行延迟任务或周期性任务。<br>newWorkStealingPool：1.8引入的新线程池。需要传一个并行级别参数，并根据并行级别来创建多个队列，可以更好地利用多CPU的优势。</li>
+<li>ThreadPoolExecutor的主要参数corePoolSize、maximumPoolSize、workQueue的作用？<br>corePoolSize：定义核心线程数。<br>maximumPoolSize：定义最大线程数。<br>workQueue：等待队列。<br>添加新线程任务后会发生什么：如果线程数 &lt; core，则创建新线程执行；否则若线程数 &lt; maximum且workQueue未满，则将线程任务添加到workQueue中；否则若线程数 &lt; maximum，则创建新线程执行；否则使用rejectedExecutionHandler来执行拒绝逻辑。</li>
+<li>corePoolSize直接开1000合适吗？<br>当时我回答需要根据应用场景来分析，如果一次执行的任务少就不需要开那么大了。<br>但是面试官不大满意，其实应该结合硬件条件来分析，core数表示可以同时处于执行中状态的线程数，如果CPU只有2个核心，每个核心有2个线程，那么并发数应该被控制在2*2=4（当然实际应用不会那么简单，如果线程任务含有数据库操作那么还要考虑到磁盘IO带来的影响，会导致CPU空闲下来），则core开得太大可能会导致频繁的线程切换，从而影响系统整体吞吐量。</li>
+<li>JVM内存分几块？</li>
+</ol>
+<ol>
+<li>排序算法知道哪些？<br>按时间复杂度分：<br>O(n^2)的包括冒泡排序、插入排序、选择排序。<br>O(nlogn)的包括堆排、快排、归并排序、希尔排序（不严格是）。<br>O(n)的包括计数排序、基数排序、桶排序。<br>O(?)的如猴子排序…</li>
+<li>快排能手写吗？原理是什么？ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swap</span><span class="params">(<span class="keyword">int</span>[] a, <span class="keyword">int</span>[] b, <span class="keyword">int</span> i, <span class="keyword">int</span> j)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">int</span> tmp = a[i];</span><br><span class="line">  a[i] = b[j];</span><br><span class="line">  b[j] = tmp;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">quickSort</span><span class="params">(<span class="keyword">int</span> nums[], <span class="keyword">int</span> lb, <span class="keyword">int</span> rb)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (lb &gt;= rb) &#123;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">int</span> j = lb - <span class="number">1</span>, mid = nums[rb];</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i = lb; i &lt;= rb; i++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (nums[i] &lt;= mid) &#123;</span><br><span class="line">      swap(nums, nums, i, ++j);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  quickSort(nums, lb, j - <span class="number">1</span>);</span><br><span class="line">  quickSort(nums, j + <span class="number">1</span>, rb);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Test</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">test</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">int</span>[] nums = &#123;<span class="number">4</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">6</span>, <span class="number">1</span>, <span class="number">5</span>, <span class="number">7</span>, -<span class="number">1</span>, <span class="number">23</span>, <span class="number">1</span>&#125;;</span><br><span class="line">  quickSort(nums, <span class="number">0</span>, <span class="number">9</span>);</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i : nums) &#123;</span><br><span class="line">    System.out.println(i + <span class="string">" "</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>快排的原理是分治法，对一个数组，先选出一个中枢，然后按这个中枢将原数组分成两个子数组，对这两个子数组分别递归调用快排函数。</p>
+<ol>
+<li>数据库用过哪些？<br>MySQL。</li>
+<li>怎么加索引？<br>索引的底层数据结构是B+树，加索引需要遵循以下几条准则：<ol>
+<li>并非越多越好：索引会额外占用磁盘空间，而且会影响INSERT、DELETE、UPDATE的性能，因为需要同时更新索引的结构。</li>
+<li>更新少、列尽量少：因为列很多、经常更新的情况下，会导致花费过多的时间在更新索引结构上。</li>
+<li>尽量使用短字段索引，对长字段应使用前缀索引，这样能提高索引效率。</li>
+<li>数据量小的表最好不要加索引，可能会起不到优化的目的；</li>
+<li>在条件表达式上不同值多的列上建立索引，在不同值少的列上不要建立索引。</li>
+<li>当唯一性是某种数据本身的特征时，制定唯一索引。使用唯一索引需能确保定义的列的数据完整性，以提高查询速度。</li>
+<li>在频繁进行排序、分组、联合（group by, order by, join on）的列上建立索引。如果待排序的列有多个，可以在这些列上建立组合索引。</li>
+</ol>
+</li>
+<li>一些重复性大的字段上可以加索引吗？比如用户表的性别字段。<br>最好不要。因为这是一种非聚集索引，在实际取select的字段值时会跳到聚集索引，频繁的来回读取会拖慢查询速度，反而得不偿失。</li>
+<li>索引是怎么实现的？<br>在MySQL中支持哈希索引、B树索引、全文索引，其中B树索引最常用，其底层结构为B+树。</li>
+<li>为什么用B+树？<br>因为B+树相对其他结构更好：<ul>
+<li>相对红黑树来说，红黑树在数据量大的时候，树的高度会比较大，查询会比较慢，且每个节点只存储一个记录，可能会导致一次查询有很多次磁盘IO，而B+树能更好地利用”局部性原理”；</li>
+<li>相对散列表来说，散列表的确查询速度更快，但是对于有排序查询的SQL需求来说，哈希型的索引时间复杂度会退化为O(n)，而树型索引的有序特性可以保证仍有O(logn)的高效率；</li>
+<li>相对B树来说，B树的内部节点（非叶节点）会存储数据，在进行范围查找的时候中序遍历过程中可能会需要回溯。</li>
+</ul>
+</li>
+<li>乐观锁怎么实现？<br>在数据上加一个版本号（version）或时间戳（ts）字段，假设下面用的是版本号。</li>
+<li>怎么写SQL语句实现乐观锁？<br>update user set version = oldVersion + 1 where version = oldVersion</li>
+<li>怎么知道乐观锁检测到的并发异常？<br>如果没有更新成功就是有并发异常了。</li>
+<li>你怎么知道没有更新成功是因为乐观锁引起的？<br>可以在业务层检查，查出来后在Service层代码里检查时间戳是否相同，如果相同才允许更新，否则抛出异常。</li>
+<li>数据库层怎么实现？<br>对数据加行锁。</li>
+<li>那还要乐观锁干嘛？<br>补充：对乐观锁理解还是不够，因为在用友乐观锁是在Service层检测的，架构师显然对效率不怎么关注。<br>现在回到那个问题：怎么知道更新失败是版本号引起的？<br>没想到特别好的方法，实在不行可以利用存储过程，将旧数据放到output参数中返回，然后在Service中比对客户端传过来的版本号和数据库中旧的版本号，如果相同才能更新成功，Hibernate还有对乐观锁的支持，会在版本号对不上时抛出特定的异常。</li>
+<li>数据库怎么实现事务？<br>如果要开启事务，需要先执行BEGIN TRANSACTION命令开启事务，如果执行成功就调用COMMIT提交事务，如果失败则调用ROLLBACK回滚事务。<br>事务有4个特性，原子性、一致性、持久性、隔离性，前面三个是通过记录日志来实现的，而隔离性是通过加锁来实现的，也是最复杂的一个性质。<br>事务有四种隔离级别，未提交读、提交读、可重复读和序列化，前面三者大体都是通过共享读锁，独占写锁来实现的，而序列化单纯用锁是无法实现的。</li>
+<li>什么情况下需要事务？事务的应用场景？<br>事务是为了防止复杂业务操作中断导致的数据一致性问题。比如创建订单后减库存，如果在创建订单之后程序报错退出了，就会出现只有订单但是库存没减的情况，也就是出现了数据一致性问题。</li>
+<li>动态代理有几种实现方式？<br>JDK Proxy，实现了被代理类的某个接口，然后在方法实现中调用了目标被代理类中的相应方法。<br>CGLIB，继承了被代理类，然后在方法实现中调用了父类的相应方法，但是如果被代理类有final方法是不能代理的，这是一个缺点。<br>补充：还有一种javassist。</li>
+<li>内部是怎么实现的？<br>JDK Proxy是JDK提供的。<br>CGLIB是用ASM框架操作字节码实现的。</li>
+<li>ASM有用过吗？<br>没有…（？？？）</li>
+<li>怎么分服务？<br>按DDD的设计思路，根据业务模块之间的边界进行划分。</li>
+<li>服务之间怎么调用？<br>使用RPC调用。</li>
+<li>RPC使用什么框架？<br>没有用框架，是自己在HTTP基础上包了一层。</li>
+<li>RPC的执行过程是怎么样的？<br>RPC是将对本地方法的调用转换为网络请求，它会将方法签名、参数等包装到请求体内，然后用类似HTTP之类的协议向另一个服务发起请求，另一个服务的对应”RemoteCall”接口接收到请求后再利用反射创建服务接口实现类的实例，并调用对应的方法。</li>
+<li>怎么处理超时？降级？等等</li>
 </ol>
 <h4 id="三面-HR-1"><a href="#三面-HR-1" class="headerlink" title="三面-HR"></a>三面-HR</h4><p>HR面中规中举，到了这个阶段是比较轻松的了，应付了一些像离职原因这样的常规问题后，就是由我方进行提问了，准备的问题也只有那几个方面，包括：商业模式、风险、后续公司发展方向、技术发展方向、个人发展方向、人员组织结构，以及薪资福利这些方面。</p>
 <h4 id="四面-HRD"><a href="#四面-HRD" class="headerlink" title="四面-HRD"></a>四面-HRD</h4><p>HRD是一位东北人，思维敏捷口才了得，先从地域问题炒热气氛，后对我的大学生涯、选择上家企业的原因、跳槽原因等问题进行了发问，且回答若不满意就会一直追问到底。</p>
