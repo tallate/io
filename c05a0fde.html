@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="Hexo, NexT" />
+  <meta name="keywords" content="Linux运维," />
 
 
 
@@ -79,14 +79,18 @@
 
 
 
+<meta name="description" content="项目发布或平时需要维护的时候经常需要登录到Linux服务器上进行操作，会用到很多命令，这里总结常见的文本操作命令，不纠结于参数——因为有方便的man手册直接可以看，仅列出我参考的资料和。  文本文件的操作命令，包括grep、awk等。 文本编辑器，主要是vim。">
+<meta name="keywords" content="Linux运维">
 <meta property="og:type" content="article">
 <meta property="og:title" content="在Linux下搜索文本的方法">
 <meta property="og:url" content="https://tallate.github.io/c05a0fde.html">
 <meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="项目发布或平时需要维护的时候经常需要登录到Linux服务器上进行操作，会用到很多命令，这里总结常见的文本操作命令，不纠结于参数——因为有方便的man手册直接可以看，仅列出我参考的资料和。  文本文件的操作命令，包括grep、awk等。 文本编辑器，主要是vim。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2018-12-15T15:02:05.005Z">
+<meta property="og:updated_time" content="2018-12-16T13:09:46.981Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="在Linux下搜索文本的方法">
+<meta name="twitter:description" content="项目发布或平时需要维护的时候经常需要登录到Linux服务器上进行操作，会用到很多命令，这里总结常见的文本操作命令，不纠结于参数——因为有方便的man手册直接可以看，仅列出我参考的资料和。  文本文件的操作命令，包括grep、awk等。 文本编辑器，主要是vim。">
 
 
 
@@ -306,6 +310,28 @@
           </span>
 
           
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
 
           
             
@@ -332,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  0 字
+                  659 字
                 </span>
               
 
@@ -348,7 +374,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1 分钟
+                  2 分钟
                 </span>
               
             </div>
@@ -369,7 +395,46 @@
       
 
       
-        
+        <p>项目发布或平时需要维护的时候经常需要登录到Linux服务器上进行操作，会用到很多命令，这里总结常见的文本操作命令，不纠结于参数——因为有方便的man手册直接可以看，仅列出我参考的资料和。</p>
+<ul>
+<li>文本文件的操作命令，包括grep、awk等。</li>
+<li>文本编辑器，主要是vim。</li>
+</ul>
+<a id="more"></a>
+<h2 id="一-关于linux文件系统的常识"><a class="header-anchor" href="#一-关于linux文件系统的常识">¶</a>一、关于Linux文件系统的常识</h2>
+<h3 id="与windows的显著区别"><a class="header-anchor" href="#与windows的显著区别">¶</a>与Windows的显著区别</h3>
+<ol>
+<li>Linux中使用正斜杠（/）在文件路径中划分目录，用反斜杠（\）来标识转义字符，而在Windows下没有统一的规定，反斜杠、双反斜杠、正斜杠都是有可能的。</li>
+<li>在Windows中，PC上安装的物理驱动器决定了文件的路径名，Windows会为每个物理磁盘驱动器分配一个盘符（C, D, E …，每个驱动器都会有自己的目录结构，以便访问存储其中的文件，同样，我们可以根据路径确定文件存储在哪个盘符下；<br>
+Linux则采用了一种不同的方式，Linux在路径名中不使用驱动器盘符，而是将安装在PC上的所有存储设备的文件路径存储在单个目录结构中，这个目录被称为<strong>虚拟目录</strong>（virtual directory），它只包含一个称为<strong>根</strong>目录的基础目录，在Linux安装的第一块硬盘称为根驱动器，根驱动器包含了虚拟目录的核心，然后Linux会在根驱动器上创建一些特别的目录，我们称之为<strong>挂载点</strong>，挂载点是虚拟目录中用于分配额外存储设备的目录，虚拟目录会让文件和目录出现在这些挂载点目录中，然而实际上它们却存储在另外一个驱动器中。通常系统文件会存储在根驱动器中，而用户文件则存储在另一驱动器中。</li>
+<li>Linux常见发行版的目录名均基于<a href="http://www.pathname.com/fhs/" target="_blank" rel="noopener"><strong>FHS（filesystem hierachy standard）</strong></a>；Windows下没有听说过有通用的标准（一般家用也犯不着去管什么标准）。</li>
+</ol>
+<h3 id="常见概念"><a class="header-anchor" href="#常见概念">¶</a>常见概念</h3>
+<ol>
+<li>
+<p>绝对路径和相对路径</p>
+</li>
+<li>
+<p>.和…</p>
+</li>
+<li></li>
+</ol>
+<h2 id="二-目录-文件夹文件"><a class="header-anchor" href="#二-目录-文件夹文件">¶</a>二、目录（文件夹文件）</h2>
+<p>cd、pwd、ls</p>
+<h2 id="三-文件"><a class="header-anchor" href="#三-文件">¶</a>三、文件</h2>
+<p>cat</p>
+<h2 id="四-三剑客"><a class="header-anchor" href="#四-三剑客">¶</a>四、、三剑客</h2>
+<h3 id="awk"><a class="header-anchor" href="#awk">¶</a>awk</h3>
+<h3 id="sed"><a class="header-anchor" href="#sed">¶</a>sed</h3>
+<h3 id="grep"><a class="header-anchor" href="#grep">¶</a>grep</h3>
+<h2 id="五-文本编辑器"><a class="header-anchor" href="#五-文本编辑器">¶</a>五、文本编辑器</h2>
+<p>项目维护中经常需要登录到远程Linux服务器上，因为终端界面，没有各种方便的带图形界面的文本编辑器能用，所以学习vim、emacs势在必行（nano太low）。</p>
+<h3 id="vim"><a class="header-anchor" href="#vim">¶</a>vim</h3>
+<h2 id="六-参考"><a class="header-anchor" href="#六-参考">¶</a>六、参考</h2>
+<ol>
+<li>《Linux命令行与shell脚本编程大全》</li>
+</ol>
+
       
     </div>
     
@@ -383,6 +448,12 @@
     
 
     <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux运维/" rel="tag"># Linux运维</a>
+          
+        </div>
       
 
       
@@ -458,8 +529,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
             
@@ -521,6 +601,22 @@
         </div>
       </section>
 
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-关于linux文件系统的常识"><span class="nav-number">1.</span> <span class="nav-text">¶一、关于Linux文件系统的常识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#与windows的显著区别"><span class="nav-number">1.1.</span> <span class="nav-text">¶与Windows的显著区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常见概念"><span class="nav-number">1.2.</span> <span class="nav-text">¶常见概念</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-目录-文件夹文件"><span class="nav-number">2.</span> <span class="nav-text">¶二、目录（文件夹文件）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-文件"><span class="nav-number">3.</span> <span class="nav-text">¶三、文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-三剑客"><span class="nav-number">4.</span> <span class="nav-text">¶四、、三剑客</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#awk"><span class="nav-number">4.1.</span> <span class="nav-text">¶awk</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sed"><span class="nav-number">4.2.</span> <span class="nav-text">¶sed</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#grep"><span class="nav-number">4.3.</span> <span class="nav-text">¶grep</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-文本编辑器"><span class="nav-number">5.</span> <span class="nav-text">¶五、文本编辑器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#vim"><span class="nav-number">5.1.</span> <span class="nav-text">¶vim</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六-参考"><span class="nav-number">6.</span> <span class="nav-text">¶六、参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
       
 
       
