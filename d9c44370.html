@@ -79,19 +79,19 @@
 
 
 
-<meta name="description" content="Github - sidp ¶一、时机 ¶服务API 接口幂等性是在设计RPC时必然被提到的话题，因为远程调用为了减少突发性的网络抖动影响、尽可能提高一次请求成功的几率，会在失败后重试几次，但是服务消费者此时其实并不知道服务提供者是真得没接收到请求、或者只是响应在中间走丢了、亦或者是别的什么情况，所以服务框架普遍会在服务提供者处设置幂等性检查。一般情况下有以下几种策略：  和业务逻辑耦合，比如是涉">
+<meta name="description" content="Github - sidp">
 <meta property="og:type" content="article">
 <meta property="og:title" content="如何实现接口的幂等性？">
 <meta property="og:url" content="https://tallate.github.io/d9c44370.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="Github - sidp ¶一、时机 ¶服务API 接口幂等性是在设计RPC时必然被提到的话题，因为远程调用为了减少突发性的网络抖动影响、尽可能提高一次请求成功的几率，会在失败后重试几次，但是服务消费者此时其实并不知道服务提供者是真得没接收到请求、或者只是响应在中间走丢了、亦或者是别的什么情况，所以服务框架普遍会在服务提供者处设置幂等性检查。一般情况下有以下几种策略：  和业务逻辑耦合，比如是涉">
+<meta property="og:description" content="Github - sidp">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-BlockingIdpChecker%E4%B8%8ETracing%E7%BB%84%E4%BB%B6%E9%85%8D%E5%90%88.png">
-<meta property="og:updated_time" content="2019-01-23T17:59:12.784Z">
+<meta property="og:updated_time" content="2019-01-23T19:21:27.590Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="如何实现接口的幂等性？">
-<meta name="twitter:description" content="Github - sidp ¶一、时机 ¶服务API 接口幂等性是在设计RPC时必然被提到的话题，因为远程调用为了减少突发性的网络抖动影响、尽可能提高一次请求成功的几率，会在失败后重试几次，但是服务消费者此时其实并不知道服务提供者是真得没接收到请求、或者只是响应在中间走丢了、亦或者是别的什么情况，所以服务框架普遍会在服务提供者处设置幂等性检查。一般情况下有以下几种策略：  和业务逻辑耦合，比如是涉">
+<meta name="twitter:description" content="Github - sidp">
 <meta name="twitter:image" content="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png">
 
 
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.7k 字
+                  2.6k 字
                 </span>
               
 
@@ -398,6 +398,7 @@
 
       
         <p><a href="http://www.github.com/tallate/sidp" target="_blank" rel="noopener">Github - sidp</a></p>
+<a id="more"></a>
 <h2 id="一-时机"><a class="header-anchor" href="#一-时机">¶</a>一、时机</h2>
 <h3 id="服务api"><a class="header-anchor" href="#服务api">¶</a>服务API</h3>
 <p>接口幂等性是在设计RPC时必然被提到的话题，因为远程调用为了减少突发性的网络抖动影响、尽可能提高一次请求成功的几率，会在失败后重试几次，但是服务消费者此时其实并不知道服务提供者是真得没接收到请求、或者只是响应在中间走丢了、亦或者是别的什么情况，所以服务框架普遍会在服务提供者处设置幂等性检查。一般情况下有以下几种策略：</p>
@@ -445,9 +446,8 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
 <h3 id="异常处理"><a class="header-anchor" href="#异常处理">¶</a>异常处理</h3>
 <p>生成 IdpKey 或持久化 IdpKey 时可能发生异常，一般这两个过程是比较稳定的，万一出现问题，会影响实际业务的执行，它们的可用性需要采取其他措施来保证（一般是集群化）。</p>
 <h3 id="sql数据库"><a class="header-anchor" href="#sql数据库">¶</a>SQL数据库</h3>
-<p>待定…<br>
-当使用数据库来持久化 IdpKey 时——以 MySQL 为例——需要创建一个 idpkey 表来保存 IdpKey ，建表语句如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey (</span><br><span class="line">  # 36是UUID的长度，应该不会比这更长了吧？</span><br><span class="line">  `id` varchar(36) not null,</span><br><span class="line">  # 状态的取值只有固定的几个，取值少，没必要加索引</span><br><span class="line">  `key_state` char(12) not null default &apos;&apos;,</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>当使用数据库来持久化 IdpKey 时——以 MySQL 为例——需要创建一个 idpkey 表来保存 IdpKey ，建表语句如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey (</span><br><span class="line">  `id` varchar(36) not null,</span><br><span class="line">  `key_state` char(12) not null default &apos;&apos;,</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
 <ol>
 <li>id为什么是varchar(36)类型？<br>
 36是UUID的长度，一般不会有比这个更长的了，但是不确定会不会使用别的计算方式，</li>

@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.7k 字
+                  2.6k 字
                 </span>
               
 
@@ -389,109 +389,14 @@
 
       
         
-          
-            <p><a href="http://www.github.com/tallate/sidp" target="_blank" rel="noopener">Github - sidp</a></p>
-<h2 id="一-时机"><a class="header-anchor" href="#一-时机">¶</a>一、时机</h2>
-<h3 id="服务api"><a class="header-anchor" href="#服务api">¶</a>服务API</h3>
-<p>接口幂等性是在设计RPC时必然被提到的话题，因为远程调用为了减少突发性的网络抖动影响、尽可能提高一次请求成功的几率，会在失败后重试几次，但是服务消费者此时其实并不知道服务提供者是真得没接收到请求、或者只是响应在中间走丢了、亦或者是别的什么情况，所以服务框架普遍会在服务提供者处设置幂等性检查。一般情况下有以下几种策略：</p>
-<ol>
-<li>和业务逻辑耦合，比如是涉及订单的业务，订单会有状态，下单后状态会相应的改变，所以我们只需要在业务处理开始的地方检查一下状态就可以起到幂等性检查的目的；</li>
-<li>提取幂等性检查的逻辑作为框架的一部分，使用注解等方式来为目标接口添加幂等检查功能，可以有效减少冗余代码，不过执行效率会低一些；</li>
-</ol>
-<h3 id="web-api"><a class="header-anchor" href="#web-api">¶</a>WEB API</h3>
-<p>API 有时候也会考虑“幂等性”，但这严格来说不属于我们这里讨论的范畴，我们主要关注RPC中重试的幂等性，这里只是稍微提一下。比如在确认下单的时候用户多点了几下（还包括刷单、 DDoS 攻击等），后台就会收到同一用户在很短的时间内发来的多个相同请求，除了在网关层限流，往往后台还会对用户的请求频率进行限制，比如使用从请求上下文里得到的用户登录token（唯一标识一个用户）和订单 ID （唯一标识一个业务）拼接一个 IdempotentKey （以下简称 IdpKey ），保存到缓存中间件并设置过期时间：</p>
-<div><div class="fold_hider"><div class="close hider_title">代码1</div></div><div class="fold">
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 判断用户是否刚下过单</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">justOrdered</span><span class="params">(String orderId)</span> </span>&#123;</span><br><span class="line">  String idempotentKey = UserContext.getUserId() + orderId;</span><br><span class="line">  <span class="comment">// setIfAbsent接口封装了Redis的setnx命令，当key不存在时设置成功并返回true，否则返回false</span></span><br><span class="line">  <span class="keyword">if</span>(redisClient.setIfAbsent(idempotentKey, <span class="string">"true"</span>)) &#123;</span><br><span class="line">    <span class="comment">// 设置key的过期时间</span></span><br><span class="line">    redisClient.expire(idempotentKey, <span class="number">3</span>, TimeUnit.SECONDS);</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</div></div>
-<blockquote>
-<p>这段代码有问题，因为setIfAbsent和expire是分成两次请求的、并不是原子的，如果在expire出错，就会导致缓存项成为“死数据”，解决办法是利用set命令就够了，set命令有很多参数，其中就包括设置原子性和设置过期时间的。</p>
-</blockquote>
-<h2 id="二-设计思路"><a class="header-anchor" href="#二-设计思路">¶</a>二、设计思路</h2>
-<h3 id="如何标识一次请求？"><a class="header-anchor" href="#如何标识一次请求？">¶</a>如何标识一次请求？</h3>
-<p>IdpKey需要能唯一标识一个请求，服务Producer在重试时，需要将这个标识符带上，这样就可以在服务Consumer的调用上下文找到这个标识符，从而唯一确定一个请求。<br>
-实行服务链路追踪功能的组件一般称为Tracing组件，Tracing组件中有两个基本工作单元TraceId和SpanId，我们先来讨论一下一种开源实现——Spring Cloud Sleuth能否满足我们的需求：</p>
-<blockquote>
-<p>现在有很多开源的链路跟踪框架实现，比如<a href="https://github.com/spring-cloud/spring-cloud-sleuth" target="_blank" rel="noopener">Spring Cloud Sleuth</a>、<a href="https://github.com/openzipkin/zipkin" target="_blank" rel="noopener">zipkin</a>，这些框架都遵循<a href="https://github.com/opentracing/specification/blob/master/specification.md" target="_blank" rel="noopener">OpenTracing</a>标准。</p>
-</blockquote>
-<ul>
-<li>TraceId唯一标识一条请求链路，主要用来追踪链路执行情况；</li>
-<li>SpanId表示一个基本的工作单元，比如一次消息发送、Http请求。重试时会将相同的SpanId重发几次？？？，所以SpanId是合适的。</li>
-</ul>
-<blockquote>
-<p>如何传其实还是由具体实现说了算，我看到的另一种实现是：对于基于消息的RPC，这个SpanId会加到Message内，对于基于HTTP的RPC，这个SpanId会加到请求头部。不管是哪种方式，每个request对象只会生成一次，然后重试时使用该request重发几次。</p>
-</blockquote>
-<p>还有一个合理但是略丑的方式是在请求参数中强行添加上一个<code>InvocationId</code>，但是这样代价就太高了。</p>
-<blockquote>
-<p>注意事项：<br>
-Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地重复检查、导致链路意外中断。</p>
-</blockquote>
-<p>IdpKey 的存储非常灵活，可以将其保存到全局的并发安全容器内，也可以选择其他的存储中间件，如果有较强的一致性需求，最好使用 MySQL 等数据库中间件，并将 idp 数据库和业务数据库建到同一个服务器上，这样它们才能受到同一个事务管理。</p>
-<p>远程调用的发生是非常频繁的，随着服务器的运行， KeyStore 中保存的 IdpKey 也会占用非常可观的内存或磁盘空间（根据具体实现而定），所以需要定时地去清理不用的数据。一般请求的重试过程不会持续太久，频繁的全表扫描也会一定程度上拖慢服务器的性能，所以 10 分钟清理一次我认为是比较合理的。一般 NoSQL 数据库都会提供为保存的 key 设置过期时间的功能，而SQL数据库（如 MySQL ）则需要在服务器里另起一个线程来执行清除操作。</p>
-<h3 id="接口执行状态"><a class="header-anchor" href="#接口执行状态">¶</a>接口执行状态</h3>
-<p><img src="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="sidp-状态扭转" title="sidp-状态扭转"></p>
-<h3 id="blockingidpchecker-和-nonblockingidpchecker"><a class="header-anchor" href="#blockingidpchecker-和-nonblockingidpchecker">¶</a>BlockingIdpChecker 和 NonblockingIdpChecker</h3>
-<ol>
-<li>BlockingIdpChecker 主要用于异步调用，这种场景下希望请求能够尽可能成功。</li>
-<li>NonblockingIdpChecker 可以用于同步调用的场景下，调用者重试意味着放弃了之前发送的请求，没有必要在上个请求仍处于 EXECUTING 状态下时阻塞等待其执行完毕。</li>
-</ol>
-<h3 id="异常处理"><a class="header-anchor" href="#异常处理">¶</a>异常处理</h3>
-<p>生成 IdpKey 或持久化 IdpKey 时可能发生异常，一般这两个过程是比较稳定的，万一出现问题，会影响实际业务的执行，它们的可用性需要采取其他措施来保证（一般是集群化）。</p>
-<h3 id="sql数据库"><a class="header-anchor" href="#sql数据库">¶</a>SQL数据库</h3>
-<p>待定…<br>
-当使用数据库来持久化 IdpKey 时——以 MySQL 为例——需要创建一个 idpkey 表来保存 IdpKey ，建表语句如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey (</span><br><span class="line">  # 36是UUID的长度，应该不会比这更长了吧？</span><br><span class="line">  `id` varchar(36) not null,</span><br><span class="line">  # 状态的取值只有固定的几个，取值少，没必要加索引</span><br><span class="line">  `key_state` char(12) not null default &apos;&apos;,</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
-<ol>
-<li>id为什么是varchar(36)类型？<br>
-36是UUID的长度，一般不会有比这个更长的了，但是不确定会不会使用别的计算方式，</li>
-<li>为什么key_state使用char而不是varchar？<br>
-因为该字段值长度稳定，不能很好发挥变长字符串的威力，而且更新频率高，当字段值变长时，可能需要存储引擎做额外的工作（比如分裂页等），总而言之，varchar更适合存字段值长度变化大、更新频率小的。</li>
-<li>为什么key_state字段没加索引？<br>
-状态的取值只有固定的几个，没必要加索引，一方面字段选择性小（只取几个值），数据库无法有效过滤行，另一方面在key_state索引中查出大量行后数据库还需要回到聚集索引中“反查”到其他字段值，反查得过于频繁可能需要置入过多的磁盘块。</li>
-</ol>
-<h3 id="kv数据库"><a class="header-anchor" href="#kv数据库">¶</a>KV数据库</h3>
-<p>待定…<br>
-当使用KV数据库来保存IdpKey时——以Redis为例——需要选择使用哪种数据结构来保存数据。</p>
-<h2 id="三-耦合"><a class="header-anchor" href="#三-耦合">¶</a>三、耦合</h2>
-<h3 id="多种idpkey生成方式"><a class="header-anchor" href="#多种idpkey生成方式">¶</a>多种IdpKey生成方式</h3>
-<p>正如之前提到的，IdpKey的ID属性可以用Tracing组件的SpanId来代替，是因为SpanId会在每次重试时都附带上，</p>
-<h3 id="多种idpkey保存方式"><a class="header-anchor" href="#多种idpkey保存方式">¶</a>多种IdpKey保存方式</h3>
-<p>KeyStore中定义了几个我认为必须原子化的操作（putIfAbsent、putIfAbsentOrInStates），如果能在持久化层实现这些操作的原子性当然最好，这样就不用额外添加分布式锁了。<br>
-我提供了两种实现：</p>
-<ol>
-<li>SQLKeyStore中主要通过数据库的行锁来实现。</li>
-<li>RedisKeyStore中主要通过Redis的Lua扩展来实现。</li>
-</ol>
-<h3 id="与tracing组件如何配合？"><a class="header-anchor" href="#与tracing组件如何配合？">¶</a>与Tracing组件如何配合？</h3>
-<p><img src="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-BlockingIdpChecker%E4%B8%8ETracing%E7%BB%84%E4%BB%B6%E9%85%8D%E5%90%88.png" alt="与Tracing组件配合后的交互流程" title="BlockingIdpChecker与Tracing组件配合"><br>
-上图是与Tracing组件配置后BlockingIdpChecker的大概工作方式。</p>
-<h2 id="四-并发控制"><a class="header-anchor" href="#四-并发控制">¶</a>四、并发控制</h2>
-<h3 id="为什么使用行锁-version-sqlkeystore"><a class="header-anchor" href="#为什么使用行锁-version-sqlkeystore">¶</a>为什么使用行锁+version（SQLKeyStore）</h3>
-<p>在SQLKeyStore中实现一些复合操作时，为什么不使用乐观锁，而是用行锁+version的方式？<br>
-具体的伪代码如下所示：</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">start</span> <span class="keyword">transaction</span>;</span><br><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>, key_state, <span class="keyword">version</span> <span class="keyword">from</span> idpkey <span class="keyword">where</span> <span class="keyword">id</span> = #&#123;<span class="keyword">id</span>&#125; <span class="keyword">or</span> key_state <span class="keyword">in</span> (#&#123;state1&#125;, #&#123;state2&#125;, ...) <span class="keyword">for</span> <span class="keyword">update</span>; <span class="comment">-- 锁数据</span></span><br><span class="line">...</span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> idpkey (<span class="keyword">id</span>, key_state) <span class="keyword">values</span>(?, ?) <span class="keyword">on</span> <span class="keyword">duplicate</span> <span class="keyword">key</span> <span class="keyword">update</span> key_state = ?; <span class="comment">-- 更新锁住的数据</span></span><br><span class="line"><span class="keyword">commit</span>;</span><br></pre></td></tr></table></figure>
-<p>如果是乐观锁则：</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> ..., <span class="keyword">version</span> <span class="keyword">from</span> idpkey <span class="keyword">where</span> <span class="keyword">id</span> = #&#123;<span class="keyword">id</span>&#125;;</span><br><span class="line">...</span><br><span class="line"><span class="keyword">update</span> idpkey <span class="keyword">set</span> <span class="keyword">id</span> = #&#123;<span class="keyword">id</span>&#125; <span class="keyword">and</span> key_state <span class="keyword">in</span> (#&#123;state1&#125;, #&#123;state2&#125;, ...);</span><br></pre></td></tr></table></figure>
-<p>这里key_state其实起着类似乐观锁的作用，因为只有在某些状态下才能更新成功，但是会有点问题：</p>
-<ul>
-<li>idpKey有三类状态：pass（由具体规则而定）, blocking（相当于EXECUTING）, reject（由具体规则而定，但是都会包含SUCCESS），当为pass状态时是可以更新的，但是更新失败时可能是blocking或reject的，必须要把更新时数据库里的值返回回来判断，所以要使用行锁来同步其他线程，实现一种类似swap的原子操作；</li>
-</ul>
-<p>看SQLKeyStore中一些复合操作（如putIfAbsent）返回值为什么要加上更新的数量？先看以下四种可能情况：</p>
-<ol>
-<li>数据库中不存在该idpKey，则插入数据，数据库中idpKey状态为EXECUTING，返回数据状态为EXECUTING，此时程序应该继续执行；</li>
-<li>数据库中存在该idpKey，且状态属于pass，则更新成功，数据库中idpKey状态为EXECUTING，返回数据状态为EXECUTING，此时程序应该继续执行；</li>
-<li>数据库中存在该idpKey，且状态属于blocking，则更新失败，返回数据状态为EXECUTING，此时程序应该被阻塞</li>
-<li>数据库中存在该idpKey，且状态属于reject，则更新失败，返回数据状态属于reject集合，则该次调用应该被放弃。</li>
-</ol>
-<p>其中，情况2和3可以使用成功更新数量来区分，因此在返回值中加上了这个更新数量。</p>
-<h3 id="为什么是50-100-200？"><a class="header-anchor" href="#为什么是50-100-200？">¶</a>为什么是50、100、200？</h3>
-<p>BlockingIdpChecker中在发现存在其他线程正在执行该IdpKey对应的请求时，会阻塞，其实是每隔50ms、100ms、200ms轮询数据库，使用这几个值的原因是我在实际中发现大部分接口都能在50ms内“见分晓”（要么执行成功要么抛出异常），部分比较重量级的接口基本也能在200ms内执行完毕。</p>
-<h3 id="隔离性及可能导致的安全问题"><a class="header-anchor" href="#隔离性及可能导致的安全问题">¶</a>隔离性及可能导致的安全问题</h3>
-<p>待定…</p>
-<h3 id="为什么使用lua脚本-rediskeystore-？"><a class="header-anchor" href="#为什么使用lua脚本-rediskeystore-？">¶</a>为什么使用Lua脚本（RedisKeyStore）？</h3>
-<p>待定…</p>
-
-          
+          <p><a href="http://www.github.com/tallate/sidp" target="_blank" rel="noopener">Github - sidp</a></p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/d9c44370.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
