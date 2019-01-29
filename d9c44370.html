@@ -88,7 +88,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/sidp-BlockingIdpChecker%E4%B8%8ETracing%E7%BB%84%E4%BB%B6%E9%85%8D%E5%90%88.png">
-<meta property="og:updated_time" content="2019-01-23T19:26:20.942Z">
+<meta property="og:updated_time" content="2019-01-27T11:57:16.451Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="如何实现接口的幂等性？">
 <meta name="twitter:description" content="Github - sidp">
@@ -447,7 +447,7 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
 <p>生成 IdpKey 或持久化 IdpKey 时可能发生异常，一般这两个过程是比较稳定的，万一出现问题，会影响实际业务的执行，它们的可用性需要采取其他措施来保证（一般是集群化）。</p>
 <h3 id="sql数据库"><a class="header-anchor" href="#sql数据库">¶</a>SQL数据库</h3>
 <p>当使用数据库来持久化 IdpKey 时——以 MySQL 为例——需要创建一个 idpkey 表来保存 IdpKey ，建表语句如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey (</span><br><span class="line">  `id` varchar(36) not null,</span><br><span class="line">  `key_state` char(12) not null default &apos;&apos;,</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey (</span><br><span class="line">  `id` varchar(36) not null,</span><br><span class="line">  `key_state` char(12) not null default &apos;&apos;,</span><br><span class="line">  `created_time` timestamp not null default now(),</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
 <ol>
 <li>id为什么是varchar(36)类型？<br>
 36是UUID的长度，一般不会有比这个更长的了，但是不确定会不会使用别的计算方式，</li>
@@ -457,8 +457,7 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
 状态的取值只有固定的几个，没必要加索引，一方面字段选择性小（只取几个值），数据库无法有效过滤行，另一方面在key_state索引中查出大量行后数据库还需要回到聚集索引中“反查”到其他字段值，反查得过于频繁可能需要置入过多的磁盘块。</li>
 </ol>
 <h3 id="kv数据库"><a class="header-anchor" href="#kv数据库">¶</a>KV数据库</h3>
-<p>待定…<br>
-当使用KV数据库来保存IdpKey时——以Redis为例——需要选择使用哪种数据结构来保存数据。</p>
+<p>待定…</p>
 <h2 id="三-耦合"><a class="header-anchor" href="#三-耦合">¶</a>三、耦合</h2>
 <h3 id="多种idpkey生成方式"><a class="header-anchor" href="#多种idpkey生成方式">¶</a>多种IdpKey生成方式</h3>
 <p>正如之前提到的，IdpKey的ID属性可以用Tracing组件的SpanId来代替，是因为SpanId会在每次重试时都附带上，</p>
@@ -496,7 +495,7 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
 <h3 id="隔离性及可能导致的安全问题"><a class="header-anchor" href="#隔离性及可能导致的安全问题">¶</a>隔离性及可能导致的安全问题</h3>
 <p>待定…</p>
 <h3 id="为什么使用lua脚本-rediskeystore-？"><a class="header-anchor" href="#为什么使用lua脚本-rediskeystore-？">¶</a>为什么使用Lua脚本（RedisKeyStore）？</h3>
-<p>待定…</p>
+<p>Redis 自带的命令很多，但还是不能覆盖所有的使用场景，比如我在代码里需要实现“putIfAbsent + expire + 返回覆盖前的值”的逻辑就无法</p>
 
       
     </div>
@@ -521,8 +520,8 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/c79fd22b.html" rel="next" title="面筋-几家小公司">
-                <i class="fa fa-chevron-left"></i> 面筋-几家小公司
+              <a href="/cd87e5dd.html" rel="next" title="司库云系统简析">
+                <i class="fa fa-chevron-left"></i> 司库云系统简析
               </a>
             
           </div>
@@ -615,7 +614,7 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-count">16</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -626,7 +625,7 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -637,7 +636,7 @@ Consumer接口不应该是递归的，递归会使得一个IdpKey被不必要地
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-count">2</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
