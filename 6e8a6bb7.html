@@ -88,7 +88,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/%E9%99%90%E6%B5%81%E7%AE%97%E6%B3%95%E5%B0%8F%E7%BB%93/LeakyBucket.png">
 <meta property="og:image" content="http://47.88.24.11/%E9%99%90%E6%B5%81%E7%AE%97%E6%B3%95%E5%B0%8F%E7%BB%93/TokenBucket.png">
-<meta property="og:updated_time" content="2019-01-27T13:38:37.321Z">
+<meta property="og:updated_time" content="2019-01-29T16:13:37.150Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="限流算法小结">
 <meta name="twitter:description" content="Github - srl">
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  481 字
+                  683 字
                 </span>
               
 
@@ -376,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1 分钟
+                  2 分钟
                 </span>
               
             </div>
@@ -425,13 +425,11 @@
 <li><code>TRAFFIC_SHAPING</code> ， <code>sleep</code> 至令牌足够的时间点；</li>
 <li><code>TRAFFIC_POLICING</code> ，直接放弃该任务。</li>
 </ul>
-<h2 id="三-并发"><a class="header-anchor" href="#三-并发">¶</a>三、并发</h2>
-<h3 id="atomicxxx"><a class="header-anchor" href="#atomicxxx">¶</a>AtomicXxx</h3>
-<p>下面这段代码是 Java 中原子变量的使用示例：</p>
+<h2 id="三-并发安全"><a class="header-anchor" href="#三-并发安全">¶</a>三、并发安全</h2>
+<h3 id="使用-atomicxxx-而不是-lock-或-synchronized"><a class="header-anchor" href="#使用-atomicxxx-而不是-lock-或-synchronized">¶</a>使用 AtomicXxx 而不是 Lock 或 synchronized</h3>
+<p>多个线程同时去获取一个限流器的资源的时候，会产生竞态条件，这在漏桶和令牌桶算法的实现中采取的是基于原子操作工具来解决的，下面这段代码是 Java 中原子变量的使用示例：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">AtomicLong atomicLong = <span class="keyword">new</span> AtomicLong(<span class="number">0</span>);</span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> test &#123;</span><br><span class="line">    <span class="keyword">long</span> v, newV;</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        v = atomicLong.get();</span><br><span class="line">        newV = <span class="number">2</span> * v;</span><br><span class="line">    &#125; <span class="keyword">while</span> (atomicLong.compareAndSet(v, newV));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>待定…</p>
-<h3 id="为什么不使用lock？"><a class="header-anchor" href="#为什么不使用lock？">¶</a>为什么不使用Lock？</h3>
-<p>待定…</p>
+<p>AtomicXxx 的原理是 CAS ，它是一种无锁算法，相对 Lock 来说一般会更加高效，但是要注意存在多个线程同时去竞争同一原子变量的情况，可能会导致某个线程长时间的在“空转”（有点像进程调度中的“饥饿”现象），但是在限流器场景内发生的概率比较小，因为一个线程拿到资源后会去执行自己的逻辑或者睡眠一段时间，这段时间内它是不会再加入到抢资源的队伍里的。</p>
 <h2 id="四-优化"><a class="header-anchor" href="#四-优化">¶</a>四、优化</h2>
 <p>除了硬编码算法拿来用外，其实还有很多可以优化的地方，比如：</p>
 <ol>
@@ -616,7 +614,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-限流的使用场景"><span class="nav-number">1.</span> <span class="nav-text">¶一、限流的使用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-算法"><span class="nav-number">2.</span> <span class="nav-text">¶二、算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#leakybucket-漏桶算法"><span class="nav-number">2.1.</span> <span class="nav-text">¶LeakyBucket（漏桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tokenbucket-令牌桶算法"><span class="nav-number">2.2.</span> <span class="nav-text">¶TokenBucket（令牌桶算法）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-并发"><span class="nav-number">3.</span> <span class="nav-text">¶三、并发</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#atomicxxx"><span class="nav-number">3.1.</span> <span class="nav-text">¶AtomicXxx</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么不使用lock？"><span class="nav-number">3.2.</span> <span class="nav-text">¶为什么不使用Lock？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-优化"><span class="nav-number">4.</span> <span class="nav-text">¶四、优化</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-限流的使用场景"><span class="nav-number">1.</span> <span class="nav-text">¶一、限流的使用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-算法"><span class="nav-number">2.</span> <span class="nav-text">¶二、算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#leakybucket-漏桶算法"><span class="nav-number">2.1.</span> <span class="nav-text">¶LeakyBucket（漏桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tokenbucket-令牌桶算法"><span class="nav-number">2.2.</span> <span class="nav-text">¶TokenBucket（令牌桶算法）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-并发安全"><span class="nav-number">3.</span> <span class="nav-text">¶三、并发安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-atomicxxx-而不是-lock-或-synchronized"><span class="nav-number">3.1.</span> <span class="nav-text">¶使用 AtomicXxx 而不是 Lock 或 synchronized</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-优化"><span class="nav-number">4.</span> <span class="nav-text">¶四、优化</span></a></li></ol></div>
             
 
           </div>
