@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/sidp-BlockingIdpChecker%E4%B8%8ETracing%E7%BB%84%E4%BB%B6%E9%85%8D%E5%90%88.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/%E4%BA%8B%E5%8A%A1MVCC%E4%B8%8D%E8%83%BD%E9%81%BF%E5%85%8D%E5%B9%BB%E8%AF%BB.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/%E4%BA%8B%E5%8A%A1MVCC%E4%B8%8D%E8%83%BD%E9%81%BF%E5%85%8D%E4%B8%A2%E5%A4%B1%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png">
-<meta property="og:updated_time" content="2019-02-26T17:09:11.706Z">
+<meta property="og:updated_time" content="2019-02-26T17:51:31.304Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现接口幂等检查器">
 <meta name="twitter:description" content="Github - TIdempotent 幂等性描述一项操作被执行多次后，不会改变第一次执行产生的副作用。">
@@ -531,7 +531,7 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
 丢失更新问题一般通过加锁来解决，更具体地说，是行锁中的排他锁（共享锁就不行了，而且共享锁很容易导致死锁），在读出数据的时候使用 “for update” 子句来加锁，使两个事务不能同时对该条数据进行读写操作。<br>
 在代码中，幂等检查是更加复合的操作，加行锁可以保证一次请求的多次重试之间互斥，但又不必像设置成串行化隔离级别会将所有请求的事务都调整成互斥的，这样粒度太大、影响并发性能。</li>
 </ol>
-<p>总而言之，代码中的 JdbcKeyStore 没有采取并入业务操作所在事务的方案，而是使用了数据库行锁来保证并发安全性，行锁可以保证操作同一条数据的两个事务能够按先后顺序进入临界区，这同时解决了幻读问题。至于为什么不用乐观锁，这在上边已经提到过了。</p>
+<p><strong>总而言之</strong>，代码中的 JdbcKeyStore 没有采取并入业务操作所在事务的方案，而是使用了数据库行锁来保证并发安全性，行锁可以保证操作同一条数据的两个事务能够按先后顺序进入临界区，这同时解决了幻读问题。至于为什么不用乐观锁，这在上边已经提到过了。</p>
 <h3 id="为什么是-50-100-200"><a class="header-anchor" href="#为什么是-50-100-200">¶</a>为什么是 50、100、200</h3>
 <p>BlockingIdpChecker 中在发现存在其他线程正在执行该 IdpKey 对应的请求时，会阻塞，其实是每隔 50ms、100ms、200ms 轮询数据库，使用这几个值的原因是我在实际中发现大部分接口都能在 50ms 内“见分晓”（要么执行成功要么抛出异常），部分比较重量级的接口基本也能在 200ms 内执行完毕。</p>
 <h3 id="为什么使用-lua-脚本-rediskeystore"><a class="header-anchor" href="#为什么使用-lua-脚本-rediskeystore">¶</a>为什么使用 Lua 脚本（RedisKeyStore）</h3>
