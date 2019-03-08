@@ -88,9 +88,10 @@
 <meta property="og:description" content="Github - TRateLimiter">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8/%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8%E7%A4%BA%E6%84%8F%E5%9B%BE.png">
+<meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8/SlidingWindow.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8/LeakyBucket.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8/TokenBucket.png">
-<meta property="og:updated_time" content="2019-03-04T15:31:54.747Z">
+<meta property="og:updated_time" content="2019-03-04T16:54:55.149Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现一个分布式限流器">
 <meta name="twitter:description" content="Github - TRateLimiter">
@@ -362,7 +363,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.3k 字
+                  2.5k 字
                 </span>
               
 
@@ -378,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  7 分钟
+                  8 分钟
                 </span>
               
             </div>
@@ -413,8 +414,9 @@
 服务实例数量变动的时候，均衡每个实例内的限流器流量大小。</p>
 <h2 id="二-算法"><a class="header-anchor" href="#二-算法">¶</a>二、算法</h2>
 <p>常见的经典限流算法有两种：漏桶算法和令牌桶算法，在某些情况下也可以采取更简单的滑动窗口算法。这几种算法描述的都是单位时间内允许通过的流量，并不关注调用什么时候结束，换句话说，它们并不能限制并发度，如果对并发量有限制，可以转为采取类似信号量（Semaphore）的实现方式。</p>
-<h3 id="timewindow-滑动窗口算法"><a class="header-anchor" href="#timewindow-滑动窗口算法">¶</a>TimeWindow（滑动窗口算法）</h3>
-<p>待定…</p>
+<h3 id="slidingwindow-滑动窗口算法"><a class="header-anchor" href="#slidingwindow-滑动窗口算法">¶</a>SlidingWindow（滑动窗口算法）</h3>
+<p><img src="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8/SlidingWindow.png" alt="SlidingWindow示意图" title="SlidingWindow示意图"><br>
+待定…</p>
 <h3 id="leakybucket-漏桶算法"><a class="header-anchor" href="#leakybucket-漏桶算法">¶</a>LeakyBucket（漏桶算法）</h3>
 <p><img src="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E5%88%86%E5%B8%83%E5%BC%8F%E9%99%90%E6%B5%81%E5%99%A8/LeakyBucket.png" alt="LeakyBucket示意图" title="LeakyBucket示意图"></p>
 <ul>
@@ -459,11 +461,19 @@
 <li>多维度混合的限流</li>
 </ol>
 <h2 id="五-分布式限流"><a class="header-anchor" href="#五-分布式限流">¶</a>五、分布式限流</h2>
-<p>正如开头所说，现存的（至少是网上可以随便找到的）一些限流方案不能有效、高效地实现分布式系统的限流，因此我建议使用服务注册中心来注册所有服务，然后动态更新每个业务服务实例内的限流属性。为此，我们需要先讨论一下服务注册中心的相关问题，最后给出这个限流器的一个大致运作流程。</p>
+<p>正如开头所说，现存的（至少是网上可以随便找到的）一些限流方案不能有效、高效地实现分布式系统的限流，因此我建议使用服务注册中心来注册所有服务，然后动态更新每个业务服务实例内的限流属性。为此，我们先分析一下一般基于Redis的限流器实现模式，然后讨论一下服务注册中心的相关问题，最后给出这个限流器的一个大致运作流程。</p>
 <ul>
 <li>服务注册中心可以使用 ZooKeeper 、 Eureka 、 Etcd 等技术来实现。</li>
 <li>我们需要的是 <code>&lt;ServiceId, ServiceProp&gt;</code> 这样的结构，姑且称为服务注册项，其中，服务 ID 唯一标识一个服务，服务属性包括版本号、实例数量等，不需要记录每个服务的地址等信息。</li>
 </ul>
+<h3 id="基于redis的限流器"><a class="header-anchor" href="#基于redis的限流器">¶</a>基于Redis的限流器</h3>
+<p>简而言之就是为每个请求生成一个key（可以是IP+接口URL，也可以直接根据接口URL生成），value变量为计数值，设置过期时间。<br>
+需要注意Redis的过期策略是混合的：</p>
+<ul>
+<li>被动删除：当读 / 写一个已经过期的key时，会触发惰性删除策略，直接删除掉这个过期key；</li>
+<li>主动删除：Redis会定期（默认似乎是100ms）主动淘汰一批已过期的key，当已用内存超过限定时，也会触发主动清理策略。</li>
+</ul>
+<p>代码分析待定…</p>
 <h3 id="push-or-pull"><a class="header-anchor" href="#push-or-pull">¶</a>Push Or Pull</h3>
 <p>当服务上下线时，首先由上线的服务实例发起请求更新服务注册中心的服务注册项，然后由服务注册中心通知其他相关服务实例，其实这是一种 <strong>发布 / 订阅模式</strong>。</p>
 <ul>
@@ -487,13 +497,15 @@
 <p>服务下线可能是非常突然的，比如断电、人为重启等，服务注册中心需要通过某种机制感知到这种情况。<br>
 一种常见的实现方式是由服务端维持和客户端之间的长连接，通过心跳检测来检查服务的健康状况。</p>
 <p>待定…</p>
-<h3 id="示例实现"><a class="header-anchor" href="#示例实现">¶</a>示例实现</h3>
+<h3 id="代码中的实现"><a class="header-anchor" href="#代码中的实现">¶</a>代码中的实现</h3>
+<p>待定…</p>
 <h2 id="六-参考"><a class="header-anchor" href="#六-参考">¶</a>六、参考</h2>
 <ol>
 <li><a href="https://www.cnblogs.com/haoxinyue/p/6792309.html" target="_blank" rel="noopener">谈谈高并发系统的限流</a></li>
 <li><a href="https://blog.csdn.net/tianyaleixiaowu/article/details/74942405" target="_blank" rel="noopener">限流算法之漏桶算法、令牌桶算法</a></li>
 <li><a href="https://segmentfault.com/a/1190000012875897?utm_source=tag-newest" target="_blank" rel="noopener">Guava RateLimiter源码解析</a></li>
 <li><a href="https://blog.csdn.net/sunlihuo/article/details/79700225" target="_blank" rel="noopener">redis+lua 实现分布式令牌桶，高并发限流</a></li>
+<li><a href="http://doc.redisfans.com/string/incr.html" target="_blank" rel="noopener">Redis 命令参考 - INCR key</a></li>
 </ol>
 
       
@@ -676,7 +688,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-初衷"><span class="nav-number">1.</span> <span class="nav-text">¶一、初衷</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#限流使用场景"><span class="nav-number">1.1.</span> <span class="nav-text">¶限流使用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#现成方案存在的缺陷"><span class="nav-number">1.2.</span> <span class="nav-text">¶现成方案存在的缺陷</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-算法"><span class="nav-number">2.</span> <span class="nav-text">¶二、算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#timewindow-滑动窗口算法"><span class="nav-number">2.1.</span> <span class="nav-text">¶TimeWindow（滑动窗口算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#leakybucket-漏桶算法"><span class="nav-number">2.2.</span> <span class="nav-text">¶LeakyBucket（漏桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tokenbucket-令牌桶算法"><span class="nav-number">2.3.</span> <span class="nav-text">¶TokenBucket（令牌桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#semaphore-信号量算法"><span class="nav-number">2.4.</span> <span class="nav-text">¶Semaphore（信号量算法）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-并发安全"><span class="nav-number">3.</span> <span class="nav-text">¶三、并发安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-atomicxxx-而不是-lock-或-synchronized"><span class="nav-number">3.1.</span> <span class="nav-text">¶使用 AtomicXxx 而不是 Lock 或 synchronized</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最大流量限制"><span class="nav-number">3.2.</span> <span class="nav-text">¶最大流量限制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-优化"><span class="nav-number">4.</span> <span class="nav-text">¶四、优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-分布式限流"><span class="nav-number">5.</span> <span class="nav-text">¶五、分布式限流</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#push-or-pull"><span class="nav-number">5.1.</span> <span class="nav-text">¶Push Or Pull</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#强一致性-or-弱一致性"><span class="nav-number">5.2.</span> <span class="nav-text">¶强一致性 Or 弱一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现流量的分摊？"><span class="nav-number">5.3.</span> <span class="nav-text">¶如何实现流量的分摊？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务上线？"><span class="nav-number">5.4.</span> <span class="nav-text">¶如何实现服务上线？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务下线？"><span class="nav-number">5.5.</span> <span class="nav-text">¶如何实现服务下线？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#示例实现"><span class="nav-number">5.6.</span> <span class="nav-text">¶示例实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六-参考"><span class="nav-number">6.</span> <span class="nav-text">¶六、参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-初衷"><span class="nav-number">1.</span> <span class="nav-text">¶一、初衷</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#限流使用场景"><span class="nav-number">1.1.</span> <span class="nav-text">¶限流使用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#现成方案存在的缺陷"><span class="nav-number">1.2.</span> <span class="nav-text">¶现成方案存在的缺陷</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-算法"><span class="nav-number">2.</span> <span class="nav-text">¶二、算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#slidingwindow-滑动窗口算法"><span class="nav-number">2.1.</span> <span class="nav-text">¶SlidingWindow（滑动窗口算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#leakybucket-漏桶算法"><span class="nav-number">2.2.</span> <span class="nav-text">¶LeakyBucket（漏桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tokenbucket-令牌桶算法"><span class="nav-number">2.3.</span> <span class="nav-text">¶TokenBucket（令牌桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#semaphore-信号量算法"><span class="nav-number">2.4.</span> <span class="nav-text">¶Semaphore（信号量算法）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-并发安全"><span class="nav-number">3.</span> <span class="nav-text">¶三、并发安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-atomicxxx-而不是-lock-或-synchronized"><span class="nav-number">3.1.</span> <span class="nav-text">¶使用 AtomicXxx 而不是 Lock 或 synchronized</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最大流量限制"><span class="nav-number">3.2.</span> <span class="nav-text">¶最大流量限制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-优化"><span class="nav-number">4.</span> <span class="nav-text">¶四、优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-分布式限流"><span class="nav-number">5.</span> <span class="nav-text">¶五、分布式限流</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基于redis的限流器"><span class="nav-number">5.1.</span> <span class="nav-text">¶基于Redis的限流器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#push-or-pull"><span class="nav-number">5.2.</span> <span class="nav-text">¶Push Or Pull</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#强一致性-or-弱一致性"><span class="nav-number">5.3.</span> <span class="nav-text">¶强一致性 Or 弱一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现流量的分摊？"><span class="nav-number">5.4.</span> <span class="nav-text">¶如何实现流量的分摊？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务上线？"><span class="nav-number">5.5.</span> <span class="nav-text">¶如何实现服务上线？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务下线？"><span class="nav-number">5.6.</span> <span class="nav-text">¶如何实现服务下线？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#代码中的实现"><span class="nav-number">5.7.</span> <span class="nav-text">¶代码中的实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六-参考"><span class="nav-number">6.</span> <span class="nav-text">¶六、参考</span></a></li></ol></div>
             
 
           </div>
