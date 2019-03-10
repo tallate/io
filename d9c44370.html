@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/sidp-BlockingIdpChecker%E4%B8%8ETracing%E7%BB%84%E4%BB%B6%E9%85%8D%E5%90%88.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/%E4%BA%8B%E5%8A%A1MVCC%E4%B8%8D%E8%83%BD%E9%81%BF%E5%85%8D%E5%B9%BB%E8%AF%BB.png">
 <meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/%E4%BA%8B%E5%8A%A1MVCC%E4%B8%8D%E8%83%BD%E9%81%BF%E5%85%8D%E4%B8%A2%E5%A4%B1%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png">
-<meta property="og:updated_time" content="2019-03-08T00:11:31.279Z">
+<meta property="og:updated_time" content="2019-03-09T06:20:15.482Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现接口幂等检查器">
 <meta name="twitter:description" content="幂等性描述一项操作被执行多次后，不会改变第一次执行产生的副作用。 练手项目，解决项目中的幂等性检查要求，代码地址👉 Github - TIdempotent。  [x] BlockingChecker、NonblockingChecker ； [x] 加入 MySQL 作为 KeyStore （JdbcKeyStore）； [x] 加入 Redis 作为 KeyStore （RedisKeySt">
@@ -364,7 +364,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.7k 字
+                  5k 字
                 </span>
               
 
@@ -380,7 +380,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  17 分钟
                 </span>
               
             </div>
@@ -415,20 +415,18 @@
 <li>[] 加入 SkyWalking 作为 Key Provider ；</li>
 <li>[] 加入 Spring Boot 便于整合进业务系统；</li>
 <li>[] 加入 Metrics 监控；</li>
-<li>[] 并发测试、压力测试。</li>
+<li>[] 并发测试、压力测试；</li>
+<li>[] 监控。</li>
 </ul>
 <a id="more"></a>
 <h2 id="〇-初衷"><a class="header-anchor" href="#〇-初衷">¶</a>〇、初衷</h2>
-<p>写这个小组件的目的主要有以下几点：</p>
-<ol>
-<li>幂等性检查在非幂等的远程调用中几乎是必须的，而且这样的场景很多，属于比较典型的横切关注点，适合采用 AOP 的方式进行简化；</li>
-<li>幂等检查没有固定的实现标准，容易和业务代码混淆；</li>
-<li>一般的幂等检查比较简单，有时候和接口重试的初衷是冲突的。一般情况下我们实现幂等检查时，会将对应&lt;业务+数据 id&gt;拼接起来存到缓存中间件中，我们姑且称之为 IdpKey，后续请求会查到该 IdpKey，发现已经被调用过了，就直接返回之前执行过的结果。但是这种思路存在漏洞，如下图所示：<br>
+<p>幂等性检查在非幂等的远程调用中几乎是必须的，而且这样的场景很多，一般我们都是直接在业务代码里写上，但很多时候容易写出个四不像，或者是没有考虑到一些极端条件、在代码中埋下隐患。<br>
+一般的幂等检查比较简单，有时候和接口重试的初衷是冲突的。一般情况下我们实现幂等检查时，会将对应&lt;业务+数据 id&gt;拼接起来存到缓存中间件中，我们姑且称之为 IdpKey，后续请求会查到该 IdpKey，发现已经被调用过了，就直接返回之前执行过的结果。但是这种思路存在漏洞，如下图所示：<br>
 <img src="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%99%A8/%E5%B9%82%E7%AD%89%E6%A3%80%E6%9F%A5%E5%92%8C%E6%8E%A5%E5%8F%A3%E9%87%8D%E8%AF%95%E4%B9%8B%E9%97%B4%E7%9A%84%E5%86%B2%E7%AA%81.png" alt="幂等检查和接口重试之间的冲突" title="幂等检查和接口重试之间的冲突"><br>
 IdpKey 是只有在幂等检查结束后才会被保存下来的，如果下游服务还没执行完毕，触发上游 RPC 的超时重试机制，就会重新再发一次请求，这时如果上一次请求，仍然没有执行完毕，就会导致请求被执行了两次。<br>
 这里的漏洞是：进入下游 API 入口处的幂等检查逻辑，会经过查 IdpKey -&gt; 保存 IdpKey -&gt; 设置超时时间这个过程，可能会因为网络抖动而花费特别长的时间。如果超时是因此而导致的，幂等性检查就起不到作用了。<br>
-解决的办法是保证幂等检查的<strong>原子性</strong>，并且还需要注意存储时的隔离性。</li>
-</ol>
+解决的办法是保证幂等检查的<strong>原子性</strong>，并且还需要注意存储的<strong>隔离性</strong>，这在存储设计中是必须要考虑的。</p>
+<p>在这里我还想吐槽一下我公司的实现，采用的是<code>setnx + expire</code>的方式，如果<code>setnx</code>后、<code>expire</code>前出错了，之后对该接口的重试也会直接被拦截了，也就是说幂等检查组件影响了正常的业务执行流程。</p>
 <h2 id="一-使用时机"><a class="header-anchor" href="#一-使用时机">¶</a>一、使用时机</h2>
 <h3 id="服务-api"><a class="header-anchor" href="#服务-api">¶</a>服务 API</h3>
 <p>接口幂等性是在设计 RPC 时必然被提到的话题，因为远程调用为了减少突发性的网络抖动影响、尽可能提高一次请求成功的几率，会在失败后重试几次，但是服务消费者此时其实并不知道服务提供者是真得没接收到请求、或者只是响应在中间走丢了、亦或者是别的什么情况，所以服务框架普遍会在服务提供者处设置幂等性检查。一般情况下有以下几种策略：</p>
@@ -436,6 +434,9 @@ IdpKey 是只有在幂等检查结束后才会被保存下来的，如果下游�
 <li>和业务逻辑耦合，比如是涉及订单的业务，订单会有状态，下单后状态会相应的改变，所以我们只需要在业务处理开始的地方检查一下状态就可以起到幂等性检查的目的；</li>
 <li>提取幂等性检查的逻辑作为框架的一部分，使用注解等方式来为目标接口添加幂等检查功能，可以有效减少冗余代码，不过执行效率会低一些；</li>
 </ol>
+<h3 id="http-协议的幂等性"><a class="header-anchor" href="#http-协议的幂等性">¶</a>HTTP 协议的幂等性</h3>
+<p>根据协议规定，PUT 等方法天生具有幂等性的语义，因为 PUT 会覆盖数据而不是在原来数据的基础上增加，发一次和发多次请求某一资源应该会产生相同的副作用。<br>
+道理我们都懂，但是要在幂等检查中特别关注并忽略掉这些情况又不大适合，因为根据我看的大部分代码的感受而言，大家基本上不会特别严格地遵守 REST 协议（或者说风格？）：每个接口都讨论一遍怎么套用各 HTTP 方法来解释太影响效率，所以大不了读的就用 GET，写的就用 POST，以及链接中随意使用动词、返回状态码等。因此我认为不特地地根据 HTTP 方法进行过滤也没有关系。</p>
 <h3 id="web-api"><a class="header-anchor" href="#web-api">¶</a>WEB API</h3>
 <p>API 有时候也会考虑“幂等性”，但这严格来说不属于我们这里讨论的范畴，我们主要关注 RPC 中重试的幂等性，这里只是稍微提一下。比如在确认下单的时候用户多点了几下（还包括刷单、 DDoS 攻击等），后台就会收到同一用户在很短的时间内发来的多个相同请求，除了在网关层限流，往往后台还会对用户的请求频率进行限制，比如使用从请求上下文里得到的用户登录 token（唯一标识一个用户）和订单 ID （唯一标识一个业务）拼接一个 IdempotentKey （以下简称 IdpKey ），保存到缓存中间件并设置过期时间：</p>
 <div><div class="fold_hider"><div class="close hider_title">代码</div></div><div class="fold">
@@ -478,6 +479,7 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
 <h3 id="sql-数据库"><a class="header-anchor" href="#sql-数据库">¶</a>SQL 数据库</h3>
 <p>当使用数据库来持久化 IdpKey 时——以 MySQL 为例——需要创建一个 idpkey 表来保存 IdpKey ，建表语句如下所示：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey (</span><br><span class="line">  `id` varchar(36) not null,</span><br><span class="line">  `key_state` char(12) not null default &apos;&apos;,</span><br><span class="line">  `created_time` timestamp not null default now(),</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>该表非常简单，但是还是多说两句为什么要这么建，特别是索引的考虑。</p>
 <ol>
 <li>id 为什么是 varchar(36)类型？<br>
 36 是 UUID 的长度，一般不会有比这个更长的了，但是不确定会不会使用别的计算方式，</li>
@@ -486,17 +488,16 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
 <li>为什么 key_state 字段没加索引？<br>
 状态的取值只有固定的几个，没必要加索引，一方面字段选择性小（只取几个值），数据库无法有效过滤行，另一方面在 key_state 索引中查出大量行后数据库还需要回到聚集索引中“反查”到其他字段值，反查得过于频繁可能需要置入过多的磁盘块。</li>
 <li>为什么 created_time 不加索引？<br>
-待定…</li>
+created_time 标识一条数据的创建时间，清理的时候会执行一个范围过滤的删除，其中的大部分数据都会被直接删除掉，如果加了索引，虽然匹配速度会稍微快一点，但是数据量大（接近一半）又导致回表和重建索引的过程非常耗时，甚至还不如全表扫描，这可以通过建测试表来验证。</li>
 </ol>
 <h3 id="kv-数据库"><a class="header-anchor" href="#kv-数据库">¶</a>KV 数据库</h3>
-<p>待定…</p>
+<p>代码里使用 Redis 作为数据库实现了一种 idpKey 的存储策略，Lua 脚本的语法并不难，难的是如何以 Redis 环境为基础进行调试，具体逻辑见 <code>RedisKeyStore</code>。</p>
 <h3 id="结果缓存-压缩"><a class="header-anchor" href="#结果缓存-压缩">¶</a>结果缓存+压缩</h3>
 <p>幂等性的定义中描述操作的多次执行只会产生一次副作用，这意味着每一次都可以得到相同的结果，为了在后续执行中可以返回第一次成功时产生的返回值，我们需要对结果进行缓存。<br>
 与缓存系统的交互一般通过 TCP 连接来传输，在代码中，我使用 Json 来序列化数据，保证数据的可读性，然后用 GZIP 算法来进行压缩，提升传输效率。</p>
-<h3 id="http-协议的幂等性"><a class="header-anchor" href="#http-协议的幂等性">¶</a>HTTP 协议的幂等性</h3>
-<p>根据协议规定，PUT 等方法天生具有幂等性的语义，因为 PUT 会覆盖数据而不是在原来数据的基础上增加，发一次和发多次请求某一资源应该会产生相同的副作用。<br>
-道理我们都懂，但是要在幂等检查中特别关注并忽略掉这些情况又不大适合，因为根据我看的大部分代码的感受而言，大家基本上不会特别严格地遵守 REST 协议（或者说风格？）：每个接口都讨论一遍怎么套用各 HTTP 方法来解释太影响效率，所以大不了读的就用 GET，写的就用 POST，以及链接中随意使用动词、返回状态码等。因此我认为不特地地根据 HTTP 方法进行过滤也没有关系。</p>
 <h2 id="三-耦合"><a class="header-anchor" href="#三-耦合">¶</a>三、耦合</h2>
+<h3 id="spring-aop"><a class="header-anchor" href="#spring-aop">¶</a>Spring AOP</h3>
+<p>幂等性检查的场景比较多，属于比较典型的横切关注点，适合采用 AOP 的方式进行简化。</p>
 <h3 id="多种-idpkey-生成方式"><a class="header-anchor" href="#多种-idpkey-生成方式">¶</a>多种 IdpKey 生成方式</h3>
 <p>正如之前提到的，IdpKey 的 ID 属性可以用 Tracing 组件的 SpanId 来代替，是因为一般链路追踪组件中， 在每次重试时附带的 SpanId 都是同一个，当然是否合适还是要看具体的实现。</p>
 <h3 id="多种-idpkey-保存方式"><a class="header-anchor" href="#多种-idpkey-保存方式">¶</a>多种 IdpKey 保存方式</h3>
@@ -549,8 +550,8 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
 <h3 id="为什么是-50-100-200"><a class="header-anchor" href="#为什么是-50-100-200">¶</a>为什么是 50、100、200</h3>
 <p>BlockingIdpChecker 中在发现存在其他线程正在执行该 IdpKey 对应的请求时，会阻塞，其实是每隔 50ms、100ms、200ms 轮询数据库，使用这几个值的原因是我在实际中发现大部分接口都能在 50ms 内“见分晓”（要么执行成功要么抛出异常），部分比较重量级的接口基本也能在 200ms 内执行完毕。</p>
 <h3 id="为什么使用-lua-脚本-rediskeystore"><a class="header-anchor" href="#为什么使用-lua-脚本-rediskeystore">¶</a>为什么使用 Lua 脚本（RedisKeyStore）</h3>
-<p>Redis 自带的命令很多，但还是不能覆盖所有的使用场景，比如我在代码里需要实现“putIfAbsent + expire + 返回覆盖前的值”的逻辑就无法<br>
-待定…</p>
+<p>Redis 自带的命令很多，但还是不能覆盖所有的使用场景，比如我在代码里需要实现“putIfAbsent + expire + 返回覆盖前的值”的逻辑就无法通过原生命令来实现。<br>
+其实除了 Lua 脚本，还可以通过<strong>watch</strong>机制（类似 ZooKeeper 中的 Watcher）实现乐观锁来取代，优点是简单、不需要维护 lua 代码，但缺点是需要轮询、效率更低。</p>
 <h3 id="redis-内置-lua-脚本的调试方法"><a class="header-anchor" href="#redis-内置-lua-脚本的调试方法">¶</a>Redis 内置 Lua 脚本的调试方法</h3>
 <p><a href="https://redis.io/topics/ldb" target="_blank" rel="noopener">Redis Lua scripts debugger</a><br>
 待定…</p>
@@ -559,6 +560,8 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
 <p>待定…</p>
 <h3 id="性能测试-压测"><a class="header-anchor" href="#性能测试-压测">¶</a>性能测试（压测）</h3>
 <p>待定…</p>
+<h2 id="六-监控"><a class="header-anchor" href="#六-监控">¶</a>六、监控</h2>
+<p>待定</p>
 
       
     </div>
@@ -740,7 +743,7 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#〇-初衷"><span class="nav-number">1.</span> <span class="nav-text">¶〇、初衷</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一-使用时机"><span class="nav-number">2.</span> <span class="nav-text">¶一、使用时机</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#服务-api"><span class="nav-number">2.1.</span> <span class="nav-text">¶服务 API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#web-api"><span class="nav-number">2.2.</span> <span class="nav-text">¶WEB API</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-设计思路"><span class="nav-number">3.</span> <span class="nav-text">¶二、设计思路</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何标识一次请求"><span class="nav-number">3.1.</span> <span class="nav-text">¶如何标识一次请求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#接口执行状态"><span class="nav-number">3.2.</span> <span class="nav-text">¶接口执行状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#blockingidpchecker-和-nonblockingidpchecker"><span class="nav-number">3.3.</span> <span class="nav-text">¶BlockingIdpChecker 和 NonblockingIdpChecker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异常处理"><span class="nav-number">3.4.</span> <span class="nav-text">¶异常处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sql-数据库"><span class="nav-number">3.5.</span> <span class="nav-text">¶SQL 数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kv-数据库"><span class="nav-number">3.6.</span> <span class="nav-text">¶KV 数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#结果缓存-压缩"><span class="nav-number">3.7.</span> <span class="nav-text">¶结果缓存+压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#http-协议的幂等性"><span class="nav-number">3.8.</span> <span class="nav-text">¶HTTP 协议的幂等性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-耦合"><span class="nav-number">4.</span> <span class="nav-text">¶三、耦合</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#多种-idpkey-生成方式"><span class="nav-number">4.1.</span> <span class="nav-text">¶多种 IdpKey 生成方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多种-idpkey-保存方式"><span class="nav-number">4.2.</span> <span class="nav-text">¶多种 IdpKey 保存方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#与-tracing-组件如何配合"><span class="nav-number">4.3.</span> <span class="nav-text">¶与 Tracing 组件如何配合</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-并发控制"><span class="nav-number">5.</span> <span class="nav-text">¶四、并发控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么使用行锁-version-sqlkeystore"><span class="nav-number">5.1.</span> <span class="nav-text">¶为什么使用行锁+version（SQLKeyStore）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#隔离性及可能导致的安全问题"><span class="nav-number">5.2.</span> <span class="nav-text">¶隔离性及可能导致的安全问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么是-50-100-200"><span class="nav-number">5.3.</span> <span class="nav-text">¶为什么是 50、100、200</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么使用-lua-脚本-rediskeystore"><span class="nav-number">5.4.</span> <span class="nav-text">¶为什么使用 Lua 脚本（RedisKeyStore）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-内置-lua-脚本的调试方法"><span class="nav-number">5.5.</span> <span class="nav-text">¶Redis 内置 Lua 脚本的调试方法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-测试"><span class="nav-number">6.</span> <span class="nav-text">¶五、测试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发测试"><span class="nav-number">6.1.</span> <span class="nav-text">¶并发测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#性能测试-压测"><span class="nav-number">6.2.</span> <span class="nav-text">¶性能测试（压测）</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#〇-初衷"><span class="nav-number">1.</span> <span class="nav-text">¶〇、初衷</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一-使用时机"><span class="nav-number">2.</span> <span class="nav-text">¶一、使用时机</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#服务-api"><span class="nav-number">2.1.</span> <span class="nav-text">¶服务 API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#http-协议的幂等性"><span class="nav-number">2.2.</span> <span class="nav-text">¶HTTP 协议的幂等性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#web-api"><span class="nav-number">2.3.</span> <span class="nav-text">¶WEB API</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-设计思路"><span class="nav-number">3.</span> <span class="nav-text">¶二、设计思路</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何标识一次请求"><span class="nav-number">3.1.</span> <span class="nav-text">¶如何标识一次请求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#接口执行状态"><span class="nav-number">3.2.</span> <span class="nav-text">¶接口执行状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#blockingidpchecker-和-nonblockingidpchecker"><span class="nav-number">3.3.</span> <span class="nav-text">¶BlockingIdpChecker 和 NonblockingIdpChecker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异常处理"><span class="nav-number">3.4.</span> <span class="nav-text">¶异常处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sql-数据库"><span class="nav-number">3.5.</span> <span class="nav-text">¶SQL 数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kv-数据库"><span class="nav-number">3.6.</span> <span class="nav-text">¶KV 数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#结果缓存-压缩"><span class="nav-number">3.7.</span> <span class="nav-text">¶结果缓存+压缩</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-耦合"><span class="nav-number">4.</span> <span class="nav-text">¶三、耦合</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#spring-aop"><span class="nav-number">4.1.</span> <span class="nav-text">¶Spring AOP</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多种-idpkey-生成方式"><span class="nav-number">4.2.</span> <span class="nav-text">¶多种 IdpKey 生成方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多种-idpkey-保存方式"><span class="nav-number">4.3.</span> <span class="nav-text">¶多种 IdpKey 保存方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#与-tracing-组件如何配合"><span class="nav-number">4.4.</span> <span class="nav-text">¶与 Tracing 组件如何配合</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-并发控制"><span class="nav-number">5.</span> <span class="nav-text">¶四、并发控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么使用行锁-version-sqlkeystore"><span class="nav-number">5.1.</span> <span class="nav-text">¶为什么使用行锁+version（SQLKeyStore）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#隔离性及可能导致的安全问题"><span class="nav-number">5.2.</span> <span class="nav-text">¶隔离性及可能导致的安全问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么是-50-100-200"><span class="nav-number">5.3.</span> <span class="nav-text">¶为什么是 50、100、200</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么使用-lua-脚本-rediskeystore"><span class="nav-number">5.4.</span> <span class="nav-text">¶为什么使用 Lua 脚本（RedisKeyStore）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-内置-lua-脚本的调试方法"><span class="nav-number">5.5.</span> <span class="nav-text">¶Redis 内置 Lua 脚本的调试方法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-测试"><span class="nav-number">6.</span> <span class="nav-text">¶五、测试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发测试"><span class="nav-number">6.1.</span> <span class="nav-text">¶并发测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#性能测试-压测"><span class="nav-number">6.2.</span> <span class="nav-text">¶性能测试（压测）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六-监控"><span class="nav-number">7.</span> <span class="nav-text">¶六、监控</span></a></li></ol></div>
             
 
           </div>
@@ -994,5 +997,5 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
   
 
 
-<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"modle":"wanko","pluginModelPath":"assets/","mobile":{"show":false},"display":{"position":"left","width":150,"height":300},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</body>
 </html>
