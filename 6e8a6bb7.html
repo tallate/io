@@ -79,23 +79,23 @@
 
 
 
-<meta name="description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  预热  Nginx 中的限流  基于 Redis 的分布式限">
+<meta name="description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  Nginx 中的限流  基于 Redis 的分布式限流  基">
 <meta name="keywords" content="分布式系统">
 <meta property="og:type" content="article">
 <meta property="og:title" content="实现一个分布式限流器">
 <meta property="og:url" content="https://tallate.github.io/6e8a6bb7.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  预热  Nginx 中的限流  基于 Redis 的分布式限">
+<meta property="og:description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  Nginx 中的限流  基于 Redis 的分布式限流  基">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/分布式限流器示意图.png">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/ResourcePool.png">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/LeakyBucket.png">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/TokenBucket.png">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/SlidingWindow.png">
-<meta property="og:updated_time" content="2019-03-10T16:12:30.624Z">
+<meta property="og:updated_time" content="2019-03-11T17:48:52.051Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现一个分布式限流器">
-<meta name="twitter:description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  预热  Nginx 中的限流  基于 Redis 的分布式限">
+<meta name="twitter:description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  Nginx 中的限流  基于 Redis 的分布式限流  基">
 <meta name="twitter:image" content="http://47.88.24.11/实现一个分布式限流器/分布式限流器示意图.png">
 
 
@@ -364,7 +364,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.3k 字
+                  4k 字
                 </span>
               
 
@@ -380,7 +380,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  11 分钟
+                  13 分钟
                 </span>
               
             </div>
@@ -408,7 +408,6 @@
 <li style="list-style: none"><input type="checkbox" checked> SlidingWindow</li>
 <li style="list-style: none"><input type="checkbox"> Counter</li>
 <li style="list-style: none"><input type="checkbox"> Semaphore</li>
-<li style="list-style: none"><input type="checkbox" checked> 预热</li>
 <li style="list-style: none"><input type="checkbox"> Nginx 中的限流</li>
 <li style="list-style: none"><input type="checkbox"> 基于 Redis 的分布式限流</li>
 <li style="list-style: none"><input type="checkbox"> 基于 服务发现 的分布式限流</li>
@@ -417,7 +416,12 @@
 <li style="list-style: none"><input type="checkbox"> 监控</li>
 </ul>
 <a id="more"></a>
-<h2 id="一、初衷"><a href="#一、初衷" class="headerlink" title="一、初衷"></a>一、初衷</h2><h3 id="限流使用场景"><a href="#限流使用场景" class="headerlink" title="限流使用场景"></a>限流使用场景</h3><p>限流的目的是通过对并发请求进行限速从而保护后面的业务系统，一旦达到限制速率后面就可以采取拒绝、排队、等待、降级等策略。<br>限流没有具体的应用场景，可以说只要有高并发就会有限流的用武之地（类似的还有缓存、降级等）。</p>
+<h2 id="一、初衷"><a href="#一、初衷" class="headerlink" title="一、初衷"></a>一、初衷</h2><h3 id="限流使用场景"><a href="#限流使用场景" class="headerlink" title="限流使用场景"></a>限流使用场景</h3><p>限流的目的是通过对并发请求进行限速从而保护后面的业务系统，一旦达到限制速率后面就可以采取拒绝、排队、等待、降级等策略。<br>限流没有具体的应用场景，可以说只要有高并发就会有限流的用武之地（类似的还有缓存、降级等）。还有一些对安全敏感的场景，比如：</p>
+<ol>
+<li>有人想暴力碰撞网站的用户密码；</li>
+<li>有人想攻击某个非常耗费资源的接口；</li>
+<li>有人想从某个接口大量抓取数据。</li>
+</ol>
 <h3 id="现成方案存在的缺陷"><a href="#现成方案存在的缺陷" class="headerlink" title="现成方案存在的缺陷"></a>现成方案存在的缺陷</h3><p>Guava 内置了一个限流器 RateLimiter ，但是它只能提供单机环境，如果提供同一接口的服务实例变多了或者变少了，流量总量也会相应改变，这样严格意义上流量其实是没有限制住的。<br>或者，借助 Redis 来实现分布式系统内的限流， Redis 记录单位时间内的请求数，只有未超过阈值的情况下才允许执行，但是这种方案下，每次请求都需要额外访问一次 Redis ，非常浪费时间。<br>在了解限流器实现算法的基础上，其实可以和服务发现组件进行配合实现一种分布式限流器，思路如下图：<br><img src="http://47.88.24.11/实现一个分布式限流器/分布式限流器示意图.png" alt="分布式限流器示意图" title="分布式限流器示意图"><br>服务实例数量变动的时候，均衡每个实例内的限流器流量大小。</p>
 <p>### </p>
 <h2 id="二、算法"><a href="#二、算法" class="headerlink" title="二、算法"></a>二、算法</h2><p>常见的经典限流算法有两种：漏桶算法和令牌桶算法，在某些情况下也可以采取更简单的滑动窗口算法。这几种算法描述的都是单位时间内允许通过的流量，并不关注调用什么时候结束，换句话说，它们并不能限制并发度，如果对并发量有限制，可以转为采取类似信号量（Semaphore）的实现方式。</p>
@@ -441,6 +445,7 @@
 <li><code>TRAFFIC_SHAPING</code> ， <code>sleep</code> 至令牌足够的时间点；</li>
 <li><code>TRAFFIC_POLICING</code> ，直接放弃该任务。 </li>
 </ul>
+<p>令牌桶与漏桶最大的区别是令牌桶能缓存令牌，以应对网络中的突发流量，可以看作网络中的缓存。并且这个令牌的积累过程是随着时间慢慢增加的，可以看作一种预热的过程——服务器在刚启动时总是会因为处理一些初始化任务而非常繁忙。</p>
 <h3 id="Counter（计数器）"><a href="#Counter（计数器）" class="headerlink" title="Counter（计数器）"></a>Counter（计数器）</h3><p>计数器方法属于令牌桶的简化版。<br>待定…</p>
 <h3 id="SlidingWindow（滑动窗口算法）"><a href="#SlidingWindow（滑动窗口算法）" class="headerlink" title="SlidingWindow（滑动窗口算法）"></a>SlidingWindow（滑动窗口算法）</h3><p><img src="http://47.88.24.11/实现一个分布式限流器/SlidingWindow.png" alt="SlidingWindow示意图" title="SlidingWindow示意图"><br>待定…</p>
 <h3 id="Semaphore（信号量算法）"><a href="#Semaphore（信号量算法）" class="headerlink" title="Semaphore（信号量算法）"></a>Semaphore（信号量算法）</h3><p>信号量不同于计数器，在结束请求后需要把计数器“加回来”。限流器限制的是<strong>吞吐率</strong>（单位时间内请求数或者流量），而 Semaphore 限制的则是<strong>并发度</strong>，因为同时正在执行的请求数是由信号量的初始信号数决定的，我们可以利用这一点来实现并发数的精确控制。<br>待定…</p>
@@ -452,8 +457,8 @@
 <li>需要根据业务需求进行设计，比如一个接口是热点，需要进行限流以提高整体的吞吐率，但是该接口有流量高峰期，可以考虑在这段时间内临时提高限流器的阈值，避免这些请求直接被丢弃了；</li>
 <li>另外，需要考虑积压的请求数、即时系统负载（CPU、内存、网络连接数、数据库连接数）、单个请求处理时长（考虑绝大部分系统都是 IO 密集型）等参数来考虑。<br>待定…</li>
 </ul>
-<h3 id="预热"><a href="#预热" class="headerlink" title="预热"></a>预热</h3><p>Guava 中的 SmoothWarmingUpRateLimiter 提供了<strong>预热</strong>的功能，预热的功能主要是为了应对突发的流量：在没有预热的情况下，如果突发的大量流量直接打到后台服务器，如果后台服务的缓存陈旧、DB 或其他 IO 操作耗时，就有可能拖垮后台服务。</p>
-<p>待定…</p>
+<h3 id="预热"><a href="#预热" class="headerlink" title="预热"></a>预热</h3><p>Guava -RateLimiter 中的 SmoothWarmingUp 提供了<strong>预热</strong>的功能，预热的功能主要是为了应对突发的流量：在没有预热的情况下，如果突发的大量流量直接打到后台服务器，如果后台服务的缓存陈旧、DB 或其他 IO 操作耗时，就有可能拖垮后台服务。预热属性可以通过设置 warmupPeriod 参数来实现。</p>
+<p>另外RateLimiter还允许选择SmoothBursty或SmoothWarmingUp策略，举个例子：<br>比如当前桶中有5个令牌，此时来了一个新请求需要消耗9个令牌，那么它需要等待生成4个令牌的时间（SmoothBursty），或等待9个令牌的时间（SmoothWarmingUp）。<br>为了简单起见，我在代码里采用的是较简单的实现，令牌的添加速度总是均匀的，没有预热的过程，且没有阈值的限制，当桶中令牌数不足以承载请求时会等待直到足够的令牌被添加进来（或者直接抛出异常）。</p>
 <h3 id="限流维度"><a href="#限流维度" class="headerlink" title="限流维度"></a>限流维度</h3><p>这属于应用的范畴，应该由限流器的使用者来关注，即限流可以在不同维度执行，比如：</p>
 <ol>
 <li>对请求的 URL 进行限流；</li>
@@ -496,12 +501,16 @@
 <blockquote>
 <p>Web 服务器不会因为来了多少个请求就建立多少个连接，一个用户可能会发出多个请求，内核会使用同一个文件描述符来处理。</p>
 </blockquote>
+<h3 id="Little’s-Law（小定律）"><a href="#Little’s-Law（小定律）" class="headerlink" title="Little’s Law（小定律）"></a>Little’s Law（小定律）</h3><p>Little’s Law 是排队论中的一个定律：一个系统中顾客的长期平均数量L等于顾客的长期平均到达速率λ乘以顾客在系统中平均花费的时间W。用公式表示为：<br><code>L = λ W</code><br>虽然这个定律看起来很简单，但是这是一个非常有名的结果，因为这种关系“不受到达过程的分布，服务分布，服务顺序，或其他任何因素的影响”。这个结果适用于任何系统，特别是适用于系统内的系统。唯一的要求是系统必须是<strong>稳定</strong>的<strong>非抢占式</strong>的。<br>因为这个公式是在普遍意义上成立的，因此也可以在Web服务中应用，用于定性描述平均响应时间W、平均请求数L、平均吞吐率λ之间的关系。<br>但是要注意的是<strong>稳定</strong>的定义，根据Wiki上的定义，如果<strong>到达速度超过离开速度就代表是一个不稳定的系统，这会造成等待的顾客数量逐渐增加到无穷大</strong>。对</p>
 <h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
 <li><a href="https://www.cnblogs.com/haoxinyue/p/6792309.html" target="_blank" rel="noopener">谈谈高并发系统的限流</a></li>
 <li><a href="https://blog.csdn.net/tianyaleixiaowu/article/details/74942405" target="_blank" rel="noopener">限流算法之漏桶算法、令牌桶算法</a></li>
 <li><a href="https://segmentfault.com/a/1190000012875897?utm_source=tag-newest" target="_blank" rel="noopener">Guava RateLimiter 源码解析</a></li>
+<li><a href="https://tech.kujiale.com/ratelimiter-architecture/" target="_blank" rel="noopener">RateLimiter解析(一) ——设计哲学与快速使用</a></li>
 <li><a href="https://blog.csdn.net/sunlihuo/article/details/79700225" target="_blank" rel="noopener">redis+lua 实现分布式令牌桶，高并发限流</a></li>
 <li><a href="http://doc.redisfans.com/string/incr.html" target="_blank" rel="noopener">Redis 命令参考 - INCR key</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Little%27s_law" target="_blank" rel="noopener">Little’s law</a></li>
+<li><a href="https://blog.devopszen.com/queue-theory" target="_blank" rel="noopener">排队论在架构的应用：对服务延迟、稳定性的影响</a></li>
 </ol>
 
       
@@ -680,7 +689,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、初衷"><span class="nav-number">1.</span> <span class="nav-text">一、初衷</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#限流使用场景"><span class="nav-number">1.1.</span> <span class="nav-text">限流使用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#现成方案存在的缺陷"><span class="nav-number">1.2.</span> <span class="nav-text">现成方案存在的缺陷</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、算法"><span class="nav-number">2.</span> <span class="nav-text">二、算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#LeakyBucket（漏桶算法）"><span class="nav-number">2.1.</span> <span class="nav-text">LeakyBucket（漏桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TokenBucket（令牌桶算法）"><span class="nav-number">2.2.</span> <span class="nav-text">TokenBucket（令牌桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Counter（计数器）"><span class="nav-number">2.3.</span> <span class="nav-text">Counter（计数器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SlidingWindow（滑动窗口算法）"><span class="nav-number">2.4.</span> <span class="nav-text">SlidingWindow（滑动窗口算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Semaphore（信号量算法）"><span class="nav-number">2.5.</span> <span class="nav-text">Semaphore（信号量算法）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、并发安全"><span class="nav-number">3.</span> <span class="nav-text">三、并发安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-AtomicXxx-而不是-Lock-或-synchronized"><span class="nav-number">3.1.</span> <span class="nav-text">使用 AtomicXxx 而不是 Lock 或 synchronized</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最大流量限制"><span class="nav-number">3.2.</span> <span class="nav-text">最大流量限制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、-More-限流细节"><span class="nav-number">4.</span> <span class="nav-text">四、 More 限流细节</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#动态限流"><span class="nav-number">4.1.</span> <span class="nav-text">动态限流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预热"><span class="nav-number">4.2.</span> <span class="nav-text">预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#限流维度"><span class="nav-number">4.3.</span> <span class="nav-text">限流维度</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、分布式限流"><span class="nav-number">5.</span> <span class="nav-text">五、分布式限流</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基于-Redis-的限流器"><span class="nav-number">5.1.</span> <span class="nav-text">基于 Redis 的限流器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Push-Or-Pull"><span class="nav-number">5.2.</span> <span class="nav-text">Push Or Pull</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#强一致性-Or-弱一致性"><span class="nav-number">5.3.</span> <span class="nav-text">强一致性 Or 弱一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现流量的分摊"><span class="nav-number">5.4.</span> <span class="nav-text">如何实现流量的分摊</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#时间同步"><span class="nav-number">5.5.</span> <span class="nav-text">时间同步</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务上线"><span class="nav-number">5.6.</span> <span class="nav-text">如何实现服务上线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务下线"><span class="nav-number">5.7.</span> <span class="nav-text">如何实现服务下线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#代码中的实现"><span class="nav-number">5.8.</span> <span class="nav-text">代码中的实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六、测试"><span class="nav-number">6.</span> <span class="nav-text">六、测试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发测试"><span class="nav-number">6.1.</span> <span class="nav-text">并发测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#压力测试"><span class="nav-number">6.2.</span> <span class="nav-text">压力测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发度评估"><span class="nav-number">6.3.</span> <span class="nav-text">并发度评估</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、初衷"><span class="nav-number">1.</span> <span class="nav-text">一、初衷</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#限流使用场景"><span class="nav-number">1.1.</span> <span class="nav-text">限流使用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#现成方案存在的缺陷"><span class="nav-number">1.2.</span> <span class="nav-text">现成方案存在的缺陷</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、算法"><span class="nav-number">2.</span> <span class="nav-text">二、算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#LeakyBucket（漏桶算法）"><span class="nav-number">2.1.</span> <span class="nav-text">LeakyBucket（漏桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TokenBucket（令牌桶算法）"><span class="nav-number">2.2.</span> <span class="nav-text">TokenBucket（令牌桶算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Counter（计数器）"><span class="nav-number">2.3.</span> <span class="nav-text">Counter（计数器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SlidingWindow（滑动窗口算法）"><span class="nav-number">2.4.</span> <span class="nav-text">SlidingWindow（滑动窗口算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Semaphore（信号量算法）"><span class="nav-number">2.5.</span> <span class="nav-text">Semaphore（信号量算法）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、并发安全"><span class="nav-number">3.</span> <span class="nav-text">三、并发安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-AtomicXxx-而不是-Lock-或-synchronized"><span class="nav-number">3.1.</span> <span class="nav-text">使用 AtomicXxx 而不是 Lock 或 synchronized</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最大流量限制"><span class="nav-number">3.2.</span> <span class="nav-text">最大流量限制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、-More-限流细节"><span class="nav-number">4.</span> <span class="nav-text">四、 More 限流细节</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#动态限流"><span class="nav-number">4.1.</span> <span class="nav-text">动态限流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预热"><span class="nav-number">4.2.</span> <span class="nav-text">预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#限流维度"><span class="nav-number">4.3.</span> <span class="nav-text">限流维度</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、分布式限流"><span class="nav-number">5.</span> <span class="nav-text">五、分布式限流</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基于-Redis-的限流器"><span class="nav-number">5.1.</span> <span class="nav-text">基于 Redis 的限流器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Push-Or-Pull"><span class="nav-number">5.2.</span> <span class="nav-text">Push Or Pull</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#强一致性-Or-弱一致性"><span class="nav-number">5.3.</span> <span class="nav-text">强一致性 Or 弱一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现流量的分摊"><span class="nav-number">5.4.</span> <span class="nav-text">如何实现流量的分摊</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#时间同步"><span class="nav-number">5.5.</span> <span class="nav-text">时间同步</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务上线"><span class="nav-number">5.6.</span> <span class="nav-text">如何实现服务上线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现服务下线"><span class="nav-number">5.7.</span> <span class="nav-text">如何实现服务下线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#代码中的实现"><span class="nav-number">5.8.</span> <span class="nav-text">代码中的实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六、测试"><span class="nav-number">6.</span> <span class="nav-text">六、测试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发测试"><span class="nav-number">6.1.</span> <span class="nav-text">并发测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#压力测试"><span class="nav-number">6.2.</span> <span class="nav-text">压力测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发度评估"><span class="nav-number">6.3.</span> <span class="nav-text">并发度评估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Little’s-Law（小定律）"><span class="nav-number">6.4.</span> <span class="nav-text">Little’s Law（小定律）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>
