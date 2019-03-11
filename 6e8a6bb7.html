@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/LeakyBucket.png">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/TokenBucket.png">
 <meta property="og:image" content="http://47.88.24.11/实现一个分布式限流器/SlidingWindow.png">
-<meta property="og:updated_time" content="2019-03-11T18:02:21.048Z">
+<meta property="og:updated_time" content="2019-03-11T18:08:32.992Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现一个分布式限流器">
 <meta name="twitter:description" content="限流器可以用于限制打入系统的流量或限制系统的对外请求频率，这种想法有点类似 TCP 中的拥塞控制。练手项目，解决项目中的限流需求，代码地址 :point_right: Github - TRateLimiter。   LeakyBucket  TokenBucket  SlidingWindow  Counter  Semaphore  动态限流  Nginx 中的限流  HAProxy 中的限流">
@@ -424,7 +424,6 @@
 <li>有人想从某个接口大量抓取数据。</li>
 </ol>
 <h3 id="现成方案存在的缺陷"><a href="#现成方案存在的缺陷" class="headerlink" title="现成方案存在的缺陷"></a>现成方案存在的缺陷</h3><p>Guava 内置了一个限流器 RateLimiter ，但是它只能提供单机环境，如果提供同一接口的服务实例变多了或者变少了，流量总量也会相应改变，这样严格意义上流量其实是没有限制住的。<br>或者，借助 Redis 来实现分布式系统内的限流， Redis 记录单位时间内的请求数，只有未超过阈值的情况下才允许执行，但是这种方案下，每次请求都需要额外访问一次 Redis ，非常浪费时间。<br>在了解限流器实现算法的基础上，其实可以和服务发现组件进行配合实现一种分布式限流器，思路如下图：<br><img src="http://47.88.24.11/实现一个分布式限流器/分布式限流器示意图.png" alt="分布式限流器示意图" title="分布式限流器示意图"><br>服务实例数量变动的时候，均衡每个实例内的限流器流量大小。</p>
-<p>### </p>
 <h2 id="二、算法"><a href="#二、算法" class="headerlink" title="二、算法"></a>二、算法</h2><p>常见的经典限流算法有两种：漏桶算法和令牌桶算法，在某些情况下也可以采取更简单的滑动窗口算法。这几种算法描述的都是单位时间内允许通过的流量，并不关注调用什么时候结束，换句话说，它们并不能限制并发度，如果对并发量有限制，可以转为采取类似信号量（Semaphore）的实现方式。</p>
 <p>在描述实际的算法之前，先提一句我对限流器的抽象，我将其看作一个资源池，限流算法就像生产者消费者算法，只不过生产者是固定的时间，比如令牌桶就是每经过一段时间就向桶中放入一个单位的资源，而我们的目的就是限制服务器接口从中获取资源来处理自己的逻辑，示意图如下：<br><img src="http://47.88.24.11/实现一个分布式限流器/ResourcePool.png" alt="LeakyBucket示意图" title="ResourcePool示意图"></p>
 <h3 id="LeakyBucket（漏桶算法）"><a href="#LeakyBucket（漏桶算法）" class="headerlink" title="LeakyBucket（漏桶算法）"></a>LeakyBucket（漏桶算法）</h3><p><img src="http://47.88.24.11/实现一个分布式限流器/LeakyBucket.png" alt="LeakyBucket示意图" title="LeakyBucket示意图"></p>
@@ -459,7 +458,7 @@
 <li>另外，需要考虑积压的请求数、即时系统负载（CPU、内存、网络连接数、数据库连接数）、单个请求处理时长（考虑绝大部分系统都是 IO 密集型）等参数来考虑。<br>待定…</li>
 </ul>
 <h3 id="预热"><a href="#预热" class="headerlink" title="预热"></a>预热</h3><p>Guava -RateLimiter 中的 SmoothWarmingUp 提供了<strong>预热</strong>的功能，预热的功能主要是为了应对突发的流量：在没有预热的情况下，如果突发的大量流量直接打到后台服务器，如果后台服务的缓存陈旧、DB 或其他 IO 操作耗时，就有可能拖垮后台服务。预热属性可以通过设置 warmupPeriod 参数来实现。</p>
-<p>另外RateLimiter还允许选择SmoothBursty或SmoothWarmingUp策略，举个例子：<br>比如当前桶中有5个令牌，此时来了一个新请求需要消耗9个令牌，那么它需要等待生成4个令牌的时间（SmoothBursty），或等待9个令牌的时间（SmoothWarmingUp）。<br>为了简单起见，我在代码里采用的是较简单的实现，令牌的添加速度总是均匀的，没有预热的过程，且没有阈值的限制，当桶中令牌数不足以承载请求时会等待直到足够的令牌被添加进来（或者直接抛出异常）。</p>
+<p>另外 RateLimiter 还允许选择 SmoothBursty 或 SmoothWarmingUp 策略，举个例子：<br>比如当前桶中有 5 个令牌，此时来了一个新请求需要消耗 9 个令牌，那么它需要等待生成 4 个令牌的时间（SmoothBursty），或等待 9 个令牌的时间（SmoothWarmingUp）。<br>为了简单起见，我在代码里采用的是较简单的实现，令牌的添加速度总是均匀的，没有预热的过程，且没有阈值的限制，当桶中令牌数不足以承载请求时会等待直到足够的令牌被添加进来（或者直接抛出异常）。</p>
 <h3 id="限流维度"><a href="#限流维度" class="headerlink" title="限流维度"></a>限流维度</h3><p>这属于应用的范畴，应该由限流器的使用者来关注，即限流可以在不同维度执行，比如：</p>
 <ol>
 <li>对请求的 URL 进行限流；</li>
@@ -502,12 +501,12 @@
 <blockquote>
 <p>Web 服务器不会因为来了多少个请求就建立多少个连接，一个用户可能会发出多个请求，内核会使用同一个文件描述符来处理。</p>
 </blockquote>
-<h3 id="Little’s-Law（小定律）"><a href="#Little’s-Law（小定律）" class="headerlink" title="Little’s Law（小定律）"></a>Little’s Law（小定律）</h3><p>Little’s Law 是排队论中的一个定律：一个系统中顾客的长期平均数量L等于顾客的长期平均到达速率λ乘以顾客在系统中平均花费的时间W。用公式表示为：<br><code>L = λ W</code><br>虽然这个定律看起来很简单，但是这是一个非常有名的结果，因为这种关系“不受到达过程的分布，服务分布，服务顺序，或其他任何因素的影响”。这个结果适用于任何系统，特别是适用于系统内的系统。唯一的要求是系统必须是<strong>稳定</strong>的<strong>非抢占式</strong>的。<br>因为这个公式是在普遍意义上成立的，因此也可以在Web服务中应用，用于定性描述平均响应时间W、平均请求数L、平均吞吐率λ之间的关系。<br>但是要注意的是<strong>稳定</strong>的定义，根据Wiki上的定义，如果<strong>到达速度超过离开速度就代表是一个不稳定的系统，这会造成等待的顾客数量逐渐增加到无穷大</strong>。对</p>
+<h3 id="Little’s-Law（小定律）"><a href="#Little’s-Law（小定律）" class="headerlink" title="Little’s Law（小定律）"></a>Little’s Law（小定律）</h3><p>Little’s Law 是排队论中的一个定律：一个系统中顾客的长期平均数量 L 等于顾客的长期平均到达速率λ乘以顾客在系统中平均花费的时间 W。用公式表示为：<br><code>L = λ W</code><br>虽然这个定律看起来很简单，但是这是一个非常有名的结果，因为这种关系“不受到达过程的分布，服务分布，服务顺序，或其他任何因素的影响”。这个结果适用于任何系统，特别是适用于系统内的系统。唯一的要求是系统必须是<strong>稳定</strong>的<strong>非抢占式</strong>的。<br>因为这个公式是在普遍意义上成立的，因此也可以在 Web 服务中应用，用于定性描述平均响应时间 W、平均请求数 L、平均吞吐率λ之间的关系。<br>但是要注意的是<strong>稳定</strong>的定义，根据 Wiki 上的定义，如果<strong>到达速度超过离开速度就代表是一个不稳定的系统，这会造成等待的顾客数量逐渐增加到无穷大</strong>。对这种现象的定性描述需要深入研究排队论。</p>
 <h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
 <li><a href="https://www.cnblogs.com/haoxinyue/p/6792309.html" target="_blank" rel="noopener">谈谈高并发系统的限流</a></li>
 <li><a href="https://blog.csdn.net/tianyaleixiaowu/article/details/74942405" target="_blank" rel="noopener">限流算法之漏桶算法、令牌桶算法</a></li>
 <li><a href="https://segmentfault.com/a/1190000012875897?utm_source=tag-newest" target="_blank" rel="noopener">Guava RateLimiter 源码解析</a></li>
-<li><a href="https://tech.kujiale.com/ratelimiter-architecture/" target="_blank" rel="noopener">RateLimiter解析(一) ——设计哲学与快速使用</a></li>
+<li><a href="https://tech.kujiale.com/ratelimiter-architecture/" target="_blank" rel="noopener">RateLimiter 解析(一) ——设计哲学与快速使用</a></li>
 <li><a href="http://nginx.org/en/docs/http/ngx_http_limit_req_module.html" target="_blank" rel="noopener">Nginx Module ngx_http_limit_req_module</a></li>
 <li><a href="https://blog.serverfault.com/2010/08/26/1016491873/" target="_blank" rel="noopener">Better Rate Limiting For All with HAProxy</a></li>
 <li><a href="https://redis.io/commands/INCR#pattern-rate-limiter" target="_blank" rel="noopener">Redis INCR rate limiter</a></li>
