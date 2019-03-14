@@ -94,7 +94,7 @@
 <meta property="og:image" content="http://47.88.24.11/淘淘网络商城/搜索框.png">
 <meta property="og:image" content="http://47.88.24.11/淘淘网络商城/商品搜索结果.png">
 <meta property="og:image" content="http://47.88.24.11/淘淘网络商城/压力测试结果.png">
-<meta property="og:updated_time" content="2019-03-13T00:59:38.795Z">
+<meta property="og:updated_time" content="2019-03-13T15:42:44.675Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="淘淘网络商城">
 <meta name="twitter:description" content="前言该项目是 2017 年参加学院组织的实训项目期间同小组成员开发的，是一个简化版的电商项目。 涉及到的技术 掌握高并发站点的系统架构方法。 熟悉 linux 开发环境,掌握 tomcat、mysql 服务器集群的安装与配置。 理解 web 服务器的负载均衡原理,掌握配置方法。 掌握数据库主从复制,读写分离技术。 理解缓存原理,掌握缓存在程序开发的原理。 掌握 web 站点的动静分离技术。">
@@ -432,7 +432,7 @@
 </ol>
 <h3 id="系统设计"><a href="#系统设计" class="headerlink" title="系统设计"></a>系统设计</h3><ol>
 <li>总体设计<br>Portal 模块（门户），主要由静态的页面数据组成，网页中动态数据是由 AJAX 远程调用其他模块异步生成的；<br>Manager 模块（后台管理），主要负责对整个网站的商品的管理和网站内容的管理；<br>Middle 模块（数据中间件），主要目的是从数据库或者其他服务器获取数据，再使用 JSON 格式返回给 Portal；<br>Search 模块（搜索），为商品建立索引，然后在每次调用搜索接口后将搜索结果包装为 JSON 字符串传回；<br>Order 模块（订单），主要使用 Cookie 来保存订单，当要下单时将购物车中的记录保存到数据库；<br>SSO 模块（单点登录模块），使用一个 Redis 集群保存登录 token，实现单点登录。</li>
-<li><p>详细设计<br>①　功能模块设计<br>搜索子系统主要功能模块为搜索和更新索引，其功能划分如图 2 所示，其中搜索功能需要首先在 Solr 服务器上给每个商品添加索引，然后在用户访问前台的搜索框时提供商品列表，更新索引功能可以在每次将商品添加到数据库中的同时在 Solr 服务器上更新该商品的索引，从而可以在后台添加商品后用户就能马上在前台找到对应的商品记录。<br>②　类和对象设计<br>以 Search 功能主要涉及的类为例，如图 3 所示，这个系统是按照 MVC 框架设计的，其中前台模块的 ItemController 负责接收请求，具体的搜索任务交给 SearchService 执行，SearchService 调用了搜索模块的相应接口 ItemSearchController 的方法，搜索参数配置在 ItemSearchService 中进行，而具体的搜索功能由 ItemSearchDao 调用 SolrServer 的查询方法执行。<br><img src="http://47.88.24.11/淘淘网络商城/淘淘商城模块结构图.png" alt="X"><br>③　动态模型设计<br>Search 子系统中搜索功能的时序图如图 4 所示，，首先用户在首页搜索框中输入搜索条件，点击搜索按钮，此时预设的 AJAX 程序会以搜索条件为参数调用前台的接口，前台模拟 Http 请求调用 Search 模块的搜索服务，进行格式化和分页处理，以及添加一些参数，调用 Solr 服务器的搜索服务获取结果，再由 Portal 渲染到页面中，完成一次搜索过程。<br><img src="http://47.88.24.11/淘淘网络商城/Search功能时序图.png" alt="X"><br>④　算法设计<br>Search 子系统的主要功能是搜索，以下是调用 Solr 搜索服务的算法实现：<br> <code>`</code>javaplainplain<br>public SearchResult searchItem(SolrQuery solrQuery) throws SolrServerException {<br> //根据查询条件搜索索引库<br> QueryResponse response = solrServer.query(solrQuery);<br> //取商品列表<br> SolrDocumentList documentList = response.getResults();<br> //商品列表<br> List<item> itemList = new ArrayList&lt;&gt;();<br> for (SolrDocument solrDocument : documentList) {</item></p>
+<li><p>详细设计<br>①　功能模块设计<br>搜索子系统主要功能模块为搜索和更新索引，其功能划分如图 2 所示，其中搜索功能需要首先在 Solr 服务器上给每个商品添加索引，然后在用户访问前台的搜索框时提供商品列表，更新索引功能可以在每次将商品添加到数据库中的同时在 Solr 服务器上更新该商品的索引，从而可以在后台添加商品后用户就能马上在前台找到对应的商品记录。<br>②　类和对象设计<br>以 Search 功能主要涉及的类为例，如图 3 所示，这个系统是按照 MVC 框架设计的，其中前台模块的 ItemController 负责接收请求，具体的搜索任务交给 SearchService 执行，SearchService 调用了搜索模块的相应接口 ItemSearchController 的方法，搜索参数配置在 ItemSearchService 中进行，而具体的搜索功能由 ItemSearchDao 调用 SolrServer 的查询方法执行。<br><img src="http://47.88.24.11/淘淘网络商城/淘淘商城模块结构图.png" alt="X"><br>③　动态模型设计<br>Search 子系统中搜索功能的时序图如图 4 所示，，首先用户在首页搜索框中输入搜索条件，点击搜索按钮，此时预设的 AJAX 程序会以搜索条件为参数调用前台的接口，前台模拟 Http 请求调用 Search 模块的搜索服务，进行格式化和分页处理，以及添加一些参数，调用 Solr 服务器的搜索服务获取结果，再由 Portal 渲染到页面中，完成一次搜索过程。<br><img src="http://47.88.24.11/淘淘网络商城/Search功能时序图.png" alt="X"><br>④　算法设计<br>Search 子系统的主要功能是搜索，以下是调用 Solr 搜索服务的算法实现：<br> <code>`</code>javaplainplainplainplainplainplain<br>public SearchResult searchItem(SolrQuery solrQuery) throws SolrServerException {<br> //根据查询条件搜索索引库<br> QueryResponse response = solrServer.query(solrQuery);<br> //取商品列表<br> SolrDocumentList documentList = response.getResults();<br> //商品列表<br> List<item> itemList = new ArrayList&lt;&gt;();<br> for (SolrDocument solrDocument : documentList) {</item></p>
 <pre><code>Item item = new Item();
 item.setId(Long.parseLong((String) solrDocument.get(&quot;id&quot;)));
 //取高亮显示
@@ -450,20 +450,20 @@ item.setSell_point((String) solrDocument.get(&quot;item_sell_point&quot;));
 item.setImage((String) solrDocument.get(&quot;item_image&quot;));
 item.setCategory_name((String) solrDocument.get(&quot;item_category_name&quot;));
 
-itemList.add(item);plainplainplainplainplainplain
+itemList.add(item);plainplainplainplainplainplainplain
 </code></pre><p> }<br> SearchResult result = new SearchResult();<br> //商品列表<br> result.setItemList(itemList);<br> //总记录数据<br> result.setRecordCount(documentList.getNumFound());<br> System.out.println(result.getRecordCount());<br> return result;<br>}<br> <code>`</code>plainplainplainplainplain<br>⑤　数据库设计<br>Search 子系统主要使用到的表的 ER 图如图 7 所示。其中最重要的表是 tb_item 表，它的每条记录表示一个商品，search 模块需要使用该表的 id、item_title、item_sell_point 等属性建立索引。<br><img src="http://47.88.24.11/淘淘网络商城/数据库表结构.png" alt="X"></p>
 </li>
 </ol>
 <h3 id="系统实现"><a href="#系统实现" class="headerlink" title="系统实现"></a>系统实现</h3><ol>
-<li><p>Search 模块的运行过程<br>①　首先由 portal 模块的 ItemController 接收到请求，将请求关键字转码并调用 SearchService 的方法<br> <code>javaplainplain
+<li><p>Search 模块的运行过程<br>①　首先由 portal 模块的 ItemController 接收到请求，将请求关键字转码并调用 SearchService 的方法<br> <code>javaplainplainplainplainplain
 queryString = new String(queryString.getBytes(&quot;ISO8859-1&quot;), &quot;UTF-8&quot;);
-SearchResult searchResult = searchService.searchItemList(queryString, page);</code>plainplainplainplain<br>②　然后在 portal 模块的 SearchService 中构造参数列表并将请求发送给 search 模块处理<br> <code>javaplainplainplain
+SearchResult searchResult = searchService.searchItemList(queryString, page);</code>plainplainplainplainplain<br>②　然后在 portal 模块的 SearchService 中构造参数列表并将请求发送给 search 模块处理<br> <code>javaplainplainplain
 //查询参数
 Map&lt;String, String&gt; param = new HashMap&lt;&gt;();
 param.put(&quot;kw&quot;, queryString);
 param.put(&quot;page&quot;, page==null?&quot;1&quot;:page.toString());
 //调用 search 提供的搜索服务
-String resultString = MHttpClientUtil.mdoGet(SEARCH_BASE_URL, param);</code>plainplainplainplainplainplainplainplain<br>③　search 模块的 ItemSearchController 同样先检验传递过来的参数是否有效，再调用 ItemSearchService 的服务<br> <code>javaplainplainplainplainplainplainplain
+String resultString = MHttpClientUtil.mdoGet(SEARCH_BASE_URL, param);</code>plainplainplainplainplainplainplainplainplainplain<br>③　search 模块的 ItemSearchController 同样先检验传递过来的参数是否有效，再调用 ItemSearchService 的服务<br> <code>javaplainplainplainplainplainplainplainplainplain
 if (StringUtils.isBlank(queryString)) {
  return MResult.build(400, &quot;查询条件是必须的参数&quot;);
 }
@@ -493,14 +493,14 @@ solrQuery.setHighlightSimplePost(&quot;&lt;/em&gt;&quot;);
 //设置默认搜索域
 solrQuery.set(&quot;df&quot;, &quot;item_keywords&quot;);
 //执行查询
-SearchResult result = itemSearchDao.searchItem(solrQuery);</code>plainplain<br>⑤　ItemSearchDao 封装了对 Solr 服务器的访问逻辑，主要过程是发送查询请求，获取 Solr 文档对象，从中解析出结果集合<br> <code>`</code>javaplainplainplainplainplain<br>//根据查询条件搜索索引库<br>QueryResponse response = solrServer.query(solrQuery);<br>//取商品列表<br>SolrDocumentList documentList = response.getResults();<br>//商品列表<br>List<item> itemList = new ArrayList&lt;&gt;();<br>for (SolrDocument solrDocument : documentList) {<br> Item item = new Item();<br> item.setId(Long.parseLong((String) solrDocument.get(“id”)));<br> //取高亮显示<br> Map&lt;String, Map&lt;String, List<string>&gt;&gt; highlighting = response.getHighlighting();<br> List<string> list = highlighting.get(solrDocument.get(“id”)).get(“item_title”);<br> String title = “”;<br> if (null != list &amp;&amp; !list.isEmpty()) {</string></string></item></p>
+SearchResult result = itemSearchDao.searchItem(solrQuery);</code>plainplainplainplain<br>⑤　ItemSearchDao 封装了对 Solr 服务器的访问逻辑，主要过程是发送查询请求，获取 Solr 文档对象，从中解析出结果集合<br> <code>`</code>javaplainplainplainplainplainplainplain<br>//根据查询条件搜索索引库<br>QueryResponse response = solrServer.query(solrQuery);<br>//取商品列表<br>SolrDocumentList documentList = response.getResults();<br>//商品列表<br>List<item> itemList = new ArrayList&lt;&gt;();<br>for (SolrDocument solrDocument : documentList) {<br> Item item = new Item();<br> item.setId(Long.parseLong((String) solrDocument.get(“id”)));<br> //取高亮显示<br> Map&lt;String, Map&lt;String, List<string>&gt;&gt; highlighting = response.getHighlighting();<br> List<string> list = highlighting.get(solrDocument.get(“id”)).get(“item_title”);<br> String title = “”;<br> if (null != list &amp;&amp; !list.isEmpty()) {</string></string></item></p>
 <pre><code>title = list.get(0);
 </code></pre><p> } else {</p>
 <pre><code>title = (String) solrDocument.get(&quot;item_title&quot;);
 </code></pre><p> }<br> item.setTitle(title);<br> item.setPrice((Long) solrDocument.get(“item_price”));<br> item.setSell_point((String) solrDocument.get(“item_sell_point”));<br> item.setImage((String) solrDocument.get(“item_image”));<br> item.setCategory_name((String) solrDocument.get(“item_category_name”));</p>
-<p> itemList.add(item);plainplainplain<br>}<br>SearchResult result = new SearchResult();<br>//商品列表<br>result.setItemList(itemList);<br>//总记录数据<br>result.setRecordCount(documentList.getNumFound());<br>System.out.println(result.getRecordCount());<br>return result;<br> <code>plain
+<p> itemList.add(item);plainplainplainplain<br>}<br>SearchResult result = new SearchResult();<br>//商品列表<br>result.setItemList(itemList);<br>//总记录数据<br>result.setRecordCount(documentList.getNumFound());<br>System.out.println(result.getRecordCount());<br>return result;<br> <code>plain
 ⑥　返回，按上面的顺序，将结果返回到 portal 模块的控制器 ItemController 中去
-⑦　最后 portal 模块的 ItemController 将结果渲染到相应的页面中去</code>javaplain<br>model.addAttribute(“itemList”, searchResult.getItemList());<br>model.addAttribute(“query”, queryString);<br>model.addAttribute(“totalPages”, searchResult.getPageCount());<br>model.addAttribute(“page”, searchResult.getCurPage());<br>model.addAttribute(“pages”, searchResult.getPageCount());<br>return “search”;<br> <code>`</code>plainplainplainplain</p>
+⑦　最后 portal 模块的 ItemController 将结果渲染到相应的页面中去</code>javaplainplainplain<br>model.addAttribute(“itemList”, searchResult.getItemList());<br>model.addAttribute(“query”, queryString);<br>model.addAttribute(“totalPages”, searchResult.getPageCount());<br>model.addAttribute(“page”, searchResult.getCurPage());<br>model.addAttribute(“pages”, searchResult.getPageCount());<br>return “search”;<br> <code>`</code>plainplainplainplain</p>
 </li>
 <li><p>初步成果<br>首页搜索框<br><img src="http://47.88.24.11/淘淘网络商城/搜索框.png" alt="X"><br><img src="http://47.88.24.11/淘淘网络商城/商品搜索结果.png" alt="X"></p>
 </li>
