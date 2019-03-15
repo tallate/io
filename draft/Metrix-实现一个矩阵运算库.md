@@ -10,5 +10,5 @@ tags:
 * [ ] Numpy4J
 * [ ] ND4J
 * [ ] Colt
-
+* [ ] 使用BP网络的例子评估效率，与numpy的差距如何？
 
