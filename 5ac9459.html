@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="分布式系统 缓存,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="多级缓存客户端的实现一、本地缓存由线上缓存 bug 引起的对本地缓存的思考LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 Loadin">
+<meta name="keywords" content="分布式系统 缓存">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多级缓存——多级缓存的实现">
+<meta property="og:url" content="https://tallate.github.io/5ac9459.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="多级缓存客户端的实现一、本地缓存由线上缓存 bug 引起的对本地缓存的思考LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 Loadin">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-04-06T06:59:19.156Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="多级缓存——多级缓存的实现">
+<meta name="twitter:description" content="多级缓存客户端的实现一、本地缓存由线上缓存 bug 引起的对本地缓存的思考LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 Loadin">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/5ac9459.html">
+
+
+
+
+
+
+
+  <title>多级缓存——多级缓存的实现 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5ac9459.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">多级缓存——多级缓存的实现</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-04-06T22:58:29+08:00">
+                2019-04-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/项目总结/" itemprop="url" rel="index">
+                    <span itemprop="name">项目总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="多级缓存客户端的实现"><a href="#多级缓存客户端的实现" class="headerlink" title="多级缓存客户端的实现"></a>多级缓存客户端的实现</h1><h2 id="一、本地缓存"><a href="#一、本地缓存" class="headerlink" title="一、本地缓存"></a>一、本地缓存</h2><h3 id="由线上缓存-bug-引起的对本地缓存的思考"><a href="#由线上缓存-bug-引起的对本地缓存的思考" class="headerlink" title="由线上缓存 bug 引起的对本地缓存的思考"></a>由线上缓存 bug 引起的对本地缓存的思考</h3><p>LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache 的坑，首先给出最简单的缓存配置：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .expireAfterAccess(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> query(id); <span class="comment">// 2</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>在构建 LoadingCache 的时候可以配置缓存的过期策略，LoadingCache 其实有三种常用的过期策略：<ul>
+<li>expireAfterAccess：在最后一次访问后空闲一段时间才过期；</li>
+<li>expireAfterWrite：在最后一次写后空闲一段时间才过期；</li>
+<li>refreshAfterWrite：同样是写后空闲一段时间过期，和上一个的区别是不会阻塞过期时到达的请求，因为刷新一般需要请求远程服务来获取数据，会有比较长的延迟，refreshAfterWrite 会先返回旧数据，而 expireAfterWrite 会先阻塞这些请求。<br>如果是为了吞吐量起见，一般使用 refreshAfterWrite 更多，如果是为了保证同步性，则是使用 expireAfterWrite 更多。<br>因为我们使用缓存的场景是“读多写少的场景”，读端是提供给用户的，而写端由甲方客户控制，当它们更新了某个 id 的数据后，希望能够马上展示到用户眼前，换句话说，缓存应当能够被马上刷新，但是前面的配置中使用的是 expireAfterAccess，因为用户的访问非常频繁，所以缓存一直不能过期，上线的数据不能及时地生效，导致甲方爸爸非常生气。</li>
+</ul>
+</li>
+<li>缓存更新的时候一般会从远程服务或数据库查询数据，这里没有考虑返回值为空的情况，为了保险起见，一般都是需要进行空值校验的，而且如果这里返回了空值，LoadingCache 会直接抛出异常。</li>
+</ol>
+<p>所以更合理的配置方式应该是下面这样的：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .refreshAfterWrite(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                Object res = query(id); <span class="comment">// 2</span></span><br><span class="line">                <span class="keyword">return</span> res == <span class="keyword">null</span> ? DEFAULT_OBJ : res;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure></p>
+<p>所以，当我们在使用缓存时，一般是事先考虑：</p>
+<ul>
+<li>dataSource：当没有命中时，从哪里获取数据？一般请求下会调用其他服务的远程接口，也可以直接从数据库、缓存中间件查询，但是要注意数据隔离性，比如权限服务就不适合直接到缓存或数据库中查询订单数据，因为这样不利于后期扩容，而且入口越多越不安全；</li>
+<li>expire：定义淘汰策略，比如有一段时间没有访问就淘汰，比如容量限制，当超出容量的时候如何淘汰一般有 LRU（Least Recently Used）、LFU（Least Frequently Used），可以使用 weigher 设置每个 key 的权重；</li>
+</ul>
+<p>如果是一些要求不高的内部信息管理系统，这些属性不需要太关注，但是如果是对并发量有一定要求的系统，对自己所使用的工具知根知底是最低的要求。</p>
+<h3 id="本地缓存是什么"><a href="#本地缓存是什么" class="headerlink" title="本地缓存是什么"></a>本地缓存是什么</h3><p>本地缓存的英文是 Local Cache，Cache、Buffer、Pool 是经常出现但又容易混淆的一组概念，它们都能存取数据，但是有本质上的区别：</p>
+<ul>
+<li>Cache 的主要功能是“将东西放到更容易拿到的地方”、从而加快速度，具有随机存取的功能，一般为了不导致内存溢出会设置数据的过期回收策略，比如计算机体系结构中的 L1、L2、L3 缓存；</li>
+<li>Buffer 是为了缓冲、减少对脆弱系统的冲击，具有顺序访问的特点，比如每个 TCP Socket 都有的接收发送缓存区；</li>
+<li>Pool 是为了缓存资源，它和 Cache 的主要区别是 Pool 中缓存的对象往往是同构而没有特殊价值的数据，比如连接池中存储的数据库连接，所以 Pool 不需要随机存取功能、随取随用即可。</li>
+</ul>
+<h3 id="什么时候需要本地缓存"><a href="#什么时候需要本地缓存" class="headerlink" title="什么时候需要本地缓存"></a>什么时候需要本地缓存</h3><p>TODO: </p>
+<h3 id="GC-友好的缓存"><a href="#GC-友好的缓存" class="headerlink" title="GC 友好的缓存"></a>GC 友好的缓存</h3><p>TODO: </p>
+<p>diff（在不等的情况下才 put 或直接修改已有对象，提高内存利用率，不然每次刷新缓存都要放到年轻代。不能用分离链接法实现，因为老的会引用年轻的(每次 put 到头部不就可以了？)，导致年轻代不能转移到老年代）</p>
+<p>如何避免 OOM（弱引用）</p>
+<p>缓存淘汰机制<br>过期策略</p>
+<h3 id="一些常见的本地缓存实现"><a href="#一些常见的本地缓存实现" class="headerlink" title="一些常见的本地缓存实现"></a>一些常见的本地缓存实现</h3><p>TODO: </p>
+<h3 id="实现本地缓存时需要注意什么"><a href="#实现本地缓存时需要注意什么" class="headerlink" title="实现本地缓存时需要注意什么"></a>实现本地缓存时需要注意什么</h3><p>TODO: </p>
+<h2 id="二、分布式缓存"><a href="#二、分布式缓存" class="headerlink" title="二、分布式缓存"></a>二、分布式缓存</h2><h3 id="编码和压缩"><a href="#编码和压缩" class="headerlink" title="编码和压缩"></a>编码和压缩</h3><p>TODO: </p>
+<p>Redis 属于数据库家族中最简单的一类分支 - KV 数据库，它基本不能维护任何复杂的数据结构，也不能对值构建索引以供查询。为了提高操作效率，自然而然会想到对值进行压缩，额外的编码其实是为了调试时方便，能直接查看保存的数据的内容。除了这些之外，还和 Redis 本身对各对象类型的编码规则有关：</p>
+<p>但是对数据进行压缩并不是银弹，对特别大的数据执行压缩需要占用不菲的 CPU 时间，所以需要作一个权衡。<br>特别小、特别大的数据直接发，中间数据压缩再保存可以触发数据库使用更有效的结构来保存。</p>
+<p>压缩算法：</p>
+<ol>
+<li>ZIP</li>
+<li>GZIP（最常用）</li>
+<li>LZF</li>
+<li>zstd（Arch Linux）</li>
+<li>…</li>
+</ol>
+<p>TODO: </p>
+<h3 id="使用-Watcher-实现-CAS"><a href="#使用-Watcher-实现-CAS" class="headerlink" title="使用 Watcher 实现 CAS"></a>使用 Watcher 实现 CAS</h3><p>TODO: </p>
+<h3 id="基于缓存的事务"><a href="#基于缓存的事务" class="headerlink" title="基于缓存的事务"></a>基于缓存的事务</h3><p>TODO:<br>双写是</p>
+<h2 id="三、持久化"><a href="#三、持久化" class="headerlink" title="三、持久化"></a>三、持久化</h2><p>TODO: </p>
+<h2 id="多级缓存实践"><a href="#多级缓存实践" class="headerlink" title="多级缓存实践"></a>多级缓存实践</h2><ul>
+<li>分布式缓存<br>TODO: </li>
+<li>本地缓存<br>在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。</li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/分布式系统-缓存/" rel="tag"># 分布式系统 缓存</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/6020f7af.html" rel="next" title="多级缓存——测试">
+                <i class="fa fa-chevron-left"></i> 多级缓存——测试
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/493f0f46.html" rel="prev" title="多级缓存——Lua脚本适配">
+                多级缓存——Lua脚本适配 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#多级缓存客户端的实现"><span class="nav-number">1.</span> <span class="nav-text">多级缓存客户端的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、本地缓存"><span class="nav-number">1.1.</span> <span class="nav-text">一、本地缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#由线上缓存-bug-引起的对本地缓存的思考"><span class="nav-number">1.1.1.</span> <span class="nav-text">由线上缓存 bug 引起的对本地缓存的思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存是什么"><span class="nav-number">1.1.2.</span> <span class="nav-text">本地缓存是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么时候需要本地缓存"><span class="nav-number">1.1.3.</span> <span class="nav-text">什么时候需要本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GC-友好的缓存"><span class="nav-number">1.1.4.</span> <span class="nav-text">GC 友好的缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些常见的本地缓存实现"><span class="nav-number">1.1.5.</span> <span class="nav-text">一些常见的本地缓存实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实现本地缓存时需要注意什么"><span class="nav-number">1.1.6.</span> <span class="nav-text">实现本地缓存时需要注意什么</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、分布式缓存"><span class="nav-number">1.2.</span> <span class="nav-text">二、分布式缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#编码和压缩"><span class="nav-number">1.2.1.</span> <span class="nav-text">编码和压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-Watcher-实现-CAS"><span class="nav-number">1.2.2.</span> <span class="nav-text">使用 Watcher 实现 CAS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于缓存的事务"><span class="nav-number">1.2.3.</span> <span class="nav-text">基于缓存的事务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、持久化"><span class="nav-number">1.3.</span> <span class="nav-text">三、持久化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多级缓存实践"><span class="nav-number">1.4.</span> <span class="nav-text">多级缓存实践</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+
+</body>
+</html>

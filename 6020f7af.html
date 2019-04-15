@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="Hexo, NexT">
+  <meta name="keywords" content="分布式系统 缓存,">
 
 
 
@@ -79,17 +79,18 @@
 
 
 
-<meta name="description" content="Decentralized-Key-Value存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。总之，这是我在分布式领域里面可以想到的最大的">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Tallate">
-<meta property="og:url" content="https://tallate.github.io/draft/大项目/dkv.html">
+<meta name="description" content="测试这一篇主要是描述测试方面的记录，主要是性能方面的，因为这方面在实践中总是比较敏感。 性能指标性能测试中使用到了一些指标，其中的一些很容易被混淆的，比如“响应时间”和“执行时间”，所以在测试之前，我们先来汇总一下： 测试相关命令 redis-benchmarkredis-benchmark 是 Redis 官方提供的 Redis 服务器性能基准测试工具：-t 选择你想测试的命令，比如 redis">
+<meta name="keywords" content="分布式系统 缓存">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多级缓存——测试">
+<meta property="og:url" content="https://tallate.github.io/6020f7af.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="Decentralized-Key-Value存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。总之，这是我在分布式领域里面可以想到的最大的">
+<meta property="og:description" content="测试这一篇主要是描述测试方面的记录，主要是性能方面的，因为这方面在实践中总是比较敏感。 性能指标性能测试中使用到了一些指标，其中的一些很容易被混淆的，比如“响应时间”和“执行时间”，所以在测试之前，我们先来汇总一下： 测试相关命令 redis-benchmarkredis-benchmark 是 Redis 官方提供的 Redis 服务器性能基准测试工具：-t 选择你想测试的命令，比如 redis">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-04-13T03:19:18.396Z">
+<meta property="og:updated_time" content="2019-04-06T06:59:19.156Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Tallate">
-<meta name="twitter:description" content="Decentralized-Key-Value存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。总之，这是我在分布式领域里面可以想到的最大的">
+<meta name="twitter:title" content="多级缓存——测试">
+<meta name="twitter:description" content="测试这一篇主要是描述测试方面的记录，主要是性能方面的，因为这方面在实践中总是比较敏感。 性能指标性能测试中使用到了一些指标，其中的一些很容易被混淆的，比如“响应时间”和“执行时间”，所以在测试之前，我们先来汇总一下： 测试相关命令 redis-benchmarkredis-benchmark 是 Redis 官方提供的 Redis 服务器性能基准测试工具：-t 选择你想测试的命令，比如 redis">
 
 
 
@@ -119,7 +120,7 @@
 
 
 
-  <link rel="canonical" href="https://tallate.github.io/draft/大项目/dkv.html">
+  <link rel="canonical" href="https://tallate.github.io/6020f7af.html">
 
 
 
@@ -127,7 +128,7 @@
 
 
 
-  <title> | Tallate</title>
+  <title>多级缓存——测试 | Tallate</title>
   
 
 
@@ -257,77 +258,213 @@
 
   <div id="posts" class="posts-expand">
     
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6020f7af.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
     
-    
-    <div class="post-block page">
       <header class="post-header">
 
-
-	<h1 class="post-title" itemprop="name headline"></h1>
-
-
-
-
-
-
-
-
-</header>
-
-
-
-
-
-
-      
-      
-      
-      <div class="post-body">
         
         
-          <h1 id="Decentralized-Key-Value"><a href="#Decentralized-Key-Value" class="headerlink" title="Decentralized-Key-Value"></a>Decentralized-Key-Value</h1><p>存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。<br>现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。<br>总之，这是我在分布式领域里面可以想到的最大的挑战，我们先来梳理一下分布式系统的基础知识，然后分析一下数据库技术的现状。</p>
-<h2 id="分布式系统原理"><a href="#分布式系统原理" class="headerlink" title="分布式系统原理"></a>分布式系统原理</h2><ol>
-<li><a href="http://dcaoyuan.github.io/papers/pdfs/Scalability.pdf" target="_blank" rel="noopener">走向分布式</a></li>
-</ol>
-<h2 id="存储发展现状"><a href="#存储发展现状" class="headerlink" title="存储发展现状"></a>存储发展现状</h2><h3 id="架构发展"><a href="#架构发展" class="headerlink" title="架构发展"></a>架构发展</h3><p>架构中最难的方面是存储，架构受存储的制约，反过来，我们也可以从架构中看到存储技术的演进：</p>
-<ol>
-<li><a href="http://www.blogjava.net/BlueDavy/archive/2009/04/28/267970.html" target="_blank" rel="noopener">网站架构相关PPT、文章整理（更新于2009-7-15）</a></li>
-</ol>
-<h3 id="键值对数据库（KV-Store）"><a href="#键值对数据库（KV-Store）" class="headerlink" title="键值对数据库（KV Store）"></a>键值对数据库（KV Store）</h3><p>本地缓存（Guava、Chronicle-Map）<br>Redis<br>Memcached<br>Cassandra<br>RocksDB<br>Titan <a href="https://www.jianshu.com/p/7d115c8ecb1e" target="_blank" rel="noopener">Titan 的设计与实现</a></p>
-<p>应用（名称解析 / 服务注册 / 缓存 / 定时器elasticjob / session）<br>中心化（redis、codis）<br>协调协议（Paxos、Zab、Raft、sofa-jraft、gossip）<br>时间协调<br>初衷（原中心化的缓存不好管理，其实可以选举出一个中心节点来加载数据，然后同步到其他节点。减少使用本地缓存时单个服务器内存压力）<br>数据分片（过大的value被切片，并行读提高获取时的速度）</p>
-<p>如何使用go语言实现一个分布式缓存。<br><a href="https://github.com/hashicorp/memberlist" target="_blank" rel="noopener">hashicorp/memberlist</a><br>基于gossip的容错集群成员管理。<br><a href="https://github.com/stathat/consistent" target="_blank" rel="noopener">stathat/consistent</a><br>使用一致性哈希算法实现数据分片。</p>
-<h3 id="文档数据库"><a href="#文档数据库" class="headerlink" title="文档数据库"></a>文档数据库</h3><p>MongoDB<br>Elasticsearch</p>
-<h3 id="列数据库"><a href="#列数据库" class="headerlink" title="列数据库"></a>列数据库</h3><p>BigTable<br>Hbase</p>
-<h3 id="图数据库"><a href="#图数据库" class="headerlink" title="图数据库"></a>图数据库</h3><p>Neo4j<br>FlockDB</p>
-<h3 id="关系型数据库"><a href="#关系型数据库" class="headerlink" title="关系型数据库"></a>关系型数据库</h3><p>分布式事务-中间件层：sharding-jdbc、mycat、mysql-proxy<br>分布式事务-业务层：atomikos、Fescar、tcc-transaction、ByteTCC<br>分布式事务-协议层：Percolator、XA<br>分布式数据库：RadonDB、TiDB、BigTable、RocksDB、F1、Scanner<br>SQL解释器（Calcite）<br>索引：cpp-btree（Google）、SlimTrie<br>sql优化原理<br>锁：原理、排查<br>集群 读写分离<br>内存数据库：VoltDB</p>
-<p>Bluzelle（声称是去中心化数据库，但是其技术细节并未公布，可能是挂羊头买狗肉）</p>
-<ol>
-<li><a href="http://www.ymcall.com/artinfo/949446562686071991.html" target="_blank" rel="noopener">去中心化数据库：传统IT与区块链的未来融合形式</a></li>
-<li><a href="https://www.jianshu.com/p/4e0c7ebceb7c" target="_blank" rel="noopener">Bluzelle-区块链上的甲骨文</a></li>
-</ol>
-<p>除了 Redis 这些常见的缓存中间件外，一些大数据相关的内存数据管理框架也能承担分布式缓存的职责，虽然很多情况下是“杀鸡用牛刀”、徒增复杂度，但是其中很多思路是可以学习的。</p>
-<ol>
-<li><a href="https://github.com/apache/ignite" target="_blank" rel="noopener">github - apache/ignite</a></li>
-<li><a href="https://github.com/apache/arrow" target="_blank" rel="noopener">github - apache/arrow</a></li>
-</ol>
-<h3 id="文件系统"><a href="#文件系统" class="headerlink" title="文件系统"></a>文件系统</h3><p>HDFS</p>
-<ol>
-<li><a href="https://www.ixueshu.com/download/bdae7db2d3cee26e14a4dc030e7d94c3.html" target="_blank" rel="noopener">去中心化的分布式存储模型</a></li>
-</ol>
-<p>p2p协议（bt伪去中心化、ipfs去中心化、Sia、Storj）<br>版本控制（Git）</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
-<li><a href="db-engines.com">DB-Engines</a></li>
-</ol>
-
+          <h1 class="post-title" itemprop="name headline">多级缓存——测试</h1>
         
-      </div>
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-04-06T22:58:29+08:00">
+                2019-04-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/项目总结/" itemprop="url" rel="index">
+                    <span itemprop="name">项目总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  517 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  1 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
       
       
+
+      
+        <h1 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h1><p>这一篇主要是描述测试方面的记录，主要是性能方面的，因为这方面在实践中总是比较敏感。</p>
+<h2 id="性能指标"><a href="#性能指标" class="headerlink" title="性能指标"></a>性能指标</h2><p>性能测试中使用到了一些指标，其中的一些很容易被混淆的，比如“响应时间”和“执行时间”，所以在测试之前，我们先来汇总一下：</p>
+<h2 id="测试相关命令"><a href="#测试相关命令" class="headerlink" title="测试相关命令"></a>测试相关命令</h2><ul>
+<li>redis-benchmark<br>redis-benchmark 是 Redis 官方提供的 Redis 服务器性能基准测试工具：<br>-t 选择你想测试的命令，比如 redis-benchmark -t set<br>-p 指定 port redis-benchmark -p 6379<br>-l 一直循环<br>-c 指定客户端数量<br>-n 指定 request 数量<br>-q Quiet，不显示额外信息（多少时间内完成了多少条之类的），只显示 query/sec 的值<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 测试并发连接性能，100个并发连接，总共发100000个请求</span></span><br><span class="line">redis-benchmark -h localhost -p 6379 -c 100 -n 100000</span><br><span class="line"><span class="comment"># 测试大数据包读写性能</span></span><br><span class="line">redis-benchmark -h localhost -p 6379 -q -d 100</span><br><span class="line"><span class="comment"># 只测试某些操作的性能</span></span><br><span class="line">redis-benchmark -h localhost -p 6379 -t <span class="built_in">set</span>,lpush -n 100000 -q</span><br><span class="line"><span class="comment"># 只测试某些数值存取的性能</span></span><br><span class="line">redis-benchmark -h localhost -p 6379 -q script load <span class="string">"redis.call('set', 'foo', 'bar')"</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h2 id="设置对比组"><a href="#设置对比组" class="headerlink" title="设置对比组"></a>设置对比组</h2><p>正像我们学物理、生物做实验的那样，所有实验都必须要有对比，没有参照系讲运动速度就是耍流氓，所以测试前先考虑一下不使用这个框架的效率。</p>
+<p>框架的执行效率很多时候是比不上原生开发的。框架很大程度上的目的是为了减少重复代码、提升开发效率，将常用代码封装避免重复造轮子（更别提造出有问题的轮子成了祸害）。编写框架的过程就是抽象出一个通用模型的过程，但是框架为了通用有时候又会牺牲执行效率，比如 Spring 的效率就经常被人诟病，但它却仍被大多公司作为后台业务框架的基础。</p>
+<h2 id="测试-并发安全"><a href="#测试-并发安全" class="headerlink" title="测试 - 并发安全"></a>测试 - 并发安全</h2><h2 id="测试-效率"><a href="#测试-效率" class="headerlink" title="测试 - 效率"></a>测试 - 效率</h2>
       
     </div>
     
     
     
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/分布式系统-缓存/" rel="tag"># 分布式系统 缓存</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/fe19ded6.html" rel="next" title="多级缓存——运维">
+                <i class="fa fa-chevron-left"></i> 多级缓存——运维
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/5ac9459.html" rel="prev" title="多级缓存——多级缓存的实现">
+                多级缓存——多级缓存的实现 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
   </div>
 
 
@@ -447,7 +584,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Decentralized-Key-Value"><span class="nav-number">1.</span> <span class="nav-text">Decentralized-Key-Value</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式系统原理"><span class="nav-number">1.1.</span> <span class="nav-text">分布式系统原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#存储发展现状"><span class="nav-number">1.2.</span> <span class="nav-text">存储发展现状</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#架构发展"><span class="nav-number">1.2.1.</span> <span class="nav-text">架构发展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#键值对数据库（KV-Store）"><span class="nav-number">1.2.2.</span> <span class="nav-text">键值对数据库（KV Store）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文档数据库"><span class="nav-number">1.2.3.</span> <span class="nav-text">文档数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#列数据库"><span class="nav-number">1.2.4.</span> <span class="nav-text">列数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#图数据库"><span class="nav-number">1.2.5.</span> <span class="nav-text">图数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#关系型数据库"><span class="nav-number">1.2.6.</span> <span class="nav-text">关系型数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件系统"><span class="nav-number">1.2.7.</span> <span class="nav-text">文件系统</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">1.3.</span> <span class="nav-text">参考</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#测试"><span class="nav-number">1.</span> <span class="nav-text">测试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#性能指标"><span class="nav-number">1.1.</span> <span class="nav-text">性能指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试相关命令"><span class="nav-number">1.2.</span> <span class="nav-text">测试相关命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#设置对比组"><span class="nav-number">1.3.</span> <span class="nav-text">设置对比组</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试-并发安全"><span class="nav-number">1.4.</span> <span class="nav-text">测试 - 并发安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试-效率"><span class="nav-number">1.5.</span> <span class="nav-text">测试 - 效率</span></a></li></ol></li></ol></div>
             
 
           </div>

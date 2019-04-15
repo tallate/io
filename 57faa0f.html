@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="分布式系统 缓存,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Cache-Drawer - Introduction前人的实践中已经对缓存的应用总结出了一套“最佳实践”，譬如“数据库+缓存双写”、“缓存淘汰”，这个项目的主要目的是对缓存功能的封装（基于 Redis），从而避免出现一些常见的误用，同时，对一些复杂的需要借助分布式缓存来实现的场景，也提供一种批量化执行 Redis 命令的思路。总而言之，大概有下面几点：  多级缓存还有一个方面是分布式缓存和数据库">
+<meta name="keywords" content="分布式系统 缓存">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多级缓存——Introduction">
+<meta property="og:url" content="https://tallate.github.io/57faa0f.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="Cache-Drawer - Introduction前人的实践中已经对缓存的应用总结出了一套“最佳实践”，譬如“数据库+缓存双写”、“缓存淘汰”，这个项目的主要目的是对缓存功能的封装（基于 Redis），从而避免出现一些常见的误用，同时，对一些复杂的需要借助分布式缓存来实现的场景，也提供一种批量化执行 Redis 命令的思路。总而言之，大概有下面几点：  多级缓存还有一个方面是分布式缓存和数据库">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-04-14T06:59:37.744Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="多级缓存——Introduction">
+<meta name="twitter:description" content="Cache-Drawer - Introduction前人的实践中已经对缓存的应用总结出了一套“最佳实践”，譬如“数据库+缓存双写”、“缓存淘汰”，这个项目的主要目的是对缓存功能的封装（基于 Redis），从而避免出现一些常见的误用，同时，对一些复杂的需要借助分布式缓存来实现的场景，也提供一种批量化执行 Redis 命令的思路。总而言之，大概有下面几点：  多级缓存还有一个方面是分布式缓存和数据库">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/57faa0f.html">
+
+
+
+
+
+
+
+  <title>多级缓存——Introduction | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/57faa0f.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">多级缓存——Introduction</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-04-06T22:58:29+08:00">
+                2019-04-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/项目总结/" itemprop="url" rel="index">
+                    <span itemprop="name">项目总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="Cache-Drawer-Introduction"><a href="#Cache-Drawer-Introduction" class="headerlink" title="Cache-Drawer - Introduction"></a>Cache-Drawer - Introduction</h1><p>前人的实践中已经对缓存的应用总结出了一套“最佳实践”，譬如“数据库+缓存双写”、“缓存淘汰”，这个项目的主要目的是对缓存功能的封装（基于 Redis），从而避免出现一些常见的误用，同时，对一些复杂的需要借助分布式缓存来实现的场景，也提供一种批量化执行 Redis 命令的思路。总而言之，大概有下面几点：</p>
+<ul>
+<li>多级缓存<br>还有一个方面是分布式缓存和数据库、本地缓存之间的对接，多级缓存是为了获得更高的读写性能，就好比现代的计算机体系结构使用“存储器金字塔”来平衡处理器和持久化存储之间的速度。<br>当下大部分系统在设计之初就具有了分布式的特性，数据在真正呈现到用户手上之前，往往会经历多次耗时的磁盘读写、网络传输，频繁的这些操作会很容易成为系统的瓶颈。一种常见的解决方式就是加多级缓存，包括埋在应用服务器上的本地缓存和额外的一块分布式缓存。但是在阅读一些利用缓存的代码的过程中我看到不少非常“随性”的操作，这些操作很多是有问题的，部分甚至隐含了 Bug、对线上环境造成威胁。因此我尝试在这个小项目里用一种更规范的方式来对接分布式缓存和实际数据提供端（一般是从数据库查出数据并作一些额外处理）、本地缓存。</li>
+<li>Redis - Lua 支持<br>Redis 中的 Lua 脚本引擎已经不是一个新事物了，但是 Lua 在 Redis 中的使用并不友好：使用时需要引入不少冗余的序列化 / 反序列化代码；而且因为 Lua 本身是弱类型的，类型转换比较麻烦；调试也很麻烦，等等。这个小项目的初衷之一也是规范化 Lua 脚本的使用，从而更好更高效地解决各种问题。</li>
+</ul>
+<h2 id="Features"><a href="#Features" class="headerlink" title="Features"></a>Features</h2><ul>
+<li style="list-style: none"><input type="checkbox" checked> 结果序列化及压缩</li>
+<li style="list-style: none"><input type="checkbox"> 多级缓存对接（本地缓存<->分布式缓存<->持久化接口）</-></-></li>
+<li style="list-style: none"><input type="checkbox"> 缓存刷新时使用锁限制，且保证线程重入性、公平性</li>
+<li style="list-style: none"><input type="checkbox"> 线程安全（Thread safe）</li>
+<li style="list-style: none"><input type="checkbox"> 过期（expiry）配置及过期对象的清理，支持expireAfterRead、expireAfterWrite、refreshAfterWrite</li>
+<li style="list-style: none"><input type="checkbox" checked> Redis Lua 脚本封装</li>
+<li style="list-style: none"><input type="checkbox"> 支持异步操作（Async）</li>
+<li style="list-style: none"><input type="checkbox"> 实现一个本地缓存</li>
+<li style="list-style: none"><input type="checkbox"> 测试</li>
+<li style="list-style: none"><input type="checkbox"> 运维</li>
+</ul>
+<h2 id="Docs"><a href="#Docs" class="headerlink" title="Docs"></a>Docs</h2><ol>
+<li><a href="http://tallate.github.io/57faa0f">多级缓存——Introduction</a></li>
+<li><a href="http://tallate.github.io/5ac9459">多级缓存——多级缓存的实现</a></li>
+<li><a href="http://tallate.github.io/493f0f46">多级缓存——Lua脚本适配</a></li>
+<li><a href="http://tallate.github.io/6020f7af">多级缓存——测试</a></li>
+<li><a href="http://tallate.github.io/fe19ded6">多级缓存——运维</a></li>
+</ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>所有参考文献的归档，集中管理，方便随时查阅。</p>
+<h3 id="本地缓存"><a href="#本地缓存" class="headerlink" title="本地缓存"></a>本地缓存</h3><p>不得不承认本地缓存不比分布式缓存更简单，当我们讨论分布式缓存时，更多的是在讨论如何节省带宽、如何平滑扩容，但在本地缓存的范畴内，我们更多的需要关注所使用语言的内存管理机制、甚至需要向下探索到硬件层面（其实分布式缓存的基础一般也是本地缓存）。</p>
+<ol>
+<li><a href="https://leetcode.com/problems/lru-cache/" target="_blank" rel="noopener">146. LRU Cache</a><br><a href="https://leetcode.com/problems/lfu-cache/" target="_blank" rel="noopener">460. LFU Cache</a><br>LeetCode 上有几道缓存相关的问题，可以拿来作热身。</li>
+<li>Java 内存模型<br><a href="http://www.cs.umd.edu/~pugh/java/memoryModel/" target="_blank" rel="noopener">The Java Memory Model - William Pugh</a><br><a href="http://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html" target="_blank" rel="noopener">JSR 133 (Java Memory Model) FAQ</a><br><a href="http://ifeve.com/jmm-faq/" target="_blank" rel="noopener">Java内存模型FAQ</a><br>上面这篇的中文翻译，适合我这种英语渣对照阅读。<br><a href="https://blog.csdn.net/youyou1543724847/article/details/52728301" target="_blank" rel="noopener">GC(GC 友好编程)</a></li>
+<li>C/C++ 内存模型<br>《C语言接口与实现》 - 第 2、4、5、6 章<br>《STL 源码剖析》 - 第 2 章<br>《深入探索C++对象模型》</li>
+<li>guava - cache<br><a href="https://github.com/google/guava/wiki/CachesExplained" target="_blank" rel="noopener">github - google/guava - Caches</a></li>
+<li>ehcache<br><a href="https://github.com/ehcache" target="_blank" rel="noopener">github - ehcache3</a><br><a href="https://www.jianshu.com/p/5a0669d6305e" target="_blank" rel="noopener">玩转 EhCache 之最简单的缓存框架</a></li>
+<li>J2Cache<br><a href="https://gitee.com/ld/J2Cache" target="_blank" rel="noopener">红薯 / J2Cache</a></li>
+<li>Netty中的对象池<br><a href="https://github.com/netty/netty/wiki/Reference-counted-objects" target="_blank" rel="noopener">netty/netty - Reference counted objects</a><br><a href="https://blog.csdn.net/levena/article/details/78144924" target="_blank" rel="noopener">Netty 源码 Recycler 对象池全面解析</a><br><a href="https://www.jianshu.com/p/854b855bd198" target="_blank" rel="noopener">netty 源码分析 4 - Recycler 对象池的设计</a><br>Netty 为了提高性能，IO 时直接使用非堆内存来缓存收发的内容（Buf 对象），在非堆内存中 GC 效率会比 JVM 的堆内存效率低（只能通过 FullGC 回收或 CMS GC），所以 Netty 内部维护了一个对象池（Recycler），使用引用计数法来回收不用的对象到对象池中，而不是直接回收，减少了 GC 的频率。</li>
+<li>应用层内存管理<br><a href="https://www.memorymanagement.org/index.html" target="_blank" rel="noopener">Memory Management Reference</a><br>一个神奇的网站，内存管理相关的概念、综述、深入参考文献基本都能在这里找到，而且偏应用层，讲解方式友好、适合扫盲。</li>
+<li>操作系统层内存管理<br><a href="http://en.tldp.org/HOWTO/Unix-and-Internet-Fundamentals-HOWTO/" target="_blank" rel="noopener">The Unix and Internet Fundamentals HOWTO</a><br>非常精炼地解释了Unix系统和网络的基本原理。</li>
+<li>硬件层内存管理</li>
+</ol>
+<h3 id="分布式缓存"><a href="#分布式缓存" class="headerlink" title="分布式缓存"></a>分布式缓存</h3><ol>
+<li>《分布式缓存——原理、架构及Go语言实现》</li>
+<li>《Redis 设计与实现》<br>《Redis 深度历险：核心原理与应用实践》 </li>
+<li>Redis源码及客户端<br><a href="https://github.com/antirez/redis" target="_blank" rel="noopener">github - antirez/redis</a><br><a href="https://github.com/redisson/redisson/wiki/Redisson%E9%A1%B9%E7%9B%AE%E4%BB%8B%E7%BB%8D" target="_blank" rel="noopener">github - redisson/redisson</a><br><a href="https://github.com/xetorthio/jedis/wiki" target="_blank" rel="noopener">github - xetorthio/jedis</a><br><a href="https://github.com/lettuce-io/lettuce-core/wiki/Redis-Command-Interfaces" target="_blank" rel="noopener">github - lettuce-io/lettuce-core</a></li>
+<li>在Spring架构后台中使用Redis<br><a href="https://docs.spring.io/spring/docs/5.0.3.RELEASE/spring-framework-reference/integration.html#cache" target="_blank" rel="noopener">spring-framework-reference - 8. Cache Abstraction</a><br><a href="https://docs.spring.io/spring-data/redis/docs/2.0.3.RELEASE/reference/html/" target="_blank" rel="noopener">Spring Data Redis</a><br><a href="https://docs.spring.io/spring-boot/docs/2.1.3.RELEASE/reference/htmlsingle/" target="_blank" rel="noopener">Spring Boot Reference Guide</a></li>
+<li>Redis应用<br><a href="https://mp.weixin.qq.com/s/y2HPj2ji2KLS_eTR5nBnDA" target="_blank" rel="noopener">一文看透 Redis 分布式锁进化史（解读 + 缺陷分析）</a></li>
+<li><a href="http://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">How to do distributed locking</a><br>刷新Redis缓存时需要加分布式锁，保证只有一个线程能够写入缓存。<br><a href="https://redis.io/commands/incr#pattern-rate-limiter" target="_blank" rel="noopener">INCR key (分布式限流器的例子)</a><br><a href="https://mp.weixin.qq.com/s/q-y10hMPjApWgnQacu-nsA" target="_blank" rel="noopener">布隆过滤器实战【防止缓存击穿】</a><br><a href="https://coolshell.cn/articles/7270.html" target="_blank" rel="noopener">NOSQL 数据建模技术</a></li>
+<li><a href="https://github.com/memcached/memcached" target="_blank" rel="noopener">github - memcached</a><br>memcached 是经常和 Redis 一并提起的一个分布式缓存中间件，了解其原理能对分布式缓存的实现模式有更好的认识。</li>
+</ol>
+<h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><p>测试是发现问题的手段，最好的解决问题方式是避免问题。</p>
+<ol>
+<li>《Java 并发编程实战》 - 第三部分（并发安全及性能）</li>
+<li><a href="http://www.redis.cn/topics/benchmarks.html" target="_blank" rel="noopener">Redis 有多快?</a></li>
+<li>《构建高性能 Web 站点》 - 第 3 章</li>
+<li>《Java 程序性能优化》</li>
+<li>《Web 性能权威指南》</li>
+<li>《OptimizingLinux(R)PerformanceAHands-OnGuidetoLinux(R)PerformanceTools》</li>
+<li>《性能之巅》</li>
+</ol>
+<h3 id="运维"><a href="#运维" class="headerlink" title="运维"></a>运维</h3><ol>
+<li>《The Art of Capacity Planning》</li>
+</ol>
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><ol>
+<li><a href="http://www.catb.org/~esr/faqs/smart-questions.html" target="_blank" rel="noopener">How To Ask Questions The Smart Way</a></li>
+<li><a href="http://en.tldp.org/HOWTO/Software-Release-Practice-HOWTO/index.html" target="_blank" rel="noopener">Software Release Practice HOWTO</a></li>
+<li><a href="https://github.com/hyperoslo/Cache" target="_blank" rel="noopener">github - hyperoslo/Cache</a><br>这个项目同样在缓存上做文章，不过是用 swift 写的。</li>
+<li><a href="https://learnxinyminutes.com/docs/lua/" target="_blank" rel="noopener">Learn X in Y minutes - Where X=Lua</a></li>
+<li>《设计模式》 - Factory, Builder, Proxy, Chain of Responsibility, Command, Iterator, template method</li>
+<li>《Spring 源码深度解析》 - 第 5、6、7 章</li>
+<li><a href="https://app.brandmark.io/v2/" target="_blank" rel="noopener">使用AI生成图标</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/分布式系统-缓存/" rel="tag"># 分布式系统 缓存</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/6e8a6bb7.html" rel="next" title="服务治理——限流">
+                <i class="fa fa-chevron-left"></i> 服务治理——限流
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/fe19ded6.html" rel="prev" title="多级缓存——运维">
+                多级缓存——运维 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Cache-Drawer-Introduction"><span class="nav-number">1.</span> <span class="nav-text">Cache-Drawer - Introduction</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Features"><span class="nav-number">1.1.</span> <span class="nav-text">Features</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docs"><span class="nav-number">1.2.</span> <span class="nav-text">Docs</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">1.3.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存"><span class="nav-number">1.3.1.</span> <span class="nav-text">本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式缓存"><span class="nav-number">1.3.2.</span> <span class="nav-text">分布式缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测试"><span class="nav-number">1.3.3.</span> <span class="nav-text">测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#运维"><span class="nav-number">1.3.4.</span> <span class="nav-text">运维</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他"><span class="nav-number">1.3.5.</span> <span class="nav-text">其他</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+
+</body>
+</html>
