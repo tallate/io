@@ -1,5 +1,7 @@
 
 
+## 资料收集
+* [EZLippi/practical-programming-books - 计算机相关技术资料整理](https://github.com/EZLippi/practical-programming-books)
 
 ## 课程资源
 * [libpku - 贵校课程资料民间整理](https://github.com/lib-pku/libpku)

@@ -732,7 +732,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.6k 字
+                  1.7k 字
                 </span>
               
 
@@ -748,7 +748,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  5 分钟
+                  6 分钟
                 </span>
               
             </div>
@@ -772,7 +772,16 @@
         
           
             <a id="more"></a>
-<h2 id="一、本地缓存"><a href="#一、本地缓存" class="headerlink" title="一、本地缓存"></a>一、本地缓存</h2><h3 id="由线上缓存-bug-引起的对本地缓存的思考"><a href="#由线上缓存-bug-引起的对本地缓存的思考" class="headerlink" title="由线上缓存 bug 引起的对本地缓存的思考"></a>由线上缓存 bug 引起的对本地缓存的思考</h3><p>LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache 的坑，首先给出最简单的缓存配置：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .expireAfterAccess(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> query(id); <span class="comment">// 2</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure></p>
+<h2 id="一、多级缓存实践"><a href="#一、多级缓存实践" class="headerlink" title="一、多级缓存实践"></a>一、多级缓存实践</h2><p><img src="http://47.88.24.11/多级缓存——多级缓存的实现/多级数据来源.png" alt="多级数据来源" title="多级数据来源示意图"></p>
+<ul>
+<li>本地缓存<br>在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。</li>
+<li>缓存 / 搜索服务器<br>TODO: </li>
+<li>数据库服务器<br>TODO：</li>
+<li>同机房的其他业务服务器<br>TODO：</li>
+<li>不同机房的其他业务服务器<br>TODO：</li>
+</ul>
+<p><img src="http://47.88.24.11/多级缓存——多级缓存的实现/cache-drawer-core.png" alt="多级缓存组件的主要执行流程" title="cache-drawer-core 的主要执行流程"><br>详细描述TODO：</p>
+<h2 id="二、本地缓存"><a href="#二、本地缓存" class="headerlink" title="二、本地缓存"></a>二、本地缓存</h2><h3 id="由线上缓存-bug-引起的对本地缓存的思考"><a href="#由线上缓存-bug-引起的对本地缓存的思考" class="headerlink" title="由线上缓存 bug 引起的对本地缓存的思考"></a>由线上缓存 bug 引起的对本地缓存的思考</h3><p>LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache 的坑，首先给出最简单的缓存配置：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .expireAfterAccess(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> query(id); <span class="comment">// 2</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure></p>
 <ol>
 <li>在构建 LoadingCache 的时候可以配置缓存的过期策略，LoadingCache 其实有三种常用的过期策略：<ul>
 <li>expireAfterAccess：在最后一次访问后空闲一段时间才过期；</li>
@@ -801,7 +810,7 @@
 <p>如何避免 OOM（弱引用）</p>
 <p>缓存淘汰机制<br>过期策略</p>
 <h3 id="一些常见的本地缓存实现"><a href="#一些常见的本地缓存实现" class="headerlink" title="一些常见的本地缓存实现"></a>一些常见的本地缓存实现</h3><p>TODO: </p>
-<h3 id="实现本地缓存时需要注意什么"><a href="#实现本地缓存时需要注意什么" class="headerlink" title="实现本地缓存时需要注意什么"></a>实现本地缓存时需要注意什么</h3><p>TODO: </p>
+<h3 id="如何实现一个本地缓存"><a href="#如何实现一个本地缓存" class="headerlink" title="如何实现一个本地缓存"></a>如何实现一个本地缓存</h3><p>堆内存内存池 OR 直接内存内存池（Java中的直接内存只能被FullGC回收，可以使用引用计数法提升垃圾回收效率，类似Netty中的内存池）<br>TODO: </p>
 <h2 id="二、分布式缓存"><a href="#二、分布式缓存" class="headerlink" title="二、分布式缓存"></a>二、分布式缓存</h2><h3 id="编码和压缩"><a href="#编码和压缩" class="headerlink" title="编码和压缩"></a>编码和压缩</h3><p>TODO: </p>
 <p>Redis 属于数据库家族中最简单的一类分支 - KV 数据库，它基本不能维护任何复杂的数据结构，也不能对值构建索引以供查询。为了提高操作效率，自然而然会想到对值进行压缩，额外的编码其实是为了调试时方便，能直接查看保存的数据的内容。除了这些之外，还和 Redis 本身对各对象类型的编码规则有关：</p>
 <p>但是对数据进行压缩并不是银弹，对特别大的数据执行压缩需要占用不菲的 CPU 时间，所以需要作一个权衡。<br>特别小、特别大的数据直接发，中间数据压缩再保存可以触发数据库使用更有效的结构来保存。</p>
@@ -816,11 +825,7 @@
 <p>TODO: </p>
 <h3 id="使用-Watcher-实现-CAS"><a href="#使用-Watcher-实现-CAS" class="headerlink" title="使用 Watcher 实现 CAS"></a>使用 Watcher 实现 CAS</h3><p>TODO: </p>
 <h3 id="基于缓存的事务"><a href="#基于缓存的事务" class="headerlink" title="基于缓存的事务"></a>基于缓存的事务</h3><p>TODO:<br>双写是</p>
-<h2 id="三、持久化"><a href="#三、持久化" class="headerlink" title="三、持久化"></a>三、持久化</h2><p>TODO: </p>
-<h2 id="多级缓存实践"><a href="#多级缓存实践" class="headerlink" title="多级缓存实践"></a>多级缓存实践</h2><ul>
-<li>分布式缓存<br>TODO: </li>
-<li>本地缓存<br>在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。</li>
-</ul>
+<h2 id="三、持久层或其他获取数据的远程接口"><a href="#三、持久层或其他获取数据的远程接口" class="headerlink" title="三、持久层或其他获取数据的远程接口"></a>三、持久层或其他获取数据的远程接口</h2><p>TODO: </p>
 
           
         
@@ -1131,7 +1136,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.5k 字
+                  1.8k 字
                 </span>
               
 
@@ -1147,7 +1152,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  5 分钟
+                  6 分钟
                 </span>
               
             </div>
@@ -1503,7 +1508,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  6.2k 字
+                  6.4k 字
                 </span>
               
 
@@ -1519,7 +1524,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  21 分钟
+                  22 分钟
                 </span>
               
             </div>

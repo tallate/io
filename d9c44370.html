@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/服务治理——幂等/sidp-BlockingIdpChecker与Tracing组件配合.png">
 <meta property="og:image" content="http://47.88.24.11/服务治理——幂等/事务MVCC不能避免幻读.png">
 <meta property="og:image" content="http://47.88.24.11/服务治理——幂等/事务MVCC不能避免丢失更新问题.png">
-<meta property="og:updated_time" content="2019-04-07T11:12:00.705Z">
+<meta property="og:updated_time" content="2019-04-21T07:39:09.788Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现接口幂等检查器">
 <meta name="twitter:description" content="幂等性描述一项操作被执行多次后，不会改变第一次执行产生的副作用。练手项目，解决项目中的幂等性检查要求，代码地址:point_right: Github - TIdempotent。   BlockingChecker、NonblockingChecker ；  加入 MySQL 作为 KeyStore （JdbcKeyStore）；  加入 Redis 作为 KeyStore （RedisKeyS">
@@ -364,7 +364,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  6.2k 字
+                  6.4k 字
                 </span>
               
 
@@ -380,7 +380,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  21 分钟
+                  22 分钟
                 </span>
               
             </div>
@@ -479,8 +479,14 @@
 <h3 id="KV-数据库（RedisKeyStore）"><a href="#KV-数据库（RedisKeyStore）" class="headerlink" title="KV 数据库（RedisKeyStore）"></a>KV 数据库（RedisKeyStore）</h3><p>代码里使用 Redis 作为数据库实现了一种 idpKey 的存储策略，Lua 脚本的语法并不难，难的是如何以 Redis 环境为基础进行调试，具体逻辑见 <code>RedisKeyStore</code>。这里来分析一下为什么要用Lua实现？</p>
 <ul>
 <li>Redis 自带的命令很多，但还是不能覆盖所有的使用场景，比如我在代码里需要实现“putIfAbsent + expire + 返回覆盖前的值”的<strong>复杂逻辑</strong>就没有原生命令支持。</li>
-<li>Redis提供的Lua机制可以保证<strong>隔离性</strong>，因为Redis本身是<strong>单线程模型</strong>，天然保证了串行化的执行，即间接实现了串行化隔离级别。</li>
-<li>但Lua本身<strong>不能保证原子性</strong>，Redis也没有<code>undo log</code>这一说，如果执行到一半宕机了也可能会出现数据不一致的问题。因此，如果Lua脚本中执行的是<code>set+expire</code>，则有必要在启动的时候进行一个清理动作：删除服务器上旧的IdpKey。</li>
+<li>Redis提供的Lua机制可以保证<strong>隔离性</strong>，因为Redis本身是<strong>单线程模型</strong>，天然保证了串行化执行，即间接实现了串行化隔离级别，而不管是Lua脚本还是事务，都是通过批量执行任务来保证这种隔离性的。<blockquote>
+<p>Sentinel 集群可以保证只有一个 master 能执行写命令，因为Sentinel服务器本身不支持任何写命令，而slave又被设置为了只读。<br>Cluster 集群会将 key hash 到某个分片上，同样也能避免了竞争。</p>
+</blockquote>
+</li>
+<li>但Lua本身<strong>不能保证原子性</strong>，Redis也没有<code>undo log</code>这一说，如果执行到一半出现宕机（Crash）或者数据漂移也可能会出现数据不一致的问题。因此，如果Lua脚本中执行的是<code>set+expire</code>，则有必要在启动的时候进行一个清理动作：删除服务器上旧的IdpKey。<blockquote>
+<p>一般不会使用<code>set+expire</code>实现加缓存、加锁等操作，而是使用一条带缓存时间的set命令。</p>
+</blockquote>
+</li>
 <li>虽然Lua不能满足原子性，但是它<strong>最小化了网络的影响</strong>，它将所有需要调用的命令和逻辑打包传到服务器上执行，而且只需要上传一次，之后可以通过SHA值来指定服务器上的一个脚本。<blockquote>
 <p>Redis 内置 Lua 脚本的调试方法：<a href="https://redis.io/topics/ldb" target="_blank" rel="noopener">Redis Lua scripts debugger</a><br>其实除了 Lua 脚本，还可以通过<strong>watch</strong>机制（类似 ZooKeeper 中的 Watcher）实现乐观锁来取代，优点是简单、不需要维护 lua 代码，但缺点是需要轮询、效率更低。<br>或者通过Redis的事务机制来实现，Redis会将一个事务范围内的所有命令打包发到服务器上，直到exec才会批量执行，具有和lua脚本类似的特性，但是上传多条命令有一定时间损耗，需要权衡使用。</p>
 </blockquote>
