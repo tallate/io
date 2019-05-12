@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="dkv(Decentralized-Key-Value)存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。总之，这是我在分布式领域里面可以想">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tallate">
+<meta property="og:url" content="https://tallate.github.io/draft/数据库/dkv.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="dkv(Decentralized-Key-Value)存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。总之，这是我在分布式领域里面可以想">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-05-11T08:14:02.281Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Tallate">
+<meta name="twitter:description" content="dkv(Decentralized-Key-Value)存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。总之，这是我在分布式领域里面可以想">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/draft/数据库/dkv.html">
+
+
+
+
+
+
+
+  <title> | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+    
+    
+    <div class="post-block page">
+      <header class="post-header">
+
+
+	<h1 class="post-title" itemprop="name headline"></h1>
+
+
+
+
+
+
+
+
+</header>
+
+
+
+
+
+
+      
+      
+      
+      <div class="post-body">
+        
+        
+          <h1 id="dkv-Decentralized-Key-Value"><a href="#dkv-Decentralized-Key-Value" class="headerlink" title="dkv(Decentralized-Key-Value)"></a>dkv(Decentralized-Key-Value)</h1><p>存储是架构中最难的部分，从ACID到BASE，从高性能到高可用，现在的互联网项目大多是数据密集型的，架构的设计总是要围绕着存储来进行。<br>现今大部分架构里的存储一般都是中心化的，就算要分库分表，也要深入理解业务，按业务进行拆分或按id进行hash等，没有办法做到“非常自由”的伸缩，而去中心化就是对这种现状的挑战。<br>总之，这是我在分布式领域里面可以想到的最大的挑战，我们先来梳理一下分布式系统的基础知识，然后分析一下数据库技术的现状。</p>
+<h2 id="一、分布式系统原理"><a href="#一、分布式系统原理" class="headerlink" title="一、分布式系统原理"></a>一、分布式系统原理</h2><ol>
+<li><a href="http://dcaoyuan.github.io/papers/pdfs/Scalability.pdf" target="_blank" rel="noopener">走向分布式</a></li>
+</ol>
+<h2 id="二、存储发展现状"><a href="#二、存储发展现状" class="headerlink" title="二、存储发展现状"></a>二、存储发展现状</h2><h3 id="架构发展"><a href="#架构发展" class="headerlink" title="架构发展"></a>架构发展</h3><p>架构中最难的方面是存储，架构受存储的制约，反过来，我们也可以从架构中看到存储技术的演进：</p>
+<ol>
+<li><a href="http://www.blogjava.net/BlueDavy/archive/2009/04/28/267970.html" target="_blank" rel="noopener">网站架构相关PPT、文章整理（更新于2009-7-15）</a></li>
+<li><a href="http://ju.outofmemory.cn/entry/351897" target="_blank" rel="noopener">从零开始搭建创业公司后台技术栈</a></li>
+</ol>
+<h3 id="键值对数据库（KV-Store）"><a href="#键值对数据库（KV-Store）" class="headerlink" title="键值对数据库（KV Store）"></a>键值对数据库（KV Store）</h3><p>本地缓存（Guava、Chronicle-Map、ehcache）<br>Memcached<br>Redis</p>
+<ul>
+<li><a href="https://juejin.im/post/5cd5174d6fb9a0324e4a53b0" target="_blank" rel="noopener">面试题：“选redis还是memcache”</a><br>Cassandra<br>RocksDB<br>Titan</li>
+<li><a href="https://www.jianshu.com/p/7d115c8ecb1e" target="_blank" rel="noopener">Titan 的设计与实现</a></li>
+</ul>
+<p>应用（名称解析 / 服务注册 / 缓存 / 定时器elasticjob / session）<br>中心化（redis、codis）<br>协调协议（Paxos、Zab、Raft、sofa-jraft、gossip）<br>时间协调<br>初衷（原中心化的缓存不好管理，其实可以选举出一个中心节点来加载数据，然后同步到其他节点。减少使用本地缓存时单个服务器内存压力）<br>数据分片（过大的value被切片，并行读提高获取时的速度）</p>
+<p>如何使用go语言实现一个分布式缓存。<br><a href="https://github.com/hashicorp/memberlist" target="_blank" rel="noopener">hashicorp/memberlist</a><br>基于gossip的容错集群成员管理。<br><a href="https://github.com/stathat/consistent" target="_blank" rel="noopener">stathat/consistent</a><br>使用一致性哈希算法实现数据分片。</p>
+<h3 id="文档数据库"><a href="#文档数据库" class="headerlink" title="文档数据库"></a>文档数据库</h3><p>MongoDB<br>Elasticsearch<br><a href="https://github.com/valeriansaliou/sonic" target="_blank" rel="noopener">valeriansaliou/sonic</a></p>
+<h3 id="列数据库"><a href="#列数据库" class="headerlink" title="列数据库"></a>列数据库</h3><p>BigTable<br>Hbase</p>
+<h3 id="图数据库"><a href="#图数据库" class="headerlink" title="图数据库"></a>图数据库</h3><p>Neo4j<br>FlockDB</p>
+<h3 id="关系型数据库"><a href="#关系型数据库" class="headerlink" title="关系型数据库"></a>关系型数据库</h3><p>分布式事务-中间件层：sharding-jdbc、mycat、mysql-proxy<br>分布式事务-业务层：atomikos、Fescar、tcc-transaction、ByteTCC<br>分布式事务-协议层：Percolator、XA<br>分布式数据库：RadonDB、BigTable、RocksDB、F1、Spanner、CockroachDB、TiDB<br>SQL解释器（Calcite）<br>索引：cpp-btree（Google）、SlimTrie<br>sql优化原理<br>锁：原理、排查<br>集群 读写分离<br>内存数据库：VoltDB</p>
+<p>Bluzelle（声称是去中心化数据库，但是其技术细节并未公布，可能是挂羊头买狗肉）</p>
+<ol>
+<li><a href="http://www.ymcall.com/artinfo/949446562686071991.html" target="_blank" rel="noopener">去中心化数据库：传统IT与区块链的未来融合形式</a></li>
+<li><a href="https://www.jianshu.com/p/4e0c7ebceb7c" target="_blank" rel="noopener">Bluzelle-区块链上的甲骨文</a></li>
+</ol>
+<p>除了 Redis 这些常见的缓存中间件外，一些大数据相关的内存数据管理框架也能承担分布式缓存的职责，虽然很多情况下是“杀鸡用牛刀”、徒增复杂度，但是其中很多思路是可以学习的。</p>
+<ol>
+<li><a href="https://github.com/apache/ignite" target="_blank" rel="noopener">github - apache/ignite</a></li>
+<li><a href="https://github.com/apache/arrow" target="_blank" rel="noopener">github - apache/arrow</a></li>
+</ol>
+<h3 id="文件系统"><a href="#文件系统" class="headerlink" title="文件系统"></a>文件系统</h3><p>HDFS</p>
+<ol>
+<li><a href="https://www.ixueshu.com/download/bdae7db2d3cee26e14a4dc030e7d94c3.html" target="_blank" rel="noopener">去中心化的分布式存储模型</a></li>
+</ol>
+<p>p2p协议（bt伪去中心化、ipfs去中心化、Sia、Storj）<br>版本控制（Git）</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>块存储</p>
+<p>分布式文件系统<br>HDFS</p>
+<p>对象存储</p>
+<p>键值对数据库（KV Store）<br>Redis<br>Memcached<br>Cassandra<br>去中心化键值对存储<br>应用（名称解析 / 服务注册 / 缓存 / 定时器elasticjob / session）<br>中心化（redis、codis） p2p协议（bt伪去中心化、ipfs去中心化、Sia、Storj）<br>版本控制（Git） 协调协议（Paxos、Zab、Raft、sofa-jraft、gossip） 时间协调 初衷（原中心化的缓存不好管理，其实可以选举出一个中心节点来加载数据，然后同步到其他节点。减少使用本地缓存时单个服务器内存压力） 数据分片（过大的value被切片，并行读提高获取时的速度） 本地缓存（Guava、Chronicle-Map）</p>
+<p>文档数据库<br>MongoDB</p>
+<p>列数据库<br>BigTable<br>Hbase</p>
+<p>图数据库<br>Neo4j<br>FlockDB</p>
+<p>去中心化分布式数据库<br>分布式事务-中间件层：sharding-jdbc、mycat、mysql-proxy<br>分布式事务-业务层：atomikos、Fescar、tcc-transaction、ByteTCC<br>分布式事务-协议层：Percolator、XA<br>分布式数据库：TiDB、BigTable、RocksDB、F1、Scanner<br>SQL解释器（Calcite）<br>索引：cpp-btree（Google）、SlimTrie<br>sql优化原理<br>锁：原理、排查<br>集群 读写分离</p>
+<h2 id="参考-1"><a href="#参考-1" class="headerlink" title="参考"></a>参考</h2><h3 id="存储相关概念"><a href="#存储相关概念" class="headerlink" title="存储相关概念"></a>存储相关概念</h3><ol>
+<li><a href="https://blog.csdn.net/zds05/article/details/79494870" target="_blank" rel="noopener">块存储、文件存储、对象存储这三者和分布式文件存储系统的本质区别</a></li>
+<li><a href="db-engines.com">DB-Engines</a><br>数据库排名<h3 id="键值对存储"><a href="#键值对存储" class="headerlink" title="键值对存储"></a>键值对存储</h3></li>
+<li><a href="https://m.doc88.com/p-8962526015056.html" target="_blank" rel="noopener">分布式键值对存储系统的设计与实现</a><h3 id="数据库"><a href="#数据库" class="headerlink" title="数据库"></a>数据库</h3></li>
+<li><a href="http://www.redbook.io/index.html" target="_blank" rel="noopener">Readings in Database Systems</a><br>第5版是最新的，这一系列包含了数据管理的一些经典和前沿研究。<h3 id="去中心化存储"><a href="#去中心化存储" class="headerlink" title="去中心化存储"></a>去中心化存储</h3></li>
+<li>《区块链核心算法解析》</li>
+<li><a href="https://www.ixueshu.com/download/bdae7db2d3cee26e14a4dc030e7d94c3.html" target="_blank" rel="noopener">去中心化的分布式存储模型</a></li>
+</ol>
+
+        
+      </div>
+      
+      
+      
+    </div>
+    
+    
+    
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">21</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#dkv-Decentralized-Key-Value"><span class="nav-number">1.</span> <span class="nav-text">dkv(Decentralized-Key-Value)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、分布式系统原理"><span class="nav-number">1.1.</span> <span class="nav-text">一、分布式系统原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、存储发展现状"><span class="nav-number">1.2.</span> <span class="nav-text">二、存储发展现状</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#架构发展"><span class="nav-number">1.2.1.</span> <span class="nav-text">架构发展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#键值对数据库（KV-Store）"><span class="nav-number">1.2.2.</span> <span class="nav-text">键值对数据库（KV Store）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文档数据库"><span class="nav-number">1.2.3.</span> <span class="nav-text">文档数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#列数据库"><span class="nav-number">1.2.4.</span> <span class="nav-text">列数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#图数据库"><span class="nav-number">1.2.5.</span> <span class="nav-text">图数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#关系型数据库"><span class="nav-number">1.2.6.</span> <span class="nav-text">关系型数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件系统"><span class="nav-number">1.2.7.</span> <span class="nav-text">文件系统</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">1.3.</span> <span class="nav-text">参考</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考-1"><span class="nav-number">1.4.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#存储相关概念"><span class="nav-number">1.4.1.</span> <span class="nav-text">存储相关概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#键值对存储"><span class="nav-number">1.4.2.</span> <span class="nav-text">键值对存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据库"><span class="nav-number">1.4.3.</span> <span class="nav-text">数据库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#去中心化存储"><span class="nav-number">1.4.4.</span> <span class="nav-text">去中心化存储</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+
+</body>
+</html>
