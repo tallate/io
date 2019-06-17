@@ -86,13 +86,13 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="前不久公司核心业务遭遇“滑铁卢”，由于当时我对该项目仍处于熟悉中阶段，没能直接参与到故障的修复当中去，对事故只能给出一个大概的复述。该业务简而言之就是：1 用户请求下单结算 -&amp;gt; 2 更新订单状态 -&amp;gt; 3 扣钱包余额扣库存，第 2 步是一个写库操作，第 3 步需要异步发消息到另一个服务。当时运维同学对配置操作不当导致数据库连接拿不到，于是在事发的半个小时内，有百余单扣了款却没有正常交">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://47.88.24.11/实现一个服务熔断器/链路示例.png">
-<meta property="og:image" content="http://47.88.24.11/实现一个服务熔断器/下游多实例的链路.png">
+<meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%86%94%E6%96%AD%E5%99%A8/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png">
+<meta property="og:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%86%94%E6%96%AD%E5%99%A8/%E4%B8%8B%E6%B8%B8%E5%A4%9A%E5%AE%9E%E4%BE%8B%E7%9A%84%E9%93%BE%E8%B7%AF.png">
 <meta property="og:updated_time" content="2019-03-13T15:42:33.674Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现一个服务熔断器">
 <meta name="twitter:description" content="前不久公司核心业务遭遇“滑铁卢”，由于当时我对该项目仍处于熟悉中阶段，没能直接参与到故障的修复当中去，对事故只能给出一个大概的复述。该业务简而言之就是：1 用户请求下单结算 -&amp;gt; 2 更新订单状态 -&amp;gt; 3 扣钱包余额扣库存，第 2 步是一个写库操作，第 3 步需要异步发消息到另一个服务。当时运维同学对配置操作不当导致数据库连接拿不到，于是在事发的半个小时内，有百余单扣了款却没有正常交">
-<meta name="twitter:image" content="http://47.88.24.11/实现一个服务熔断器/链路示例.png">
+<meta name="twitter:image" content="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%86%94%E6%96%AD%E5%99%A8/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png">
 
 
 
@@ -288,27 +288,39 @@
       <div class="post-body">
         
         
-          <p>前不久公司核心业务遭遇“滑铁卢”，由于当时我对该项目仍处于熟悉中阶段，没能直接参与到故障的修复当中去，对事故只能给出一个大概的复述。该业务简而言之就是：1 用户请求下单结算 -&gt; 2 更新订单状态 -&gt; 3 扣钱包余额扣库存，第 2 步是一个写库操作，第 3 步需要异步发消息到另一个服务。当时运维同学对配置操作不当导致数据库连接拿不到，于是在事发的半个小时内，有百余单扣了款却没有正常交易成功，结果事后需要一笔一笔地检查订单，手动给用户赔罪退款。<br>事后反省时基本上也是围绕着要小心、要规范云云。其实我认为事故大大小小基本上无法完全避免，能控制事故的范围才是系统容错性能的硬指标。这一次事故发生前后经历的半个小时，服务即使在出错很多次后仍然能够继续接收请求，明显是没有做服务的熔断降级，导致影响范围不断扩大，后续需要花大量时间去弥补。<br>熔断本身属于一种兜底方案。在一个远程调用框架中，一个服务接口被调用时，如果出错应该优先采取重试的方案，如果多次超时——表明服务确实不可用之后——才会考虑熔断，以避免“灾害”进一步的扩大。<br>熔断本身没有特别难的算法，但是需要考虑比较多的细节。</p>
+          <p>前不久公司核心业务遭遇“滑铁卢”，由于当时我对该项目仍处于熟悉中阶段，没能直接参与到故障的修复当中去，对事故只能给出一个大概的复述。该业务简而言之就是：1 用户请求下单结算 -&gt; 2 更新订单状态 -&gt; 3 扣钱包余额扣库存，第 2 步是一个写库操作，第 3 步需要异步发消息到另一个服务。当时运维同学对配置操作不当导致数据库连接拿不到，于是在事发的半个小时内，有百余单扣了款却没有正常交易成功，结果事后需要一笔一笔地检查订单，手动给用户赔罪退款。<br>
+事后反省时基本上也是围绕着要小心、要规范云云。其实我认为事故大大小小基本上无法完全避免，能控制事故的范围才是系统容错性能的硬指标。这一次事故发生前后经历的半个小时，服务即使在出错很多次后仍然能够继续接收请求，明显是没有做服务的熔断降级，导致影响范围不断扩大，后续需要花大量时间去弥补。<br>
+熔断本身属于一种兜底方案。在一个远程调用框架中，一个服务接口被调用时，如果出错应该优先采取重试的方案，如果多次超时——表明服务确实不可用之后——才会考虑熔断，以避免“灾害”进一步的扩大。<br>
+熔断本身没有特别难的算法，但是需要考虑比较多的细节。</p>
 <ul>
-<li style="list-style: none"><input type="checkbox"> 熔断降级机制</li>
-<li style="list-style: none"><input type="checkbox"> 恢复机制</li>
-<li style="list-style: none"><input type="checkbox"> 熔断器 + Spring</li>
-<li style="list-style: none"><input type="checkbox"> Dubbo 中的熔断降级机制</li>
-<li style="list-style: none"><input type="checkbox"> Hystrix 中的熔断降级机制</li>
-<li style="list-style: none"><input type="checkbox"> （阿里）Sentinel 中的熔断机制</li>
-<li style="list-style: none"><input type="checkbox"> 使用（Netflix） chaosmonkey 检测熔断器的性能</li>
+<li>[ ] 熔断降级机制</li>
+<li>[ ] 恢复机制</li>
+<li>[ ] 熔断器 + Spring</li>
+<li>[ ] Dubbo 中的熔断降级机制</li>
+<li>[ ] Hystrix 中的熔断降级机制</li>
+<li>[ ] （阿里）Sentinel 中的熔断机制</li>
+<li>[ ] 使用（Netflix） chaosmonkey 检测熔断器的性能</li>
 </ul>
 <a id="more"></a>
-<h2 id="二、熔断器的实现"><a href="#二、熔断器的实现" class="headerlink" title="二、熔断器的实现"></a>二、熔断器的实现</h2><h3 id="降级"><a href="#降级" class="headerlink" title="降级"></a>降级</h3><p>待定…</p>
-<h3 id="恢复"><a href="#恢复" class="headerlink" title="恢复"></a>恢复</h3><p>待定…</p>
-<h3 id="与-Spring-框架的耦合"><a href="#与-Spring-框架的耦合" class="headerlink" title="与 Spring 框架的耦合"></a>与 Spring 框架的耦合</h3><p>待定…</p>
-<h2 id="三、熔断器的使用"><a href="#三、熔断器的使用" class="headerlink" title="三、熔断器的使用"></a>三、熔断器的使用</h2><h3 id="熔断粒度"><a href="#熔断粒度" class="headerlink" title="熔断粒度"></a>熔断粒度</h3><p>服务一般是复杂的、有许多接口的，而且调用不同接口形成的链路结构可能并不一样，当某个接口出现故障时，很有可能并不影响其他接口的可用性，比如对下面两个链路：</p>
+<h2 id="二-熔断器的实现"><a class="header-anchor" href="#二-熔断器的实现">¶</a>二、熔断器的实现</h2>
+<h3 id="降级"><a class="header-anchor" href="#降级">¶</a>降级</h3>
+<p>待定…</p>
+<h3 id="恢复"><a class="header-anchor" href="#恢复">¶</a>恢复</h3>
+<p>待定…</p>
+<h3 id="与-spring-框架的耦合"><a class="header-anchor" href="#与-spring-框架的耦合">¶</a>与 Spring 框架的耦合</h3>
+<p>待定…</p>
+<h2 id="三-熔断器的使用"><a class="header-anchor" href="#三-熔断器的使用">¶</a>三、熔断器的使用</h2>
+<h3 id="熔断粒度"><a class="header-anchor" href="#熔断粒度">¶</a>熔断粒度</h3>
+<p>服务一般是复杂的、有许多接口的，而且调用不同接口形成的链路结构可能并不一样，当某个接口出现故障时，很有可能并不影响其他接口的可用性，比如对下面两个链路：</p>
 <ul>
 <li>服务 A 接口 1 -&gt; 服务 B 接口 1</li>
 <li>服务 A 接口 2 -&gt; 服务 C 接口 1</li>
 </ul>
-<p>如果服务 B 的接口 1（以下使用 B1 简称）不可用了，会导致 A1 不可用，但不影响 A2。<br>因此以接口作为熔断粒度更合适，服务熔断其实熔断的是服务中有问题的那部分接口。</p>
-<h3 id="添加熔断的位置——上游-Or-下游"><a href="#添加熔断的位置——上游-Or-下游" class="headerlink" title="添加熔断的位置——上游 Or 下游"></a>添加熔断的位置——上游 Or 下游</h3><p>正如之前所示，一条服务链路可能是复杂的、多级的，如下图所示：<br><img src="http://47.88.24.11/实现一个服务熔断器/链路示例.png" alt="链路示例" title="链路示例"></p>
+<p>如果服务 B 的接口 1（以下使用 B1 简称）不可用了，会导致 A1 不可用，但不影响 A2。<br>
+因此以接口作为熔断粒度更合适，服务熔断其实熔断的是服务中有问题的那部分接口。</p>
+<h3 id="添加熔断的位置-上游-or-下游"><a class="header-anchor" href="#添加熔断的位置-上游-or-下游">¶</a>添加熔断的位置——上游 Or 下游</h3>
+<p>正如之前所示，一条服务链路可能是复杂的、多级的，如下图所示：<br>
+<img src="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%86%94%E6%96%AD%E5%99%A8/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png" alt="链路示例" title="链路示例"></p>
 <p>如上图所示，熔断规则的添加方式可以有以下 3 种：</p>
 <ol>
 <li>仅在 A1 和 A2 上添加熔断规则。如果 B1 不可用了，会触发 A1 的降级，但是 A2 并不知道，于是又会对 B 发起无用的调用。其实当下游的某个服务不可用之后，以该服务为下游的所有链路其实都报废掉了，所以这里在 A1 已经试出 B1 的问题后 A2 再去请求已经没有意义了。</li>
@@ -316,12 +328,19 @@
 <li>同时都加上熔断规则。这样其实会在熔断恢复时引起一点小麻烦：如果 A1 率先进入 <code>Recovering</code> 状态，此时 B1 仍不可用，反过来又会把 A1 带回到降级状态，直到 B1 进入 <code>Recovering</code> 状态；如果 B1 率先进入 <code>Recovering</code> 状态则不会有这样的问题。</li>
 </ol>
 <p>总而言之，在为上下游服务接口添加熔断规则时，能都加则都加，如果不能则尽量在容易出错的接口处添加熔断规则。</p>
-<h3 id="熔断与服务发现是一对搭档——下游有多个实例的情况"><a href="#熔断与服务发现是一对搭档——下游有多个实例的情况" class="headerlink" title="熔断与服务发现是一对搭档——下游有多个实例的情况"></a>熔断与服务发现是一对搭档——下游有多个实例的情况</h3><p>在分布式系统里，我们默认网络是不稳定的、容易发生抖动的，有时候请求一时不能正常地打到目标服务器上，但是可以通过重试来达到目的，一般这样的情况会比较少，所以我们会定一个<code>调用成功率</code>来决定是否开启熔断模式将这条链路降级，那么这个成功率应该怎么设定呢？<br>我们先考虑最简单的情况——下游服务只有一个实例，如果这个实例挂掉，那么对其的请求就都不好使了，因此<code>调用成功率</code>可以设置得比较大，比如约<code>80% ~ 90% / min</code>的一个数。<br><img src="http://47.88.24.11/实现一个服务熔断器/下游多实例的链路.png" alt="下游多实例的链路" title="下游多实例的链路"><br>但是服务为了保证可用性，怎么可能只有一个副本？如上图所示，下游服务有多个副本的情况下，如果其中有一个副本出了问题，经过<strong>服务发现</strong>组件的刷新（Watch机制），A能够“感知”到下游服务结构的变动、忽略掉已经不可用的实例，当然这个“感知”有一定的延迟时间，如果我们容忍这样的延迟，那么<code>调用成功率</code>的值也可以相对设置得大胆一些，比如约<code>60% ~ 70% / min</code>；反过来说，如果我们希望熔断器更严格，则会导致熔断器将整个下游服务的流量阻断掉，这是一个需要权衡的设计问题。</p>
-<h3 id="异步请求-Or-同步请求"><a href="#异步请求-Or-同步请求" class="headerlink" title="异步请求 Or 同步请求"></a>异步请求 Or 同步请求</h3><p>服务接口可以分为同步的和异步的，我们说的服务不可用其实都发生在同步调用中，而异步请求一般都是非阻塞的，不可能出现超时现象。</p>
+<h3 id="熔断与服务发现是一对搭档-下游有多个实例的情况"><a class="header-anchor" href="#熔断与服务发现是一对搭档-下游有多个实例的情况">¶</a>熔断与服务发现是一对搭档——下游有多个实例的情况</h3>
+<p>在分布式系统里，我们默认网络是不稳定的、容易发生抖动的，有时候请求一时不能正常地打到目标服务器上，但是可以通过重试来达到目的，一般这样的情况会比较少，所以我们会定一个<code>调用成功率</code>来决定是否开启熔断模式将这条链路降级，那么这个成功率应该怎么设定呢？<br>
+我们先考虑最简单的情况——下游服务只有一个实例，如果这个实例挂掉，那么对其的请求就都不好使了，因此<code>调用成功率</code>可以设置得比较大，比如约<code>80% ~ 90% / min</code>的一个数。<br>
+<img src="http://47.88.24.11/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%86%94%E6%96%AD%E5%99%A8/%E4%B8%8B%E6%B8%B8%E5%A4%9A%E5%AE%9E%E4%BE%8B%E7%9A%84%E9%93%BE%E8%B7%AF.png" alt="下游多实例的链路" title="下游多实例的链路"><br>
+但是服务为了保证可用性，怎么可能只有一个副本？如上图所示，下游服务有多个副本的情况下，如果其中有一个副本出了问题，经过<strong>服务发现</strong>组件的刷新（Watch机制），A能够“感知”到下游服务结构的变动、忽略掉已经不可用的实例，当然这个“感知”有一定的延迟时间，如果我们容忍这样的延迟，那么<code>调用成功率</code>的值也可以相对设置得大胆一些，比如约<code>60% ~ 70% / min</code>；反过来说，如果我们希望熔断器更严格，则会导致熔断器将整个下游服务的流量阻断掉，这是一个需要权衡的设计问题。</p>
+<h3 id="异步请求-or-同步请求"><a class="header-anchor" href="#异步请求-or-同步请求">¶</a>异步请求 Or 同步请求</h3>
+<p>服务接口可以分为同步的和异步的，我们说的服务不可用其实都发生在同步调用中，而异步请求一般都是非阻塞的，不可能出现超时现象。</p>
 <blockquote>
-<p>异步请求一般通过消息队列来实现，消息队列可以持久化消息，并通过不断重拾来实现至少一次的消费，因此异步请求不会影响链路的可用性。<br>异步和非阻塞没有必然关联，异步表达的是一种“被动的”通信模式（由操作系统来通知应用程序请求已返回），非阻塞指的是调用方法会立刻返回，换句话说，我们完全可以实现一种异步阻塞的 IO 模型。</p>
+<p>异步请求一般通过消息队列来实现，消息队列可以持久化消息，并通过不断重拾来实现至少一次的消费，因此异步请求不会影响链路的可用性。<br>
+异步和非阻塞没有必然关联，异步表达的是一种“被动的”通信模式（由操作系统来通知应用程序请求已返回），非阻塞指的是调用方法会立刻返回，换句话说，我们完全可以实现一种异步阻塞的 IO 模型。</p>
 </blockquote>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
 <li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
 </ol>
 
@@ -396,7 +415,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">21</span>
+                  <span class="site-state-item-count">23</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -418,7 +437,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-count">11</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -453,7 +472,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#二、熔断器的实现"><span class="nav-number">1.</span> <span class="nav-text">二、熔断器的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#降级"><span class="nav-number">1.1.</span> <span class="nav-text">降级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#恢复"><span class="nav-number">1.2.</span> <span class="nav-text">恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#与-Spring-框架的耦合"><span class="nav-number">1.3.</span> <span class="nav-text">与 Spring 框架的耦合</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、熔断器的使用"><span class="nav-number">2.</span> <span class="nav-text">三、熔断器的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#熔断粒度"><span class="nav-number">2.1.</span> <span class="nav-text">熔断粒度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#添加熔断的位置——上游-Or-下游"><span class="nav-number">2.2.</span> <span class="nav-text">添加熔断的位置——上游 Or 下游</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#熔断与服务发现是一对搭档——下游有多个实例的情况"><span class="nav-number">2.3.</span> <span class="nav-text">熔断与服务发现是一对搭档——下游有多个实例的情况</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步请求-Or-同步请求"><span class="nav-number">2.4.</span> <span class="nav-text">异步请求 Or 同步请求</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#二-熔断器的实现"><span class="nav-number">1.</span> <span class="nav-text">¶二、熔断器的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#降级"><span class="nav-number">1.1.</span> <span class="nav-text">¶降级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#恢复"><span class="nav-number">1.2.</span> <span class="nav-text">¶恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#与-spring-框架的耦合"><span class="nav-number">1.3.</span> <span class="nav-text">¶与 Spring 框架的耦合</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-熔断器的使用"><span class="nav-number">2.</span> <span class="nav-text">¶三、熔断器的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#熔断粒度"><span class="nav-number">2.1.</span> <span class="nav-text">¶熔断粒度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#添加熔断的位置-上游-or-下游"><span class="nav-number">2.2.</span> <span class="nav-text">¶添加熔断的位置——上游 Or 下游</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#熔断与服务发现是一对搭档-下游有多个实例的情况"><span class="nav-number">2.3.</span> <span class="nav-text">¶熔断与服务发现是一对搭档——下游有多个实例的情况</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步请求-or-同步请求"><span class="nav-number">2.4.</span> <span class="nav-text">¶异步请求 Or 同步请求</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>
@@ -701,6 +720,28 @@
   
 
   
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
 
   
 

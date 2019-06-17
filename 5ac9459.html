@@ -79,21 +79,21 @@
 
 
 
-<meta name="description" content="一、多级缓存实践  本地缓存在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。 缓存 / 搜索服务器TODO:  数据库服务器TODO： 同机房的其他业务服务器TODO： 不同机房的其他业务服务器TODO：">
+<meta name="description" content="¶一、多级缓存实践   本地缓存 在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。 缓存 / 搜索服务器 TODO: 数据库服务器 TODO： 同机房的其他业务服务器 TODO： 不同机房的其他业务服务器">
 <meta name="keywords" content="Distributed System,Cache">
 <meta property="og:type" content="article">
 <meta property="og:title" content="多级缓存——多级缓存的实现(20%)">
 <meta property="og:url" content="https://tallate.github.io/5ac9459.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="一、多级缓存实践  本地缓存在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。 缓存 / 搜索服务器TODO:  数据库服务器TODO： 同机房的其他业务服务器TODO： 不同机房的其他业务服务器TODO：">
+<meta property="og:description" content="¶一、多级缓存实践   本地缓存 在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。 缓存 / 搜索服务器 TODO: 数据库服务器 TODO： 同机房的其他业务服务器 TODO： 不同机房的其他业务服务器">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://47.88.24.11/多级缓存——多级缓存的实现/多级数据来源.png">
-<meta property="og:image" content="http://47.88.24.11/多级缓存——多级缓存的实现/cache-drawer-core.png">
+<meta property="og:image" content="http://47.88.24.11/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E2%80%94%E2%80%94%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E7%9A%84%E5%AE%9E%E7%8E%B0/%E5%A4%9A%E7%BA%A7%E6%95%B0%E6%8D%AE%E6%9D%A5%E6%BA%90.png">
+<meta property="og:image" content="http://47.88.24.11/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E2%80%94%E2%80%94%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E7%9A%84%E5%AE%9E%E7%8E%B0/cache-drawer-core.png">
 <meta property="og:updated_time" content="2019-05-02T10:41:58.822Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="多级缓存——多级缓存的实现(20%)">
-<meta name="twitter:description" content="一、多级缓存实践  本地缓存在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。 缓存 / 搜索服务器TODO:  数据库服务器TODO： 同机房的其他业务服务器TODO： 不同机房的其他业务服务器TODO：">
-<meta name="twitter:image" content="http://47.88.24.11/多级缓存——多级缓存的实现/多级数据来源.png">
+<meta name="twitter:description" content="¶一、多级缓存实践   本地缓存 在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。 缓存 / 搜索服务器 TODO: 数据库服务器 TODO： 同机房的其他业务服务器 TODO： 不同机房的其他业务服务器">
+<meta name="twitter:image" content="http://47.88.24.11/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E2%80%94%E2%80%94%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E7%9A%84%E5%AE%9E%E7%8E%B0/%E5%A4%9A%E7%BA%A7%E6%95%B0%E6%8D%AE%E6%9D%A5%E6%BA%90.png">
 
 
 
@@ -399,48 +399,72 @@
 
       
         <a id="more"></a>
-<h2 id="一、多级缓存实践"><a href="#一、多级缓存实践" class="headerlink" title="一、多级缓存实践"></a>一、多级缓存实践</h2><p><img src="http://47.88.24.11/多级缓存——多级缓存的实现/多级数据来源.png" alt="多级数据来源" title="多级数据来源示意图"></p>
+<h2 id="一-多级缓存实践"><a class="header-anchor" href="#一-多级缓存实践">¶</a>一、多级缓存实践</h2>
+<p><img src="http://47.88.24.11/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E2%80%94%E2%80%94%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E7%9A%84%E5%AE%9E%E7%8E%B0/%E5%A4%9A%E7%BA%A7%E6%95%B0%E6%8D%AE%E6%9D%A5%E6%BA%90.png" alt="多级数据来源" title="多级数据来源示意图"></p>
 <ul>
-<li>本地缓存<br>在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。</li>
-<li>缓存 / 搜索服务器<br>TODO: </li>
-<li>数据库服务器<br>TODO：</li>
-<li>同机房的其他业务服务器<br>TODO：</li>
-<li>不同机房的其他业务服务器<br>TODO：</li>
+<li>本地缓存<br>
+在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。</li>
+<li>缓存 / 搜索服务器<br>
+TODO:</li>
+<li>数据库服务器<br>
+TODO：</li>
+<li>同机房的其他业务服务器<br>
+TODO：</li>
+<li>不同机房的其他业务服务器<br>
+TODO：</li>
 </ul>
-<p><img src="http://47.88.24.11/多级缓存——多级缓存的实现/cache-drawer-core.png" alt="多级缓存组件的主要执行流程" title="cache-drawer-core 的主要执行流程"><br>详细描述TODO：</p>
-<h2 id="二、本地缓存"><a href="#二、本地缓存" class="headerlink" title="二、本地缓存"></a>二、本地缓存</h2><h3 id="由线上缓存-bug-引起的对本地缓存的思考"><a href="#由线上缓存-bug-引起的对本地缓存的思考" class="headerlink" title="由线上缓存 bug 引起的对本地缓存的思考"></a>由线上缓存 bug 引起的对本地缓存的思考</h3><p>LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache 的坑，首先给出最简单的缓存配置：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .expireAfterAccess(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> query(id); <span class="comment">// 2</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure></p>
+<p><img src="http://47.88.24.11/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E2%80%94%E2%80%94%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98%E7%9A%84%E5%AE%9E%E7%8E%B0/cache-drawer-core.png" alt="多级缓存组件的主要执行流程" title="cache-drawer-core 的主要执行流程"><br>
+详细描述TODO：</p>
+<h2 id="二-本地缓存"><a class="header-anchor" href="#二-本地缓存">¶</a>二、本地缓存</h2>
+<h3 id="由线上缓存-bug-引起的对本地缓存的思考"><a class="header-anchor" href="#由线上缓存-bug-引起的对本地缓存的思考">¶</a>由线上缓存 bug 引起的对本地缓存的思考</h3>
+<p>LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache 的坑，首先给出最简单的缓存配置：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .expireAfterAccess(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> query(id); <span class="comment">// 2</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
 <ol>
-<li>在构建 LoadingCache 的时候可以配置缓存的过期策略，LoadingCache 其实有三种常用的过期策略：<ul>
+<li>在构建 LoadingCache 的时候可以配置缓存的过期策略，LoadingCache 其实有三种常用的过期策略：
+<ul>
 <li>expireAfterAccess：在最后一次访问后空闲一段时间才过期；</li>
 <li>expireAfterWrite：在最后一次写后空闲一段时间才过期；</li>
-<li>refreshAfterWrite：同样是写后空闲一段时间过期，和上一个的区别是不会阻塞过期时到达的请求，因为刷新一般需要请求远程服务来获取数据，会有比较长的延迟，refreshAfterWrite 会先返回旧数据，而 expireAfterWrite 会先阻塞这些请求。<br>如果是为了吞吐量起见，一般使用 refreshAfterWrite 更多，如果是为了保证同步性，则是使用 expireAfterWrite 更多。<br>因为我们使用缓存的场景是“读多写少的场景”，读端是提供给用户的，而写端由甲方客户控制，当它们更新了某个 id 的数据后，希望能够马上展示到用户眼前，换句话说，缓存应当能够被马上刷新，但是前面的配置中使用的是 expireAfterAccess，因为用户的访问非常频繁，所以缓存一直不能过期，上线的数据不能及时地生效，导致甲方爸爸非常生气。</li>
+<li>refreshAfterWrite：同样是写后空闲一段时间过期，和上一个的区别是不会阻塞过期时到达的请求，因为刷新一般需要请求远程服务来获取数据，会有比较长的延迟，refreshAfterWrite 会先返回旧数据，而 expireAfterWrite 会先阻塞这些请求。<br>
+如果是为了吞吐量起见，一般使用 refreshAfterWrite 更多，如果是为了保证同步性，则是使用 expireAfterWrite 更多。<br>
+因为我们使用缓存的场景是“读多写少的场景”，读端是提供给用户的，而写端由甲方客户控制，当它们更新了某个 id 的数据后，希望能够马上展示到用户眼前，换句话说，缓存应当能够被马上刷新，但是前面的配置中使用的是 expireAfterAccess，因为用户的访问非常频繁，所以缓存一直不能过期，上线的数据不能及时地生效，导致甲方爸爸非常生气。</li>
 </ul>
 </li>
 <li>缓存更新的时候一般会从远程服务或数据库查询数据，这里没有考虑返回值为空的情况，为了保险起见，一般都是需要进行空值校验的，而且如果这里返回了空值，LoadingCache 会直接抛出异常。</li>
 </ol>
-<p>所以更合理的配置方式应该是下面这样的：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .refreshAfterWrite(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                Object res = query(id); <span class="comment">// 2</span></span><br><span class="line">                <span class="keyword">return</span> res == <span class="keyword">null</span> ? DEFAULT_OBJ : res;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure></p>
+<p>所以更合理的配置方式应该是下面这样的：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .refreshAfterWrite(<span class="number">60</span> * <span class="number">1000</span>, MILLISECONDS) <span class="comment">// 1</span></span><br><span class="line">        .maximumSize(<span class="number">500</span>)</span><br><span class="line">        .build(<span class="keyword">new</span> CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> Object <span class="title">load</span><span class="params">(String id)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                Object res = query(id); <span class="comment">// 2</span></span><br><span class="line">                <span class="keyword">return</span> res == <span class="keyword">null</span> ? DEFAULT_OBJ : res;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
 <p>所以，当我们在使用缓存时，一般是事先考虑：</p>
 <ul>
 <li>dataSource：当没有命中时，从哪里获取数据？一般请求下会调用其他服务的远程接口，也可以直接从数据库、缓存中间件查询，但是要注意数据隔离性，比如权限服务就不适合直接到缓存或数据库中查询订单数据，因为这样不利于后期扩容，而且入口越多越不安全；</li>
 <li>expire：定义淘汰策略，比如有一段时间没有访问就淘汰，比如容量限制，当超出容量的时候如何淘汰一般有 LRU（Least Recently Used）、LFU（Least Frequently Used），可以使用 weigher 设置每个 key 的权重；</li>
 </ul>
 <p>如果是一些要求不高的内部信息管理系统，这些属性不需要太关注，但是如果是对并发量有一定要求的系统，对自己所使用的工具知根知底是最低的要求。</p>
-<h3 id="本地缓存是什么"><a href="#本地缓存是什么" class="headerlink" title="本地缓存是什么"></a>本地缓存是什么</h3><p>本地缓存的英文是 Local Cache，Cache、Buffer、Pool 是经常出现但又容易混淆的一组概念，它们都能存取数据，但是有本质上的区别：</p>
+<h3 id="本地缓存是什么"><a class="header-anchor" href="#本地缓存是什么">¶</a>本地缓存是什么</h3>
+<p>本地缓存的英文是 Local Cache，Cache、Buffer、Pool 是经常出现但又容易混淆的一组概念，它们都能存取数据，但是有本质上的区别：</p>
 <ul>
 <li>Cache 的主要功能是“将东西放到更容易拿到的地方”、从而加快速度，具有随机存取的功能，一般为了不导致内存溢出会设置数据的过期回收策略，比如计算机体系结构中的 L1、L2、L3 缓存；</li>
 <li>Buffer 是为了缓冲、减少对脆弱系统的冲击，具有顺序访问的特点，比如每个 TCP Socket 都有的接收发送缓存区；</li>
 <li>Pool 是为了缓存资源，它和 Cache 的主要区别是 Pool 中缓存的对象往往是同构而没有特殊价值的数据，比如连接池中存储的数据库连接，所以 Pool 不需要随机存取功能、随取随用即可。</li>
 </ul>
-<h3 id="什么时候需要本地缓存"><a href="#什么时候需要本地缓存" class="headerlink" title="什么时候需要本地缓存"></a>什么时候需要本地缓存</h3><p>TODO: </p>
-<h3 id="GC-友好的缓存"><a href="#GC-友好的缓存" class="headerlink" title="GC 友好的缓存"></a>GC 友好的缓存</h3><p>TODO: </p>
+<h3 id="什么时候需要本地缓存"><a class="header-anchor" href="#什么时候需要本地缓存">¶</a>什么时候需要本地缓存</h3>
+<p>TODO:</p>
+<h3 id="gc-友好的缓存"><a class="header-anchor" href="#gc-友好的缓存">¶</a>GC 友好的缓存</h3>
+<p>TODO:</p>
 <p>diff（在不等的情况下才 put 或直接修改已有对象，提高内存利用率，不然每次刷新缓存都要放到年轻代。不能用分离链接法实现，因为老的会引用年轻的(每次 put 到头部不就可以了？)，导致年轻代不能转移到老年代）</p>
 <p>如何避免 OOM（弱引用）</p>
-<p>缓存淘汰机制<br>过期策略</p>
-<h3 id="一些常见的本地缓存实现"><a href="#一些常见的本地缓存实现" class="headerlink" title="一些常见的本地缓存实现"></a>一些常见的本地缓存实现</h3><p>TODO: </p>
-<h3 id="如何实现一个本地缓存"><a href="#如何实现一个本地缓存" class="headerlink" title="如何实现一个本地缓存"></a>如何实现一个本地缓存</h3><p>堆内存内存池 OR 直接内存内存池（Java中的直接内存只能被FullGC回收，可以使用引用计数法提升垃圾回收效率，类似Netty中的内存池）<br>TODO: </p>
-<h2 id="二、分布式缓存"><a href="#二、分布式缓存" class="headerlink" title="二、分布式缓存"></a>二、分布式缓存</h2><h3 id="编码和压缩"><a href="#编码和压缩" class="headerlink" title="编码和压缩"></a>编码和压缩</h3><p>TODO: </p>
+<p>缓存淘汰机制<br>
+过期策略</p>
+<h3 id="一些常见的本地缓存实现"><a class="header-anchor" href="#一些常见的本地缓存实现">¶</a>一些常见的本地缓存实现</h3>
+<p>TODO:</p>
+<h3 id="如何实现一个本地缓存"><a class="header-anchor" href="#如何实现一个本地缓存">¶</a>如何实现一个本地缓存</h3>
+<p>堆内存内存池 OR 直接内存内存池（Java中的直接内存只能被FullGC回收，可以使用引用计数法提升垃圾回收效率，类似Netty中的内存池）<br>
+TODO:</p>
+<h2 id="二-分布式缓存"><a class="header-anchor" href="#二-分布式缓存">¶</a>二、分布式缓存</h2>
+<h3 id="编码和压缩"><a class="header-anchor" href="#编码和压缩">¶</a>编码和压缩</h3>
+<p>TODO:</p>
 <p>Redis 属于数据库家族中最简单的一类分支 - KV 数据库，它基本不能维护任何复杂的数据结构，也不能对值构建索引以供查询。为了提高操作效率，自然而然会想到对值进行压缩，额外的编码其实是为了调试时方便，能直接查看保存的数据的内容。除了这些之外，还和 Redis 本身对各对象类型的编码规则有关：</p>
-<p>但是对数据进行压缩并不是银弹，对特别大的数据执行压缩需要占用不菲的 CPU 时间，所以需要作一个权衡。<br>特别小、特别大的数据直接发，中间数据压缩再保存可以触发数据库使用更有效的结构来保存。</p>
+<p>但是对数据进行压缩并不是银弹，对特别大的数据执行压缩需要占用不菲的 CPU 时间，所以需要作一个权衡。<br>
+特别小、特别大的数据直接发，中间数据压缩再保存可以触发数据库使用更有效的结构来保存。</p>
 <p>压缩算法：</p>
 <ol>
 <li>ZIP</li>
@@ -449,10 +473,14 @@
 <li>zstd（Arch Linux）</li>
 <li>…</li>
 </ol>
-<p>TODO: </p>
-<h3 id="使用-Watcher-实现-CAS"><a href="#使用-Watcher-实现-CAS" class="headerlink" title="使用 Watcher 实现 CAS"></a>使用 Watcher 实现 CAS</h3><p>TODO: </p>
-<h3 id="基于缓存的事务"><a href="#基于缓存的事务" class="headerlink" title="基于缓存的事务"></a>基于缓存的事务</h3><p>TODO:<br>双写是</p>
-<h2 id="三、持久层或其他获取数据的远程接口"><a href="#三、持久层或其他获取数据的远程接口" class="headerlink" title="三、持久层或其他获取数据的远程接口"></a>三、持久层或其他获取数据的远程接口</h2><p>TODO: </p>
+<p>TODO:</p>
+<h3 id="使用-watcher-实现-cas"><a class="header-anchor" href="#使用-watcher-实现-cas">¶</a>使用 Watcher 实现 CAS</h3>
+<p>TODO:</p>
+<h3 id="基于缓存的事务"><a class="header-anchor" href="#基于缓存的事务">¶</a>基于缓存的事务</h3>
+<p>TODO:<br>
+双写是</p>
+<h2 id="三-持久层或其他获取数据的远程接口"><a class="header-anchor" href="#三-持久层或其他获取数据的远程接口">¶</a>三、持久层或其他获取数据的远程接口</h2>
+<p>TODO:</p>
 
       
     </div>
@@ -579,7 +607,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">21</span>
+                  <span class="site-state-item-count">23</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -601,7 +629,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-count">11</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -636,7 +664,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、多级缓存实践"><span class="nav-number">1.</span> <span class="nav-text">一、多级缓存实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、本地缓存"><span class="nav-number">2.</span> <span class="nav-text">二、本地缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#由线上缓存-bug-引起的对本地缓存的思考"><span class="nav-number">2.1.</span> <span class="nav-text">由线上缓存 bug 引起的对本地缓存的思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存是什么"><span class="nav-number">2.2.</span> <span class="nav-text">本地缓存是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么时候需要本地缓存"><span class="nav-number">2.3.</span> <span class="nav-text">什么时候需要本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GC-友好的缓存"><span class="nav-number">2.4.</span> <span class="nav-text">GC 友好的缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些常见的本地缓存实现"><span class="nav-number">2.5.</span> <span class="nav-text">一些常见的本地缓存实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现一个本地缓存"><span class="nav-number">2.6.</span> <span class="nav-text">如何实现一个本地缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、分布式缓存"><span class="nav-number">3.</span> <span class="nav-text">二、分布式缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#编码和压缩"><span class="nav-number">3.1.</span> <span class="nav-text">编码和压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-Watcher-实现-CAS"><span class="nav-number">3.2.</span> <span class="nav-text">使用 Watcher 实现 CAS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于缓存的事务"><span class="nav-number">3.3.</span> <span class="nav-text">基于缓存的事务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、持久层或其他获取数据的远程接口"><span class="nav-number">4.</span> <span class="nav-text">三、持久层或其他获取数据的远程接口</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-多级缓存实践"><span class="nav-number">1.</span> <span class="nav-text">¶一、多级缓存实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-本地缓存"><span class="nav-number">2.</span> <span class="nav-text">¶二、本地缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#由线上缓存-bug-引起的对本地缓存的思考"><span class="nav-number">2.1.</span> <span class="nav-text">¶由线上缓存 bug 引起的对本地缓存的思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存是什么"><span class="nav-number">2.2.</span> <span class="nav-text">¶本地缓存是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么时候需要本地缓存"><span class="nav-number">2.3.</span> <span class="nav-text">¶什么时候需要本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#gc-友好的缓存"><span class="nav-number">2.4.</span> <span class="nav-text">¶GC 友好的缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些常见的本地缓存实现"><span class="nav-number">2.5.</span> <span class="nav-text">¶一些常见的本地缓存实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现一个本地缓存"><span class="nav-number">2.6.</span> <span class="nav-text">¶如何实现一个本地缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-分布式缓存"><span class="nav-number">3.</span> <span class="nav-text">¶二、分布式缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#编码和压缩"><span class="nav-number">3.1.</span> <span class="nav-text">¶编码和压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-watcher-实现-cas"><span class="nav-number">3.2.</span> <span class="nav-text">¶使用 Watcher 实现 CAS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于缓存的事务"><span class="nav-number">3.3.</span> <span class="nav-text">¶基于缓存的事务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-持久层或其他获取数据的远程接口"><span class="nav-number">4.</span> <span class="nav-text">¶三、持久层或其他获取数据的远程接口</span></a></li></ol></div>
             
 
           </div>
@@ -884,6 +912,28 @@
   
 
   
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
 
   
 
