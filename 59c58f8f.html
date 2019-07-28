@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Linux,脚本,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶为什么要用awk? 在awk、sed、cut三个命令中，awk是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。">
+<meta name="keywords" content="Linux,脚本">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux三剑客-awk使用总结">
+<meta property="og:url" content="https://tallate.github.io/59c58f8f.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶为什么要用awk? 在awk、sed、cut三个命令中，awk是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-07-28T12:10:17.512Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Linux三剑客-awk使用总结">
+<meta name="twitter:description" content="¶为什么要用awk? 在awk、sed、cut三个命令中，awk是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/59c58f8f.html">
+
+
+
+
+
+
+
+  <title>Linux三剑客-awk使用总结 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/59c58f8f.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Linux三剑客-awk使用总结</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
+                2019-07-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/知识点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">知识点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.4k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="为什么要用awk"><a class="header-anchor" href="#为什么要用awk">¶</a>为什么要用awk?</h2>
+<p>在awk、sed、cut三个命令中，awk是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。</p>
+<a id="more"></a>
+<h2 id="语法"><a class="header-anchor" href="#语法">¶</a>语法</h2>
+<ul>
+<li>基本用法</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ awk 动作 文件名</span><br><span class="line">例子：</span><br><span class="line">$ awk &apos;&#123;print 0&#125;&apos; test.txt</span><br></pre></td></tr></table></figure>
+<p>动作一般会用’{‘和’}'包起来，awk会读取文件中的每一行，然后对每一行执行一次动作</p>
+<ul>
+<li>条件</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ awk &apos;条件 动作&apos; 文件名</span><br><span class="line">或者</span><br><span class="line">$ awk &apos;&#123;if (条件) 动作&#125;&apos; 文件名</span><br><span class="line">$ awk &apos;&#123;if (条件) 动作1; else 动作2&#125;&apos; 文件名</span><br><span class="line">例子：</span><br><span class="line">$ awk -F &apos;:&apos; &apos;/usr/ &#123;print $1&#125;&apos; test.txt</span><br><span class="line">$ awk -F &apos;:&apos; &apos;&#123;if ($1 &gt; &quot;m&quot;) print $1; else print &quot;---&quot;&#125;&apos; test.txt</span><br></pre></td></tr></table></figure>
+<ul>
+<li>预处理和结束处理<br>
+有时候需要在命令执行前初始化一些全局变量，或者需要在文件的全部行遍历完毕后输出一些结果，可以考虑使用<code>BEGIN</code>、<code>END</code>语句块</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ awk &apos;BEGIN&#123;a=0&#125;&#123;a+=1; print NR&#125;END&#123;print &quot;行数=&quot;, a&#125;&apos; test.txt</span><br></pre></td></tr></table></figure>
+<h3 id="内置变量"><a class="header-anchor" href="#内置变量">¶</a>内置变量</h3>
+<ul>
+<li>NF：当前行有多少字段</li>
+<li>NR：当前行是第几行</li>
+<li>FILENAME：当前文件名</li>
+<li>FS：字段分隔符，默认是空格和制表符。</li>
+<li>RS：行分隔符，用于分割每一行，默认是换行符。</li>
+<li>OFS：输出字段的分隔符，用于打印时分隔字段，默认为空格。</li>
+<li>ORS：输出记录的分隔符，用于打印时分隔记录，默认为换行符。</li>
+<li>OFMT：数字输出的格式，默认为％.6g。</li>
+</ul>
+<h3 id="内建函数"><a class="header-anchor" href="#内建函数">¶</a>内建函数</h3>
+<ul>
+<li>toupper()：字符转为大写</li>
+<li>tolower()：字符转为小写。</li>
+<li>sin()：正弦。</li>
+<li>cos()：余弦。</li>
+<li>sqrt()：平方根。</li>
+<li>rand()：随机数。</li>
+<li>length<br>
+length函数返回整个记录中的字符数。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">echo &quot;123&quot; | awk &apos;&#123;print length&#125;&apos;</span><br><span class="line">echo &quot;123 4567&quot; | awk -F &apos; &apos; &apos;&#123;print length($2)&#125;&apos;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>substr<br>
+返回从起始位置起，指定长度之子字符串；若未指定长度，则返回从起始位置到字符串末尾的子字符串。<br>
+格式：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">substr(s,p) # 返回字符串s中从p开始的后缀部分</span><br><span class="line">substr(s,p,n) # 返回字符串s中从p开始长度为n的后缀部分</span><br></pre></td></tr></table></figure>
+<ul>
+<li>split<br>
+split允许把一个字符串分割为单词存储在数组中，可以自己定义域分隔符，或者使用现在FS(域分隔符)的值。<br>
+格式：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">split(string, array, field separator)</span><br><span class="line">split(string, array) # 如果第三个参数没有提供，awk就默认使用当前FS值</span><br></pre></td></tr></table></figure>
+<p>示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">awk -F &apos;,&apos; &apos;&#123;print substr($3,6)&#125;&apos;    ---&gt;  表示是从第3个字段里的第6个字符开始，一直到设定的分隔符&quot;,&quot;结束.</span><br><span class="line">substr($3,10,8)  ---&gt;  表示是从第3个字段里的第10个字符开始，截取8个字符结束.</span><br><span class="line">substr($3,6)     ---&gt;  表示是从第3个字段里的第6个字符开始，一直到结尾</span><br></pre></td></tr></table></figure>
+<ul>
+<li>gsub<br>
+gsub函数则使得在所有正则表达式被匹配的时候都发生替换。<br>
+格式：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gsub(regular expression, subsitution string, target string);</span><br><span class="line">简称 gsub（r,s,t)。</span><br></pre></td></tr></table></figure>
+<p>示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 把一个文件里面所有包含 abc 的行里面的 abc 替换成 def，然后输出第一列和第三列</span><br><span class="line"># ~是包含，!~是不包含</span><br><span class="line">awk &apos;$0 ~ /abc/ &#123;gsub(&quot;abc&quot;, &quot;def&quot;, $0); print $1, $3&#125;&apos; abc.txt</span><br></pre></td></tr></table></figure>
+<h3 id="一些stupid操作"><a class="header-anchor" href="#一些stupid操作">¶</a>一些stupid操作</h3>
+<ul>
+<li>在遍历每一行时维持一个全局变量<br>
+全局变量不管在哪个语言内都需要谨慎对待。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk &apos;&#123;a+=$(NF-2); print &quot;Total so far:&quot;, a&#125;&apos; logs.txt</span><br></pre></td></tr></table></figure>
+<h2 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h2>
+<h3 id="花式分割字符串"><a class="header-anchor" href="#花式分割字符串">¶</a>花式分割字符串</h3>
+<p>awk命令默认使用空格分割字符串，引用这些分割后的字符串可以使用$1、$2、$3…引用，也可以使用-F选项设置分隔符：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk -F &apos;:&apos; &apos;&#123;print e$2&#125;&apos; test.txt</span><br></pre></td></tr></table></figure>
+<p>也可以在<code>BEGIN</code>块里修改<code>FS</code>变量：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk &apos;BEGIN&#123;FS=&quot;:&quot;&#125;&#123;print $1&#125;&apos; test.txt</span><br></pre></td></tr></table></figure>
+<h3 id="统计请求量"><a class="header-anchor" href="#统计请求量">¶</a>统计请求量</h3>
+<ul>
+<li>统计请求日志中某个时间段内每秒的请求量：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 内容格式：QTrace[链路标识] 19:01:12.123 content[日志内容]</span></span><br><span class="line">sudo grep <span class="string">"19:0"</span> request.log | awk -F <span class="string">' '</span> <span class="string">'&#123;print $2&#125;'</span> | awk -F. <span class="string">'&#123;print$1&#125;'</span> | sort | awk -F: <span class="string">'&#123;a[$1":"$2":"$3]++&#125;END&#123;for(i in a)&#123;split(i,t);print t[1]":"t[2]":"t[3]"访问"a[i]"次"&#125;&#125;'</span> &gt; result.txt</span><br></pre></td></tr></table></figure>
+<h3 id="过滤行"><a class="header-anchor" href="#过滤行">¶</a>过滤行</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 内容格式：1 3</span></span><br><span class="line"><span class="comment"># $NF表示当前行有多少个字段，因此$NF可以表示最后一个字段，$(NF-1)就表示倒数第二个字段，以此类推...</span></span><br><span class="line">awk -F <span class="string">' '</span> <span class="string">'NF&gt;2&#123;print NF&#125;'</span> test.txt</span><br><span class="line"><span class="comment"># 打印奇数行，并且匹配某个正则表达式，NR表示当前处理的是第几行</span></span><br><span class="line">awk <span class="string">'NR%2==1 &amp;&amp; /你好/ &#123;print NR ") " $1&#125;'</span> test.txt</span><br></pre></td></tr></table></figure>
+<h3 id="计算每个人一月份工资之和"><a class="header-anchor" href="#计算每个人一月份工资之和">¶</a>计算每个人一月份工资之和</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 内容格式：</span></span><br><span class="line"><span class="comment"># John　　 2013-01-13      bike    41000</span></span><br><span class="line"><span class="comment"># vivi    2013-01-18      car     42800</span></span><br><span class="line"><span class="comment"># Tom　　  2013-01-20      car     32500</span></span><br><span class="line"><span class="comment"># John　　 2013-01-28      bike    63500</span></span><br><span class="line">awk <span class="string">'&#123;split($2,a,"-");if(a[2]==01)&#123;b[$1]+=$4&#125;&#125;END&#123;for(i in b)print i,b[i]&#125;'</span> test.txt</span><br></pre></td></tr></table></figure>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="http://www.ruanyifeng.com/blog/2018/11/awk.html" target="_blank" rel="noopener">awk 入门教程</a></li>
+<li><a href="https://gregable.com/2010/09/why-you-should-know-just-little-awk.html" target="_blank" rel="noopener">Why you should learn just a little Awk: An Awk tutorial by Example</a></li>
+<li><a href="https://likegeeks.com/awk-command/" target="_blank" rel="noopener">30 Examples For Awk Command In Text Processing</a></li>
+<li><a href="https://github.com/wuzhouhui/awk" target="_blank" rel="noopener">《AWK 程序设计语言》中文翻译</a></li>
+<li><a href="https://www.cnblogs.com/DengGao/p/5935730.html" target="_blank" rel="noopener">shell-正则表达式</a><br>
+正则表达式分为三种：BREs、EREs、PREs，如果发现文本工具、语言中的正则语法和自己理解的不同，有可能是因为它们选择实现的正则。</li>
+<li><a href="https://www.cnblogs.com/DengGao/p/5935719.html" target="_blank" rel="noopener">awk-模式匹配</a></li>
+<li><a href="https://www.gnu.org/software/gawk/manual/html_node/index.html#SEC_Contents" target="_blank" rel="noopener">The GNU Awk User’s Guide</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"># Linux</a>
+          
+            <a href="/tags/脚本/" rel="tag"># 脚本</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/e8597381.html" rel="next" title="网络-概念">
+                <i class="fa fa-chevron-left"></i> 网络-概念
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/10511d14.html" rel="prev" title="Linux脚本-常用">
+                Linux脚本-常用 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">33</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">19</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么要用awk"><span class="nav-number">1.</span> <span class="nav-text">¶为什么要用awk?</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#语法"><span class="nav-number">2.</span> <span class="nav-text">¶语法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内置变量"><span class="nav-number">2.1.</span> <span class="nav-text">¶内置变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内建函数"><span class="nav-number">2.2.</span> <span class="nav-text">¶内建函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些stupid操作"><span class="nav-number">2.3.</span> <span class="nav-text">¶一些stupid操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#应用"><span class="nav-number">3.</span> <span class="nav-text">¶应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#花式分割字符串"><span class="nav-number">3.1.</span> <span class="nav-text">¶花式分割字符串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#统计请求量"><span class="nav-number">3.2.</span> <span class="nav-text">¶统计请求量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过滤行"><span class="nav-number">3.3.</span> <span class="nav-text">¶过滤行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#计算每个人一月份工资之和"><span class="nav-number">3.4.</span> <span class="nav-text">¶计算每个人一月份工资之和</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

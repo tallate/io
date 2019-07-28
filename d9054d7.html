@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Redis,Lua,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="这一篇是对在公司内缓存代码应用Redis-Lua的一个总结，经过benchmark测试，这种方式效率更高，且理论上有更低的可能性。  公司内的大部分代码都比较保守——能粘老代码就粘老代码，但是实际上很多老代码并没有做到特别严谨。">
+<meta name="keywords" content="Redis,Lua">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis-Lua应用总结（updating）">
+<meta property="og:url" content="https://tallate.github.io/d9054d7.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="这一篇是对在公司内缓存代码应用Redis-Lua的一个总结，经过benchmark测试，这种方式效率更高，且理论上有更低的可能性。  公司内的大部分代码都比较保守——能粘老代码就粘老代码，但是实际上很多老代码并没有做到特别严谨。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-07-28T12:10:17.512Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis-Lua应用总结（updating）">
+<meta name="twitter:description" content="这一篇是对在公司内缓存代码应用Redis-Lua的一个总结，经过benchmark测试，这种方式效率更高，且理论上有更低的可能性。  公司内的大部分代码都比较保守——能粘老代码就粘老代码，但是实际上很多老代码并没有做到特别严谨。">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/d9054d7.html">
+
+
+
+
+
+
+
+  <title>Redis-Lua应用总结（updating） | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d9054d7.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis-Lua应用总结（updating）</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-06T09:42:14+08:00">
+                2019-07-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/知识点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">知识点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  7 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>这一篇是对在公司内缓存代码应用Redis-Lua的一个总结，经过benchmark测试，这种方式效率更高，且理论上有更低的可能性。</p>
+<blockquote>
+<p>公司内的大部分代码都比较保守——能粘老代码就粘老代码，但是实际上很多老代码并没有做到特别严谨。</p>
+</blockquote>
+<a id="more"></a>
+<h2 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h2>
+<h3 id="为什么使用lua脚本"><a class="header-anchor" href="#为什么使用lua脚本">¶</a>为什么使用Lua脚本</h3>
+<ul>
+<li>减少网络开销<br>
+本来5次网络请求的操作，可以用一个请求完成，原先5次请求的逻辑放在redis服务器上完成。使用脚本，减少了网络往返时延。</li>
+<li>原子操作<br>
+Redis会将整个脚本作为一个整体执行，中间不会被其他命令插入。</li>
+<li>复用<br>
+客户端发送的脚本会永久存储在Redis中，意味着其他客户端可以复用这一脚本而不需要使用代码完成同样的逻辑。</li>
+</ul>
+<h3 id="怎么使用lua脚本"><a class="header-anchor" href="#怎么使用lua脚本">¶</a>怎么使用Lua脚本</h3>
+<p>大部分人拒绝使用Lua应该都是因为它难以维护，容易掉坑，到时候出现线上问题都不好回滚。<br>
+退一步讲，其实可以增加一步降级，Lua脚本出问题时切换到更稳定的一个实现，比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">try &#123;</span><br><span class="line">    if (isScriptValid()) &#123;</span><br><span class="line">        redisClient.evalsha(SHA, ScriptOutputType.INTEGER,</span><br><span class="line">                new String[0], arg);</span><br><span class="line">        return ;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; catch (Throwable e) &#123;</span><br><span class="line">    Metrics.meter(&quot;xxx luaScript error&quot;).get().mark();</span><br><span class="line">    logger.warn(&quot;xxx luaScript error&quot;, e);</span><br><span class="line">&#125;</span><br><span class="line">try &#123;</span><br><span class="line">    redisClient.set(&quot;key1&quot;, &quot;value1&quot;);</span><br><span class="line">    redisClient.set(&quot;key2&quot;, &quot;value2&quot;);</span><br><span class="line">&#125; catch (Throwable e) &#123;</span><br><span class="line">    Metrics.meter(&quot;xxx redis error&quot;).get().mark();</span><br><span class="line">    logger.warn(&quot;xxx redis error&quot;, e);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>开发时对Lua脚本的调试也有一点麻烦，无法通过Arthus之类的工具进行排查，下面是一个例子：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">huanggaochi$ redis-cli --ldb --<span class="built_in">eval</span> test.lua</span><br><span class="line">Warning: Using a password with <span class="string">'-a'</span> or <span class="string">'-u'</span> option on the <span class="built_in">command</span> line interface may not be safe.</span><br><span class="line">Lua debugging session started, please use:</span><br><span class="line">quit    -- End the session.</span><br><span class="line">restart -- Restart the script <span class="keyword">in</span> debug mode again.</span><br><span class="line"><span class="built_in">help</span>    -- Show Lua script debugging commands.</span><br><span class="line"></span><br><span class="line">* Stopped at 1, stop reason = step over</span><br><span class="line">-&gt; 1   <span class="built_in">local</span> foo = redis.call(<span class="string">"ping"</span>)</span><br><span class="line">lua debugger&gt; s</span><br><span class="line">&lt;redis&gt; ping</span><br><span class="line">&lt;reply&gt; <span class="string">"+PONG"</span></span><br><span class="line">* Stopped at 2, stop reason = step over</span><br><span class="line">-&gt; 2   <span class="built_in">return</span> foo</span><br><span class="line">lua debugger&gt; quit</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>默认<code>--ldb</code>不会阻塞Redis服务器，可以执行其他命令或调试其他脚本，调试进程中的所有更改均会回退。<br>
+最好不要用<code>--ldb-sync-mode</code>，这种模式会阻塞服务器，该模式下产生的变化将被保留。</p>
+</blockquote>
+<h3 id="类型转换"><a class="header-anchor" href="#类型转换">¶</a>类型转换</h3>
+<p>lua是弱类型的，但是调用Redis命令的时候必须严格规定类型：</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">local</span> bv = <span class="literal">false</span>;</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">tostring</span>(bv)); <span class="comment">-- 输出"false"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">local</span> num1 = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">local</span> num2 = <span class="number">10.0</span>;</span><br><span class="line"><span class="keyword">local</span> num3 = <span class="number">10.03</span>;</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">tostring</span>(num1)); <span class="comment">--输出"10"</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">tostring</span>(num2)); <span class="comment">--输出"10"</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">tostring</span>(num3)); <span class="comment">--输出"10.03"</span></span><br><span class="line"> </span><br><span class="line"><span class="keyword">local</span> t = &#123;x = <span class="number">10</span>,y = <span class="number">0</span>&#125;;</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">tostring</span>(t));    <span class="comment">-- 输出nil，不能将表类型转换为字符串</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"10"</span>);    <span class="comment">-- 返回十进制数10</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"AF"</span>,<span class="number">16</span>); <span class="comment">-- 返回十六进制数175 </span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"0xA"</span>);   <span class="comment">-- 返回10</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"56.9"</span>);  <span class="comment">-- 返回56.9</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"0102"</span>);  <span class="comment">-- 返回102</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"123456red"</span>);     <span class="comment">-- 返回nil</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"red"</span>);           <span class="comment">-- 返回nil</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(<span class="string">"true"</span>);          <span class="comment">-- 返回nil</span></span><br><span class="line"><span class="keyword">local</span> num = <span class="built_in">tonumber</span>(&#123;x  =<span class="number">10</span>, y = <span class="number">20</span>&#125;);<span class="comment">-- 返回nil</span></span><br></pre></td></tr></table></figure>
+<h3 id="字符串分割"><a class="header-anchor" href="#字符串分割">¶</a>字符串分割</h3>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">local</span> <span class="function"><span class="keyword">function</span> <span class="title">split</span><span class="params">(str, delimiter)</span></span></span><br><span class="line">    <span class="keyword">local</span> dLen = <span class="built_in">string</span>.<span class="built_in">len</span>(delimiter)</span><br><span class="line">    <span class="keyword">local</span> newDeli = <span class="string">''</span></span><br><span class="line">    <span class="keyword">for</span> i = <span class="number">1</span>, dLen, <span class="number">1</span> <span class="keyword">do</span></span><br><span class="line">        newDeli = newDeli .. <span class="string">"["</span> .. <span class="built_in">string</span>.<span class="built_in">sub</span>(delimiter, i, i) .. <span class="string">"]"</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">local</span> locaStart, locaEnd = <span class="built_in">string</span>.<span class="built_in">find</span>(str, newDeli)</span><br><span class="line">    <span class="keyword">local</span> arr = &#123;&#125;</span><br><span class="line">    <span class="keyword">local</span> n = <span class="number">1</span></span><br><span class="line">    <span class="keyword">while</span> locaStart ~= <span class="literal">nil</span></span><br><span class="line">    <span class="keyword">do</span></span><br><span class="line">        <span class="keyword">if</span> locaStart &gt; <span class="number">0</span> <span class="keyword">then</span></span><br><span class="line">            arr[n] = <span class="built_in">string</span>.<span class="built_in">sub</span>(str, <span class="number">1</span>, locaStart - <span class="number">1</span>)</span><br><span class="line">            n = n + <span class="number">1</span></span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">        str = <span class="built_in">string</span>.<span class="built_in">sub</span>(str, locaEnd + <span class="number">1</span>, <span class="built_in">string</span>.<span class="built_in">len</span>(str))</span><br><span class="line">        locaStart, locaEnd = <span class="built_in">string</span>.<span class="built_in">find</span>(str, newDeli)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">if</span> str ~= <span class="literal">nil</span> <span class="keyword">then</span></span><br><span class="line">        arr[n] = str</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">return</span> arr</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<h3 id="直接在命令行执行lua脚本"><a class="header-anchor" href="#直接在命令行执行lua脚本">¶</a>直接在命令行执行Lua脚本</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eval &quot;return _VERSION&quot; 0</span><br></pre></td></tr></table></figure>
+<h3 id="生成命令执行错误报告"><a class="header-anchor" href="#生成命令执行错误报告">¶</a>生成命令执行错误报告</h3>
+<p>执行命令有两个接口：<code>call</code>和<code>pcall</code>，他们的区别是：</p>
+<ul>
+<li>call在执行命令的过程中发生错误时，脚本会停止执行，并返回一个脚本错误，错误的输出信息会说明错误造成的原因。</li>
+<li>pcall出错时不引发<code>raise</code>错误，而是用一个Lua表包装错误，命令本身返回nil，后面的命令仍然可以执行成功，最终pcall会将捕获的错误以Lua表的形式返回；</li>
+</ul>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis.<span class="built_in">pcall</span>(<span class="string">"set"</span>, <span class="string">"lua_test"</span>, <span class="string">"1"</span>)</span><br><span class="line">redis.<span class="built_in">pcall</span>(<span class="string">"smembers"</span>, <span class="string">"lua_test"</span>)</span><br></pre></td></tr></table></figure>
+<h3 id="批量api"><a class="header-anchor" href="#批量api">¶</a>批量API</h3>
+<p>有一些Redis函数是支持批量操作的，可以通过一个变长数组参数来处理多个值，比如：</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis.<span class="built_in">pcall</span>(<span class="string">"sadd"</span>, <span class="string">"lua_test"</span>, <span class="string">"a"</span>, <span class="string">"b"</span>)</span><br></pre></td></tr></table></figure>
+<p>但是应用提交到Redis服务器的数据，在Lua中叫做<code>table</code>，Lua显然没有提供<code>table</code>和变长数组的兼容机制，直接像下面这样调用是不行的：</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">local</span> arr = ARGV[<span class="number">1</span>]</span><br><span class="line">redis.<span class="built_in">pcall</span>(<span class="string">"sadd"</span>, <span class="string">"lua_test"</span>, arr)</span><br></pre></td></tr></table></figure>
+<p>lua提供了一个函数来做这个拆封操作：</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="built_in">_VERSION</span> == <span class="string">"Lua 5.1"</span>) <span class="keyword">then</span></span><br><span class="line">    <span class="comment">-- Lua 5.1 unpack(test)</span></span><br><span class="line">    redis.<span class="built_in">pcall</span>(<span class="string">"sadd"</span>, key, <span class="built_in">unpack</span>(values))</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="comment">-- Lua 5.2 table.unpack(test)</span></span><br><span class="line">    redis.<span class="built_in">pcall</span>(<span class="string">"sadd"</span>, key, <span class="built_in">table</span>.<span class="built_in">unpack</span>(values))</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<h3 id="限流-访问频率控制"><a class="header-anchor" href="#限流-访问频率控制">¶</a>限流（访问频率控制）</h3>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">local</span> key = KEYS[<span class="number">1</span>]</span><br><span class="line"><span class="keyword">local</span> expire = ARGV[<span class="number">1</span>]</span><br><span class="line"><span class="keyword">local</span> limit = ARGV[<span class="number">2</span>]</span><br><span class="line"></span><br><span class="line"><span class="keyword">local</span> times = redis.call(<span class="string">"incr"</span>, key)</span><br><span class="line"><span class="keyword">if</span> times == <span class="number">1</span> <span class="keyword">then</span></span><br><span class="line">    redis.call(<span class="string">"expire"</span>, key, expire)</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="keyword">if</span> times &gt; <span class="built_in">tonumber</span>(limit) <span class="keyword">then</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="keyword">return</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<h3 id="分布式锁"><a class="header-anchor" href="#分布式锁">¶</a>分布式锁</h3>
+<p>代码中的加锁逻辑大概如下所示：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">String lockId = <span class="string">""</span>;</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 并发控制</span></span><br><span class="line">    <span class="keyword">if</span> (StringUtils.isBlank(lockId = lock(info))) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> BizException(<span class="string">"该数据已被其他人修改，请刷新后重试"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 业务逻辑</span></span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (StringUtils.isNotBlank(lockId)) &#123;</span><br><span class="line">        unlock(info, lockId);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>加锁操作需要生成一个全局唯一的lockId：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> String <span class="title">lock</span><span class="params">(String key)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// lockId是全局唯一的，如果为了简单可以直接用UUID生成</span></span><br><span class="line">    String lockId = genLockId();</span><br><span class="line">    SetArgs setArgs = <span class="keyword">new</span> SetArgs()</span><br><span class="line">            .nx()</span><br><span class="line">            .ex(LOCK_EXPIRE);</span><br><span class="line">    String result = syncRedisClient.set(key, lockId, setArgs);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>加锁成功后接下来就是适时地释放掉了，释放操作需要判断值lockId是否相等，因为是一个复合操作、最好通过Lua脚本的方式实现：</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">local</span> key = ARGV[<span class="number">1</span>]</span><br><span class="line"><span class="keyword">local</span> lockId = ARGV[<span class="number">2</span>]</span><br><span class="line"></span><br><span class="line"><span class="keyword">local</span> existed = redis.<span class="built_in">pcall</span>(<span class="string">"get"</span>, key)</span><br><span class="line"><span class="keyword">if</span> (existed == lockId) <span class="keyword">then</span></span><br><span class="line">    redis.<span class="built_in">pcall</span>(<span class="string">"del"</span>, key)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>既然不能把别人的锁抢了，那会不会有一直把锁占着的情况？不会，因为加锁时已经为key设置了过期时间。</p>
+<h3 id="批量操作"><a class="header-anchor" href="#批量操作">¶</a>批量操作</h3>
+<p>在Redis单线程模型的背景下，Lua脚本的执行是串行化的，执行Lua时不能同时执行其他命令或脚本，如果Lua脚本非常耗时会导致很多客户端被阻塞，因此，大批量的操作不适合通过Lua执行，一种替代方法是<strong>pipeline</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># command.txt中是一大堆set命令，比如：</span></span><br><span class="line"><span class="comment"># set k0 v0</span></span><br><span class="line"><span class="comment"># set k1 v1</span></span><br><span class="line"><span class="comment"># ...</span></span><br><span class="line"><span class="comment"># set k100000 v100000</span></span><br><span class="line"></span><br><span class="line">$ cat command.txt | redis-cli -h 127.0.0.1 -p 6379 -n 0 --pipe</span><br><span class="line">All data transferred. Waiting <span class="keyword">for</span> the last reply...</span><br><span class="line">Last reply received from server.</span><br><span class="line">errors: 0, replies: 11</span><br></pre></td></tr></table></figure>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<p><a href="https://eric-weitm.iteye.com/blog/2395914" target="_blank" rel="noopener">redis lua 库积累</a><br>
+<a href="http://www.redis.cn/topics/ldb.html" target="_blank" rel="noopener">Redis Lua scripts debugger</a></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Redis/" rel="tag"># Redis</a>
+          
+            <a href="/tags/Lua/" rel="tag"># Lua</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/cec8c1c3.html" rel="next" title="运维问题OR开发问题？——记录我遇到的责任模糊场景(Updating)">
+                <i class="fa fa-chevron-left"></i> 运维问题OR开发问题？——记录我遇到的责任模糊场景(Updating)
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/28ae9193.html" rel="prev" title="MySQL-事务应用总结（updating）">
+                MySQL-事务应用总结（updating） <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">33</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">19</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理"><span class="nav-number">1.</span> <span class="nav-text">¶原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么使用lua脚本"><span class="nav-number">1.1.</span> <span class="nav-text">¶为什么使用Lua脚本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#怎么使用lua脚本"><span class="nav-number">1.2.</span> <span class="nav-text">¶怎么使用Lua脚本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类型转换"><span class="nav-number">1.3.</span> <span class="nav-text">¶类型转换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#字符串分割"><span class="nav-number">1.4.</span> <span class="nav-text">¶字符串分割</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#直接在命令行执行lua脚本"><span class="nav-number">1.5.</span> <span class="nav-text">¶直接在命令行执行Lua脚本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#生成命令执行错误报告"><span class="nav-number">1.6.</span> <span class="nav-text">¶生成命令执行错误报告</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#批量api"><span class="nav-number">1.7.</span> <span class="nav-text">¶批量API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#限流-访问频率控制"><span class="nav-number">1.8.</span> <span class="nav-text">¶限流（访问频率控制）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式锁"><span class="nav-number">1.9.</span> <span class="nav-text">¶分布式锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#批量操作"><span class="nav-number">1.10.</span> <span class="nav-text">¶批量操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">2.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>
