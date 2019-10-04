@@ -1,7 +1,7 @@
 ## Linux IO模型
-![X](http://47.88.24.11/Linux内核-IO/Linux整体结构.png "Linux整体结构")
+![X](http://47.88.24.11/imgs/Linux内核-IO/Linux整体结构.png "Linux整体结构")
 应用程序调用内核IO函数的过程如下图所示：
-![X](http://47.88.24.11/Linux内核-IO/IO系统调用过程.png "IO系统调用过程")
+![X](http://47.88.24.11/imgs/Linux内核-IO/IO系统调用过程.png "IO系统调用过程")
 处于OS的安全性等的考虑，进程无法直接操作I/O设备，必须通过系统调用来请求内核完成I/O动作，而内核会为每个I/O设备维护一个Buffer。
 1. 用户进程发起请求；
 1. 内核接收到请求后，从I/O设备中获取数据到Buffer中；

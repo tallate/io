@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="之前一直在用的老 SSD 只有 128GB，上边装了 Ubuntu 作为宿主 OS，另外常备一个 Windows7 的虚拟机，时常面临空间不够的问题，一般是用 Vmware 中 Hard Disk 的Compact Disk功能来挤出一些空间来，但是这样频繁的硬盘读写对硬盘寿命多少有些影响。 后来换新机时自带的 SSD 是 256GB 的，当时出于方便不想重装环境就用老的 SSD 替换了下来，现在">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-11T16:48:23.115Z">
+<meta property="og:updated_time" content="2019-10-03T02:52:33.374Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="记一次硬盘数据的迁移">
 <meta name="twitter:description" content="之前一直在用的老 SSD 只有 128GB，上边装了 Ubuntu 作为宿主 OS，另外常备一个 Windows7 的虚拟机，时常面临空间不够的问题，一般是用 Vmware 中 Hard Disk 的Compact Disk功能来挤出一些空间来，但是这样频繁的硬盘读写对硬盘寿命多少有些影响。 后来换新机时自带的 SSD 是 256GB 的，当时出于方便不想重装环境就用老的 SSD 替换了下来，现在">
@@ -322,8 +322,8 @@
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/知识点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">知识点总结</span>
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
                   </a>
                 </span>
 
@@ -408,13 +408,13 @@
 <h3 id="3-拷贝分区"><a class="header-anchor" href="#3-拷贝分区">¶</a>3. 拷贝分区</h3>
 <p>假设新硬盘的主分区是/dev/sda2，旧硬盘的主分区是/dev/sdb2，那么使用下面命令拷贝数据：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo dd <span class="keyword">if</span>=/dev/sdb2 of=/dev/sda2</span><br></pre></td></tr></table></figure>
-<p>硬盘内容是非常大的，而dd命令不会展示中间过程，非常不方便。<br>
-其实dd命令默认不会展示进度，只会在接收到SIGUSR1消息后才会打印出自己当前的进度，可以使用kill系的命令向dd进程发送消息来查看：</p>
+<p>硬盘内容是非常大的，而 dd 命令不会展示中间过程，非常不方便。<br>
+其实 dd 命令默认不会展示进度，只会在接收到 SIGUSR1 消息后才会打印出自己当前的进度，可以使用 kill 系的命令向 dd 进程发送消息来查看：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">watch -n 5 pkill -USR1 ^dd$</span><br><span class="line"> <span class="comment"># 每隔5秒执行一次killall命令，对dd进程发送一个自定义信号SIGUSR1（信号可以查看`man 7 signal`），返回值会提示工作的进度。</span></span><br><span class="line">watch -n 5 killall -USR1 dd</span><br><span class="line"><span class="keyword">while</span> killall -USR1 dd; <span class="keyword">do</span> sleep 5; <span class="keyword">done</span></span><br><span class="line"><span class="keyword">while</span> (ps auxww |grep <span class="string">" dd "</span> |grep -v grep |awk <span class="string">'&#123;print $2&#125;'</span> |<span class="keyword">while</span> <span class="built_in">read</span> pid; <span class="keyword">do</span> <span class="built_in">kill</span> -USR1 <span class="variable">$pid</span>; <span class="keyword">done</span>) ; <span class="keyword">do</span> sleep 5; <span class="keyword">done</span></span><br></pre></td></tr></table></figure>
-<p>注意dd命令也会拷贝uuid过去，uuid是一个唯一的标识符，因为类似/dev/sda这样的映射点，在新设备加入的时候，可能会生成新的映射点，比如原来系统里是/dev/sda现在变成了/dev/sdb等等，所以一般情况下，在/etc/fstab里写自己规则的时候，都是用uuid而非映射点。<br>
-可以不修改新硬盘分区的uuid，也就省去了修改/etc/fstab或者/boot/grub/grub.conf的麻烦。</p>
-<h3 id="4-拷贝boot分区"><a class="header-anchor" href="#4-拷贝boot分区">¶</a>4. 拷贝boot分区</h3>
-<p>作为实验，我拷贝boot分区的时候使用的是cp命令，相对dd命令来说，cp不会原封不动地拷贝过来，而是哪里有空间就分到哪里，而且不会将UUID一并拷贝过去，需要手动设置。</p>
+<p>注意 dd 命令也会拷贝 uuid 过去，uuid 是一个唯一的标识符，因为类似/dev/sda 这样的映射点，在新设备加入的时候，可能会生成新的映射点，比如原来系统里是/dev/sda 现在变成了/dev/sdb 等等，所以一般情况下，在/etc/fstab 里写自己规则的时候，都是用 uuid 而非映射点。<br>
+可以不修改新硬盘分区的 uuid，也就省去了修改/etc/fstab 或者/boot/grub/grub.conf 的麻烦。</p>
+<h3 id="4-拷贝-boot-分区"><a class="header-anchor" href="#4-拷贝-boot-分区">¶</a>4. 拷贝 boot 分区</h3>
+<p>作为实验，我拷贝 boot 分区的时候使用的是 cp 命令，相对 dd 命令来说，cp 不会原封不动地拷贝过来，而是哪里有空间就分到哪里，而且不会将 UUID 一并拷贝过去，需要手动设置。</p>
 <h3 id="5-更新硬盘信息"><a class="header-anchor" href="#5-更新硬盘信息">¶</a>5. 更新硬盘信息</h3>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 操作前先卸载分区</span></span><br><span class="line">umount /dev/sdb1</span><br><span class="line">e2fsck -f /dev/sdb1</span><br><span class="line">resize2fs /dev/sdb1</span><br></pre></td></tr></table></figure>
 <p>e2fsck 可以检查文件系统的完整性，并且可以修复一些错误。执行 e2fsck 或 fsck 之前必须先 umount partition，否则有可能导致文件系统系统损坏。</p>
@@ -423,7 +423,7 @@
 <h3 id="6-修改-uuid"><a class="header-anchor" href="#6-修改-uuid">¶</a>6. 修改 uuid</h3>
 <p>如果想修改 uuid，比较简单的办法是打开<code>gparted</code>，在分区上右键，生成新的 uuid。<br>
 同时还要修改<code>/etc/fstab</code>中的内容，替换掉原来的 uuid<br>
-当然也可以通过命令修改UUID，首先是查看分区的UUID：</p>
+当然也可以通过命令修改 UUID，首先是查看分区的 UUID：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ls -l /dev/disk/by-uuid</span><br><span class="line">blkid /dev/sda5</span><br></pre></td></tr></table></figure>
 <p>uuidgen 会返回一个合法的 uuid，结合 tune2fs 可以新生成一个 uuid 并写入 ext2,3,4 的分区中：<br>
 比如新建或改变 sda5 的 uuid （需要 root 权限）</p>
@@ -431,17 +431,17 @@
 <p>也可以把 fstab 里找到的原 uuid 写回分区:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tune2fs -U c1b9d5a2-f162-11cf-9ece-0020afc76f16 /dev/sda5</span><br></pre></td></tr></table></figure>
 <h3 id="7-为-boot-分区添加-boot-标记"><a class="header-anchor" href="#7-为-boot-分区添加-boot-标记">¶</a>7. 为 boot 分区添加 boot 标记</h3>
-<p>最后，可以在gparted界面上右键分区设置标记，选中 boot，表明这个分区是有启动点的。</p>
-<h3 id="8-修复grub"><a class="header-anchor" href="#8-修复grub">¶</a>8. 修复grub</h3>
-<p>更新grub<code>update-grub2</code>。<br>
-如果重启后，进入系统有问题，但是可以进入grub rescue，自己又不知道到底问题出哪里的话，简单的办法是使用boot-repair这个工具。</p>
+<p>最后，可以在 gparted 界面上右键分区设置标记，选中 boot，表明这个分区是有启动点的。</p>
+<h3 id="8-修复-grub"><a class="header-anchor" href="#8-修复-grub">¶</a>8. 修复 grub</h3>
+<p>更新 grub<code>update-grub2</code>。<br>
+如果重启后，进入系统有问题，但是可以进入 grub rescue，自己又不知道到底问题出哪里的话，简单的办法是使用 boot-repair 这个工具。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo add-apt-repository ppa:yannubuntu/boot-repair</span><br><span class="line">sudo apt-get update</span><br><span class="line">sudo apt-get install -y boot-repair</span><br></pre></td></tr></table></figure>
-<p>然后打开bootrepair进行一键修复即可。<br>
-我的在运行前，询问我/dev/sda是可移动硬盘吗，当然不是。。在认为他的自动处理能力有问题以后，我点开了高级设置，手动选择了正确的grub位置（<code>/dev/sda</code>），然后等待修复完成，大概不到10mins。<br>
+<p>然后打开 bootrepair 进行一键修复即可。<br>
+我的在运行前，询问我/dev/sda 是可移动硬盘吗，当然不是。。在认为他的自动处理能力有问题以后，我点开了高级设置，手动选择了正确的 grub 位置（<code>/dev/sda</code>），然后等待修复完成，大概不到 10mins。<br>
 完成后重启即可进入系统。</p>
 <h2 id="拓展"><a class="header-anchor" href="#拓展">¶</a>拓展</h2>
 <h3 id="注意文件系统中的软-硬链接"><a class="header-anchor" href="#注意文件系统中的软-硬链接">¶</a>注意文件系统中的软/硬链接</h3>
-<p>对<code>/home</code>迁移时，拷贝时不是直接cp的，因为/home目录下存在很多软链接、硬链接、文件、嵌套的文件夹等，所以使用了下面的命令来拷贝：</p>
+<p>对<code>/home</code>迁移时，拷贝时不是直接 cp 的，因为/home 目录下存在很多软链接、硬链接、文件、嵌套的文件夹等，所以使用了下面的命令来拷贝：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ find . -depth -print0 | cpio --null --sparse -pvd /mnt/newhome/</span><br></pre></td></tr></table></figure>
 <h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
 <ol>
@@ -451,7 +451,7 @@
 <p>cp 是对文件（字节方式）操作的，dd 是对块（扇区方式）进行操作的。<br>
 dd 将原始数据（raw data）按照数据源的格式原封不动地拷贝到目的地。cp 将文件和目录拷贝到目的地后按照目的地的格式排列新数据。cp 将一个硬盘的数据复制到第二个硬盘上，由于系统写硬盘不是顺序写的，哪里有足够的空间就放到哪，所以第二个硬盘相同扇区号上的数据和第一块硬盘有可能是不同的。<br>
 注意：对于不能以文件或目录格式呈现的数据（如引导启动块的数据），cp 无能为力。<br>
-似乎dd相对cp来说更合适，因为cp在拷贝完后还得再设置UUID、flags，为什么还用cp？实际上是因为以前装系统的时候没把boot分区和home分区分开来，现在没法用dd一个分区一个分区拷贝，这一点在上边也已经说过了。</p>
+似乎 dd 相对 cp 来说更合适，因为 cp 在拷贝完后还得再设置 UUID、flags，为什么还用 cp？实际上是因为以前装系统的时候没把 boot 分区和 home 分区分开来，现在没法用 dd 一个分区一个分区拷贝，这一点在上边也已经说过了。</p>
 </li>
 <li>
 <p>boot 分区的标记有什么作用？<br>
@@ -505,8 +505,8 @@ dd 将原始数据（raw data）按照数据源的格式原封不动地拷贝到
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/b868cbc8.html" rel="prev" title="记 2018 年 8 月 9 日的转正答辩">
-                记 2018 年 8 月 9 日的转正答辩 <i class="fa fa-chevron-right"></i>
+              <a href="/9b8ed85e.html" rel="prev" title="公司大佬关于编码规范的一次分享">
+                公司大佬关于编码规范的一次分享 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -589,7 +589,7 @@ dd 将原始数据（raw data）按照数据源的格式原封不动地拷贝到
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">33</span>
+                  <span class="site-state-item-count">67</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -611,7 +611,7 @@ dd 将原始数据（raw data）按照数据源的格式原封不动地拷贝到
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">31</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -646,7 +646,7 @@ dd 将原始数据（raw data）按照数据源的格式原封不动地拷贝到
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-装硬盘"><span class="nav-number">1.1.</span> <span class="nav-text">¶1. 装硬盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-查询硬盘的分区号"><span class="nav-number">1.2.</span> <span class="nav-text">¶2. 查询硬盘的分区号</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-拷贝分区"><span class="nav-number">1.3.</span> <span class="nav-text">¶3. 拷贝分区</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-拷贝boot分区"><span class="nav-number">1.4.</span> <span class="nav-text">¶4. 拷贝boot分区</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-更新硬盘信息"><span class="nav-number">1.5.</span> <span class="nav-text">¶5. 更新硬盘信息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-修改-uuid"><span class="nav-number">1.6.</span> <span class="nav-text">¶6. 修改 uuid</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-为-boot-分区添加-boot-标记"><span class="nav-number">1.7.</span> <span class="nav-text">¶7. 为 boot 分区添加 boot 标记</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-修复grub"><span class="nav-number">1.8.</span> <span class="nav-text">¶8. 修复grub</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拓展"><span class="nav-number">2.</span> <span class="nav-text">¶拓展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#注意文件系统中的软-硬链接"><span class="nav-number">2.1.</span> <span class="nav-text">¶注意文件系统中的软/硬链接</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">3.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-装硬盘"><span class="nav-number">1.1.</span> <span class="nav-text">¶1. 装硬盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-查询硬盘的分区号"><span class="nav-number">1.2.</span> <span class="nav-text">¶2. 查询硬盘的分区号</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-拷贝分区"><span class="nav-number">1.3.</span> <span class="nav-text">¶3. 拷贝分区</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-拷贝-boot-分区"><span class="nav-number">1.4.</span> <span class="nav-text">¶4. 拷贝 boot 分区</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-更新硬盘信息"><span class="nav-number">1.5.</span> <span class="nav-text">¶5. 更新硬盘信息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-修改-uuid"><span class="nav-number">1.6.</span> <span class="nav-text">¶6. 修改 uuid</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-为-boot-分区添加-boot-标记"><span class="nav-number">1.7.</span> <span class="nav-text">¶7. 为 boot 分区添加 boot 标记</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-修复-grub"><span class="nav-number">1.8.</span> <span class="nav-text">¶8. 修复 grub</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拓展"><span class="nav-number">2.</span> <span class="nav-text">¶拓展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#注意文件系统中的软-硬链接"><span class="nav-number">2.1.</span> <span class="nav-text">¶注意文件系统中的软/硬链接</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">3.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>

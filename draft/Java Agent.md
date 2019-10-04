@@ -27,6 +27,7 @@ qmq-actor 怎么实现时间片轮转？初衷是减少线程调度损耗，因�
 
 
 ## 参考
+### 协程
 1. [Thread(线程)、Fiber(纤程)、coroutine(协程) 之间的区别以及...](https://blog.csdn.net/madongchunqiu/article/details/69855744)
 1. [协程的历史、现在和未来](https://www.ixueshu.com/document/68735c40ec9c9a22318947a18e7f9386.html#pdfpreview)
 1. [协程在天猫交易中的实践](https://wenku.baidu.com/view/92bd897fcaaedd3383c4d35d.html?from=search)
@@ -35,5 +36,7 @@ qmq-actor 怎么实现时间片轮转？初衷是减少线程调度损耗，因�
 1. [基于协程的分布式RPC框架CO-RPC的设计与实现](http://www.doc88.com/p-9384812588810.html)
 1. [基于协程的web服务器原型的设计与实现](http://www.doc88.com/p-2292599709635.html)
 1. [基于协程的高并发的分析与研究](http://www.doc88.com/p-5955645501329.html)
-
-
+### JPDA
+1. [调试器工作原理](http://www.360doc.com/content/16/0921/17/7991404_592565019.shtml)
+1. [简易调试器的原理](https://bbs.pediy.com/thread-206292.htm)
+1. [深入 java 调试体系](https://www.ibm.com/developerworks/cn/views/java/libraryview.jsp?search_by=%E6%B7%B1%E5%85%A5+java+%E8%B0%83%E8%AF%95%E4%BD%93%E7%B3%BB)
