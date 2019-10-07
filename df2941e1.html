@@ -79,18 +79,18 @@
 
 
 
-<meta name="description" content="IO模型为什么是NIO？对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型 大Key问题 也可以叫大Value问题。  大Ke">
+<meta name="description" content="¶IO模型 ¶为什么是NIO？ 对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型 对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型 ¶大Key问题  也可以叫大Value问">
 <meta name="keywords" content="Redis">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Redis原理总结">
 <meta property="og:url" content="https://tallate.github.io/df2941e1.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="IO模型为什么是NIO？对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型 大Key问题 也可以叫大Value问题。  大Ke">
+<meta property="og:description" content="¶IO模型 ¶为什么是NIO？ 对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型 对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型 ¶大Key问题  也可以叫大Value问">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:updated_time" content="2019-10-03T02:52:33.374Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis原理总结">
-<meta name="twitter:description" content="IO模型为什么是NIO？对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型 大Key问题 也可以叫大Value问题。  大Ke">
+<meta name="twitter:description" content="¶IO模型 ¶为什么是NIO？ 对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型 对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型 ¶大Key问题  也可以叫大Value问">
 
 
 
@@ -395,8 +395,12 @@
       
 
       
-        <h2 id="IO模型"><a href="#IO模型" class="headerlink" title="IO模型"></a>IO模型</h2><h3 id="为什么是NIO？"><a href="#为什么是NIO？" class="headerlink" title="为什么是NIO？"></a>为什么是NIO？</h3><p>对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型<br>对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型</p>
-<h3 id="大Key问题"><a href="#大Key问题" class="headerlink" title="大Key问题"></a>大Key问题</h3><blockquote>
+        <h2 id="io模型"><a class="header-anchor" href="#io模型">¶</a>IO模型</h2>
+<h3 id="为什么是nio？"><a class="header-anchor" href="#为什么是nio？">¶</a>为什么是NIO？</h3>
+<p>对于优化单个server节点的网络层，多使用NIO方式，server端与client端在多次通讯的情况下使用TCP长连接维持会话，比如 Redis epoll模型，RocketMq的netty模型<br>
+对于高性能Server节点，在处理好网络请求同时，还要保证server端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型</p>
+<h3 id="大key问题"><a class="header-anchor" href="#大key问题">¶</a>大Key问题</h3>
+<blockquote>
 <p>也可以叫大Value问题。</p>
 </blockquote>
 <p>大Key有两种状况：</p>
@@ -405,13 +409,23 @@
 <li>hash、set、zset、list中存储的元素过多（以万为单位）。</li>
 </ol>
 <p>由于Redis的单线程模型，读写大Key时服务器的耗时可能会比较长、甚至阻塞。</p>
-<p>解决方案一般是能拆则拆，对于单个大Key的情况：<br>1.1 将大Key进行分割，拆成几个小的key-value，使用multiGet获取值。<br>这样分拆的意义是将单次操作的压力分摊到多个Redis实例上，降低对单个Redis的IO影响，而且大Key拆分之后每次只查询一部分，减小了IO阻塞的风险。<br>为了均匀分割，可以对field进行hash并通过质数N取余，将余数加到key上面。<br>1.2 将大Key拆分成多个key-value，并将这些存储在一个hash中，每个field代表一个具体的属性，使用hget、hmget来获取部分的value，使用hset、hmset来更新部分属性</p>
-<p>对于hash、set、zset、list中存储的元素过多的情况，可以控制将field分散到多个集合内。<br>比如以下代码将属于一个大hash内的field分散到10000个拆分后的小hash内：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure></p>
+<p>解决方案一般是能拆则拆，对于单个大Key的情况：<br>
+1.1 将大Key进行分割，拆成几个小的key-value，使用multiGet获取值。<br>
+这样分拆的意义是将单次操作的压力分摊到多个Redis实例上，降低对单个Redis的IO影响，而且大Key拆分之后每次只查询一部分，减小了IO阻塞的风险。<br>
+为了均匀分割，可以对field进行hash并通过质数N取余，将余数加到key上面。<br>
+1.2 将大Key拆分成多个key-value，并将这些存储在一个hash中，每个field代表一个具体的属性，使用hget、hmget来获取部分的value，使用hset、hmset来更新部分属性</p>
+<p>对于hash、set、zset、list中存储的元素过多的情况，可以控制将field分散到多个集合内。<br>
+比如以下代码将属于一个大hash内的field分散到10000个拆分后的小hash内：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure>
 <p>对于一些需要考虑顺序的场景，比如lpop、zrange，需要在hash函数上做些文章，比如按照时间来拆分。</p>
-<h2 id="Redis优化"><a href="#Redis优化" class="headerlink" title="Redis优化"></a>Redis优化</h2><ul>
-<li>单进程单线程，无法充分发挥服务器多核cpu的性能；大流量下造成IO阻塞，同样是由于单进程单线程, cpu在处理业务逻辑的时候,网络IO被阻塞住, 造成无法处理更多的请求.<br>多线程master + N<em>work 工作模式.master线程负责监听网络事件, 在接收到一个新的连接后, master会把新的fd注册到worker的epoll事件中, 交由worker处理这个fd的所有读写事件, 这样master线程就可以完全被释放出来接收更多的连接, 同时又不妨碍worker处理业务逻辑和IO读写.<br>采用这种master + N</em>worker的网络层事件模型,可以实现redis性能的平行扩展. 真正的让redis在面临高并发请求时可以丛容面对.</li>
-<li>维护成本高, 如果想要充分发挥服务器的所有资源包括cpu, 网络io等, 就必须建立多个instance, 但此时不可避免会增加维护成本. 拿24核服务器举例来讲, 如果部署24个单机版的instance,理论上可以实现10w*24core= 240wQPS的总体性能.但是每个 instance 有各自独立的数据,占用资源如内存也会同比上升,反过来制约一台服务器又未必能支持这么多的 instance. 如果部署24个Instance来构成单机集群, 虽然可以共享数据，但是因为节点增加, redis的状态通讯更加频繁和费时,性能也下会降很多. 并且两种方式都意味着要维护24个Instance，运维成本都会成倍增加. </li>
-<li>持久化：redis提供了两种save方式 1)save触发. 2)bgsave. 当然也可以使用3)aof来实现持久化, 但是这3点都有弊端.<ul>
+<h2 id="redis优化"><a class="header-anchor" href="#redis优化">¶</a>Redis优化</h2>
+<ul>
+<li>单进程单线程，无法充分发挥服务器多核cpu的性能；大流量下造成IO阻塞，同样是由于单进程单线程, cpu在处理业务逻辑的时候,网络IO被阻塞住, 造成无法处理更多的请求.<br>
+多线程master + N<em>work 工作模式.master线程负责监听网络事件, 在接收到一个新的连接后, master会把新的fd注册到worker的epoll事件中, 交由worker处理这个fd的所有读写事件, 这样master线程就可以完全被释放出来接收更多的连接, 同时又不妨碍worker处理业务逻辑和IO读写.<br>
+采用这种master + N</em>worker的网络层事件模型,可以实现redis性能的平行扩展. 真正的让redis在面临高并发请求时可以丛容面对.</li>
+<li>维护成本高, 如果想要充分发挥服务器的所有资源包括cpu, 网络io等, 就必须建立多个instance, 但此时不可避免会增加维护成本. 拿24核服务器举例来讲, 如果部署24个单机版的instance,理论上可以实现10w*24core= 240wQPS的总体性能.但是每个 instance 有各自独立的数据,占用资源如内存也会同比上升,反过来制约一台服务器又未必能支持这么多的 instance. 如果部署24个Instance来构成单机集群, 虽然可以共享数据，但是因为节点增加, redis的状态通讯更加频繁和费时,性能也下会降很多. 并且两种方式都意味着要维护24个Instance，运维成本都会成倍增加.</li>
+<li>持久化：redis提供了两种save方式 1)save触发. 2)bgsave. 当然也可以使用3)aof来实现持久化, 但是这3点都有弊端.
+<ul>
 <li>save: 由于是单进程单线程, redis会阻塞住所有请求, 来遍历所有redisDB, 把key-val写入dump.rdb. 如果内存数据量过大, 会造成短时间几秒到几十秒甚至更长的时间停止服务, 这种方案对于twitter, taobao等大流量的网站, 显然是不可取的.</li>
 <li>bgsave: 在触发bgsave时, redis会fork自身, child进程会进入1)的处理方式,这意味着服务器内存要有一半的冗余才可以, 如今内存已变得越来越廉价, 但是对于存储海量数据的情况,内存以及服务器的成本还是不容忽视的.</li>
 <li>aof: 说到持久化, redis提供的aof算是最完美的方案了, 但是有得必有失, 严重影响性能! 因为redis每接收到一条请求, 就要把命令内容完整的写到磁盘文件, 且不说频繁读写会影响磁盘寿命,写磁盘的时间足以拖垮redis整体性能 . 当然熟悉redis的开发者会想到用appendfsync等参数来调整, 但都不是完美.即使使用 SSD，性能也只是略有提升，并且性价比不高。</li>
@@ -419,8 +433,13 @@
 </li>
 <li>优化jemalloc, 采用大内存页. Redis在使用内存方面可谓苛刻至极, 压缩, string转number等, 能省就省, 但是在实际生产环境中, 为了追求性能, 对于内存的使用可以适度（不至于如bgsave般浪费）通融处理, 因此AliRedis对jemalloc做了微调, 通过调整pagesize来让一次je_malloc分配更多run空间来储备更多的用户态可用内存, 同时可以减轻换页表的负载, 降低user sys的切换频率, 来提高申请内存的性能, 对jemalloc有兴趣的开发者可以参考jemalloc源码中的bin, run, chunk数据结构进行分析.</li>
 </ul>
-<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><h3 id="内存"><a href="#内存" class="headerlink" title="内存"></a>内存</h3><p>因为系统的内存大小有限，所以我们在使用Redis的时候可以配置Redis能使用的最大的内存大小。<br>redis.conf：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># Redis最大占用内存大小</span><br><span class="line">maxmemory 100mb</span><br></pre></td></tr></table></figure></p>
-<p>通过命令修改<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; config set maxmemory 100mb</span><br><span class="line">127.0.0.1:6379&gt; config get maxmemory</span><br></pre></td></tr></table></figure></p>
+<h2 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h2>
+<h3 id="内存"><a class="header-anchor" href="#内存">¶</a>内存</h3>
+<p>因为系统的内存大小有限，所以我们在使用Redis的时候可以配置Redis能使用的最大的内存大小。<br>
+redis.conf：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># Redis最大占用内存大小</span><br><span class="line">maxmemory 100mb</span><br></pre></td></tr></table></figure>
+<p>通过命令修改</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; config set maxmemory 100mb</span><br><span class="line">127.0.0.1:6379&gt; config get maxmemory</span><br></pre></td></tr></table></figure>
 <p>如果不设置最大内存大小或设置最大内存大小为0，在64位操作系统下不限制内存大小，在32位操作系统下最大使用3GB内存。</p>
 
       
@@ -546,7 +565,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">67</span>
+                  <span class="site-state-item-count">66</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -603,7 +622,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#IO模型"><span class="nav-number">1.</span> <span class="nav-text">IO模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么是NIO？"><span class="nav-number">1.1.</span> <span class="nav-text">为什么是NIO？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大Key问题"><span class="nav-number">1.2.</span> <span class="nav-text">大Key问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Redis优化"><span class="nav-number">2.</span> <span class="nav-text">Redis优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置"><span class="nav-number">3.</span> <span class="nav-text">配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内存"><span class="nav-number">3.1.</span> <span class="nav-text">内存</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#io模型"><span class="nav-number">1.</span> <span class="nav-text">¶IO模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么是nio？"><span class="nav-number">1.1.</span> <span class="nav-text">¶为什么是NIO？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大key问题"><span class="nav-number">1.2.</span> <span class="nav-text">¶大Key问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis优化"><span class="nav-number">2.</span> <span class="nav-text">¶Redis优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置"><span class="nav-number">3.</span> <span class="nav-text">¶配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内存"><span class="nav-number">3.1.</span> <span class="nav-text">¶内存</span></a></li></ol></li></ol></div>
             
 
           </div>
