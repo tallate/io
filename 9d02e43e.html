@@ -87,12 +87,12 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="异步编程富有魅力，但是错误的使用不仅不会带来益处，还会使得系统变得难以维护、Bug 遍地，接下来我希望总结一下遇到的异步任务场景，减少以后遇到类似问题阻塞在设计上的时间。  曾经经历过因三方（传统行业）接口效率过低而导致服务不可用的情况，交流发现对方根本没有考虑在系统里加入缓存、消息队列等中间件，原因竟然是希望保证高一致性，实际上，查询操作并没有保证一致性的意义，而写操作就算不能马上被看到结果也不">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/异步任务/多线程并发编程.png">
 <meta property="og:updated_time" content="2019-10-03T02:52:33.378Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="服务治理——异步任务的定义">
 <meta name="twitter:description" content="异步编程富有魅力，但是错误的使用不仅不会带来益处，还会使得系统变得难以维护、Bug 遍地，接下来我希望总结一下遇到的异步任务场景，减少以后遇到类似问题阻塞在设计上的时间。  曾经经历过因三方（传统行业）接口效率过低而导致服务不可用的情况，交流发现对方根本没有考虑在系统里加入缓存、消息队列等中间件，原因竟然是希望保证高一致性，实际上，查询操作并没有保证一致性的意义，而写操作就算不能马上被看到结果也不">
-<meta name="twitter:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.png">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/异步任务/多线程并发编程.png">
 
 
 
@@ -399,76 +399,46 @@
       
         <p>异步编程富有魅力，但是错误的使用不仅不会带来益处，还会使得系统变得难以维护、Bug 遍地，接下来我希望总结一下遇到的异步任务场景，减少以后遇到类似问题阻塞在设计上的时间。</p>
 <blockquote>
-<p>曾经经历过因三方（传统行业）接口效率过低而导致服务不可用的情况，交流发现对方根本没有考虑在系统里加入缓存、消息队列等中间件，原因竟然是希望保证高一致性，实际上，查询操作并没有保证一致性的意义，而写操作就算不能马上被看到结果也不会对体验造成太大的影响，只要最终能成功即可，这是符合<code>BASE</code>设计原则的。这个问题后续经排查发现原因是对方因为系统设计有问题、导致频繁大规模的接口超时，重启了后问题缓解，对方就不再追究了，非常无奈。没有不能解决的技术难题，只是有时候沟通、惰性等会阻碍问题的定位。</p>
+<p>曾经经历过因三方（传统行业）接口效率过低而导致服务不可用的情况，交流发现对方根本没有考虑在系统里加入缓存、消息队列等中间件，原因竟然是希望保证高一致性，实际上，查询操作并没有保证一致性的意义，而写操作就算不能马上被看到结果也不会对体验造成太大的影响，只要最终能成功即可，这是符合<code>BASE</code>设计原则的。这个问题后续经排查发现原因是对方因为系统设计有问题、导致频繁大规模的接口超时，重启了后问题缓解，对方就不再追究了，非常无奈。没有不能解决的技术难题，只是有时候沟通、惰性等会阻碍问题的定位。<br><a id="more"></a></p>
 </blockquote>
-<a id="more"></a>
-<h2 id="异步和非阻塞"><a class="header-anchor" href="#异步和非阻塞">¶</a>异步和非阻塞</h2>
-<p>异步和非阻塞是容易混淆的两个概念，异步聚焦的是消息的通信方式——是由另一个线程来通知任务已完成的，而非阻塞定义的是方法调用逻辑——是直接返回的、不会等待任务实际执行完毕了的，当我们讨论异步时，并不一定非得牵扯上阻塞或非阻塞，异步也并不意味着一定是非阻塞的：</p>
+<h2 id="异步和非阻塞"><a href="#异步和非阻塞" class="headerlink" title="异步和非阻塞"></a>异步和非阻塞</h2><p>异步和非阻塞是容易混淆的两个概念，异步聚焦的是消息的通信方式——是由另一个线程来通知任务已完成的，而非阻塞定义的是方法调用逻辑——是直接返回的、不会等待任务实际执行完毕了的，当我们讨论异步时，并不一定非得牵扯上阻塞或非阻塞，异步也并不意味着一定是非阻塞的：</p>
 <ul>
-<li>异步阻塞：方法调用不会马上返回，线程任务交给一个任务处理框架的实例来处理，调用方会轮询查看任务的执行状况，直到任务执行完毕。<br>
-举一个例子：Java 的 Future#get 方法会等待直到任务执行完毕并准备好数据后才会返回；</li>
-<li>异步非阻塞：方法调用会马上返回，任务执行完毕时由另一个线程来通知完成情况，一般调用方还会提供一个回调方法，供被调用方通知使用。<br>
-举一个例子，购物下单场景中，用户支付时会提交一个支付表单，然后执行具体的支付操作，支付完毕后再由三方（如果微信支付就是微信）回调某个接口来通知支付的状态。</li>
+<li>异步阻塞：方法调用不会马上返回，线程任务交给一个任务处理框架的实例来处理，调用方会轮询查看任务的执行状况，直到任务执行完毕。<br>举一个例子：Java 的 Future#get 方法会等待直到任务执行完毕并准备好数据后才会返回；</li>
+<li>异步非阻塞：方法调用会马上返回，任务执行完毕时由另一个线程来通知完成情况，一般调用方还会提供一个回调方法，供被调用方通知使用。<br>举一个例子，购物下单场景中，用户支付时会提交一个支付表单，然后执行具体的支付操作，支付完毕后再由三方（如果微信支付就是微信）回调某个接口来通知支付的状态。</li>
 </ul>
-<h3 id="异步意味着并行吗？"><a class="header-anchor" href="#异步意味着并行吗？">¶</a>异步意味着并行吗？</h3>
-<p>并行是“真的同时运行”，指的是多个CPU或机器同时执行。<br>
-并发是假的并行，指的是由CPU通过时间片轮转等调度算法产生可以同时执行多个任务的假象，往往使用并发数来表现一个系统的效率。<br>
-在多线程同时运行时，往往只是并发的，CPU通过分配时间片让多线程轮流执行，如果这些线程同时操作一段内存，根据CPU分配时间片的顺序不同可能会出现不同的结果，就会出现线程安全的问题。</p>
-<h3 id="异步的优势"><a class="header-anchor" href="#异步的优势">¶</a>异步的优势</h3>
-<ul>
-<li>性能<br>
-将任务丢到线程池中执行虽然不能提高这个任务本身被执行的效率、甚至必然会降低效率，但是，对用户来说，复杂而耗时的逻辑被抽到了线程池中执行、不会拖慢接口响应速度；从整体上来说，任务由线程池来调度，可以根据预定义的策略来优化调度过程，比如因为服务器的 CPU 是 4 核 8 线程，那么我们就可以控制线程池同时执行的任务数是 8 个，如果是 IO 密集型的场景（大部分情况下都是），则这个数可以扩大到 16；</li>
-<li>异步<br>
-一些诸如发邮件、下单后扣减库存这样的对用户来说并不是非得“马上看到结果”的功能，就完全可以丢到线程池里去异步执行，实际上这样的功能本身也无法执行太快，很多用户甚至默许了需要等一会。</li>
-<li>隔离<br>
-Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务器或崩溃、或阻塞，并不会影响另一个服务器（其实只能尽量降低影响，不过也足够达到我们的目的了）。</li>
+<h3 id="异步意味着并行吗？"><a href="#异步意味着并行吗？" class="headerlink" title="异步意味着并行吗？"></a>异步意味着并行吗？</h3><p>并行是“真的同时运行”，指的是多个CPU或机器同时执行。<br>并发是假的并行，指的是由CPU通过时间片轮转等调度算法产生可以同时执行多个任务的假象，往往使用并发数来表现一个系统的效率。<br>在多线程同时运行时，往往只是并发的，CPU通过分配时间片让多线程轮流执行，如果这些线程同时操作一段内存，根据CPU分配时间片的顺序不同可能会出现不同的结果，就会出现线程安全的问题。  </p>
+<h3 id="异步的优势"><a href="#异步的优势" class="headerlink" title="异步的优势"></a>异步的优势</h3><ul>
+<li>性能<br>将任务丢到线程池中执行虽然不能提高这个任务本身被执行的效率、甚至必然会降低效率，但是，对用户来说，复杂而耗时的逻辑被抽到了线程池中执行、不会拖慢接口响应速度；从整体上来说，任务由线程池来调度，可以根据预定义的策略来优化调度过程，比如因为服务器的 CPU 是 4 核 8 线程，那么我们就可以控制线程池同时执行的任务数是 8 个，如果是 IO 密集型的场景（大部分情况下都是），则这个数可以扩大到 16；</li>
+<li>异步<br>一些诸如发邮件、下单后扣减库存这样的对用户来说并不是非得“马上看到结果”的功能，就完全可以丢到线程池里去异步执行，实际上这样的功能本身也无法执行太快，很多用户甚至默许了需要等一会。</li>
+<li>隔离<br>Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务器或崩溃、或阻塞，并不会影响另一个服务器（其实只能尽量降低影响，不过也足够达到我们的目的了）。</li>
 </ul>
-<h3 id="异步的缺陷"><a class="header-anchor" href="#异步的缺陷">¶</a>异步的缺陷</h3>
-<p>异步同样存在很多缺陷，滥用很容易导致项目随着规模的扩大而变得不可维护：</p>
+<h3 id="异步的缺陷"><a href="#异步的缺陷" class="headerlink" title="异步的缺陷"></a>异步的缺陷</h3><p>异步同样存在很多缺陷，滥用很容易导致项目随着规模的扩大而变得不可维护：</p>
 <ul>
 <li>可读性差。</li>
 <li>会导致更多并发问题，而且大部分情况下不能通过简单的内存锁来同步。</li>
 <li>测试困难，出现线上问题难以排查定位，甚至无法复现。</li>
 </ul>
-<h2 id="并发"><a class="header-anchor" href="#并发">¶</a>并发</h2>
-<h3 id="并发和并行"><a class="header-anchor" href="#并发和并行">¶</a>并发和并行</h3>
-<ul>
-<li><strong>并发</strong><br>
-同一个时间段内多个任务同时都在执行，并且都没有执行结束，并发任务强调在一个时间段内同时执行，而一个时间段有多个单位时间累积而成，所以说并发的多个任务在单位时间内不一定同时在执行；</li>
-<li><strong>并行</strong><br>
-在单位时间内多个任务同时在执行。</li>
+<h2 id="并发"><a href="#并发" class="headerlink" title="并发"></a>并发</h2><h3 id="并发和并行"><a href="#并发和并行" class="headerlink" title="并发和并行"></a>并发和并行</h3><ul>
+<li><strong>并发</strong><br>同一个时间段内多个任务同时都在执行，并且都没有执行结束，并发任务强调在一个时间段内同时执行，而一个时间段有多个单位时间累积而成，所以说并发的多个任务在单位时间内不一定同时在执行；</li>
+<li><strong>并行</strong><br>在单位时间内多个任务同时在执行。</li>
 </ul>
-<p>在<strong>单 CPU</strong>的时代多个任务同时运行都是并发，这是因为 CPU 同时只能执行一个任务，单个 CPU 时代多任务是共享一个 CPU 的，当一个任务占用 CPU 运行时候，其它任务就会被挂起，当占用 CPU 的任务时间片用完后，会把 CPU 让给其它任务来使用，所以在单 CPU 时代多线程编程相对来说意义不大，并且线程间频繁的上下文切换还会带来开销。<br>
-当计算机存在<strong>多CPU</strong>时，每个CPU都可以分配时间片给线程执行，因此在线程数小于等于CPU数的情况下，可以实现真正的并行，而在多线程编程实践中线程的个数往往多于 CPU 的个数，所以平时都是称多线程并发编程而不是多线程并行编程。</p>
-<h3 id="线程安全-并发安全"><a class="header-anchor" href="#线程安全-并发安全">¶</a>线程安全 / 并发安全</h3>
-<p>单机的Java环境下并发安全 = 线程安全，分布式环境下会有多个JVM进程协调的问题，不过我们讨论的粒度还是线程。<br>
-线程安全问题是指当多个线程同时读写一个共享资源（多线程都可以访问的资源）并且没有任何同步措施的时候，导致脏数据或者其它不可预见的结果的问题。<br>
-但是并不是多线程访问共享资源就会触发线程安全问题，<strong>只有当至少一个线程修改共享资源时候才会存在线程安全问题</strong>。</p>
-<h2 id="异步任务的应用"><a class="header-anchor" href="#异步任务的应用">¶</a>异步任务的应用</h2>
-<h3 id="调度方式"><a class="header-anchor" href="#调度方式">¶</a>调度方式</h3>
-<p>根据需求，异步任务的调度可以有很多种方式，其中最常见的往往有三种：</p>
+<p>在<strong>单 CPU</strong>的时代多个任务同时运行都是并发，这是因为 CPU 同时只能执行一个任务，单个 CPU 时代多任务是共享一个 CPU 的，当一个任务占用 CPU 运行时候，其它任务就会被挂起，当占用 CPU 的任务时间片用完后，会把 CPU 让给其它任务来使用，所以在单 CPU 时代多线程编程相对来说意义不大，并且线程间频繁的上下文切换还会带来开销。<br>当计算机存在<strong>多CPU</strong>时，每个CPU都可以分配时间片给线程执行，因此在线程数小于等于CPU数的情况下，可以实现真正的并行，而在多线程编程实践中线程的个数往往多于 CPU 的个数，所以平时都是称多线程并发编程而不是多线程并行编程。</p>
+<h3 id="线程安全-并发安全"><a href="#线程安全-并发安全" class="headerlink" title="线程安全 / 并发安全"></a>线程安全 / 并发安全</h3><p>单机的Java环境下并发安全 = 线程安全，分布式环境下会有多个JVM进程协调的问题，不过我们讨论的粒度还是线程。<br>线程安全问题是指当多个线程同时读写一个共享资源（多线程都可以访问的资源）并且没有任何同步措施的时候，导致脏数据或者其它不可预见的结果的问题。<br>但是并不是多线程访问共享资源就会触发线程安全问题，<strong>只有当至少一个线程修改共享资源时候才会存在线程安全问题</strong>。</p>
+<h2 id="异步任务的应用"><a href="#异步任务的应用" class="headerlink" title="异步任务的应用"></a>异步任务的应用</h2><h3 id="调度方式"><a href="#调度方式" class="headerlink" title="调度方式"></a>调度方式</h3><p>根据需求，异步任务的调度可以有很多种方式，其中最常见的往往有三种：</p>
 <ol>
-<li>本地线程池<br>
-简单，但是不具备分布式能力，比如如果业务需求需要baseinfo服务每10分钟同步一次基础数据到ES，那么有多少台baseinfo机器，就会10分钟执行多少次同步任务。</li>
-<li>消息队列<br>
-需要引入消息队列中间件，一般功能都会覆盖到，但是可能出现的问题也比较多，对开发者水平要求比较高。</li>
-<li>分布式任务调度<br>
-将定时任务放到一个任务调度中间件里管理，实时性相对MQ消息更低（只能等到下次调度时才会执行任务）。</li>
-</ol>
-<h3 id="架构优化中的启发"><a class="header-anchor" href="#架构优化中的启发">¶</a>架构优化中的启发</h3>
-<p>当系统出现瓶颈时，异步几乎是万金油式的设计优化思路，只要哪里耗时，就将哪里的代码丢到消息队列、任务调度中间件中，可以快速提升响应速度。</p>
-<blockquote>
+<li>本地线程池<br>简单，但是不具备分布式能力，比如如果业务需求需要baseinfo服务每10分钟同步一次基础数据到ES，那么有多少台baseinfo机器，就会10分钟执行多少次同步任务。</li>
+<li>消息队列<br>需要引入消息队列中间件，一般功能都会覆盖到，但是可能出现的问题也比较多，对开发者水平要求比较高。</li>
+<li>分布式任务调度<br>将定时任务放到一个任务调度中间件里管理，实时性相对MQ消息更低（只能等到下次调度时才会执行任务）。<h3 id="架构优化中的启发"><a href="#架构优化中的启发" class="headerlink" title="架构优化中的启发"></a>架构优化中的启发</h3>当系统出现瓶颈时，异步几乎是万金油式的设计优化思路，只要哪里耗时，就将哪里的代码丢到消息队列、任务调度中间件中，可以快速提升响应速度。<blockquote>
 <p>虽然说起来很简单，但是一般都需要根据代码逻辑做很多调整。</p>
+<h3 id="多线程并发编程"><a href="#多线程并发编程" class="headerlink" title="多线程并发编程"></a>多线程并发编程</h3><p><img src="http://47.88.24.11/imgs/异步任务/多线程并发编程.png" alt="多线程并发编程" title="多线程并发编程"></p>
 </blockquote>
-<h3 id="多线程并发编程"><a class="header-anchor" href="#多线程并发编程">¶</a>多线程并发编程</h3>
-<p><img src="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.png" alt="多线程并发编程" title="多线程并发编程"></p>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<ol>
+</li>
+</ol>
+<h2 id="QA"><a href="#QA" class="headerlink" title="QA"></a>QA</h2><ol>
 <li>什么是多线程并发和并行？</li>
 <li>什么是线程安全问题？</li>
 </ol>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
 <li><a href="https://www.zhihu.com/question/19732473" target="_blank" rel="noopener">怎样理解阻塞非阻塞与同步异步的区别？</a></li>
 <li><a href="https://blog.csdn.net/X5fnncxzq4/article/details/98334744" target="_blank" rel="noopener">实战，一般电商应用的订单队列架构思想</a></li>
 </ol>
@@ -502,8 +472,8 @@ Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务�
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/226416.html" rel="next" title="使用 jq 解析 json 数据">
-                <i class="fa fa-chevron-left"></i> 使用 jq 解析 json 数据
+              <a href="/e3d5c2fc.html" rel="next" title="异步任务和线程池">
+                <i class="fa fa-chevron-left"></i> 异步任务和线程池
               </a>
             
           </div>
@@ -512,8 +482,8 @@ Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/e3d5c2fc.html" rel="prev" title="异步任务和线程池">
-                异步任务和线程池 <i class="fa fa-chevron-right"></i>
+              <a href="/36225c53.html" rel="prev" title="异步任务和任务调度">
+                异步任务和任务调度 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -596,7 +566,7 @@ Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">68</span>
+                  <span class="site-state-item-count">67</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -618,7 +588,7 @@ Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">33</span>
+                  <span class="site-state-item-count">34</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -653,7 +623,7 @@ Tomcat 通过线程池来隔离多个应用服务器实例，这样一个服务�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#异步和非阻塞"><span class="nav-number">1.</span> <span class="nav-text">¶异步和非阻塞</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#异步意味着并行吗？"><span class="nav-number">1.1.</span> <span class="nav-text">¶异步意味着并行吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步的优势"><span class="nav-number">1.2.</span> <span class="nav-text">¶异步的优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步的缺陷"><span class="nav-number">1.3.</span> <span class="nav-text">¶异步的缺陷</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#并发"><span class="nav-number">2.</span> <span class="nav-text">¶并发</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发和并行"><span class="nav-number">2.1.</span> <span class="nav-text">¶并发和并行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#线程安全-并发安全"><span class="nav-number">2.2.</span> <span class="nav-text">¶线程安全 / 并发安全</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#异步任务的应用"><span class="nav-number">3.</span> <span class="nav-text">¶异步任务的应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#调度方式"><span class="nav-number">3.1.</span> <span class="nav-text">¶调度方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构优化中的启发"><span class="nav-number">3.2.</span> <span class="nav-text">¶架构优化中的启发</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多线程并发编程"><span class="nav-number">3.3.</span> <span class="nav-text">¶多线程并发编程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">4.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#异步和非阻塞"><span class="nav-number">1.</span> <span class="nav-text">异步和非阻塞</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#异步意味着并行吗？"><span class="nav-number">1.1.</span> <span class="nav-text">异步意味着并行吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步的优势"><span class="nav-number">1.2.</span> <span class="nav-text">异步的优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步的缺陷"><span class="nav-number">1.3.</span> <span class="nav-text">异步的缺陷</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#并发"><span class="nav-number">2.</span> <span class="nav-text">并发</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发和并行"><span class="nav-number">2.1.</span> <span class="nav-text">并发和并行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#线程安全-并发安全"><span class="nav-number">2.2.</span> <span class="nav-text">线程安全 / 并发安全</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#异步任务的应用"><span class="nav-number">3.</span> <span class="nav-text">异步任务的应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#调度方式"><span class="nav-number">3.1.</span> <span class="nav-text">调度方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构优化中的启发"><span class="nav-number">3.2.</span> <span class="nav-text">架构优化中的启发</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多线程并发编程"><span class="nav-number">3.3.</span> <span class="nav-text">多线程并发编程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#QA"><span class="nav-number">4.</span> <span class="nav-text">QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>
