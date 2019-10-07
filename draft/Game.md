@@ -20,5 +20,10 @@ http://www.cplusplus.com/doc/tutorial/
 ### 即时战略
 https://blog.csdn.net/StevenKyleLee/article/details/39318543
 
+### 伪3D
+1. [Lou's Pseudo 3d Page](http://www.extentofthejam.com/pseudo/)
+1. [Lode's Computer Graphics Tutorial](https://lodev.org/cgtutor/)
+1. [How to build a racing game](https://codeincomplete.com/posts/javascript-racer/)
+
 ### 项目
 1. [Open Source Game Clones](https://osgameclones.com/)

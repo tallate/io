@@ -79,22 +79,18 @@
 
 
 
-<meta name="description" content="¶Watcher ¶Leader选举 ¶选举相关概念  服务器ID 编号越大在选择算法中的权重越大。比如有三台服务器，编号分别是1、2、3，其中3的那台权重最大。 数据ID 服务器中存放的最大数据ID。值越大说明数据越新，在选举算法中数据越新权重越大。 逻辑时钟 或者叫投票的次数，同一轮投票过程中的逻辑时钟值是相同的。每投完一次票这个数据就会增加，然后与接收到的其它服务器返回的投票信息中的数值相比">
+<meta name="description" content="就ZooKeeper来说，只明白原理是不够的，因为实际场景非常多，在不同场景下ZooKeeper几乎都有不同的应用模式，不过幸运的是ZooKeeper已经有一个比较完善的客户端Curator，在生产环境下几乎不需要投入太多人力就可以解决大部分集群协调问题。">
 <meta name="keywords" content="ZooKeeper">
 <meta property="og:type" content="article">
 <meta property="og:title" content="ZooKeeper应用总结">
 <meta property="og:url" content="https://tallate.github.io/4ea5471b.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="¶Watcher ¶Leader选举 ¶选举相关概念  服务器ID 编号越大在选择算法中的权重越大。比如有三台服务器，编号分别是1、2、3，其中3的那台权重最大。 数据ID 服务器中存放的最大数据ID。值越大说明数据越新，在选举算法中数据越新权重越大。 逻辑时钟 或者叫投票的次数，同一轮投票过程中的逻辑时钟值是相同的。每投完一次票这个数据就会增加，然后与接收到的其它服务器返回的投票信息中的数值相比">
+<meta property="og:description" content="就ZooKeeper来说，只明白原理是不够的，因为实际场景非常多，在不同场景下ZooKeeper几乎都有不同的应用模式，不过幸运的是ZooKeeper已经有一个比较完善的客户端Curator，在生产环境下几乎不需要投入太多人力就可以解决大部分集群协调问题。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/zk%E9%9B%86%E7%BE%A4%E9%80%89%E4%B8%BE%E6%A6%82%E8%BF%B0.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/%E9%80%89%E4%B8%BE%E6%B5%81%E7%A8%8B%E5%9B%BE.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/%E9%80%89%E4%B8%BE%E7%8A%B6%E6%80%81%E5%9B%BE.jpg">
-<meta property="og:updated_time" content="2019-10-03T02:52:33.374Z">
+<meta property="og:updated_time" content="2019-10-07T15:51:23.406Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ZooKeeper应用总结">
-<meta name="twitter:description" content="¶Watcher ¶Leader选举 ¶选举相关概念  服务器ID 编号越大在选择算法中的权重越大。比如有三台服务器，编号分别是1、2、3，其中3的那台权重最大。 数据ID 服务器中存放的最大数据ID。值越大说明数据越新，在选举算法中数据越新权重越大。 逻辑时钟 或者叫投票的次数，同一轮投票过程中的逻辑时钟值是相同的。每投完一次票这个数据就会增加，然后与接收到的其它服务器返回的投票信息中的数值相比">
-<meta name="twitter:image" content="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/zk%E9%9B%86%E7%BE%A4%E9%80%89%E4%B8%BE%E6%A6%82%E8%BF%B0.jpg">
+<meta name="twitter:description" content="就ZooKeeper来说，只明白原理是不够的，因为实际场景非常多，在不同场景下ZooKeeper几乎都有不同的应用模式，不过幸运的是ZooKeeper已经有一个比较完善的客户端Curator，在生产环境下几乎不需要投入太多人力就可以解决大部分集群协调问题。">
 
 
 
@@ -303,7 +299,7 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T16:50:12+08:00">
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T18:52:36+08:00">
                 2019-07-29
               </time>
             
@@ -362,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2k 字
+                  4.9k 字
                 </span>
               
 
@@ -378,7 +374,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  8 分钟
+                  19 分钟
                 </span>
               
             </div>
@@ -399,116 +395,255 @@
       
 
       
-        <h2 id="watcher"><a class="header-anchor" href="#watcher">¶</a>Watcher</h2>
-<h2 id="leader选举"><a class="header-anchor" href="#leader选举">¶</a>Leader选举</h2>
-<h3 id="选举相关概念"><a class="header-anchor" href="#选举相关概念">¶</a>选举相关概念</h3>
+        <p>就ZooKeeper来说，只明白原理是不够的，因为实际场景非常多，在不同场景下ZooKeeper几乎都有不同的应用模式，不过幸运的是ZooKeeper已经有一个比较完善的客户端Curator，在生产环境下几乎不需要投入太多人力就可以解决大部分集群协调问题。</p>
+<a id="more"></a>
+<h2 id="命令行运行zookeeper"><a class="header-anchor" href="#命令行运行zookeeper">¶</a>命令行运行ZooKeeper</h2>
+<p>Zookeeper有三种运行形式：集群模式、单机模式、伪集群模式（一台机器上配个集群）。以下实验都是在单机模式下进行。</p>
+<h3 id="下载"><a class="header-anchor" href="#下载">¶</a>下载</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget http://mirrors.hust.edu.cn/apache/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz</span><br><span class="line">tar -zxvf zookeeper-3.4.13.tar.gz</span><br><span class="line">cd zookeeper-3.4.13</span><br></pre></td></tr></table></figure>
 <ul>
-<li>服务器ID<br>
-编号越大在选择算法中的权重越大。比如有三台服务器，编号分别是1、2、3，其中3的那台权重最大。</li>
-<li>数据ID<br>
-服务器中存放的最大数据ID。值越大说明数据越新，在选举算法中数据越新权重越大。</li>
-<li>逻辑时钟<br>
-或者叫投票的次数，同一轮投票过程中的逻辑时钟值是相同的。每投完一次票这个数据就会增加，然后与接收到的其它服务器返回的投票信息中的数值相比，根据不同的值做出不同的判断。</li>
-<li>选举状态<br>
-LOOKING，竞选状态。<br>
-FOLLOWING，随从状态，同步leader状态，参与投票。<br>
-OBSERVING，观察状态,同步leader状态，不参与投票。<br>
-LEADING，领导者状态。</li>
+<li>zkCleanup　　清理Zookeeper历史数据，包括食物日志文件和快照数据文件</li>
+<li>zkCli　　　　  Zookeeper的一个简易客户端</li>
+<li>zkEnv　　　　设置Zookeeper的环境变量</li>
+<li>zkServer　　   Zookeeper服务器的启动、停止、和重启脚本</li>
 </ul>
-<h3 id="zk集群选举概述"><a class="header-anchor" href="#zk集群选举概述">¶</a>zk集群选举概述</h3>
-<p>配置多个实例共同构成一个集群对外提供服务以达到水平扩展的目的，每个服务器上的数据是相同的，每一个服务器均可以对外提供读和写的服务，这点和redis是相同的，即对客户端来讲每个服务器都是平等的。<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/zk%E9%9B%86%E7%BE%A4%E9%80%89%E4%B8%BE%E6%A6%82%E8%BF%B0.jpg" alt="zk集群选举概述" title="zk集群选举概述"><br>
-zookeeper提供了三种集群选举方式：</p>
+<h3 id="创建配置文件-单机"><a class="header-anchor" href="#创建配置文件-单机">¶</a>创建配置文件（单机）</h3>
+<p>在zookeeper根目录下创建conf/zoo.cfg（可以是任何其他文件名）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">tickTime=2000 # 单位是毫秒，It is used to do heartbeats and the minimum session timeout will be twice the tickTime</span><br><span class="line">dataDir=/var/lib/zookeeper # the location to store the in-memory database snapshots and, unless specified otherwise, the transaction log of updates to the database</span><br><span class="line">clientPort=2181 # the port to listen for client connections</span><br></pre></td></tr></table></figure>
+<p>启动实例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo bin/zkServer.sh start</span><br></pre></td></tr></table></figure>
+<p>可以使用jps命令查看进程。</p>
+<h3 id="创建配置文件-集群"><a class="header-anchor" href="#创建配置文件-集群">¶</a>创建配置文件（集群）</h3>
+<p>最少需要有三台服务器，且最好是奇数台服务器，如果只有两台，那么在丢失一台后剩余服务器无法组成<strong>majority quorum</strong>，两台服务器甚至比一台服务器还不稳定，因为存在两个<strong>single points of failure</strong>。<br>
+在一台机器上启动多台服务器不会产生任何<strong>冗余</strong>，完全的冗余需要每个服务器运行在单独的机器上（不是一台机器上的多台虚拟机），但是ZooKeeper本身的配置都是差不多的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">tickTime=2000</span><br><span class="line">dataDir=/var/lib/zookeeper/data1</span><br><span class="line">clientPort=2181</span><br><span class="line">initLimit=5 # 在quorum中连接上leader的超时时间，也就是5次tick</span><br><span class="line">syncLimit=2 # how far out of date a server can be from a leader</span><br><span class="line"># 下面配置构成集群的所有服务器，对于第一个参数server.X，当服务器启动后它会在data directory下查询以myid命名的文件，从而知道自己是集群中的哪一个服务器，That file has the contains the server number, in ASCII.</span><br><span class="line"># ip表示该服务器的ip地址，如果是单机配置可以设置为localhost</span><br><span class="line"># 后面有两个端口号，每个peer使用第一个端口号连接上其他peers（比如followers可以使用这个端口号连接上leader，当一个新的leader选举出来后，follower就会在这个端口打开一个TCP连接到leader）。因为默认的leader选举也要使用TCP连接，所以多出来的后一个端口就是用于选举的。</span><br><span class="line">server.1=ip1:2888:3888</span><br><span class="line">server.2=ip2:2888:3888</span><br><span class="line">server.3=ip3:2888:3888</span><br></pre></td></tr></table></figure>
+<p>然后，在dataDir目录下创建myid文件，包含一个ASCII字符1。<br>
+其他两个节点是类似的，需要修改dataDir和clientPort两个参数，并且在各自的dataDir下创建myid文件，包含且仅包含一个数字（1、2、3）。<br>
+如果并非单机部署，意味着会发生主机间的通信，需要开启端口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 对客户端开放的端口</span><br><span class="line">iptables -A INPUT -p tcp --dport 2181 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 2182 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 2183 -j ACCEPT</span><br><span class="line"># 用于peers间通信的端口</span><br><span class="line">iptables -A INPUT -p tcp --dport 2888 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 2889 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 2890 -j ACCEPT</span><br><span class="line"># 用于选举的端口</span><br><span class="line">iptables -A INPUT -p tcp --dport 3888 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 3889 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 3890 -j ACCEPT</span><br></pre></td></tr></table></figure>
+<h3 id="连接"><a class="header-anchor" href="#连接">¶</a>连接</h3>
+<p>如果只启动了一个服务器，整个集群不能对外提供服务（使用zkCli连接会报一大堆错），但是可以使用telnet来测试可用性：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">telnet 127.0.0.1 2181</span><br></pre></td></tr></table></figure>
+<p>启动所有服务器后就可以通过zkCli连接了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bin/zkCli.sh -server 127.0.0.1:2181</span><br></pre></td></tr></table></figure>
+<h3 id="测试命令"><a class="header-anchor" href="#测试命令">¶</a>测试命令</h3>
 <ul>
-<li>LeaderElection</li>
-<li>AuthFastLeaderElection</li>
-<li>FastLeaderElection</li>
+<li>基本用法</li>
 </ul>
-<p>默认的算法是FastLeaderElection，所以这里主要分析它的选举机制。</p>
-<h3 id="quorumpeer"><a class="header-anchor" href="#quorumpeer">¶</a>QuorumPeer</h3>
-<p>主要看这个类，只有LOOKING状态才会去执行选举算法。每个服务器在启动时都会选择自己做为领导，然后将投票信息发送出去，循环一直到选举出领导为止。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">public void run() &#123;</span><br><span class="line">        //.......</span><br><span class="line">        try &#123;</span><br><span class="line">            while (running) &#123;</span><br><span class="line">                switch (getPeerState()) &#123;</span><br><span class="line">                case LOOKING:</span><br><span class="line">                    if (Boolean.getBoolean(&quot;readonlymode.enabled&quot;)) &#123;</span><br><span class="line">                        //...</span><br><span class="line">                        try &#123;</span><br><span class="line">                           //投票给自己...</span><br><span class="line">                            setCurrentVote(makeLEStrategy().lookForLeader());</span><br><span class="line">                        &#125; catch (Exception e) &#123;</span><br><span class="line">                            //...</span><br><span class="line">                        &#125; finally &#123;</span><br><span class="line">                            //...</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125; else &#123;</span><br><span class="line">                        try &#123;</span><br><span class="line">                           //...</span><br><span class="line">                            setCurrentVote(makeLEStrategy().lookForLeader());</span><br><span class="line">                        &#125; catch (Exception e) &#123;</span><br><span class="line">                            //...</span><br><span class="line">                        &#125;                        </span><br><span class="line">                    &#125;</span><br><span class="line">                    break;</span><br><span class="line">                case OBSERVING:</span><br><span class="line">                    //...</span><br><span class="line">                    break;</span><br><span class="line">                case FOLLOWING:</span><br><span class="line">                    //...</span><br><span class="line">                    break;</span><br><span class="line">                case LEADING:</span><br><span class="line">                    //...</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">            &#125;</span><br><span class="line">        &#125; finally &#123;</span><br><span class="line">            //...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-<h3 id="fastleaderelection"><a class="header-anchor" href="#fastleaderelection">¶</a>FastLeaderElection</h3>
-<p>它是zookeeper默认提供的选举算法，核心方法如下。可以与本文上面的流程图对照。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br></pre></td><td class="code"><pre><span class="line">public Vote lookForLeader() throws InterruptedException &#123;</span><br><span class="line">        //...</span><br><span class="line">        try &#123;</span><br><span class="line">            HashMap&lt;Long, Vote&gt; recvset = new HashMap&lt;Long, Vote&gt;();</span><br><span class="line">            HashMap&lt;Long, Vote&gt; outofelection = new HashMap&lt;Long, Vote&gt;();</span><br><span class="line">            int notTimeout = finalizeWait;</span><br><span class="line">            synchronized(this)&#123;</span><br><span class="line">                //给自己投票</span><br><span class="line">                logicalclock.incrementAndGet();</span><br><span class="line">                updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());</span><br><span class="line">            &#125;</span><br><span class="line">            //将投票信息发送给集群中的每个服务器</span><br><span class="line">            sendNotifications();</span><br><span class="line">            //循环，如果是竞选状态一直到选举出结果</span><br><span class="line">            while ((self.getPeerState() == ServerState.LOOKING) &amp;&amp;</span><br><span class="line">                    (!stop))&#123;</span><br><span class="line"></span><br><span class="line">                Notification n = recvqueue.poll(notTimeout,</span><br><span class="line">                        TimeUnit.MILLISECONDS);</span><br><span class="line">                //没有收到投票信息</span><br><span class="line">                if(n == null)&#123;</span><br><span class="line">                    if(manager.haveDelivered())&#123;</span><br><span class="line">                        sendNotifications();</span><br><span class="line">                    &#125; else &#123;</span><br><span class="line">                        manager.connectAll();</span><br><span class="line">                    &#125;</span><br><span class="line">                    //...</span><br><span class="line">                &#125; </span><br><span class="line">                //收到投票信息</span><br><span class="line">                else if (self.getCurrentAndNextConfigVoters().contains(n.sid)) &#123;</span><br><span class="line"></span><br><span class="line">                    switch (n.state) &#123;</span><br><span class="line">                    case LOOKING:</span><br><span class="line"></span><br><span class="line">                        // 判断投票是否过时，如果过时就清除之前已经接收到的信息                      </span><br><span class="line">                        if (n.electionEpoch &gt; logicalclock.get()) &#123;</span><br><span class="line">                            logicalclock.set(n.electionEpoch);</span><br><span class="line">                            recvset.clear();</span><br><span class="line">                            //更新投票信息</span><br><span class="line">                            if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,</span><br><span class="line">                                    getInitId(), getInitLastLoggedZxid(), getPeerEpoch())) &#123;</span><br><span class="line">                                updateProposal(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                            &#125; else &#123;</span><br><span class="line">                                updateProposal(getInitId(),</span><br><span class="line">                                        getInitLastLoggedZxid(),</span><br><span class="line">                                        getPeerEpoch());</span><br><span class="line">                            &#125;</span><br><span class="line">                            //发送投票信息</span><br><span class="line">                            sendNotifications();</span><br><span class="line">                        &#125; else if (n.electionEpoch &lt; logicalclock.get()) &#123;</span><br><span class="line">                            //忽略</span><br><span class="line">                            break;</span><br><span class="line">                        &#125; else if (totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,</span><br><span class="line">                                proposedLeader, proposedZxid, proposedEpoch)) &#123;</span><br><span class="line">                            //更新投票信息</span><br><span class="line">                            updateProposal(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                            sendNotifications();</span><br><span class="line">                        &#125;                     </span><br><span class="line">                        recvset.put(n.sid, new Vote(n.leader, n.zxid, n.electionEpoch, n.peerEpoch));</span><br><span class="line">                        //判断是否投票结束</span><br><span class="line">                        if (termPredicate(recvset,</span><br><span class="line">                                new Vote(proposedLeader, proposedZxid,</span><br><span class="line">                                        logicalclock.get(), proposedEpoch))) &#123;</span><br><span class="line">                            // Verify if there is any change in the proposed leader</span><br><span class="line">                            while((n = recvqueue.poll(finalizeWait,</span><br><span class="line">                                    TimeUnit.MILLISECONDS)) != null)&#123;</span><br><span class="line">                                if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,</span><br><span class="line">                                        proposedLeader, proposedZxid, proposedEpoch))&#123;</span><br><span class="line">                                    recvqueue.put(n);</span><br><span class="line">                                    break;</span><br><span class="line">                                &#125;</span><br><span class="line">                            &#125;</span><br><span class="line"></span><br><span class="line">                            if (n == null) &#123;</span><br><span class="line">                                self.setPeerState((proposedLeader == self.getId()) ?</span><br><span class="line">                                        ServerState.LEADING: learningState());</span><br><span class="line">                                Vote endVote = new Vote(proposedLeader,</span><br><span class="line">                                        proposedZxid, proposedEpoch);</span><br><span class="line">                                leaveInstance(endVote);</span><br><span class="line">                                return endVote;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                        break;</span><br><span class="line">                    case OBSERVING:</span><br><span class="line">                        //忽略</span><br><span class="line">                        break;</span><br><span class="line">                    case FOLLOWING:</span><br><span class="line">                    case LEADING:</span><br><span class="line">                        //如果是同一轮投票</span><br><span class="line">                        if(n.electionEpoch == logicalclock.get())&#123;</span><br><span class="line">                            recvset.put(n.sid, new Vote(n.leader, n.zxid, n.electionEpoch, n.peerEpoch));</span><br><span class="line">                            //判断是否投票结束</span><br><span class="line">                            if(termPredicate(recvset, new Vote(n.leader,</span><br><span class="line">                                            n.zxid, n.electionEpoch, n.peerEpoch, n.state))</span><br><span class="line">                                            &amp;&amp; checkLeader(outofelection, n.leader, n.electionEpoch)) &#123;</span><br><span class="line">                                self.setPeerState((n.leader == self.getId()) ?</span><br><span class="line">                                        ServerState.LEADING: learningState());</span><br><span class="line">                                Vote endVote = new Vote(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                                leaveInstance(endVote);</span><br><span class="line">                                return endVote;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                        //记录投票已经完成</span><br><span class="line">                        outofelection.put(n.sid, new Vote(n.leader, </span><br><span class="line">                                IGNOREVALUE, IGNOREVALUE, n.peerEpoch, n.state));</span><br><span class="line">                        if (termPredicate(outofelection, new Vote(n.leader,</span><br><span class="line">                                IGNOREVALUE, IGNOREVALUE, n.peerEpoch, n.state))</span><br><span class="line">                                &amp;&amp; checkLeader(outofelection, n.leader, IGNOREVALUE)) &#123;</span><br><span class="line">                            synchronized(this)&#123;</span><br><span class="line">                                logicalclock.set(n.electionEpoch);</span><br><span class="line">                                self.setPeerState((n.leader == self.getId()) ?</span><br><span class="line">                                        ServerState.LEADING: learningState());</span><br><span class="line">                            &#125;</span><br><span class="line">                            Vote endVote = new Vote(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                            leaveInstance(endVote);</span><br><span class="line">                            return endVote;</span><br><span class="line">                        &#125;</span><br><span class="line">                        break;</span><br><span class="line">                    default:</span><br><span class="line">                        //忽略</span><br><span class="line">                        break;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; else &#123;</span><br><span class="line">                    LOG.warn(&quot;Ignoring notification from non-cluster member &quot; + n.sid);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            return null;</span><br><span class="line">        &#125; finally &#123;</span><br><span class="line">            //...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">help</span><br><span class="line">ls /</span><br><span class="line"># 创建一个新的znode：/zk_test，并关联数据my_data</span><br><span class="line">create /zk_test my_data</span><br><span class="line"># 检查关联于该节点的数据</span><br><span class="line">get /zk_test</span><br></pre></td></tr></table></figure>
 <ul>
-<li>判断是否已经胜出<br>
-默认是采用投票数大于半数则胜出的逻辑。</li>
+<li>三种节点类型的创建</li>
 </ul>
-<h3 id="选举消息内容"><a class="header-anchor" href="#选举消息内容">¶</a>选举消息内容</h3>
-<p>在投票完成后，需要将投票信息发送给集群中的所有服务器，它包含如下内容。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># create [-s] [-e] path data acl</span><br><span class="line"># 创建节点，默认是持久节点</span><br><span class="line">create /perm_test perm_data</span><br><span class="line"># -s 指定创建顺序节点</span><br><span class="line">create -s /ordered_test ordered_data</span><br><span class="line"># -e 指定临时节点</span><br><span class="line">create -e /temp_test temp_data</span><br></pre></td></tr></table></figure>
+<p>acl用来进行权限控制</p>
 <ul>
-<li>服务器ID</li>
-<li>数据ID</li>
-<li>逻辑时钟</li>
-<li>选举状态</li>
+<li>查看节点<br>
+临时节点会在客户端会话结束后被自动删除，下面退出后重新连接观察节点（根目录下已经不存在临时节点）：</li>
 </ul>
-<h3 id="选举流程简述"><a class="header-anchor" href="#选举流程简述">¶</a>选举流程简述</h3>
-<p>目前有5台服务器，每台服务器均没有数据，它们的编号分别是1,2,3,4,5,按编号依次启动，它们的选择举过程如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">quit</span><br><span class="line">ls /</span><br></pre></td></tr></table></figure>
+<p>ls2命令除了列出目录下的所有子节点外，还可以获取目录的其他属性：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ls2 /</span><br></pre></td></tr></table></figure>
+<p>get命令查看节点的具体信息</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">get /zk_test</span><br></pre></td></tr></table></figure>
 <ul>
-<li>服务器1启动，给自己投票，然后发投票信息，由于其它机器还没有启动所以它收不到反馈信息，服务器1的状态一直属于Looking。</li>
-<li>服务器2启动，给自己投票，同时与之前启动的服务器1交换结果，由于服务器2的编号大所以服务器2胜出，但此时投票数没有大于半数，所以两个服务器的状态依然是LOOKING。</li>
-<li>服务器3启动，给自己投票，同时与之前启动的服务器1,2交换信息，由于服务器3的编号最大所以服务器3胜出，此时投票数正好大于半数，所以服务器3成为领导者，服务器1,2成为小弟。</li>
-<li>服务器4启动，给自己投票，同时与之前启动的服务器1,2,3交换信息，尽管服务器4的编号大，但之前服务器3已经胜出，所以服务器4只能成为小弟。</li>
-<li>服务器5启动，后面的逻辑同服务器4成为小弟。</li>
+<li>修改该节点的数据</li>
 </ul>
-<h3 id="选举流程"><a class="header-anchor" href="#选举流程">¶</a>选举流程</h3>
-<p>描述Leader选择过程中的状态变化，这是假设全部实例中均没有数据，假设服务器启动顺序分别为：A,B,C。<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/%E9%80%89%E4%B8%BE%E6%B5%81%E7%A8%8B%E5%9B%BE.jpg" alt="选举流程图" title="选举流程图"><br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/%E9%80%89%E4%B8%BE%E7%8A%B6%E6%80%81%E5%9B%BE.jpg" alt="选举状态图" title="选举状态图"></p>
-<h3 id="如果规模为5的集群只起来其中的3台服务器-这时会进行选举吗？"><a class="header-anchor" href="#如果规模为5的集群只起来其中的3台服务器-这时会进行选举吗？">¶</a>如果规模为5的集群只起来其中的3台服务器，这时会进行选举吗？</h3>
-<p>不会，ZooKeeper更倾向于保持一致性，如果配置中的部分服务器不可用，那么整个集群都是不可用的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># set path data [version]</span><br><span class="line">set /zk_test junk</span><br></pre></td></tr></table></figure>
+<ul>
+<li>删除节点</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># delete path [version]</span><br><span class="line">delete /zk_test</span><br><span class="line">ls /</span><br></pre></td></tr></table></figure>
+<p>注意若删除节点存在子节点，那么无法删除该节点，必须先删除子节点，再删除父节点。</p>
+<h3 id="停止服务"><a class="header-anchor" href="#停止服务">¶</a>停止服务</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bin/zkServer.sh stop</span><br></pre></td></tr></table></figure>
+<h3 id="日志"><a class="header-anchor" href="#日志">¶</a>日志</h3>
+<p>启动zookeeper实例后会在当前目录下创建一个zookeeper.out文件，里面是debug信息。<br>
+另外还有一个transaction log（可以在更新时降低延迟），默认放在dataDir目录下，也可以通过添加dataLogDir配置来指定。</p>
+<h2 id="zookeeper集群"><a class="header-anchor" href="#zookeeper集群">¶</a>ZooKeeper集群</h2>
+<h3 id="集群的部署方式"><a class="header-anchor" href="#集群的部署方式">¶</a>集群的部署方式</h3>
+<p>ZooKeeper的部署方式是怎样的？集群中的机器角色都有哪些？集群最少需要几台机器？<br>
+单机、集群、伪集群。<br>
+Leader、Follower。<br>
+集群需要至少3（2N + 1）台机器，保证奇数，主要是为了保证选举算法能得到大多数节点的确认。</p>
+<h3 id="崩溃恢复"><a class="header-anchor" href="#崩溃恢复">¶</a>崩溃恢复</h3>
+<p>集群如果有3台机器，挂掉一台的情况下集群还能工作吗？挂掉两台呢？<br>
+记住一个原则：过半存活即可用，只要能得到超过半数的选票就可以最终选出一个Leader。</p>
+<h3 id="扩容"><a class="header-anchor" href="#扩容">¶</a>扩容</h3>
+<p>ZooKeeper集群支持动态添加机器吗？这个问题讨论的是水平扩容能力，ZooKeeper在这方面的支持不太好。如果需要添加机器，可以采取以下两种方式：</p>
+<ul>
+<li>全部重启：关闭所有ZooKeeper服务器，修改配置之后再启动，不影响之前客户端的会话。</li>
+<li>逐个重启：顾名思义。这是比较常用的方式。</li>
+</ul>
+<h2 id="zookeeper原生客户端"><a class="header-anchor" href="#zookeeper原生客户端">¶</a>ZooKeeper原生客户端</h2>
+<p>一般不会直接使用ZooKeeper原生客户端，坑太多：</p>
+<ol>
+<li>初始化连接的问题: 在client与server之间握手建立连接的过程中，如果握手失败，执行所有的同步方法(比如create，getData等)将抛出异常；</li>
+<li>自动恢复(failover)的问题: 当client与一台server的连接丢失,并试图去连接另外一台server时，client将回到初始连接模式；</li>
+<li>session过期的问题: 在极端情况下，出现ZooKeeper session过期，客户端需要自己去监听该状态并重新创建ZooKeeper实例；</li>
+<li>对可恢复异常的处理:当在server端创建一个有序ZNode，而在将节点名返回给客户端时崩溃，此时client端抛出可恢复的异常，用户需要自己捕获这些异常并进行重试；</li>
+<li>使用场景的问题:Zookeeper提供了一些标准的使用场景支持，但是ZooKeeper对这些功能的使用说明文档很少，而且很容易用错. 在一些极端场景下如何处理，zk并没有给出详细的文档说明. 比如共享锁服务，当服务器端创建临时顺序节点成功，但是在客户端接收到节点名之前挂掉了，如果不能很好的处理这种情况，将导致死锁。</li>
+</ol>
+<h2 id="curator"><a class="header-anchor" href="#curator">¶</a>Curator</h2>
+<ol>
+<li>封装ZooKeeper client与ZooKeeper server之间的连接处理，提供连接状态监控、zk客户端实例管理等特性；</li>
+<li>提供了一套Fluent风格的操作API；</li>
+<li>提供ZooKeeper各种应用场景(recipe, 比如共享锁服务, 集群领导选举机制)的抽象封装，提供对各种使用场景的支持（甚至包括zk自身不支持的场景）, 这些实现都遵循了zk的最佳实践, 并考虑了各种极端情况。</li>
+</ol>
+<p>下面按Curator的组成进行分析。</p>
+<h3 id="client"><a class="header-anchor" href="#client">¶</a>Client</h3>
+<p>Client是ZooKeeper客户端的一个替代品，提供了一些底层处理和相关的工具方法。</p>
+<h4 id="连接管理"><a class="header-anchor" href="#连接管理">¶</a>连接管理</h4>
+<p>Curator对zk客户端到server集群连接进行管理. 并在需要的情况, 重建zk实例, 保证与zk集群的可靠连接。<br>
+Curator初始化之后会一直的对zk连接进行监听, 一旦发现连接状态发生变化, 将作出相应的处理</p>
+<h4 id="连接重试"><a class="header-anchor" href="#连接重试">¶</a>连接重试</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">RetryLoop retryLoop = client.newRetryLoop();  </span><br><span class="line">while (retryLoop.shouldContinue()) &#123;</span><br><span class="line">    try &#123;</span><br><span class="line">        // perform your work  </span><br><span class="line">        ...  </span><br><span class="line">        // it&apos;s important to re-get the ZK instance as there may have been an error and the instance was re-created  </span><br><span class="line">        ZooKeeper zk = client.getZookeeper();  </span><br><span class="line"> </span><br><span class="line">        retryLoop.markComplete();  </span><br><span class="line">    &#125; catch (Exception e) &#123;  </span><br><span class="line">        retryLoop.takeException(e);  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">RetryLoop.callWithRetry(client, new Callable() &#123;  </span><br><span class="line">      @Override  </span><br><span class="line">      public Void call() throws Exception  </span><br><span class="line">      &#123;  </span><br><span class="line">          // do your work here - it will get retried if needed  </span><br><span class="line">          return null;  </span><br><span class="line">      &#125;  </span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<h4 id="connection-guarantees"><a class="header-anchor" href="#connection-guarantees">¶</a>Connection Guarantees</h4>
+<p>Curator是通过重连机制保证连接的可靠的：</p>
+<ul>
+<li>Every Curator operation properly waits until the ZooKeeper connection is established</li>
+<li>Every Curator Framework operation (create, getData, etc.) is guaranteed to manage connection loss and/or session expiration per the currently set retry policy</li>
+<li>If the connection is temporarily lost, Curator will attempt to retry the operation until it succeeds per the currently set retry policy</li>
+<li>All Curator recipes attempt to deal with connection issues in an appropriate way</li>
+</ul>
+<p>Curator提供可插拔的重试机制，它将给捕获所有可恢复的异常配置一个重试策略, 并且内部也提供了几种标准的重试策略(比如指数补偿)<br>
+RetryPolicy接口只有一个方法(以前版本有两个方法):<br>
+public boolean allowRetry(int retryCount, long elapsedTimeMs);<br>
+在开始重试之前, allowRetry方法被调用, 其参数将指定当前重试次数, 和操作已消耗时间. 如果允许, 将继续重试, 否则抛出异常.<br>
+有四种内置的重试策略：<br>
+ExponentialBackoffRetry:重试指定的次数, 且每一次重试之间停顿的时间逐渐增加.<br>
+RetryNTimes:指定最大重试次数的重试策略<br>
+RetryOneTime:仅重试一次<br>
+RetryUntilElapsed:一直重试直到达到规定的时间</p>
+<h3 id="framework"><a class="header-anchor" href="#framework">¶</a>Framework</h3>
+<p>用来简化ZooKeeper高级功能的使用，并增加了一些新的功能, 比如管理到ZooKeeper集群的连接、重试处理</p>
+<h4 id="curatorframeworkfactory类"><a class="header-anchor" href="#curatorframeworkfactory类">¶</a>CuratorFrameworkFactory类</h4>
+<p>提供了两个方法, 一个工厂方法newClient, 一个构建方法build. 使用工厂方法newClient可以创建一个默认的实例, 而build构建方法可以对实例进行定制. 当CuratorFramework实例构建完成, 紧接着调用start()方法, 在应用结束的时候, 需要调用close()方法. CuratorFramework是线程安全的. 在一个应用中可以共享同一个zk集群的CuratorFramework.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">client.create().forPath(&quot;/head&quot;, new byte[0]);  </span><br><span class="line">client.delete().inBackground().forPath(&quot;/head&quot;);  </span><br><span class="line">client.create().withMode(CreateMode.EPHEMERAL_SEQUENTIAL).forPath(&quot;/head/child&quot;, new byte[0]);  </span><br><span class="line">client.getData().watched().inBackground().forPath(&quot;/test&quot;);</span><br></pre></td></tr></table></figure>
+<p>方法说明:<br>
+create(): 发起一个create操作. 可以组合其他方法 (比如mode 或background) 最后以forPath()方法结尾<br>
+delete(): 发起一个删除操作. 可以组合其他方法(version 或background) 最后以forPath()方法结尾<br>
+checkExists(): 发起一个检查ZNode 是否存在的操作. 可以组合其他方法(watch 或background) 最后以forPath()方法结尾<br>
+getData(): 发起一个获取ZNode数据的操作. 可以组合其他方法(watch, background 或get stat) 最后以forPath()方法结尾<br>
+setData(): 发起一个设置ZNode数据的操作. 可以组合其他方法(version 或background) 最后以forPath()方法结尾<br>
+getChildren(): 发起一个获取ZNode子节点的操作. 可以组合其他方法(watch, background 或get stat) 最后以forPath()方法结尾<br>
+inTransaction(): 发起一个ZooKeeper事务. 可以组合create, setData, check, 和/或delete 为一个操作, 然后commit() 提交</p>
+<h4 id="通知-notification"><a class="header-anchor" href="#通知-notification">¶</a>通知(Notification)</h4>
+<p>Curator的相关代码已经更新了, 里面的接口已经由ClientListener改成CuratorListener了, 而且接口中去掉了clientCloseDueToError方法. 只有一个方法:<br>
+eventReceived() 当一个后台操作完成或者指定的watch被触发时该方法被调用<br>
+UnhandledErrorListener接口用来对异常进行处理.<br>
+CuratorEvent(在以前版本为ClientEvent)是对各种操作触发相关事件对象(POJO)的一个完整封装, 而事件对象的内容跟事件类型相关, 下面是对应关系:<br>
+CREATE    getResultCode() and getPath()<br>
+DELETE    getResultCode() and getPath()<br>
+EXISTS    getResultCode(), getPath() and getStat()<br>
+GET_DATA    getResultCode(), getPath(), getStat() and getData()<br>
+SET_DATA    getResultCode(), getPath() and getStat()<br>
+CHILDREN    getResultCode(), getPath(), getStat(), getChildren()<br>
+WATCHED    getWatchedEvent()</p>
+<h4 id="名称空间-namespace"><a class="header-anchor" href="#名称空间-namespace">¶</a>名称空间(Namespace)</h4>
+<p>因为一个zk集群会被多个应用共享, 为了避免各个应用的zk patch冲突, Curator Framework内部会给每一个Curator Framework实例分配一个namespace(可选). 这样你在create ZNode的时候都会自动加上这个namespace作为这个node path的root. 使用代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CuratorFramework client = CuratorFrameworkFactory.builder().namespace(&quot;MyApp&quot;) ... build();  </span><br><span class="line"> …  </span><br><span class="line">client.create().forPath(&quot;/test&quot;, data);  </span><br><span class="line">// node was actually written to: &quot;/MyApp/test&quot;</span><br></pre></td></tr></table></figure>
+<h3 id="recipes"><a class="header-anchor" href="#recipes">¶</a>Recipes</h3>
+<p>实现了通用ZooKeeper的recipe, 该组件建立在Framework的基础之上，Curator实现了ZooKeeper的所有recipe(除了两段提交)</p>
+<h4 id="选举"><a class="header-anchor" href="#选举">¶</a>选举</h4>
+<h4 id="集群领导选举-leader-election"><a class="header-anchor" href="#集群领导选举-leader-election">¶</a>集群领导选举(leader election)</h4>
+<h4 id="锁服务"><a class="header-anchor" href="#锁服务">¶</a>锁服务</h4>
+<p>共享锁: 全局同步分布式锁, 同一时间两台机器只有一台能获得同一把锁.<br>
+共享读写锁: 用于分布式的读写互斥处理, 同时生成两个锁:一个读锁, 一个写锁, 读锁能被多个应用持有, 而写锁只能一个独占, 当写锁未被持有时, 多个读锁持有者可以同时进行读操作<br>
+共享信号量: 在分布式系统中的各个JVM使用同一个zk lock path, 该path将跟一个给定数量的租约(lease)相关联, 然后各个应用根据请求顺序获得对应的lease, 相对来说, 这是最公平的锁服务使用方式.<br>
+多共享锁:内部构件多个共享锁(会跟一个znode path关联), 在acquire()过程中, 执行所有共享锁的acquire()方法, 如果中间出现一个失败, 则将释放所有已require的共享锁; 执行release()方法时, 则执行内部多个共享锁的release方法(如果出现失败将忽略)</p>
+<h4 id="队列-queue"><a class="header-anchor" href="#队列-queue">¶</a>队列(Queue)</h4>
+<p>分布式队列:采用持久顺序zk node来实现FIFO队列, 如果有多个消费者, 可以使用LeaderSelector来保证队列的消费者顺序<br>
+分布式优先队列: 优先队列的分布式版本<br>
+BlockingQueueConsumer: JDK阻塞队列的分布式版本</p>
+<h4 id="关卡-barrier"><a class="header-anchor" href="#关卡-barrier">¶</a>关卡(Barrier)</h4>
+<p>分布式关卡:一堆客户端去处理一堆任务, 只有所有的客户端都执行完, 所有客户端才能继续往下处理<br>
+双分布式关卡:同时开始, 同时结束</p>
+<h4 id="计数器-counter"><a class="header-anchor" href="#计数器-counter">¶</a>计数器(Counter)</h4>
+<p>共享计数器:所有客户端监听同一个znode path, 并共享一个最新的integer计数值<br>
+分布式AtomicLong(AtomicInteger): AtomicXxx的分布式版本, 先采用乐观锁更新, 若失败再采用互斥锁更新, 可以配置重试策略来处理重试</p>
+<h3 id="utilities-各种zookeeper的工具类"><a class="header-anchor" href="#utilities-各种zookeeper的工具类">¶</a>Utilities:各种ZooKeeper的工具类</h3>
+<h4 id="path-cache"><a class="header-anchor" href="#path-cache">¶</a>Path Cache</h4>
+<p>Path Cache用于监听ZNode的子节点的变化, 当add, update, remove子节点时将改变Path Cache state, 同时返回所有子节点的data和state.<br>
+Curator中采用了PathChildrenCache类来处理Path Cache, 状态的变化则采用PathChildrenCacheListener来监听.<br>
+相关用法参见TestPathChildrenCache测试类<br>
+注意: 当zk server的数据发生变化, zk client会出现不一致, 这个需要通过版本号来识别这种状态的变化</p>
+<h4 id="test-server"><a class="header-anchor" href="#test-server">¶</a>Test Server</h4>
+<p>用来在测试中模拟一个本地进程内ZooKeeper Server.</p>
+<h4 id="test-cluster"><a class="header-anchor" href="#test-cluster">¶</a>Test Cluster</h4>
+<p>用来在测试中模拟一个ZooKeeper Server集群</p>
+<h4 id="zkpaths工具类"><a class="header-anchor" href="#zkpaths工具类">¶</a>ZKPaths工具类</h4>
+<p>提供了和ZNode相关的path处理工具方法:<br>
+getNodeFromPath: 根据给定path获取node name. i.e. “/one/two/three” -&gt; &quot;three&quot;<br>
+mkdirs: 根据给定路径递归创建所有node<br>
+getSortedChildren: 根据给定路径, 返回一个按序列号排序的子节点列表<br>
+makePath: 根据给定的path和子节点名, 创建一个完整path</p>
+<h4 id="ensurepath工具类"><a class="header-anchor" href="#ensurepath工具类">¶</a>EnsurePath工具类</h4>
+<p>直接看例子, 具体的说就是调用多次, 只会执行一次创建节点操作.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">EnsurePath ensurePath = new EnsurePath(aFullPathToEnsure);  </span><br><span class="line">...  </span><br><span class="line">String nodePath = aFullPathToEnsure + &quot;/foo&quot;;  </span><br><span class="line">ensurePath.ensure(zk); // first time syncs and creates if needed  </span><br><span class="line">zk.create(nodePath, ...);  </span><br><span class="line">...  </span><br><span class="line">ensurePath.ensure(zk); // subsequent times are NOPs  </span><br><span class="line">zk.create(nodePath, ...);</span><br></pre></td></tr></table></figure>
+<h4 id="notification事件处理"><a class="header-anchor" href="#notification事件处理">¶</a>Notification事件处理</h4>
+<p>Curator对ZooKeeper的事件Watcher进行了封装处理, 然后实现了一套监听机制. 提供了几个监听接口用来处理ZooKeeper连接状态的变化<br>
+当连接出现异常, 将通过ConnectionStateListener接口进行监听, 并进行相应的处理, 这些状态变化包括:<br>
+暂停(SUSPENDED): 当连接丢失, 将暂停所有操作, 直到连接重新建立, 如果在规定时间内无法建立连接, 将触发LOST通知<br>
+重连(RECONNECTED): 连接丢失, 执行重连时, 将触发该通知<br>
+丢失(LOST): 连接超时时, 将触发该通知<br>
+从com.netflix.curator.framework.imps.CuratorFrameworkImpl.validateConnection(CuratorEvent)方法中我们可以知道, Curator分别将ZooKeeper的Disconnected, Expired, SyncConnected三种状态转换成上面三种状态.</p>
+<h4 id="日志工具"><a class="header-anchor" href="#日志工具">¶</a>日志工具</h4>
+<p>Curator内部采用SLF4J 来输出日志<br>
+采用驱动器(driver)机制, 允许扩展和定制日志和跟踪处理<br>
+提供了一个TracerDriver接口, 通过实现addTrace()和addCount()接口来集成用户自己的跟踪框架</p>
+<h2 id="zkclient"><a class="header-anchor" href="#zkclient">¶</a>ZkClient</h2>
+<h3 id="相对curator的不足"><a class="header-anchor" href="#相对curator的不足">¶</a>相对Curator的不足</h3>
+<ul>
+<li>文档几乎没有</li>
+<li>异常处理弱爆了(简单的抛出RuntimeException)</li>
+<li>重试处理太难用了</li>
+<li>没有提供各种使用场景的实现</li>
+</ul>
+<h3 id="特性"><a class="header-anchor" href="#特性">¶</a>特性</h3>
+<ol>
+<li>提供了Zk断链重连的特性:：这个特性似乎每个开发者都会设计，而且代码风格几乎&quot;如出一辙&quot;。在大部分Zk使用场景中，我们都要求它能够在断链的时候，重新建立连接，无论session失效与否。</li>
+<li>Event监听器机制：向ZNode节点注册watch，每个开发者都使用过，尽管watch机制并不能确保数据变更的实时性。Watch-Event属于&quot;即发即失&quot;，因为我们需要得到Event时候，再去注册一遍，这也是一个非常繁琐的事情，I0Itec-ZkClient提供了Event-Listener的小技巧，可以帮助我们&quot;解脱&quot;。</li>
+<li>Zk异常处理：Zkr中繁多的Exception，以及每个Exception所需要关注的事情各有不同，你应该记得那一堆try-catch给你带来的烦恼。</li>
+<li>Data序列化:简单的data序列化（Serialzer/Deserialzer）。</li>
+</ol>
+<h3 id="zkclient-api"><a class="header-anchor" href="#zkclient-api">¶</a>ZkClient API</h3>
+<ol>
+<li>ZkConnection类：对Zk API的简单分装，提供了链接Zk Server和数据CRUD的操作；此类实现了IZkConnection接口，通常情况下，如果I0Itec-Zkclient不能满足需要的时候，我们可以重写ZkConnection即可。</li>
+<li>ZkClient类：核心类，也是开发者需要直接使用的类，它内部维护了Zk的链接管理和Event处理逻辑等，同时也暴露了Zookeeper Znode的CRUD方法列表。</li>
+<li>IZkChildListener接口：ZNode 子节点事件侦听器，当ZkClient接收到某个path节点变更或者子节点变更事件时，会触发Listener。</li>
+<li>IZkDataListener接口</li>
+<li>IZkStateListener接口：当Zk客户端状态变更时，触发。</li>
+</ol>
+<h3 id="实现分布式锁"><a class="header-anchor" href="#实现分布式锁">¶</a>实现分布式锁</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">private ZkClient zkClient;</span><br><span class="line"></span><br><span class="line">private String path;</span><br><span class="line">private final String LOCK;</span><br><span class="line"></span><br><span class="line">public boolean lock() throws Exception &#123;</span><br><span class="line">    if (zkClient.exists(path))</span><br><span class="line">        return true;</span><br><span class="line">    else</span><br><span class="line">        return zkClient.create(path, LOCK.getBytes(), CreateMode.EPHEMERAL) == null ? true : false;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public boolean unlock() throws Exception &#123;</span><br><span class="line">    return zkClient.delete(path);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public boolean islock() throws Exception &#123;</span><br><span class="line">    return zkClient.exists(path);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="环境搭建"><a class="header-anchor" href="#环境搭建">¶</a>环境搭建</h3>
 <ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/6072597.html" target="_blank" rel="noopener">【分布式】Zookeeper系统模型</a></li>
+<li><a href="https://zookeeper.apache.org/doc/current/zookeeperStarted.html" target="_blank" rel="noopener">ZooKeeper Getting Started Guide</a></li>
+<li><a href="http://blog.csdn.net/mark_lq/article/details/52447181" target="_blank" rel="noopener">ZooKeeper 单机模式和集群模式的环境搭建</a></li>
 </ol>
-<h3 id="zookeeper服务器的启动流程"><a class="header-anchor" href="#zookeeper服务器的启动流程">¶</a>ZooKeeper服务器的启动流程</h3>
+<h3 id="客户端"><a class="header-anchor" href="#客户端">¶</a>客户端</h3>
 <ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/6105276.html" target="_blank" rel="noopener">【分布式】Zookeeper服务端启动</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6139266.html" target="_blank" rel="noopener">【分布式】Zookeeper的服务器角色</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6514897.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（一）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6515105.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（二）之ZooKeeperServer</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6516805.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（三）之LeaderZooKeeperServer</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6517058.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（四）之FollowerZooKeeperServer</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6517945.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（五）之ObserverZooKeeperServer</a></li>
+<li>原生客户端<br>
+<a href="http://www.cnblogs.com/leesf456/p/6028416.html" target="_blank" rel="noopener">【分布式】Zookeeper使用–Java API</a></li>
+<li>开源客户端<br>
+<a href="https://zookeeper.apache.org/doc/current/zookeeperProgrammers.html" target="_blank" rel="noopener">ZooKeeper Programmer’s Guide</a><br>
+<a href="http://www.cnblogs.com/leesf456/p/6032716.html" target="_blank" rel="noopener">【分布式】Zookeeper使用–开源客户端</a></li>
+<li>Curator<br>
+<a href="https://curator.apache.org/" target="_blank" rel="noopener">Apache Curator</a><br>
+<a href="https://www.jianshu.com/p/70151fc0ef5d" target="_blank" rel="noopener">Zookeeper客户端Curator使用详解</a><br>
+<a href="http://macrochen.iteye.com/blog/1366136/" target="_blank" rel="noopener">Zookeeper开源客户端框架Curator简介</a><br>
+<a href="https://curator.apache.org/curator-recipes/index.html" target="_blank" rel="noopener">Recipes</a></li>
+<li>ZkClient<br>
+<a href="https://github.com/sgroschupf/zkclient" target="_blank" rel="noopener">zkclient</a></li>
 </ol>
-<h3 id="zookeeper客户端"><a class="header-anchor" href="#zookeeper客户端">¶</a>ZooKeeper客户端</h3>
+<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
 <ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/6098255.html" target="_blank" rel="noopener">【分布式】Zookeeper客户端</a></li>
-</ol>
-<h3 id="watcher-v2"><a class="header-anchor" href="#watcher-v2">¶</a>Watcher</h3>
-<ol>
-<li><a href="https://blog.csdn.net/hohoo1990/article/details/78617336" target="_blank" rel="noopener">zookeeper 中 Watcher 通知机制的一点理解</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6286827.html" target="_blank" rel="noopener">【Zookeeper】源码分析之Watcher机制（一）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6288709.html" target="_blank" rel="noopener">【Zookeeper】源码分析之Watcher机制（二）之WatchManager</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6291004.html" target="_blank" rel="noopener">【Zookeeper】源码分析之Watcher机制（三）之ZooKeeper</a></li>
-</ol>
-<h3 id="leader选举-v2"><a class="header-anchor" href="#leader选举-v2">¶</a>Leader选举</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/6107600.html" target="_blank" rel="noopener">【分布式】Zookeeper的Leader选举</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6494290.html" target="_blank" rel="noopener">【Zookeeper】源码分析之Leader选举（一）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6508185.html" target="_blank" rel="noopener">【Zookeeper】源码分析之Leader选举（二）之FastLeaderElection</a></li>
-</ol>
-<h3 id="持久化"><a class="header-anchor" href="#持久化">¶</a>持久化</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/6179118.html" target="_blank" rel="noopener">【分布式】Zookeeper数据与存储</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6279956.html" target="_blank" rel="noopener">【Zookeeper】源码分析之持久化（一）之FileTxnLog</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6285014.html" target="_blank" rel="noopener">【Zookeeper】源码分析之持久化（二）之FileSnap</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6285703.html" target="_blank" rel="noopener">【Zookeeper】源码分析之持久化（三）之FileTxnSnapLog</a></li>
-</ol>
-<h3 id="通信-通信协议-序列化-会话-请求处理"><a class="header-anchor" href="#通信-通信协议-序列化-会话-请求处理">¶</a>通信（通信协议、序列化、会话、请求处理）</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/6091208.html" target="_blank" rel="noopener">【分布式】Zookeeper序列化及通信协议</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6278853.html" target="_blank" rel="noopener">【Zookeeper】源码分析之序列化</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6103870.html" target="_blank" rel="noopener">【分布式】Zookeeper会话</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6140503.html" target="_blank" rel="noopener">【分布式】Zookeeper请求处理</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6410793.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（一）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6412843.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（二）之PrepRequestProcessor</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6438411.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（三）之SyncRequestProcessor</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6472496.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（四）之FinalRequestProcessor</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6477815.html" target="_blank" rel="noopener">【Zookeeper】源码分析之网络通信（一）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6484780.html" target="_blank" rel="noopener">【Zookeeper】源码分析之网络通信（二）之NIOServerCnxn</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/6486454.html" target="_blank" rel="noopener">【Zookeeper】源码分析之网络通信（三）之NettyServerCnxn</a></li>
+<li><a href="https://www.cnblogs.com/yuyijq/p/3424473.html" target="_blank" rel="noopener">Zookeeper-Zookeeper可以干什么</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6063694.html" target="_blank" rel="noopener">【分布式】Zookeeper在大型分布式系统中的应用</a></li>
+<li><a href="http://www.linkedkeeper.com/mobile/item.action?bid=64" target="_blank" rel="noopener">基于Zk实现分布式锁</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6036548.html" target="_blank" rel="noopener">【分布式】Zookeeper应用场景</a></li>
 </ol>
 
       
@@ -540,8 +675,8 @@ zookeeper提供了三种集群选举方式：</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/32289fde.html" rel="next" title="在 Linux 环境下制作启动盘">
-                <i class="fa fa-chevron-left"></i> 在 Linux 环境下制作启动盘
+              <a href="/353ec849.html" rel="next" title="ZooKeeper原理总结">
+                <i class="fa fa-chevron-left"></i> ZooKeeper原理总结
               </a>
             
           </div>
@@ -550,8 +685,8 @@ zookeeper提供了三种集群选举方式：</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/353ec849.html" rel="prev" title="ZooKeeper原理总结">
-                ZooKeeper原理总结 <i class="fa fa-chevron-right"></i>
+              <a href="/c395b48b.html" rel="prev" title="ES应用总结">
+                ES应用总结 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -634,7 +769,7 @@ zookeeper提供了三种集群选举方式：</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">67</span>
+                  <span class="site-state-item-count">68</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -656,7 +791,7 @@ zookeeper提供了三种集群选举方式：</p>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">31</span>
+                  <span class="site-state-item-count">33</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -691,7 +826,7 @@ zookeeper提供了三种集群选举方式：</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#watcher"><span class="nav-number">1.</span> <span class="nav-text">¶Watcher</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#leader选举"><span class="nav-number">2.</span> <span class="nav-text">¶Leader选举</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#选举相关概念"><span class="nav-number">2.1.</span> <span class="nav-text">¶选举相关概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zk集群选举概述"><span class="nav-number">2.2.</span> <span class="nav-text">¶zk集群选举概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#quorumpeer"><span class="nav-number">2.3.</span> <span class="nav-text">¶QuorumPeer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fastleaderelection"><span class="nav-number">2.4.</span> <span class="nav-text">¶FastLeaderElection</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#选举消息内容"><span class="nav-number">2.5.</span> <span class="nav-text">¶选举消息内容</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#选举流程简述"><span class="nav-number">2.6.</span> <span class="nav-text">¶选举流程简述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#选举流程"><span class="nav-number">2.7.</span> <span class="nav-text">¶选举流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果规模为5的集群只起来其中的3台服务器-这时会进行选举吗？"><span class="nav-number">2.8.</span> <span class="nav-text">¶如果规模为5的集群只起来其中的3台服务器，这时会进行选举吗？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper服务器的启动流程"><span class="nav-number">3.1.</span> <span class="nav-text">¶ZooKeeper服务器的启动流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper客户端"><span class="nav-number">3.2.</span> <span class="nav-text">¶ZooKeeper客户端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#watcher-v2"><span class="nav-number">3.3.</span> <span class="nav-text">¶Watcher</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#leader选举-v2"><span class="nav-number">3.4.</span> <span class="nav-text">¶Leader选举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#持久化"><span class="nav-number">3.5.</span> <span class="nav-text">¶持久化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#通信-通信协议-序列化-会话-请求处理"><span class="nav-number">3.6.</span> <span class="nav-text">¶通信（通信协议、序列化、会话、请求处理）</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#命令行运行zookeeper"><span class="nav-number">1.</span> <span class="nav-text">¶命令行运行ZooKeeper</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#下载"><span class="nav-number">1.1.</span> <span class="nav-text">¶下载</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建配置文件-单机"><span class="nav-number">1.2.</span> <span class="nav-text">¶创建配置文件（单机）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建配置文件-集群"><span class="nav-number">1.3.</span> <span class="nav-text">¶创建配置文件（集群）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#连接"><span class="nav-number">1.4.</span> <span class="nav-text">¶连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测试命令"><span class="nav-number">1.5.</span> <span class="nav-text">¶测试命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#停止服务"><span class="nav-number">1.6.</span> <span class="nav-text">¶停止服务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#日志"><span class="nav-number">1.7.</span> <span class="nav-text">¶日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zookeeper集群"><span class="nav-number">2.</span> <span class="nav-text">¶ZooKeeper集群</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群的部署方式"><span class="nav-number">2.1.</span> <span class="nav-text">¶集群的部署方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#崩溃恢复"><span class="nav-number">2.2.</span> <span class="nav-text">¶崩溃恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#扩容"><span class="nav-number">2.3.</span> <span class="nav-text">¶扩容</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zookeeper原生客户端"><span class="nav-number">3.</span> <span class="nav-text">¶ZooKeeper原生客户端</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#curator"><span class="nav-number">4.</span> <span class="nav-text">¶Curator</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#client"><span class="nav-number">4.1.</span> <span class="nav-text">¶Client</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#连接管理"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶连接管理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#连接重试"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶连接重试</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#connection-guarantees"><span class="nav-number">4.1.3.</span> <span class="nav-text">¶Connection Guarantees</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#framework"><span class="nav-number">4.2.</span> <span class="nav-text">¶Framework</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#curatorframeworkfactory类"><span class="nav-number">4.2.1.</span> <span class="nav-text">¶CuratorFrameworkFactory类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#通知-notification"><span class="nav-number">4.2.2.</span> <span class="nav-text">¶通知(Notification)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#名称空间-namespace"><span class="nav-number">4.2.3.</span> <span class="nav-text">¶名称空间(Namespace)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#recipes"><span class="nav-number">4.3.</span> <span class="nav-text">¶Recipes</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#选举"><span class="nav-number">4.3.1.</span> <span class="nav-text">¶选举</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#集群领导选举-leader-election"><span class="nav-number">4.3.2.</span> <span class="nav-text">¶集群领导选举(leader election)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#锁服务"><span class="nav-number">4.3.3.</span> <span class="nav-text">¶锁服务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#队列-queue"><span class="nav-number">4.3.4.</span> <span class="nav-text">¶队列(Queue)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#关卡-barrier"><span class="nav-number">4.3.5.</span> <span class="nav-text">¶关卡(Barrier)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#计数器-counter"><span class="nav-number">4.3.6.</span> <span class="nav-text">¶计数器(Counter)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#utilities-各种zookeeper的工具类"><span class="nav-number">4.4.</span> <span class="nav-text">¶Utilities:各种ZooKeeper的工具类</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#path-cache"><span class="nav-number">4.4.1.</span> <span class="nav-text">¶Path Cache</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#test-server"><span class="nav-number">4.4.2.</span> <span class="nav-text">¶Test Server</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#test-cluster"><span class="nav-number">4.4.3.</span> <span class="nav-text">¶Test Cluster</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zkpaths工具类"><span class="nav-number">4.4.4.</span> <span class="nav-text">¶ZKPaths工具类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ensurepath工具类"><span class="nav-number">4.4.5.</span> <span class="nav-text">¶EnsurePath工具类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#notification事件处理"><span class="nav-number">4.4.6.</span> <span class="nav-text">¶Notification事件处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#日志工具"><span class="nav-number">4.4.7.</span> <span class="nav-text">¶日志工具</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zkclient"><span class="nav-number">5.</span> <span class="nav-text">¶ZkClient</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#相对curator的不足"><span class="nav-number">5.1.</span> <span class="nav-text">¶相对Curator的不足</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#特性"><span class="nav-number">5.2.</span> <span class="nav-text">¶特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zkclient-api"><span class="nav-number">5.3.</span> <span class="nav-text">¶ZkClient API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实现分布式锁"><span class="nav-number">5.4.</span> <span class="nav-text">¶实现分布式锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">6.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#环境搭建"><span class="nav-number">6.1.</span> <span class="nav-text">¶环境搭建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#客户端"><span class="nav-number">6.2.</span> <span class="nav-text">¶客户端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">6.3.</span> <span class="nav-text">¶应用</span></a></li></ol></li></ol></div>
             
 
           </div>

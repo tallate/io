@@ -88,7 +88,7 @@
 <meta property="og:description" content="云环境下自适应负载均衡算法的设计。 题目描述 -&amp;gt; 阿里巴巴 2019 中间件性能挑战赛-自适应负载均衡（初赛）赛题 抽不出时间，中途放弃了。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E8%87%AA%E9%80%82%E5%BA%94%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/%E4%B8%80%E6%AC%A1%E8%AF%B7%E6%B1%82%E7%9A%84%E6%B5%81%E7%A8%8B.png">
-<meta property="og:updated_time" content="2019-10-03T02:52:33.378Z">
+<meta property="og:updated_time" content="2019-10-07T14:49:31.915Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="自适应负载均衡(20%)">
 <meta name="twitter:description" content="云环境下自适应负载均衡算法的设计。 题目描述 -&amp;gt; 阿里巴巴 2019 中间件性能挑战赛-自适应负载均衡（初赛）赛题 抽不出时间，中途放弃了。">
@@ -497,23 +497,10 @@ TODO：</li>
 <p>2.1 一般的容量规划方法都是基于压测算出的，没法动态化，我感觉运行时比较 consumer 单位时间发出去请求数和 provider 单位时间实际处理的请求数比较一下、然后动态修改发给每个 provider 请求的概率，可以试一下。<br>
 2.2 但是这种方法有个难点是如何计算吞吐量，一次请求大致需要经过下面的链路：<br>
 <img src="http://47.88.24.11/imgs/%E8%87%AA%E9%80%82%E5%BA%94%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/%E4%B8%80%E6%AC%A1%E8%AF%B7%E6%B1%82%E7%9A%84%E6%B5%81%E7%A8%8B.png" alt="一次请求的流程" title="一次请求的流程"><br>
-其中 request 和 response 属于 dubbo 框架的职责，而 hash 则是一个示例计算服务，它本身没有多少计算量，所以我们实际上均衡的目标是 request 和 response 这两个部分的负载，而这两个部分几乎又是对称的，所以可以直接用”单位时间内请求到达量”来表示“单位时间内吞吐量”。</p>
-<h3 id="负载均衡"><a class="header-anchor" href="#负载均衡">¶</a>负载均衡</h3>
-<p>TODO：</p>
-<h3 id="实现要点"><a class="header-anchor" href="#实现要点">¶</a>实现要点</h3>
-<ol>
-<li>并发连接数<br>
-Provider 的 Filter 中记录并发连接数：</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TestServerFilter</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            ServerContext.incr();</span><br><span class="line">            Result result = invoker.invoke(invocation);</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e)&#123;</span><br><span class="line">            <span class="keyword">throw</span> e;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            ServerContext.decr();</span><br><span class="line">        &#125; </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>记录过去 5 秒内的请求数</p>
-</li>
-<li>
-<p>记录每一秒的 TPS</p>
-</li>
-</ol>
+其中 request 和 response 属于 dubbo 框架的职责，而 hash 则是一个示例计算服务，它本身没有多少计算量，所以我们实际上均衡的目标是 request 和 response 这两个部分的负载，而这两个部分几乎又是对称的，所以可以直接用”单位时间内请求到达量”来表示“单位时间内吞吐量”。<br>
+2.3 观察实现结果，发现provider反馈的速率过慢导致consumer根本来不及修改负载均衡配置（框架代码每隔一段时间会修改provider线程池大小，产生动态变化的效果）。</p>
+<h4 id="3-回压-未实现"><a class="header-anchor" href="#3-回压-未实现">¶</a>3. 回压（未实现）</h4>
+<p>有点类似消息队列的实现方式，在consumer端使用一个队列来解耦请求处理和请求的发送过程。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <h3 id="基础"><a class="header-anchor" href="#基础">¶</a>基础</h3>
 <ol>
@@ -532,7 +519,7 @@ Java 为了控制系统负载可能会用到一些系统调用。<br>
 <a href="https://stackoverflow.com/questions/47177/how-do-i-monitor-the-computers-cpu-memory-and-disk-usage-in-java" target="_blank" rel="noopener">How do I monitor the computer’s CPU, memory, and disk usage in Java?</a><br>
 使用 JMX 是更简单的、可移植性更高的做法。</li>
 </ol>
-<h3 id="负载均衡-v2"><a class="header-anchor" href="#负载均衡-v2">¶</a>负载均衡</h3>
+<h3 id="负载均衡"><a class="header-anchor" href="#负载均衡">¶</a>负载均衡</h3>
 <ol>
 <li>负载均衡<br>
 <a href="https://kemptechnologies.com/ap/load-balancer/load-balancing-algorithms-techniques/" target="_blank" rel="noopener">How does a load balancer distribute client traffic across servers?</a><br>
@@ -582,8 +569,8 @@ Fuzzifier：相当于一个负载收集器，从DC上收集负载情况，更新
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/8ada3a78.html" rel="next" title="Java 内存模型总结">
-                <i class="fa fa-chevron-left"></i> Java 内存模型总结
+              <a href="/7d1f0594.html" rel="next" title="Java 基础总结">
+                <i class="fa fa-chevron-left"></i> Java 基础总结
               </a>
             
           </div>
@@ -676,7 +663,7 @@ Fuzzifier：相当于一个负载收集器，从DC上收集负载情况，更新
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">67</span>
+                  <span class="site-state-item-count">68</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -698,7 +685,7 @@ Fuzzifier：相当于一个负载收集器，从DC上收集负载情况，更新
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">31</span>
+                  <span class="site-state-item-count">33</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -733,7 +720,7 @@ Fuzzifier：相当于一个负载收集器，从DC上收集负载情况，更新
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#云计算"><span class="nav-number">1.</span> <span class="nav-text">¶云计算</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#云计算定义"><span class="nav-number">1.1.</span> <span class="nav-text">¶云计算定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#和传统意义上的服务器之间的差别"><span class="nav-number">1.2.</span> <span class="nav-text">¶和传统意义上的服务器之间的差别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡-云服务-lbaas-load-balancer-as-a-service"><span class="nav-number">1.3.</span> <span class="nav-text">¶负载均衡 + 云服务 = LBaaS(Load Balancer as a Service)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#负载均衡-lb"><span class="nav-number">2.</span> <span class="nav-text">¶负载均衡（LB）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡算法的应用"><span class="nav-number">2.1.</span> <span class="nav-text">¶负载均衡算法的应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡考虑的协议"><span class="nav-number">2.2.</span> <span class="nav-text">¶负载均衡考虑的协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡器所处的平台类型"><span class="nav-number">2.3.</span> <span class="nav-text">¶负载均衡器所处的平台类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡系统的关注点"><span class="nav-number">2.4.</span> <span class="nav-text">¶负载均衡系统的关注点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#static-load-balancing"><span class="nav-number">2.5.</span> <span class="nav-text">¶Static load balancing</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dynamic-adaptive-load-balancing"><span class="nav-number">2.6.</span> <span class="nav-text">¶Dynamic(adaptive) load balancing</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构"><span class="nav-number">2.7.</span> <span class="nav-text">¶架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现"><span class="nav-number">3.</span> <span class="nav-text">¶实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#负载统计"><span class="nav-number">3.1.</span> <span class="nav-text">¶负载统计</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-利用系统调用统计负载"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶1. 利用系统调用统计负载</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-吞吐量"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶2. 吞吐量</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡"><span class="nav-number">3.2.</span> <span class="nav-text">¶负载均衡</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实现要点"><span class="nav-number">3.3.</span> <span class="nav-text">¶实现要点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基础"><span class="nav-number">4.1.</span> <span class="nav-text">¶基础</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡-v2"><span class="nav-number">4.2.</span> <span class="nav-text">¶负载均衡</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#云计算"><span class="nav-number">1.</span> <span class="nav-text">¶云计算</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#云计算定义"><span class="nav-number">1.1.</span> <span class="nav-text">¶云计算定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#和传统意义上的服务器之间的差别"><span class="nav-number">1.2.</span> <span class="nav-text">¶和传统意义上的服务器之间的差别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡-云服务-lbaas-load-balancer-as-a-service"><span class="nav-number">1.3.</span> <span class="nav-text">¶负载均衡 + 云服务 = LBaaS(Load Balancer as a Service)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#负载均衡-lb"><span class="nav-number">2.</span> <span class="nav-text">¶负载均衡（LB）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡算法的应用"><span class="nav-number">2.1.</span> <span class="nav-text">¶负载均衡算法的应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡考虑的协议"><span class="nav-number">2.2.</span> <span class="nav-text">¶负载均衡考虑的协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡器所处的平台类型"><span class="nav-number">2.3.</span> <span class="nav-text">¶负载均衡器所处的平台类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡系统的关注点"><span class="nav-number">2.4.</span> <span class="nav-text">¶负载均衡系统的关注点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#static-load-balancing"><span class="nav-number">2.5.</span> <span class="nav-text">¶Static load balancing</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dynamic-adaptive-load-balancing"><span class="nav-number">2.6.</span> <span class="nav-text">¶Dynamic(adaptive) load balancing</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构"><span class="nav-number">2.7.</span> <span class="nav-text">¶架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现"><span class="nav-number">3.</span> <span class="nav-text">¶实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#负载统计"><span class="nav-number">3.1.</span> <span class="nav-text">¶负载统计</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-利用系统调用统计负载"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶1. 利用系统调用统计负载</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-吞吐量"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶2. 吞吐量</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-回压-未实现"><span class="nav-number">3.1.3.</span> <span class="nav-text">¶3. 回压（未实现）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基础"><span class="nav-number">4.1.</span> <span class="nav-text">¶基础</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡"><span class="nav-number">4.2.</span> <span class="nav-text">¶负载均衡</span></a></li></ol></li></ol></div>
             
 
           </div>
