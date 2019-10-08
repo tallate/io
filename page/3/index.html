@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9d02e43e.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/36225c53.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/9d02e43e.html" itemprop="url">服务治理——异步任务的定义</a></h1>
+                <a class="post-title-link" href="/36225c53.html" itemprop="url">异步任务和任务调度</a></h1>
         
 
         <div class="post-meta">
@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.1k 字
+                  851 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  7 分钟
+                  3 分钟
                 </span>
               
             </div>
@@ -389,17 +389,61 @@
 
       
         
-          <p>异步编程富有魅力，但是错误的使用不仅不会带来益处，还会使得系统变得难以维护、Bug 遍地，接下来我希望总结一下遇到的异步任务场景，减少以后遇到类似问题阻塞在设计上的时间。</p>
-<blockquote>
-<p>曾经经历过因三方（传统行业）接口效率过低而导致服务不可用的情况，交流发现对方根本没有考虑在系统里加入缓存、消息队列等中间件，原因竟然是希望保证高一致性，实际上，查询操作并没有保证一致性的意义，而写操作就算不能马上被看到结果也不会对体验造成太大的影响，只要最终能成功即可，这是符合<code>BASE</code>设计原则的。这个问题后续经排查发现原因是对方因为系统设计有问题、导致频繁大规模的接口超时，重启了后问题缓解，对方就不再追究了，非常无奈。没有不能解决的技术难题，只是有时候沟通、惰性等会阻碍问题的定位。</p>
-</blockquote>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/9d02e43e.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
+          
+            <h2 id="定时任务原理"><a class="header-anchor" href="#定时任务原理">¶</a>定时任务原理</h2>
+<h3 id="补偿执行"><a class="header-anchor" href="#补偿执行">¶</a>补偿执行</h3>
+<p>异常订单表，定时任务</p>
+<h3 id="定时任务的实现"><a class="header-anchor" href="#定时任务的实现">¶</a>定时任务的实现</h3>
+<p>无分布式的，HashTimeWheelTimer<br>
+分布式情况下，可以先用 Redis，当复杂时再用 RabbitMQ 等消息队列中间件。</p>
+<h3 id="消息-or-定时任务"><a class="header-anchor" href="#消息-or-定时任务">¶</a>消息 OR 定时任务</h3>
+<p>很多异步实现的功能既可以通过消息实现又可以通过定时任务来实现，我经历过很多需要抉择的情况，甚至也碰到过对此都不大清楚的架构师，我认为对此没有唯一的答案，只能根据具体业务场景来分析，一些要点可供参考。</p>
+<ul>
+<li>
+<p>分布式</p>
+</li>
+<li>
+<p>并发安全</p>
+</li>
+<li>
+<p>运维便利性<br>
+消息本质上是把任务暂存在队列服务里，统计某段时间内发生了什么、会发生什么就比较困难了，因为往往消息队列都会有自定义的数据格式，判断一条消息是否被消费往往得通过日志来判断。<br>
+定时任务一般都会有执行记录，什么时间会执行任务也可以直接用 cron 表达式计算出来，缺点是使用定时任务意味着需要自己维护很多东西，比如在数据库里维护一个队列保存消息，保存有创建时间、重试次数、重试时间等，失败 N 次后还需要存一份失败记录。</p>
+</li>
+</ul>
+<p>以一个“通知拉取”的场景举例，A 系统需要从 B 系统拉取数据，但并不是定时地直接调 B 的接口，而是先由 B 通知 A 哪些数据发生了变更，然后由 A 去拉取这些数据的变更部分：</p>
+<ul>
+<li>如果使用消息队列来实现：</li>
+<li>如果使用定时任务实现：</li>
+</ul>
+<h2 id="实现"><a class="header-anchor" href="#实现">¶</a>实现</h2>
+<h3 id="thread"><a class="header-anchor" href="#thread">¶</a>Thread</h3>
+<p>实现任务调度最简单的方式可以直接利用Thread：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">BlockingQueue&lt;String&gt; queue = new ArrayBlockingQueue&lt;&gt;(10);</span><br><span class="line">Thread thread = new Thread(() -&gt; &#123;</span><br><span class="line">    while (true) &#123;</span><br><span class="line">        String task = &quot;&quot;;</span><br><span class="line">        try &#123;</span><br><span class="line">            task = queue.take();</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(task);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br><span class="line">thread.start();</span><br><span class="line">queue.put(&quot;hello&quot;);</span><br></pre></td></tr></table></figure>
+<h3 id="timer"><a class="header-anchor" href="#timer">¶</a>Timer</h3>
+<p>Timer内部通过一个TimerThread来循环执行提交给Timer的任务，因此任务是<strong>串行的</strong>，前一个任务的延迟会影响后续的所有任务。<br>
+Timer可以看做一种简化版的ScheduledExecutor，下面是一种Demo实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">public class DemoTimer &#123;</span><br><span class="line">    private static ScheduledExecutorService timer = Executors.newScheduledThreadPool(1);</span><br><span class="line"></span><br><span class="line">    public static void setTimeout(final Runnable function, long time,</span><br><span class="line">                                  TimeUnit timeUnit, final Executor executor) &#123;</span><br><span class="line">        Preconditions.checkArgument(time &gt;= 0);</span><br><span class="line">        Preconditions.checkNotNull(function);</span><br><span class="line">        Preconditions.checkNotNull(timeUnit);</span><br><span class="line">        Preconditions.checkNotNull(executor);</span><br><span class="line">        timer.schedule(() -&gt; executor.execute(function), time, timeUnit);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="scheduledexecutor"><a class="header-anchor" href="#scheduledexecutor">¶</a>ScheduledExecutor</h3>
+<p>ScheduledExecutor能提供一种更灵活的周期性任务处理功能，</p>
+<h3 id="quartz"><a class="header-anchor" href="#quartz">¶</a>Quartz</h3>
+<h3 id="spring-task"><a class="header-anchor" href="#spring-task">¶</a>Spring Task</h3>
+<h3 id="quartz集群版"><a class="header-anchor" href="#quartz集群版">¶</a>Quartz集群版</h3>
+<h3 id="tbschedule"><a class="header-anchor" href="#tbschedule">¶</a>tbschedule</h3>
+<h3 id="xxl-job"><a class="header-anchor" href="#xxl-job">¶</a>xxl-job</h3>
+<h3 id="elastic-job"><a class="header-anchor" href="#elastic-job">¶</a>Elastic-Job</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/Elastic-Job%E6%9E%B6%E6%9E%84.png" alt="Elastic-Job架构" title="Elastic-Job架构"><br>
+Elastic-Job分为Elastic-Job-Lite和Elastic-Job-Console两个模块。Elastic-Job-Lite实现了分布式任务调度、动态扩容缩容、任务分片、失效转移等功能。<br>
+如上图所示，Elastic-Job-Lite采用去中心化的调度方式，由Elastic-Job-Lite的客户端定时自动触发任务调度，通过任务分片的概念实现服务器负载的动态扩容和缩容，并且使用ZooKeeper作为分布式任务调度的注册中心；当某任务实例崩溃后，自动失效转移，实现高可用。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li>cron<br>
+<a href="https://linuxtools-rst.readthedocs.io/zh_CN/latest/tool/crontab.html" target="_blank" rel="noopener">crontab 定时任务</a></li>
+<li><a href="https://www.jianshu.com/p/989298cf5314" target="_blank" rel="noopener">中心化-去中心化调度设计</a><br>
+xxl-job和elastic-job在设计上的本质区别是中心化还是去中心化。</li>
+</ol>
+
+          
         
       
     </div>
