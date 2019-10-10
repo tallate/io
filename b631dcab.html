@@ -79,13 +79,13 @@
 
 
 
-<meta name="description" content="只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。">
+<meta name="description" content="只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。 这一篇针对Java内存模型（JMM）中与并发编程息息相关的部分进行阐述，特别是volatile与synchronized的实现原理。">
 <meta name="keywords" content="Distributed System">
 <meta property="og:type" content="article">
 <meta property="og:title" content="异步任务和线程内存结构">
 <meta property="og:url" content="https://tallate.github.io/b631dcab.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。">
+<meta property="og:description" content="只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。 这一篇针对Java内存模型（JMM）中与并发编程息息相关的部分进行阐述，特别是volatile与synchronized的实现原理。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E5%B7%A5%E4%BD%9C%E5%86%85%E5%AD%98.png">
@@ -93,10 +93,10 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E5%8F%8C%E6%A0%B8CPU%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E7%BC%93%E5%AD%98%E8%A1%8C.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E4%BC%AA%E5%85%B1%E4%BA%AB.png">
-<meta property="og:updated_time" content="2019-10-03T02:52:33.378Z">
+<meta property="og:updated_time" content="2019-10-08T17:17:39.783Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="异步任务和线程内存结构">
-<meta name="twitter:description" content="只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。">
+<meta name="twitter:description" content="只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。 这一篇针对Java内存模型（JMM）中与并发编程息息相关的部分进行阐述，特别是volatile与synchronized的实现原理。">
 <meta name="twitter:image" content="http://47.88.24.11/imgs/%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1/%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B.png">
 
 
@@ -402,7 +402,8 @@
       
 
       
-        <p>只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
+        <p>只要使用到异步功能就不得不处理并发问题，而在Java体系中，提到并发就不得不提到JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。<br>
+这一篇针对Java内存模型（JMM）中与并发编程息息相关的部分进行阐述，特别是volatile与synchronized的实现原理。</p>
 <a id="more"></a>
 <h2 id="进程和线程"><a class="header-anchor" href="#进程和线程">¶</a>进程和线程</h2>
 <p>在讨论什么是线程前有必要先说下什么是<strong>进程</strong>，因为线程是进程中的一个实体，线程本身是不会独立存在的。进程有很多种定义方式：进程是代码在数据集合上的一次运行活动，是系统进行资源分配和调度的基本单位，是运行中的程序的抽象；线程则是进程的一个执行路径，一个进程至少有一个线程，所有线程共享进程的上下文，所以在分配线程的执行时间时不需要切换上下文。。<br>
@@ -691,7 +692,7 @@ Java 内存模型允许编译器和处理器对指令进行重排序以提高运
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">66</span>
+                  <span class="site-state-item-count">65</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
