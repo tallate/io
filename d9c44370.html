@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E5%B9%82%E7%AD%89/sidp-BlockingIdpChecker%E4%B8%8ETracing%E7%BB%84%E4%BB%B6%E9%85%8D%E5%90%88.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E5%B9%82%E7%AD%89/%E4%BA%8B%E5%8A%A1MVCC%E4%B8%8D%E8%83%BD%E9%81%BF%E5%85%8D%E5%B9%BB%E8%AF%BB.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E5%B9%82%E7%AD%89/%E4%BA%8B%E5%8A%A1MVCC%E4%B8%8D%E8%83%BD%E9%81%BF%E5%85%8D%E4%B8%A2%E5%A4%B1%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png">
-<meta property="og:updated_time" content="2019-10-08T00:36:42.368Z">
+<meta property="og:updated_time" content="2020-02-15T15:07:50.561Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现接口幂等检查器">
 <meta name="twitter:description" content="幂等性描述一项操作被执行多次后，不会改变第一次执行产生的副作用。 练手项目，解决项目中的幂等性检查要求，代码地址:point_right: Github - TIdempotent。  [x] BlockingChecker、NonblockingChecker ； [x] 加入 MySQL 作为 KeyStore （JdbcKeyStore）； [x] 加入 Redis 作为 KeyStore">
@@ -450,7 +450,7 @@ IdpKey 是只有在幂等检查结束后才会被保存下来的，如果下游�
 <h3 id="web-api"><a class="header-anchor" href="#web-api">¶</a>WEB API</h3>
 <p>API 有时候也会考虑“幂等性”，但这严格来说不属于我们这里讨论的范畴，我们主要关注 RPC 中重试的幂等性，这里只是稍微提一下。比如在确认下单的时候用户多点了几下（还包括刷单、 DDoS 攻击等），后台就会收到同一用户在很短的时间内发来的多个相同请求，除了在网关层限流，往往后台还会对用户的请求频率进行限制，比如使用从请求上下文里得到的用户登录 token（唯一标识一个用户）和订单 ID （唯一标识一个业务）拼接一个 IdempotentKey （以下简称 IdpKey ），保存到缓存中间件并设置过期时间：</p>
 <div><div class="fold_hider"><div class="close hider_title">代码</div></div><div class="fold">
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 判断用户是否刚下过单</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">justOrdered</span><span class="params">(String orderId)</span> </span>&#123;</span><br><span class="line">  String idempotentKey = UserContext.getUserId() + orderId;</span><br><span class="line">  <span class="comment">// setIfAbsent接口封装了Redis的setnx命令，当key不存在时设置成功并返回true，否则返回false</span></span><br><span class="line">  <span class="keyword">if</span>(redisClient.setIfAbsent(idempotentKey, <span class="string">"true"</span>)) &#123;</span><br><span class="line">    <span class="comment">// 设置key的过期时间</span></span><br><span class="line">    redisClient.expire(idempotentKey, <span class="number">3</span>, TimeUnit.SECONDS);</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// 判断用户是否刚下过单</span><br><span class="line">private boolean justOrdered(String orderId) &#123;</span><br><span class="line">  String idempotentKey = UserContext.getUserId() + orderId;</span><br><span class="line">  // setIfAbsent接口封装了Redis的setnx命令，当key不存在时设置成功并返回true，否则返回false</span><br><span class="line">  if(redisClient.setIfAbsent(idempotentKey, &quot;true&quot;)) &#123;</span><br><span class="line">    // 设置key的过期时间</span><br><span class="line">    redisClient.expire(idempotentKey, 3, TimeUnit.SECONDS);</span><br><span class="line">    return false;</span><br><span class="line">  &#125; else &#123;</span><br><span class="line">    return true;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 </div></div>
 <blockquote>
@@ -493,7 +493,7 @@ Consumer 接口不应该是递归的，递归会使得一个 IdpKey 被不必要
 与缓存系统的交互一般通过 TCP 连接来传输，在代码中，我使用 Json 来序列化数据，保证数据的可读性，然后用 GZIP 算法来进行压缩，提升传输效率。</p>
 <h3 id="sql-数据库"><a class="header-anchor" href="#sql-数据库">¶</a>SQL 数据库</h3>
 <p>当使用数据库来持久化 IdpKey 时——以 MySQL 为例——需要创建一个 idpkey 表来保存 IdpKey ，建表语句如下所示：</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> <span class="keyword">if</span> <span class="keyword">not</span> <span class="keyword">exists</span> idpkey</span><br><span class="line">(</span><br><span class="line">  <span class="string">`id`</span>           <span class="built_in">varchar</span>(<span class="number">36</span>) <span class="keyword">not</span> <span class="literal">null</span>,</span><br><span class="line">  <span class="string">`key_state`</span>    <span class="built_in">char</span>(<span class="number">12</span>)    <span class="keyword">not</span> <span class="literal">null</span> <span class="keyword">default</span> <span class="string">''</span>,</span><br><span class="line">  <span class="string">`created_time`</span> <span class="keyword">timestamp</span>   <span class="keyword">not</span> <span class="literal">null</span> <span class="keyword">default</span> <span class="keyword">now</span>(),</span><br><span class="line">  <span class="string">`content`</span>      <span class="built_in">blob</span>        <span class="literal">null</span>,</span><br><span class="line">  primary <span class="keyword">key</span> (<span class="string">`id`</span>)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">create table if not exists idpkey</span><br><span class="line">(</span><br><span class="line">  `id`           varchar(36) not null,</span><br><span class="line">  `key_state`    char(12)    not null default &apos;&apos;,</span><br><span class="line">  `created_time` timestamp   not null default now(),</span><br><span class="line">  `content`      blob        null,</span><br><span class="line">  primary key (`id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
 <p>该表非常简单，但是还是多说两句为什么要这么建，特别是索引的考虑。</p>
 <ol>
 <li>id 为什么是 varchar(36)类型？<br>
@@ -563,9 +563,9 @@ Cluster 集群会将 key hash 到某个分片上，同样也能避免了竞争�
 <h3 id="为什么使用行锁-version-sqlkeystore"><a class="header-anchor" href="#为什么使用行锁-version-sqlkeystore">¶</a>为什么使用行锁+version（SQLKeyStore）</h3>
 <p>在 SQLKeyStore 中实现一些复合操作时，为什么不使用乐观锁，而是用行锁+version 的方式？<br>
 具体的伪代码如下所示：</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">start</span> <span class="keyword">transaction</span>;</span><br><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>, key_state, <span class="keyword">version</span> <span class="keyword">from</span> idpkey <span class="keyword">where</span> <span class="keyword">id</span> = #&#123;<span class="keyword">id</span>&#125; <span class="keyword">or</span> key_state <span class="keyword">in</span> (#&#123;state1&#125;, #&#123;state2&#125;, ...) <span class="keyword">for</span> <span class="keyword">update</span>; <span class="comment">-- 锁数据</span></span><br><span class="line">...</span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> idpkey (<span class="keyword">id</span>, key_state) <span class="keyword">values</span>(?, ?) <span class="keyword">on</span> <span class="keyword">duplicate</span> <span class="keyword">key</span> <span class="keyword">update</span> key_state = ?; <span class="comment">-- 更新锁住的数据</span></span><br><span class="line"><span class="keyword">commit</span>;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">start transaction;</span><br><span class="line">select id, key_state, version from idpkey where id = #&#123;id&#125; or key_state in (#&#123;state1&#125;, #&#123;state2&#125;, ...) for update; -- 锁数据</span><br><span class="line">...</span><br><span class="line">insert into idpkey (id, key_state) values(?, ?) on duplicate key update key_state = ?; -- 更新锁住的数据</span><br><span class="line">commit;</span><br></pre></td></tr></table></figure>
 <p>如果是乐观锁则：</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> ..., <span class="keyword">version</span> <span class="keyword">from</span> idpkey <span class="keyword">where</span> <span class="keyword">id</span> = #&#123;<span class="keyword">id</span>&#125;;</span><br><span class="line">...</span><br><span class="line"><span class="keyword">update</span> idpkey <span class="keyword">set</span> <span class="keyword">id</span> = #&#123;<span class="keyword">id</span>&#125; <span class="keyword">and</span> key_state <span class="keyword">in</span> (#&#123;state1&#125;, #&#123;state2&#125;, ...);</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">select ..., version from idpkey where id = #&#123;id&#125;;</span><br><span class="line">...</span><br><span class="line">update idpkey set id = #&#123;id&#125; and key_state in (#&#123;state1&#125;, #&#123;state2&#125;, ...);</span><br></pre></td></tr></table></figure>
 <p>这里 key_state 其实起着类似乐观锁的作用，因为只有在某些状态下才能更新成功，但是会有点问题：</p>
 <ul>
 <li>idpKey 有三类状态：pass（由具体规则而定）, blocking（相当于 EXECUTING）, reject（由具体规则而定，但是都会包含 SUCCESS），当为 pass 状态时是可以更新的，但是更新失败时可能是 blocking 或 reject 的，必须要把更新时数据库里的值返回回来判断，所以要使用行锁来同步其他线程，实现一种类似 swap 的原子操作；</li>
@@ -748,7 +748,7 @@ Cluster 集群会将 key hash 到某个分片上，同样也能避免了竞争�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">65</span>
+                  <span class="site-state-item-count">107</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -759,7 +759,7 @@ Cluster 集群会将 key hash 到某个分片上，同样也能避免了竞争�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -770,7 +770,7 @@ Cluster 集群会将 key hash 到某个分片上，同样也能避免了竞争�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">34</span>
+                  <span class="site-state-item-count">52</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -827,7 +827,7 @@ Cluster 集群会将 key hash 到某个分片上，同样也能避免了竞争�
       <div class="footer-inner">
         
 
-<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>

@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="ZooKeeper,">
+  <meta name="keywords" content="Dubbo,">
 
 
 
@@ -79,27 +79,31 @@
 
 
 
-<meta name="description" content="ZooKeeper是分布式的、开源的分布式应用程序协调服务，原本是Hadoop、HBase的一个重要组件。它为分布式应用提供一致性服务的软件，包括：配置维护、域名服务、分布式同步、组服务等。">
-<meta name="keywords" content="ZooKeeper">
+<meta name="description" content="¶为什么使用 Dubbo 选型时一般需要考虑：  业务特点及可预见的后续的发展。 可用性要求。 团队的成熟度。一个成熟的团队可以很好地 Hold 住复杂的开源框架，甚至做定制化开发。  在选择使用 Dubbo 之后，又需要考虑很多细节，比如：  Dubbo 底层走什么协议？如何对对象进行序列化，用了哪些序列化方式？如何处理异步转同步？ 高并发高可用性。Dubbo 依赖了 ZooKeeper，但是">
+<meta name="keywords" content="Dubbo">
 <meta property="og:type" content="article">
-<meta property="og:title" content="ZooKeeper原理总结">
+<meta property="og:title" content="Dubbo 原理分析">
 <meta property="og:url" content="https://tallate.github.io/353ec849.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="ZooKeeper是分布式的、开源的分布式应用程序协调服务，原本是Hadoop、HBase的一个重要组件。它为分布式应用提供一致性服务的软件，包括：配置维护、域名服务、分布式同步、组服务等。">
+<meta property="og:description" content="¶为什么使用 Dubbo 选型时一般需要考虑：  业务特点及可预见的后续的发展。 可用性要求。 团队的成熟度。一个成熟的团队可以很好地 Hold 住复杂的开源框架，甚至做定制化开发。  在选择使用 Dubbo 之后，又需要考虑很多细节，比如：  Dubbo 底层走什么协议？如何对对象进行序列化，用了哪些序列化方式？如何处理异步转同步？ 高并发高可用性。Dubbo 依赖了 ZooKeeper，但是">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_dominant.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_write.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_dominant.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/CAP.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/Reliability.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/replicated.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/Leader%E9%80%89%E4%B8%BE.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/%E4%B8%A4%E9%98%B6%E6%AE%B5Messaging.jpg">
-<meta property="og:updated_time" content="2019-10-03T02:52:33.374Z">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9E%B6%E6%9E%84.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%A1%86%E6%9E%B6.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%89%A9%E5%B1%95.jpg">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E5%8C%85%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/%E6%B3%A8%E5%86%8C%E5%92%8C%E6%B3%A8%E9%94%80%E6%9C%8D%E5%8A%A1.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9C%8D%E5%8A%A1%E5%AF%BC%E5%87%BA.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85%E5%92%8C%E5%8F%96%E6%B6%88.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9C%8D%E5%8A%A1%E6%B3%A8%E5%86%8C%E4%BF%A1%E6%81%AF.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Protocol%E6%89%A9%E5%B1%95.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/%E9%9B%86%E7%BE%A4%E5%AE%B9%E9%94%99.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/%E5%BC%82%E6%AD%A5%E8%B0%83%E7%94%A8.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9E%B6%E6%9E%84.png">
+<meta property="og:updated_time" content="2020-09-28T13:11:01.945Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="ZooKeeper原理总结">
-<meta name="twitter:description" content="ZooKeeper是分布式的、开源的分布式应用程序协调服务，原本是Hadoop、HBase的一个重要组件。它为分布式应用提供一致性服务的软件，包括：配置维护、域名服务、分布式同步、组服务等。">
-<meta name="twitter:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_dominant.jpg">
+<meta name="twitter:title" content="Dubbo 原理分析">
+<meta name="twitter:description" content="¶为什么使用 Dubbo 选型时一般需要考虑：  业务特点及可预见的后续的发展。 可用性要求。 团队的成熟度。一个成熟的团队可以很好地 Hold 住复杂的开源框架，甚至做定制化开发。  在选择使用 Dubbo 之后，又需要考虑很多细节，比如：  Dubbo 底层走什么协议？如何对对象进行序列化，用了哪些序列化方式？如何处理异步转同步？ 高并发高可用性。Dubbo 依赖了 ZooKeeper，但是">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9E%B6%E6%9E%84.png">
 
 
 
@@ -137,7 +141,7 @@
 
 
 
-  <title>ZooKeeper原理总结 | Tallate</title>
+  <title>Dubbo 原理分析 | Tallate</title>
   
 
 
@@ -296,7 +300,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">ZooKeeper原理总结</h1>
+          <h1 class="post-title" itemprop="name headline">Dubbo 原理分析</h1>
         
 
         <div class="post-meta">
@@ -308,8 +312,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T18:51:58+08:00">
-                2019-07-29
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
+                2019-09-07
               </time>
             
 
@@ -367,7 +371,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  11.6k 字
+                  15.1k 字
                 </span>
               
 
@@ -383,7 +387,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  48 分钟
+                  59 分钟
                 </span>
               
             </div>
@@ -404,357 +408,726 @@
       
 
       
-        <p>ZooKeeper是分布式的、开源的分布式应用程序协调服务，原本是Hadoop、HBase的一个重要组件。它为分布式应用提供一致性服务的软件，包括：配置维护、域名服务、分布式同步、组服务等。</p>
-<a id="more"></a>
-<h2 id="为什么使用zookeeper"><a class="header-anchor" href="#为什么使用zookeeper">¶</a>为什么使用ZooKeeper</h2>
-<p>区别于<strong>集中式系统</strong>，<strong>分布式系统</strong>是一个硬件或软件组件分布在不同的网络计算机上，彼此之间仅仅通过消息传递进行通信和协调的系统。<br>
-因为分布式特性，多个主机注定会出现很多问题，包括单点、分区、脑裂等。<br>
-ZooKeeper解决的就是如何协调这些主机，就像动物园管理员一样（这也是其名字的由来），作为分布式协调中间件，ZooKeeper主要用来解决分布式环境当中多个进程之间的同步控制。</p>
-<h3 id="分布式应用面对的问题"><a class="header-anchor" href="#分布式应用面对的问题">¶</a>分布式应用面对的问题</h3>
-<h4 id="可用性"><a class="header-anchor" href="#可用性">¶</a>可用性</h4>
-<ul>
-<li>节点故障无法避免：服务器越多，个别节点发生宕机或僵死情况的可能性越高，特别是在一些有上百个服务的大型企业中，故障几乎每天都会发生。</li>
-<li>通信故障无法避免：从集中式到分布式，必然引入了网络因素，而由于网络本身的不可靠性，因此就引入了额外的问题。分布式系统各节点之间的网络通信能够正常进行，其延时也会远大于单机操作，在消息的收发过程中，消息丢失和消息延迟变得十分普遍。<br>
-当网络发生异常情况时，导致分布式系统中部分节点之间的网络延时不断增大，最终导致组成分布式系统的所有节点中，只有部分节点之间能够正常通信，而另一些节点则不能，这种现象称之为<strong>网络分区</strong>，当网络分区出现时，分布式系统会出现局部小集群，在极端情况下，这些局部小集群会独立完成原本需要整个分布式系统才能完成的功能，包括对数据的事务处理，这就对分布式一致性提出了非常大的挑战。</li>
-</ul>
-<p>由于网络可能会出现各种各样的问题，因此分布式系统的每一次请求与响应，存在特有的<strong>三态</strong>概念：成功、失败、超时。当网络在异常情况下，可能会出现超时现象，通常由以下两种情况：</p>
+        <a id="more"></a>
+<h2 id="为什么使用-dubbo"><a class="header-anchor" href="#为什么使用-dubbo">¶</a>为什么使用 Dubbo</h2>
+<p>选型时一般需要考虑：</p>
 <ol>
-<li>由于网络原因，该请求并没有被成功地发送到接收方，而是在发送过程就发生了消息丢失现象。</li>
-<li>该请求成功的被接收方接受后，并进行了处理，但是在将响应反馈给发送方时，发生了消息丢失现象。</li>
+<li>业务特点及可预见的后续的发展。</li>
+<li>可用性要求。</li>
+<li>团队的成熟度。一个成熟的团队可以很好地 Hold 住复杂的开源框架，甚至做定制化开发。</li>
 </ol>
-<h4 id="一致性"><a class="header-anchor" href="#一致性">¶</a>一致性</h4>
-<p>为了灾备，主机一般会设有副本，主从、从从之间同步数据会有延迟，先写入的副本和后写入的副本之间必然产生不一致，甚至写入顺序不同也会导致数据副本间的不一致。<br>
-P2P集群中这种问题更为突出，因为主从集群中数据完全以主节点为准，而P2P集群中每个节点都可以主动写数据。<br>
-* 缺乏全局时钟：典型的分布式系统由一系列在空间上随意分布的多个进程组成，具有明显的分布性，这些进程之间通过交换消息来进行互相通信，因此，在分布式系统中，很难定义两个时间究竟谁先谁后，原因就是因为分布式系统缺乏一个全局的时钟序列控制。<br>
-* 并发操作：同一分布式系统中的多个节点，可能会并发地操作一些共享资源，诸如数据库或分布式存储等，就算通过某些手段协调一致了时钟，但是由于网络延迟的存在，并发请求仍然难以决定请求到达、返回的先后顺序。</p>
+<p>在选择使用 Dubbo 之后，又需要考虑很多细节，比如：</p>
+<ol>
+<li>Dubbo 底层走什么协议？如何对对象进行序列化，用了哪些序列化方式？如何处理异步转同步？</li>
+<li>高并发高可用性。Dubbo 依赖了 ZooKeeper，但是万一 ZooKeeper 宕机了怎么办？<br>
+如果 ZooKeeper 假死，客户端对服务端的调用是否会全部下线？如果是该如何避免？<br>
+如何监控 Dubbo 的调用，并做到优雅的客户端无感发布？</li>
+</ol>
+<h3 id="最佳实践"><a class="header-anchor" href="#最佳实践">¶</a>最佳实践</h3>
+<ol>
+<li>模块化<br>
+推荐将服务接口、实体、异常等都放到 API 包内，它们都是 API 的一部分。</li>
+<li>粗粒度<br>
+暴露的 Dubbo 接口的粒度应尽可能得粗，代表一个完整的功能，而不是其中的某一步，否则就不得不面对分布式事务问题了，而 Dubbo 当前并没有提供分布式事务支持。</li>
+<li>版本<br>
+某露服务接口的配置最好增加版本，当有不兼容的升级（比如接口定义要加个参数）时，版本可以方便地实现平滑发布，而又不用引入多余的代码。<br>
+版本只需要两位即可，比如<code>&quot;1.0&quot;</code>，因为升级并不是频繁的操作，因为不兼容的升级不会那么频繁。<br>
+升级时，先将一半的 provider 升级到新版本，然后将所有 consumer 升级，最后将其余的 provider 升级。</li>
+<li>兼容性<br>
+向后兼容：接口加方法、对象加字段；<br>
+不兼容：删除方法、删除字段、枚举类型加字段。<br>
+不兼容的情况下，可以通过升级版本来实现平滑发布。</li>
+<li>枚举类型<br>
+枚举是类型安全的，但是作为 Dubbo 接口的参数 / 返回值却不合适，因为 provider 会将枚举转换为字符串传输，接收方会尝试寻找该字符串所属的枚举 field，找不到就会直接报错。</li>
+<li>序列化<br>
+传值没必要使用接口抽象，因为序列化需要接口实现类的元信息（包括 getter、setter），无法隐藏实现。<br>
+参数和返回值必须 byValue 而不是 byReference，因为 Dubbo 不支持远程对象，provider 引用的对象 consumer 就找不到了。</li>
+<li>异常<br>
+最好直接抛异常而不是返回异常码，因为异常可以携带更多信息、语法上也更加友好。<br>
+provider 不要将 DAO 层的异常抛给 consumer 端，consumer 端不应该关注 provider 对服务是如何实现的。</li>
+</ol>
+<h2 id="开始使用-dubbo"><a class="header-anchor" href="#开始使用-dubbo">¶</a>开始使用 Dubbo</h2>
+<h3 id="zookeeper"><a class="header-anchor" href="#zookeeper">¶</a>ZooKeeper</h3>
+<p>ZooKeeper 在 Dubbo 中可以作为注册中心使用。<br>
+下载 ZooKeeper，修改配置，配置文件位于{ZOOKEEPER_HOME}/conf/zoo.cfg：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">dataDir = /tmp/zk/data</span><br><span class="line">clientPort = 2181</span><br><span class="line">tickTime = 2000</span><br><span class="line">initLimit = 5</span><br><span class="line">syncLimit = 2</span><br></pre></td></tr></table></figure>
+<ul>
+<li>dataDir：数据保存的目录</li>
+<li>clientPort：监听的端口</li>
+<li>tickTime：心跳检查间隔</li>
+<li>initLimit：Follower 启动从 Leader 同步数据时能忍受多少个心跳的时间间隔</li>
+<li>syncLimit：Leader 同步到 Follower 后，如果超过 syncLimit 个 tickTime 的时间过去，还没有收到 Follower 的响应，那么就认为该 Follower 已下线。</li>
+</ul>
+<p>后台启动：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/zkServer.sh start-foreground</span><br></pre></td></tr></table></figure>
+<h3 id="sdk"><a class="header-anchor" href="#sdk">¶</a>SDK</h3>
+<p>SDK 是一个被 provider 和 consumer 同时依赖的 jar 包，它的作用包括：</p>
+<ul>
+<li>
+<p>提供实体类的定义；</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class Person &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>提供接口的定义；</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public interface UserServiceBo &#123;</span><br><span class="line">    String sayHello(String name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>在设计 SDK 时包含一些注意要点，比如：</p>
+<ul>
+<li>不要使用枚举，用字符串常量来替代，因为 Dubbo 反序列化时如果碰到不存在的枚举就会抛出异常，这个问题编译期无法发现，可能造成线上故障；</li>
+<li>升级时不要随意修改接口定义，provider 和 consumer 接口定义不同会导致运行时故障，最佳实践是提升<code>dubbo:reference</code>和<code>dubbo:service</code>的版本号，或者直接增加一个接口。</li>
+</ul>
+<h3 id="provider"><a class="header-anchor" href="#provider">¶</a>Provider</h3>
+<ol>
+<li>
+<p>声明依赖</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.alibaba&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;dubbo&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;2.6.6&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;io.netty&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;netty-all&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.0.35.Final&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.curator&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;curator-framework&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.2.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.alibaba&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;fastjson&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.2.47&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>Dubbo 配置文件</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span><br><span class="line">&lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;</span><br><span class="line">  xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span><br><span class="line">  xmlns:dubbo=&quot;http://code.alibabatech.com/schema/dubbo&quot;</span><br><span class="line">  xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans</span><br><span class="line">    http://www.springframework.org/schema/beans/spring-beans.xsd</span><br><span class="line">    http://code.alibabatech.com/schema/dubbo</span><br><span class="line">    http://code.alibabatech.com/schema/dubbo/dubbo.xsd&quot;&gt;</span><br><span class="line"></span><br><span class="line">    &lt;!-- 提供方应用信息，用于计算依赖关系 --&gt;</span><br><span class="line">    &lt;dubbo:application name=&quot;dubboProvider&quot;/&gt;</span><br><span class="line"></span><br><span class="line">    &lt;!-- 使用zookeeper注册中心暴露服务地址 --&gt;</span><br><span class="line">    &lt;dubbo:registry address=&quot;zookeeper://127.0.0.1:2181&quot;/&gt;</span><br><span class="line"></span><br><span class="line">    &lt;!-- 用dubbo协议在20880端口暴露服务 --&gt;</span><br><span class="line">    &lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot;/&gt;</span><br><span class="line">    &lt;!-- 启用monitor模块 --&gt;</span><br><span class="line">    &lt;dubbo:monitor protocol=&quot;registry&quot;/&gt;</span><br><span class="line"></span><br><span class="line">    &lt;bean id=&quot;userService&quot; class=&quot;com.tallate.provider.UserServiceImpl&quot;/&gt;</span><br><span class="line"></span><br><span class="line">    &lt;!-- 声明需要暴露的服务接口 --&gt;</span><br><span class="line">    &lt;dubbo:service interface=&quot;com.tallate.UserServiceBo&quot; ref=&quot;userService&quot;</span><br><span class="line">      group=&quot;dubbo&quot; version=&quot;1.0.0&quot; timeout=&quot;3000&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;/beans&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>接口的实现</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">public class UserServiceImpl implements UserServiceBo &#123;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public String sayHello(String name) &#123;</span><br><span class="line">        //让当前当前线程休眠2s</span><br><span class="line">        try &#123;</span><br><span class="line">            Thread.sleep(2000);</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return name;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>启动<br>
+原生 Spring 的启动方式：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">public static void main(String[] arg) throws InterruptedException &#123;</span><br><span class="line">    ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(&quot;classpath:provider.xml&quot;);</span><br><span class="line">    //挂起当前线程，如果没有改行代码，服务提供者进程会消亡，服务消费者就发现不了提供者了</span><br><span class="line">    Thread.currentThread().join();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
 <blockquote>
-<p><strong>副本</strong>指的是分布式系统对数据和服务提供的一种冗余方式，为了对外提供高可用的服务，我们往往会对数据和服务进行副本处理。<br>
-<strong>数据副本</strong>是指在不同的节点上持久化同一份数据，当某一个节点上存储的数据丢失时，可以从副本上读取到该数据，这是解决分布式系统数据丢失问题最为有效的手段。<br>
-<strong>服务副本</strong>是指多个节点提供同样的服务，每个节点都有能力接受来自外部的请求并进行相应的处理。<br>
-这里最产生不一致的指的是数据副本，比如MySQL主从集群。<br>
-机器故障是无法避免的，我们在设计的时候一般也会考虑故障的情况、从而为数据引入副本，如果所有这些服务器（主、副）全部挂掉且损坏、数据全部丢失，那么谈一致性也就没意义了，不过一般不会出现这样的情况，一些稍大型的公司甚至会考虑双活、两地三中心等机制。<br>
-我认为一致性是分布式系统中最有难度、最有魅力的，一致性问题会引出几乎最难解的问题，同样也会催发出各种优美的解决方案，比如ZooKeeper中的ZAB协议。</p>
+<p>如果需要以 SpringBoot 或 Docker 方式启动可以参考官方的示例</p>
 </blockquote>
-<h3 id="本地事务和分布式事务"><a class="header-anchor" href="#本地事务和分布式事务">¶</a>本地事务和分布式事务</h3>
-<p><strong>事务</strong>是由一系列对系统中数据进行访问与更新的操作所组成的一个程序执行单元，狭义上的食物特指数据库事务。一方面，当多个应用程序并发访问数据库时，食物可以在这些应用程序之间提供一个隔离方法，以防止彼此的操作相互干扰，另一方面，食物为数据库操作序列提供了一个从失败中恢复到正常状态的方法，同时提供了数据库即使在宜昌状态下仍能保持数据一致性的方法。事务具有原子性（Atomicity）、一致性（Consistency）、隔离性（Isolation）、持久性（Durability），简称ACID。</p>
+<h3 id="consumer"><a class="header-anchor" href="#consumer">¶</a>Consumer</h3>
 <ol>
-<li>原子性，指事务必须是一个原子的操作序列单元，事务中包含的各项操作在一次执行过程中，只允许出现以下两种状态之一，全部成功执行，全部不执行。任何一项操作失败都将导致整个事务失败，同时其他已经被执行的操作都将被撤销并回滚，只有所有操作全部成功，整个事务才算是成功完成。</li>
-<li>一致性，指事务的执行不能破坏数据库数据的完整性和一致性，一个事务在执行之前和执行之后，数据库都必须处于一致性状态，即事务执行的结果必须是使数据库从一个一致性状态转变到另一个一致性状态，因此当数据库只包含成功事务提交的结果时，就能说数据库处于一致性状态，而如果数据库系统在运行过程中发生故障，有些事务尚未完成就被迫中断，这些未完成的事务对数据库所做的修改有一部分已写入物理数据库，这时数据库就处于一种不正确的状态，或者说是不一致的状态。</li>
-<li>隔离性，指在并发环境中，并发的事务是相互隔离的，一个事务的执行不能被其他事务干扰，即不同的事务并发操作相同的数据时，每个事务都有各自完整的数据空间，即一个事务内部的操作及使用的数据对其他并发事务是隔离的，并发执行的各个事务之间不能相互干扰。</li>
-<li>持久性，指一个事务一旦提交，他对数据库中对应数据的状态变更就应该是永久的，即一旦某个事务成功结束，那么它对数据库所做的更新就必须被永久的保存下来，即使发生系统崩溃或者宕机故障，只要数据库能够重新启动，那么一定能够将其恢复到事务成功结束时的状态。</li>
+<li>
+<p>声明依赖<br>
+同 Provider</p>
+</li>
+<li>
+<p>Dubbo 配置文件</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">&lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;</span><br><span class="line">  xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span><br><span class="line">  xmlns:dubbo=&quot;http://code.alibabatech.com/schema/dubbo&quot;</span><br><span class="line">  xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans</span><br><span class="line">    http://www.springframework.org/schema/beans/spring-beans.xsd</span><br><span class="line">    http://code.alibabatech.com/schema/dubbo</span><br><span class="line">    http://code.alibabatech.com/schema/dubbo/dubbo.xsd&quot;&gt;</span><br><span class="line"></span><br><span class="line">    &lt;!-- 消费方应用名，用于计算依赖关系，不是匹配条件，不要与提供方一样 --&gt;</span><br><span class="line">    &lt;dubbo:application name=&quot;dubboConsumer&quot; /&gt;</span><br><span class="line"></span><br><span class="line">    &lt;!-- 使用multicast广播注册中心暴露发现服务地址 --&gt;</span><br><span class="line">    &lt;dubbo:registry  protocol=&quot;zookeeper&quot; address=&quot;zookeeper://127.0.0.1:2181&quot; /&gt;</span><br><span class="line">    &lt;!-- 启动monitor--&gt;</span><br><span class="line">    &lt;dubbo:monitor protocol=&quot;registry&quot; /&gt;</span><br><span class="line">    &lt;!-- 生成远程服务代理，可以和本地bean一样使用demoService --&gt;</span><br><span class="line">    &lt;dubbo:reference id=&quot;userService&quot; interface=&quot;com.tallate.UserServiceBo&quot; group=&quot;dubbo&quot; version=&quot;1.0.0&quot; timeout=&quot;3000&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;/beans&gt;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>这里出现了一些以 dubbo 作为前缀的标签，它们是由 Dubbo 的扩展 DubboNamespaceHandler 来处理的，DubboBeanDefinitionParser 在解析完后会得到对应 BeanDefinition，然后生成对象放到 BeanFactory 中。</p>
+</blockquote>
+</li>
+<li>
+<p>启动</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public static void main(String[] args) &#123;</span><br><span class="line">    ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(</span><br><span class="line">            new String[]&#123;&quot;classpath:consumer.xml&quot;&#125;);</span><br><span class="line"></span><br><span class="line">    final UserServiceBo demoService = (UserServiceBo) context.getBean(&quot;userService&quot;);</span><br><span class="line"></span><br><span class="line">    System.out.println(demoService.sayHello(&quot;Hello World&quot;));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
-<p><strong>分布式事务</strong>是指事务的参与者、支持事务的服务器、资源服务器以及事务管理器分别位于分布式系统的不同节点上，通常一个分布式事务中会涉及对多个数据源或业务系统的操作。一个分布式事务可以看做是由多个分布式的操作序列组成，通常可以把这一系列分布式的操作序列称为子事务。由于在分布式事务中，各个子事务的执行是分布式的，因此要实现一种能够保证ACID特性的分布式事务处理系统就显得格外复杂。</p>
-<h3 id="cap和base"><a class="header-anchor" href="#cap和base">¶</a>CAP和BASE</h3>
-<p><strong>CAP</strong>理论告诉我们，一个分布式系统不可能同时满足一致性、可用性、分区容错性这三个基本需求，最多只能同时满足其中的两个。</p>
+<h3 id="调用-dubbo-原生-api-启动"><a class="header-anchor" href="#调用-dubbo-原生-api-启动">¶</a>调用 Dubbo 原生 API 启动</h3>
 <ol>
-<li>Consistent（一致性），指数据在多个副本之间是否能够保持一致的特性，在一致性的需求下，当一个系统在数据一致的状态下执行更新操作后，应该保证系统的数据仍然处于一致状态。对于一个将数据副本分布在不同分布式节点上的系统来来说，如果对第一个结点的数据进行了更新操作并且成功后，却没有使得第二个节点上的数据得到相应的更新，于是在对第二个结点的数据进行读取操作时，获取的仍然是老数据（脏数据），这就是典型的分布式数据不一致的情况，在分布式系统中，如果能够做到针对一个数据项的更新操作执行成功后，所有的用户都可以读取到期最新的值，那么这样的系统就被认为具有强一致性。</li>
-<li>Available（可用性），指系统提供的服务必须一直处于可用的状态，对于用户的每一操作请求总是能够在有限的时间内返回结果。</li>
-<li>Partition（分区容错性），分布式系统在遇到任何网络分区故障时，仍然需要能够保证对外提供满足一致性和可用性的服务，除非是整个网络环境都发生了故障。</li>
+<li>
+<p>Provider</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">// 等价于&lt;bean id=&quot;userService&quot; class=&quot;com.test.UserServiceImpl&quot; /&gt;</span><br><span class="line">UserServiceBo userService = new UserServiceImpl();</span><br><span class="line">// 等价于&lt;dubbo:application name=&quot;dubboProvider&quot; /&gt;</span><br><span class="line">ApplicationConfig application = new ApplicationConfig();</span><br><span class="line">application.setName(&quot;dubboProvider&quot;);</span><br><span class="line"></span><br><span class="line">// 等价于&lt;dubbo:registry address=&quot;zookeeper://127.0.0.1:2181&quot; /&gt;</span><br><span class="line">RegistryConfig registry = new RegistryConfig();</span><br><span class="line">registry.setAddress(&quot;127.0.0.1:2181&quot;);</span><br><span class="line">registry.setProtocol(&quot;zookeeper&quot;);</span><br><span class="line"></span><br><span class="line">// 等价于&lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot; /&gt;</span><br><span class="line">ProtocolConfig protocol = new ProtocolConfig();</span><br><span class="line">protocol.setName(&quot;dubbo&quot;);</span><br><span class="line">protocol.setPort(20880);</span><br><span class="line"></span><br><span class="line">// 等价于&lt;dubbo:monitor protocol=&quot;registry&quot; /&gt;</span><br><span class="line">MonitorConfig monitorConfig = new MonitorConfig();</span><br><span class="line">monitorConfig.setProtocol(&quot;registry&quot;);</span><br><span class="line"></span><br><span class="line">// 等价于&lt;dubbo:service interface=&quot;com.test.UserServiceBo&quot; ref=&quot;userService&quot;</span><br><span class="line">//      group=&quot;dubbo&quot;  version=&quot;1.0.0&quot; timeout=&quot;3000&quot;/&gt;</span><br><span class="line">// 此实例很重，封装了与注册中心的连接，请自行缓存，否则可能造成内存和连接泄漏</span><br><span class="line">ServiceConfig&lt;UserServiceBo&gt; service = new ServiceConfig&lt;&gt;();</span><br><span class="line">service.setApplication(application);</span><br><span class="line">service.setMonitor(monitorConfig);</span><br><span class="line">// 多个注册中心可以用setRegistries()</span><br><span class="line">service.setRegistry(registry);</span><br><span class="line">// 多个协议可以用setProtocols()</span><br><span class="line">service.setProtocol(protocol);</span><br><span class="line">service.setInterface(UserServiceBo.class);</span><br><span class="line">service.setRef(userService);</span><br><span class="line">service.setVersion(&quot;1.0.0&quot;);</span><br><span class="line">service.setGroup(&quot;dubbo&quot;);</span><br><span class="line">service.setTimeout(3000);</span><br><span class="line">service.export();</span><br><span class="line"></span><br><span class="line">// 挂起当前线程</span><br><span class="line">Thread.currentThread().join();</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>Consumer</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">// 等价于&lt;dubbo:application name=&quot;dubboConsumer&quot; /&gt;</span><br><span class="line">ApplicationConfig application = new ApplicationConfig();</span><br><span class="line">application.setName(&quot;dubboConsumer&quot;);</span><br><span class="line"></span><br><span class="line">// 等价于&lt;dubbo:registry  protocol=&quot;zookeeper&quot; address=&quot;zookeeper://127.0.0.1:2181&quot; /&gt;</span><br><span class="line">RegistryConfig registry = new RegistryConfig();</span><br><span class="line">registry.setAddress(&quot;127.0.0.1:2181&quot;);</span><br><span class="line">registry.setProtocol(&quot;zookeeper&quot;);</span><br><span class="line"></span><br><span class="line">// 等价于 &lt;dubbo:monitor protocol=&quot;registry&quot; /&gt;</span><br><span class="line">MonitorConfig monitorConfig = new MonitorConfig();</span><br><span class="line">monitorConfig.setProtocol(&quot;registry&quot;);</span><br><span class="line"></span><br><span class="line">//等价于&lt;dubbo:reference id=&quot;userService&quot; interface=&quot;com.test.UserServiceBo&quot;</span><br><span class="line">//group=&quot;dubbo&quot; version=&quot;1.0.0&quot; timeout=&quot;3000&quot; /&gt;</span><br><span class="line">// 此实例很重，封装了与注册中心的连接以及与提供者的连接，最好放缓存，否则可能造成内存和连接泄漏</span><br><span class="line">ReferenceConfig&lt;UserServiceBo&gt; reference = new ReferenceConfig&lt;&gt;();</span><br><span class="line">reference.setApplication(application);</span><br><span class="line">// 多个注册中心可以用setRegistries()</span><br><span class="line">reference.setRegistry(registry);</span><br><span class="line">reference.setInterface(UserServiceBo.class);</span><br><span class="line">reference.setVersion(&quot;1.0.0&quot;);</span><br><span class="line">reference.setGroup(&quot;dubbo&quot;);</span><br><span class="line">reference.setTimeout(3000);</span><br><span class="line">reference.setInjvm(false);</span><br><span class="line">reference.setMonitor(monitorConfig);</span><br><span class="line"></span><br><span class="line">UserServiceBo userService = reference.get();</span><br><span class="line">System.out.println(userService.sayHello(&quot;哈哈哈&quot;));</span><br><span class="line">Thread.currentThread().join();</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
-<p><strong>BASE</strong>是基本可用（Basically Available）、Soft state（弱状态）、Eventually consistent（最终一致性）三个短语的简写。</p>
+<h3 id="泛化调用"><a class="header-anchor" href="#泛化调用">¶</a>泛化调用</h3>
+<p>正常情况下我们使用 Dubbo 时会将实体类和接口定义放到一个 SDK 包内，其实也可以不加入这个包、直接将要传的参数放到一个 Map 对象内，称为泛化调用，但是这种方式没有什么实践价值，在此就不赘述了。</p>
+<h2 id="dubbo-架构"><a class="header-anchor" href="#dubbo-架构">¶</a>Dubbo 架构</h2>
+<blockquote>
+<p>Dubbo 是一个分布式服务框架，是阿里巴巴 SOA 服务化治理方案的核心框架，致力于提供高性能和透明化的 RPC 远程服务调用方案，以及 SOA 服务治理方案。简而言之，Dubbo 是个远程服务调用的分布式框架（告别 Web Service 模式中的 WSdl，以服务提供者与消费者的方式在 dubbo 上注册）。</p>
+</blockquote>
+<p>Apache Dubbo 是一款高性能、轻量级的开源 Java RPC 框架，它提供了三大核心能力：面向接口的远程方法调用，智能容错和负载均衡，以及服务自动注册和发现。<br>
+Dubbo 的架构基本上可以概括为 RPC+服务发现，或者可以称之为弹性 RPC 框架。</p>
+<h3 id="cp-三大中心"><a class="header-anchor" href="#cp-三大中心">¶</a>CP+三大中心</h3>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9E%B6%E6%9E%84.png" alt="Dubbo架构" title="Dubbo架构"></p>
+<blockquote>
+<p>图中的 Consumer 和 Provider 是抽象概念，只是想让看图者更直观的了解哪些类分属于客户端与服务器端，不用 Client 和 Server 的原因是 Dubbo 在很多场景下都使用 Provider、Consumer、Registry、Monitor 划分逻辑拓普节点，保持统一概念。</p>
+</blockquote>
+<p>Provider: 暴露服务的服务提供方，启动时会注册自己提供的服务到注册中心。<br>
+Consumer: 调用远程服务的服务消费方，启动时会去注册中心订阅自己需要的服务，服务注册中心异步提供 Provider 的地址列表，Consumer 根据路由规则和预设的负载均衡算法选择一个 Provider 的 IP 进行调用，调用是直连的，失败后会调用另外一个。<br>
+Registry: 服务注册与发现的注册中心。<br>
+Monitor: 统计服务的调用次调和调用时间的监控中心，Provider 和 Consumer 在内存中累计调用次数和耗时，并定时每分钟发送一次统计数据到监控中心。<br>
+Container: 服务运行容器。</p>
+<p>大数据量传输时适合用短连接，小数据量高并发适合用长连接。从上图中可以得知，Provider 和 Consumer 均通过长连接与注册中心通信，当消费方调用服务时，会创建一个连接，然后同时会创建一个心跳发送的定时线程池，每一分钟发送一次心跳包到注册中心，通过 ping-pong 来检查连接的存活性，同时还会启动断线重连定时线程池，每两秒钟检查一次连接状态，如果断开就重连，而当注册中心断开连接后，会回调通知 Consumer 销毁连接，同理，Provider 也是通过长连接与注册中心通信。</p>
+<h4 id="元数据中心"><a class="header-anchor" href="#元数据中心">¶</a>元数据中心</h4>
+<p>2.7 之后提供的一个新组件，容易和注册中心混淆，元数据和注册中心中的注册信息之间的区别如下：</p>
+<ul>
+<li>**元数据（Metadata）**指的是服务分组、服务版本、服务名、方法列表、方法参数列表、超时时间等</li>
+<li><strong>注册信息</strong>指服务分组、服务版本、服务名、地址列表等。</li>
+</ul>
+<p>元数据中心和注册中心包含了一些公共数据，另外，元数据中心还会存储方法列表即参数列表，注册中心存储了服务地址，其他的一些区别如下所示：</p>
+<table>
+<thead>
+<tr>
+<th>-</th>
+<th>元数据</th>
+<th>注册信息</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>职责</td>
+<td>描述服务，定义服务的基本属性</td>
+<td>存储地址列表</td>
+</tr>
+<tr>
+<td>变化频繁度</td>
+<td>基本不变</td>
+<td>随着服务上下线而不断变更</td>
+</tr>
+<tr>
+<td>数据量</td>
+<td>大</td>
+<td>小</td>
+</tr>
+<tr>
+<td>数据交互/存储模型</td>
+<td>消费者/提供者上报，控制台查询</td>
+<td>PubSub 模型，提供者上报，消费者订阅</td>
+</tr>
+<tr>
+<td>主要使用场景</td>
+<td>服务测试、服务</td>
+<td>MOCK 服务调用</td>
+</tr>
+<tr>
+<td>可用性要求</td>
+<td>元数据中心可用性要求不高，不影响主流程</td>
+<td>注册中心可用性要求高，影响到服务调用的主流程</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dubbo-层次化结构"><a class="header-anchor" href="#dubbo-层次化结构">¶</a>Dubbo 层次化结构</h3>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%A1%86%E6%9E%B6.png" alt="Dubbo框架" title="Dubbo框架"><br>
+Dubbo 的架构是分层的，使用这种方式可以使各个层之间解耦合（或者最大限度地松耦合）。从服务模型的角度来看，Dubbo 采用的是一种非常简单的模型，要么是提供方提供服务，要么是消费方消费服务。</p>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%89%A9%E5%B1%95.jpg" alt="Dubbo扩展" title="Dubbo扩展"></p>
+<ul>
+<li>服务接口层（Service）：该层是与实际业务逻辑相关的，根据服务提供方和服务消费方的业务设计对应的接口和实现。</li>
+</ul>
+<p>RPC 是 Dubbo 的核心：</p>
+<ul>
+<li>配置层（Config）：对外配置接口，以 <strong>ServiceConfig</strong> 和 <strong>ReferenceConfig</strong> 为中心，可以直接 new 配置类，也可以通过 Spring 解析配置生成配置类。</li>
+<li>服务代理层（Proxy）：服务接口透明代理。Proxy 层封装了所有接口的透明化代理，而在其它层都以 <strong>Invoker</strong> 为中心，只有到了暴露给用户使用时，才用 <strong>Proxy</strong> 将 <strong>Invoker</strong> 转成接口，或将接口实现转成 <strong>Invoker</strong>，也就是去掉 Proxy 层 RPC 是可以 Run 的，只是不那么透明，不那么看起来像调本地服务一样调远程服务。<br>
+Proxy 层封装了所有接口的透明化代理，而在其它层都以 Invoker 为中心，只有到了暴露给用户使用时，才用 Proxy 将 Invoker 转成接口，或将接口实现转成 Invoker，也就是去掉 Proxy 层 RPC 是可以 Run 的，只是不那么透明，不那么看起来像调本地服务一样调远程服务。</li>
+<li>服务注册层（Registry）：封装服务地址的注册与发现，以服务 URL 为中心，扩展接口为 <strong>RegistryFactory</strong>、<strong>Registry</strong> 和 <strong>RegistryService</strong>。可能没有服务注册中心，此时服务提供方直接暴露服务。</li>
+<li>集群层（Cluster）：封装多个提供者的路由及负载均衡，并桥接注册中心，以 Invoker 为中心，扩展接口为 <strong>Cluster</strong>、<strong>Directory</strong>、<strong>Router</strong> 和 <strong>LoadBalance</strong>。将多个服务提供方组合为一个服务提供方，实现对服务消费方来透明，只需要与一个服务提供方进行交互。</li>
+<li>监控层（Monitor）：RPC 调用次数和调用时间监控，以 <strong>Statistics</strong> 为中心，扩展接口为 <strong>MonitorFactory</strong>、<strong>Monitor</strong>和 <strong>MonitorService</strong>。</li>
+<li>远程调用层（Protocol）：封装 RPC 调用，扩展接口为 <strong>Protocol</strong>、<strong>Invoker</strong> 和 <strong>Exporter</strong>。Protocol 是服务域，它是 Invoker 暴露和引用的主功能入口，它负责 Invoker 的生命周期管理。Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。Protocol 是核心层，也就是只要有 Protocol + Invoker + Exporter 就可以完成非透明的 RPC 调用，然后在 Invoker 的主过程上 Filter 拦截点。</li>
+</ul>
+<blockquote>
+<p>Registry 和 Monitor 实际上不算一层，而是一个独立的节点，只是为了全局概览，用层的方式画在一起。<br>
+Cluster 是外围概念，Cluster 的目的是将多个 Invoker 伪装成一个 Invoker，这样其它人只要关注 Protocol 层 Invoker 即可，加上 Cluster 或者去掉 Cluster 对其它层都不会造成影响，因为只有一个提供者时，是不需要 Cluster 的。</p>
+</blockquote>
+<p>Remoting 实现是 Dubbo 协议的实现，如果你选择 RMI 协议，整个 Remoting 都不会用上，Remoting 内部再划为 Transport 传输层和 Exchange 信息交换层，Transport 层只负责单向消息传输，是对 Mina、Netty、Grizzly 的抽象，它也可以扩展 UDP 传输，而 Exchange 层是在传输层之上封装了 Request-Response 语义。</p>
+<ul>
+<li>交换层（Exchange）：封装请求响应模式，同步转异步，以 Request 和 Response 为中心，扩展接口为<strong>Exchanger</strong>、<strong>ExchangeChannel</strong>、<strong>ExchangeClient</strong>和<strong>ExchangeServer</strong>。</li>
+<li>网络传输层（Transport）：抽象 mina 和 netty 为统一接口，以 Message 为中心，扩展接口为<strong>Channel</strong>、<strong>Transporter</strong>、<strong>Client</strong>、<strong>Server</strong>和<strong>Codec</strong>。</li>
+<li>数据序列化层（Serialize）：可复用的一些工具，扩展接口为<strong>Serialization</strong>、 <strong>ObjectInput</strong>、<strong>ObjectOutput</strong>和<strong>ThreadPool</strong>。</li>
+</ul>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E5%8C%85%E7%BB%93%E6%9E%84.png" alt="Dubbo包结构" title="Dubbo包结构"></p>
+<ul>
+<li>dubbo-common 公共逻辑模块，包括 Util 类和通用模型。</li>
+<li>dubbo-remoting 远程通讯模块，相当于 Dubbo 协议的实现，如果 RPC 用 RMI 协议则不需要使用此包。</li>
+<li>dubbo-rpc 远程调用模块，抽象各种协议，以及动态代理，只包含一对一的调用，不关心集群的管理。</li>
+<li>dubbo-cluster 集群模块，将多个服务提供方伪装为一个提供方，包括：负载均衡、容错、路由等，集群的地址列表可以是静态配置的，也可以是由注册中心下发。</li>
+<li>dubbo-registry 注册中心模块，基于注册中心下发地址的集群方式，以及对各种注册中心的抽象。</li>
+<li>dubbo-monitor 监控模块，统计服务调用次数，调用时间的，调用链跟踪的服务。</li>
+<li>dubbo-config 配置模块，是 Dubbo 对外的 API，用户通过 Config 使用 Dubbo，隐藏 Dubbo 所有细节。</li>
+<li>dubbo-container 容器模块，是一个 Standalone 的容器，以简单的 Main 加载 Spring 启动，因为服务通常不需要 Tomcat/JBoss 等 Web 容器的特性，没必要用 Web 容器去加载服务。</li>
+</ul>
+<h2 id="接口扩展策略注解-spi"><a class="header-anchor" href="#接口扩展策略注解-spi">¶</a>接口扩展策略注解 @SPI</h2>
+<p>上面提到的扩展接口，如 Protocol、Transporter、Filter 等，都是通过 JDK 的 SPI 机制实现的，也就是说这些功能都可被用户自定义的扩展所替换，接口扩展点由注解<code>@SPI</code>定义。<br>
+JDK 中 SPI（Service Provider Interface）的设计与策略模式如出一辙，开发者可以替换掉 Dubbo 原扩展接口的默认实现，完成自定义需求，即可以自定义实现策略。<br>
+Dubbo 在 JDK 现有 SPI 实现的基础上做了如下改进：</p>
 <ol>
-<li>基本可用，指分布式系统在出现不可预知故障时，允许损失部分可用性，如响应时间上的损失或功能上的损失。</li>
-<li>弱状态，也称为软状态，指允许系统中的二数据存在中间状态，并认为该中间状态的存在不会影响系统的整体可用性，即允许系统在不同节点的数据副本之间进行数据同步的过程存在延时。</li>
-<li>最终一致性，指系统中所有的数据副本，在经过一段时回见的同步后，最终能够达到一个一致的状态，因此最终一致性的本质是需要系统保证数据能够达到一致，而不需要实时保证系统数据的强一致性。<br>
-因为强一致性实现起来难度比较大，具有强一致性的系统一般简称为CP（Consistent+Pertition），ZooKeeper就是CP的一个例子，CP系统的一个显著特征是缺乏可用性，比如主挂掉后集群会进入选举，在此期间服务都是不可用的，因此一般业务服务不会直接依赖ZooKeeper。<br>
-分布式系统谈得最多的就是最终一致性，但仅靠系统本身是不够的，最终一致性包括人工环节，甚至客服的介入。大部分异常都可以通过扫描 + 重试（at least once语义） + 幂等忽略，真正产生的异常数据比较少，人工可以处理得过来，最严重的情况下，就需要借助日志来排查Bug了。</li>
+<li>JDK 标准的 SPI 会一次性实例化扩展点所有实现，如果有扩展实现初始化很耗时，但如果没用上也加载，会很浪费资源。</li>
+<li>如果扩展点加载失败，连扩展点的名称都拿不到了。比如：JDK 标准的 ScriptEngine，通过 getName();获取脚本类型的名称，但如果 RubyScriptEngine 因为所依赖的 jruby.jar 不存在，导致 RubyScriptEngine 类加载失败，这个失败原因被吃掉了，和 ruby 对应不起来，当用户执行 ruby 脚本时，会报不支持 ruby，而不是真正失败的原因。</li>
+<li>增加了对扩展点 IoC 和 AOP 的支持，一个扩展点可以直接 setter 注入其它扩展点。</li>
+</ol>
+<p>那么 Dubbo 的 SPI 机制是怎么实现的呢？以协议扩展为例，Dubbo 中协议被抽象为 Protocol 接口。</p>
+<h3 id="读取扩展点"><a class="header-anchor" href="#读取扩展点">¶</a>读取扩展点</h3>
+<p>ServiceConfig#protocol</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension()</span><br></pre></td></tr></table></figure>
+<p>Dubbo 使用 ExtensionLoader 实现扩展点加载。</p>
+<ul>
+<li>ExtensionLoader#getExtensionLoader()<br>
+获取 ExtensionLoader 实现，保证每种扩展点一个单例。</li>
+<li>ExtensionLoader#getAdaptiveExtension()<br>
+根据不同的 SPI 扩展点，即不同的 interface，生成不同的 Adaptive 实例的代码。<br>
+-&gt; getAdaptiveExtensionClass()<br>
+-&gt; getExtensionClasses()<br>
+-&gt; loadExtensionClasses()<br>
+加载所有的扩展点实现，直到扩展点方法执行时才决定调用是一个扩展点实现，即从众多的实现策略中决定具体使用哪一个策略。<br>
+ExtensionLoader 会依次从<code>META-INF/dubbo/internal</code>（Dubbo 内部实现）、<code>META-INF/dubbo/</code>（开发者自定义策略）、<code>META-INF/services/</code>这几个目录下读取扩展点实现，目录下的同名文件配置了对应扩展点的实现策略，调用 loadFile 来加载对应的扩展策略。<br>
+-&gt; loadFile(Map&lt;String, Class&lt;?&gt;&gt; extensionClasses, String dir)</li>
+</ul>
+<h3 id="生成-adaptive-实例"><a class="header-anchor" href="#生成-adaptive-实例">¶</a>生成 Adaptive 实例</h3>
+<ul>
+<li>ExtensionLoader#loadFile<br>
+-&gt; String fileName = dir + type.getName()<br>
+拼接文件路径<br>
+-&gt; ClassLoader classLoader = findClassLoader()<br>
+拿到 ExtensionLoader 的类加载器。<br>
+-&gt; Class&lt;?&gt; clazz = Class.forName(line, true, classLoader);<br>
+文件每行是一个实现类的全路径名，通过反射加载并拿到具体类型。<br>
+-&gt; extensionClasses.put(n, clazz)<br>
+添加到 map 里返回。</li>
+<li>ExtensionLoader#cachedClasses<br>
+-&gt; cachedClasses.set(classes)<br>
+添加到缓存。</li>
+<li>ExtensionLoader#createAdaptiveExtensionClass<br>
+-&gt; ExtensionLoader#createAdaptiveExtensionClassCode<br>
+生成 Adaptive 类。<br>
+-&gt; compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension()<br>
+拿到编译接口扩展点的一个具体实现，dubbo 内部支持 jdk 和 javassist，默认是 javassist。<br>
+-&gt; compiler.compile(code, classLoader)<br>
+编译代码，生成 Adaptive 实例类。</li>
+</ul>
+<p>上面提到 Compiler 也是一个扩展点，同样也依赖这个流程来实例化，在运行时生成 Adaptive 实例的时候，需要生成 Compiler 接口的 Adaptive 实例，即运行生成 Adaptive 实例的时候需要先有一个 Compiler 接口的 Adaptive 实例，那这样岂不是陷入了死循环，这里就要提到显示指定 Adaptive 实例的情况。<code>@Adaptive</code>注解支持类级别和方法级别：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">1、类级别：只能拥有一个，注解打在接口实现类上，显示的注册一个Adaptive实例，在编译期就存在，如`AdaptiveCompiler`，解决了上面的死循环问题，由`AdaptiveCompiler`依据dubbo配置决定使用哪个编译类；</span><br><span class="line">2、方法级别：在运行期动态的生成Adaptive实例。</span><br></pre></td></tr></table></figure>
+<h3 id="通过-url-动态选择协议"><a class="header-anchor" href="#通过-url-动态选择协议">¶</a>通过 URL 动态选择协议</h3>
+<p>ExtensionLoader#createAdaptiveExtensionClassCode<br>
+生成的 Protocol 的 Adaptive 实例类，依据 URL 中 protocol key-value 的值，选择对应的 Protocol 策略来暴露和引用服务。<br>
+扩展点方法调用会有 URL 参数（或是参数有 URL 成员），这样依赖的扩展点可以从 URL 拿到配置信息，所有的扩展点自己定好配置的 Key 后，配置信息从 URL 上从最外层传入，URL 在配置传递上即是一条总线。<br>
+以 dubbo+zookeeper 为例，暴露和引用远程服务都是注册在 zookeeper 上的，服务注册在 zookeeper 上本质其实是一个 URL，远程服务调用的过程中依据 URL 的 key-value 来动态决定执行 Protocol、Filter 等接口扩展点的执行策略。<br>
+下面是 Provider 端暴露 HelloService 服务时在 zookeeper 上注册的 URL，在 zookeeper 上的路径为/dubbo/com.dubbo.test.service.HelloService/providers，URL 表示了采用 dubbo 协议，接口为 com.dubbo.test.service.HelloService，方法为 say，要执行的 Filter 为 whiteFilter 等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[zk： localhost：2181(CONNECTED) 1] Is /dubbo/com.dubbo.test.service.HelloService/providers</span><br><span class="line">[dubbo://127.0.0.1:2O881/com.dubbo.test.service.HelloService?anyhost=true&amp;application=dubbo-test-service&amp;dubbo=2.4.10&amp;group=test-prod&amp;interface=com.dubbo.test.service.HelloService&amp;methods=say&amp;pid=21242&amp;revision=l.0&amp;service.filter=whiteFilter&amp;side=providerxtamp=1495436105078&amp;version=l.0]</span><br></pre></td></tr></table></figure>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<ul>
+<li>volatile Class&lt;~&gt; cachedAdaptiveClass<br>
+这个是缓存 AdaptiveClass，如果一个扩展类的类上面带有 @Adaptive 注解，那么这个类就会被缓存在这个地方，每一种类型的扩展类只有一个 AdaptiveClass，如果发现有多个，则会报错。另外，当通过 getAdaptiveExtensionClass 来获取自适应扩展类时，如果当前还没有 AdaptiveClass，则会自动创建一个（动态生成 Java 代码，再编译，典型的比如 Protocol$Adaptive 就是这么生成的）</li>
+<li>Set&lt;~&gt; cachedWrapperClasses<br>
+这个是缓存包装类的，Dubbo 判断一个扩展类是否是包装类比较简单，通过构造函数来判断，如果这个扩展类有一个构造函数，其中参数是当前扩展类的类型，那么就是包装类，举个例子，ProtocolFilterWrapper 就是 protocol 扩展类的包装类，因为有这个构造函数：<code>public ProtocolFilterWrapper(Protocol protocol)</code></li>
+<li>Map&lt;~&gt; cachedActivates<br>
+这个是缓存激活的扩展类，当然，@Activate 注解还可以规定激活的条件和时机</li>
+<li>Holder&lt;~&gt; cachedClasses<br>
+这个是缓存 Adaptive 和 Wrapper 扩展类之外的普通扩展类</li>
+</ul>
+<p>扩展类被加载后会根据一定的规则放入以上 4 个缓存中，比如带有 @Adaptive 注解的会被放入 cachedAdaptiveClass。</p>
+<h2 id="服务注册-自动发现"><a class="header-anchor" href="#服务注册-自动发现">¶</a>服务注册 &amp; 自动发现</h2>
+<p>基于注册中心目录服务，使服务消费方能动态的查找服务提供方，使地址透明，不再需要写死服务提供方地址，注册中心基于接口名查询服务提供者的 IP 地址，使服务提供方可以平滑增加或减少机器。</p>
+<h3 id="角色分类"><a class="header-anchor" href="#角色分类">¶</a>角色分类</h3>
+<p>以功能角度来说服务可以分成以下几种：</p>
+<ul>
+<li>服务提供者；</li>
+<li>服务消费者；</li>
+<li>服务提供者兼消费者。</li>
+</ul>
+<h3 id="注册中心分类"><a class="header-anchor" href="#注册中心分类">¶</a>注册中心分类</h3>
+<p>可以分成以下几种注册中心：</p>
+<ul>
+<li>Simple 注册中心 点对点直连</li>
+<li>Multicast 注册中心 多播</li>
+<li>Zookeeper 注册中心</li>
+<li>Redis 注册中心</li>
+</ul>
+<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
+<p>服务提供者（provider）配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 应用名称，可显示依赖关系 --&gt;</span><br><span class="line">&lt;dubbo:application name=&quot;dubbo-order-server&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 注册中心是ZooKeeper，也可以选择Redis做注册中心 --&gt;</span><br><span class="line">&lt;dubbo:registry address=&quot;zookeeper://127.0.0.1:2181&quot;</span><br><span class="line">    client=&quot;zkclient&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 通过dubbo协议在注册中心（127.0.0.1表示本机）的20880端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; host=&quot;127.0.0.1&quot; port=&quot;20880&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 提供服务用地的是service标签，将该接口暴露到dubbo中 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.dubbo.service.OrderService&quot;</span><br><span class="line">    ref=&quot;orderService&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- Spring容器加载具体的实现类--&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;dubbo.service.impl.OrderServiceImpl&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:monitor protocol=&quot;registry&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>服务消费者（consumer）配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 应用名称，可显示依赖关系 --&gt;</span><br><span class="line">&lt;dubbo:application name=&quot;dubbo-user-consumer&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- zookeeper作为注册中心 ，也可以选择Redis做注册中心 --&gt;</span><br><span class="line">&lt;dubbo:registry address=&quot;zookeeper://127.0.0.1:2181&quot;</span><br><span class="line">    client=&quot;zkclient&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol host=&quot;127.0.0.1&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 调用服务使用reference标签，从注册中心中查找服务 --&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;orderService&quot; interface=&quot;com.dubbo.service.OrderService&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="服务自动发现流程"><a class="header-anchor" href="#服务自动发现流程">¶</a>服务自动发现流程</h3>
+<p>服务自动发现功能完成下面这个流程，我们接下来分点概述：</p>
+<ol>
+<li>服务提供者在启动时，向注册中心注册自己提供的服务。</li>
+<li>服务消费者在启动时，向注册中心订阅自己所需的服务。</li>
+<li>注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。</li>
+<li>服务消费者，从提供者地址列表中，基于软负载均衡算法（基于软件的负载均衡，与 F5 相对），选一台提供者进行调用，如果调用失败，再选另一台调用。</li>
+</ol>
+<h3 id="注册和注销服务-provider-执行流程"><a class="header-anchor" href="#注册和注销服务-provider-执行流程">¶</a>注册和注销服务（Provider 执行流程）</h3>
+<p>服务的注册与注销，是对服务提供方角色而言，大致流程如下所示：<br>
+<img src="http://47.88.24.11/imgs/Dubbo/%E6%B3%A8%E5%86%8C%E5%92%8C%E6%B3%A8%E9%94%80%E6%9C%8D%E5%8A%A1.png" alt="注册和注销服务" title="注册和注销服务"></p>
+<ol>
+<li>在接口提供者初始化时，每个接口都会创建一个 Invoker 和 Exporter，Exporter 持有 Invoker 实例，通过 Invocation 中的信息就可找到对应的 Exporter 和 Invoker</li>
+<li>同 Consumer 的过程类似，调用 Invoker 前会调用 Invoker-Filter。</li>
+<li>调用 Invoker.invoke() 时，通过反射调用最终的服务实现执行相关逻辑。</li>
+</ol>
+<p>ServiceBean 负责了服务的暴露：</p>
+<ul>
+<li>继承自 ServiceConfig，export 方法实现了服务暴露的逻辑；</li>
+<li>实现了 Spring 中的 InitializingBean, DisposableBean, ApplicationContextAware, ApplicationListener<contextrefreshedevent>, BeanNameAware</contextrefreshedevent></li>
+</ul>
+<p>启动时，ServiceBean 主要负责以下任务：</p>
+<ul>
+<li>生成 DubboExporter 对象并缓存起来</li>
+<li>添加过滤器和监听器支持</li>
+<li>在 zk 上注册相关信息，暴露服务，方便被感知到</li>
+<li>监听端口，等待通信的到来</li>
+</ul>
+<h3 id="provider-启动源码-服务导出"><a class="header-anchor" href="#provider-启动源码-服务导出">¶</a>Provider 启动源码（服务导出）</h3>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9C%8D%E5%8A%A1%E5%AF%BC%E5%87%BA.png" alt="Dubbo服务导出" title="Dubbo服务导出"></p>
+<ol>
+<li>前置工作，主要用于检查参数和组装 URL；<br>
+ServiceBean#onApplicationEvent: 接收 Spring 上下文刷新事件后执行服务导出操作<br>
+-&gt; ServiceBean#export: 导出服务<br>
+-&gt; ProviderConfig.getExport、getDelay 获取配置，如果 export 为 false 则无法提供给其他服务调用、一般只提供给本地调试时使用，如果需要 delay 则将任务交给一个 ScheduledExecutorService 延迟执行，否则调用 doExport 暴露服务<br>
+-&gt; ServiceConfig.doExport 一堆配置检查</li>
+<li>导出服务，包含导出服务到本地（JVM）和导出服务到远程两个过程；<br>
+<code>ServiceConfig.doExportUrls</code><br>
+导出服务，Dubbo 中所有服务都通过 URL 导出，支持多协议多注册中心导出服务（遍历 ProtocolConfig 集合导出每个服务）<br>
+<code>AbstractInterfaceConfig#loadRegistries</code><br>
+加载注册中心链接<br>
+<code>ServiceConfig#doExportUrlsFor1Protocol</code><br>
+组装 URL，将服务注册到注册中心<br>
+<code>JavassistProxyFactory#getInvoker</code><br>
+获取 Invoker 实例，用于接收请求<br>
+<code>ServiceConfig#exportLocal、DubboProtocol#export</code><br>
+根据配置信息导出服务到本地或远程，远程默认取Dubbo协议<br>
+<code>DubboProtocol#openServer</code><br>
+开始监听请求</li>
+<li>向注册中心注册服务，用于服务发现<br>
+Dubbo 服务注册本质是在 zk 指定目录下创建临时节点，路径是<code>{group}/{Interface}/providers/{url}</code>。<br>
+RegistryProtocol#register<br>
+-&gt; RegistryFactory#getRegistry<br>
+-&gt; AbstractRegistry#register</li>
+</ol>
+<h3 id="服务订阅和取消-consumer-执行流程"><a class="header-anchor" href="#服务订阅和取消-consumer-执行流程">¶</a>服务订阅和取消（Consumer 执行流程）</h3>
+<p>为了满足应用系统的需求，服务消费方的可能需要从服务注册中心订阅指定的有服务提供方发布的服务，在得到通知可以使用服务时，就可以直接调用服务。反过来，如果不需要某一个服务了，可以取消该服务。<br>
+<img src="http://47.88.24.11/imgs/Dubbo/%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85%E5%92%8C%E5%8F%96%E6%B6%88.png" alt="服务订阅和取消" title="服务订阅和取消"></p>
+<ol>
+<li>在 Consumer 初始化的时候，会生成一个代理注册到容器中，该代理回调中持有一个 Invoker 实例，消费调用服务接口时它的 invoke() 方法会被调用。</li>
+<li>在这个 invoke() 方法中，首先会继续是否需要 mock 等过滤判断，关于 Filter 这里先不详细展开，这里只看下核心流程。</li>
+<li>为了服务高可用同一个服务一般会有多个应用服务器提供，要先挑选一个提供者提供服务。在服务接口消费者初始化时，接口方法和提供者 Invoker 对应关系保存在 Directory。 中，通过调用的方法名称（或方法名称+第一个参数）获取该方法对应的提供者 Invoker 列表，如注册中心设置了路由规则，对这些 Invoker 根据路由规则进行过滤。</li>
+<li>读取到所有符合条件的服务提供者 Invoker 之后，由 LoadBalance 组件执行负载均衡，从中挑选一个 Invoker 进行调用，框架内置支持的负载均衡算法包括 random（随机）、roundrobin（R-R 循环）、leastactive（最不活跃）、consistenthash（一致性 hash），默认 random。</li>
+<li>Cluster 持有 DubboInvoker 实例的代理对象，会先激活 Filter 链然后最终调到 DubboInvoker.invoke(RpcInvocation)。</li>
+</ol>
+<h3 id="consumer-启动源码-服务引入"><a class="header-anchor" href="#consumer-启动源码-服务引入">¶</a>Consumer 启动源码（服务引入）</h3>
+<p>有两种服务引入方式：</p>
+<ol>
+<li>饿汉式：Spring 容器调用 ReferenceBean 的 afterPropertiesSet 方法时引用服务，可通过配置 <code>&lt;dubbo:reference&gt;</code> 的 init 属性开启。</li>
+<li>懒汉式：ReferenceBean 对应的服务被注入到其他类中时引用</li>
+</ol>
+<p>服务提供的方式有三种：</p>
+<ol>
+<li>引用本地 (JVM) 服务；</li>
+<li>通过直连方式引用远程服务；</li>
+<li>通过注册中心引用远程服务。</li>
+</ol>
+<p>不管是哪种引用方式，最后都会得到一个 Invoker 实例。如果有多个注册中心，多个服务提供者，这个时候会得到一组 Invoker 实例，此时需要通过集群管理类 Cluster 将多个 Invoker 合并成一个实例。</p>
+<ol>
+<li>创建RPC代理<br>
+spring.ReferenceBean#getObject<br>
+ReferenceConfig#createProxy<br>
+创建代理实例，根据 url 的协议、scope 以及 injvm 等参数检测是否需要本地引用，不是本地引用的情况下默认采用Dubbo协议。</li>
+<li>获取客户端实例 Invoker<br>
+-&gt; DubboProtocol#getClients 获取客户端实例，实例类型为 ExchangeClient，ExchangeClient 不具备通信能力，它需要依赖更底层的客户端实例<br>
+-&gt; DubboProtocol#getSharedClient 默认获取共享客户端<br>
+-&gt; DubboProtocol#initClient 创建客户端实例，默认为 Netty<br>
+-&gt; Exchangers#connect(URL url, ExchangeHandler handler)</li>
+<li>使用 Cluster 合并 Invoker<br>
+org.apache.dubbo.rpc.cluster.Cluster#join<br>
+如果配置了多个 URL，则使用 Cluster 合并多个 Invoker</li>
+<li>创建动态代理<br>
+-&gt; ProxyFactory#getProxy(Invoker<t> invoker)<br>
+常用的动态代理技术有 javassist、cglib、jdk，其中 dubbo 使用的是 javassist。</t></li>
 </ol>
 <blockquote>
-<p>貌似每次需要讨论分布式一致性的时候都会过一遍分布式事务、CAP、BASE……</p>
+<p>根据早期 Dubbo 作者梁飞（<a href="http://javatar.iteye.com/blog/814426%EF%BC%89%E7%9A%84%E8%AF%B4%E6%B3%95%EF%BC%8C%E4%BD%BF%E7%94%A8" target="_blank" rel="noopener">http://javatar.iteye.com/blog/814426）的说法，使用</a> javassist 是为了性能。</p>
 </blockquote>
-<h3 id="zookeeper的应用场景"><a class="header-anchor" href="#zookeeper的应用场景">¶</a>ZooKeeper的应用场景</h3>
-<p>在构建微服务应用的时候，ZooKeepe到并r主要是作注册中心用，基于Spring Cloud或Dubbo框架开发的提供者、消费者都向ZooKeeper注册自己的URL，消费者还能拿订阅提供者的注册URL，以便在后续程序的执行中去调用提供者。而提供者发生了变动，也会通过Zookeeper向订阅的消费者发送通知。</p>
-<h2 id="zookeeper原理"><a class="header-anchor" href="#zookeeper原理">¶</a>ZooKeeper原理</h2>
-<h3 id="路径-path"><a class="header-anchor" href="#路径-path">¶</a>路径（path）</h3>
-<p>ZooKeeper通过路径来引用一个节点。路径必须是绝对的，因此他们必须由斜杠字符来开头。除此以外，他们必须是唯一的，也就是说每一个路径只有一个表示，因此这些路径不能改变。在ZooKeeper中，路径由Unicode字符串组成，并且有一些限制。字符串&quot;/zookeeper&quot;用以保存管理信息，比如关键配额信息。</p>
-<h3 id="节点类型-znode"><a class="header-anchor" href="#节点类型-znode">¶</a>节点类型（znode）</h3>
-<p>zk中znode类型有四种，持久化目录节点、持久化顺序编号目录节点(有顺序，能够在注册机器等许多场景用到)、临时目录节点、临时顺序编号节点。<br>
-节点类型在创建后就不能更改。</p>
+<h3 id="查看服务注册-暴露结果"><a class="header-anchor" href="#查看服务注册-暴露结果">¶</a>查看服务注册/暴露结果</h3>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9C%8D%E5%8A%A1%E6%B3%A8%E5%86%8C%E4%BF%A1%E6%81%AF.png" alt="Dubbo服务注册信息" title="Dubbo服务注册信息"><br>
+Dubbo 在 ZooKeeper 中以树形结构维护服务注册信息：</p>
 <ul>
-<li>持久节点（PERSISTENT）：该节点的生命周期不依赖于会话，并且只有在客户端显示执行删除操作的时候，他们才能被删除。</li>
-<li>持久顺序节点（PERSISTENT_SEQUENTIAL）：跟持久一样，就是父节点在创建下一级子节点（父节点必须是持久的）的时候，记录每个子节点创建的先后顺序，会给每个子节点名加上一个数字后缀。</li>
-<li>临时节点（EPHEMERAL）：该节点的生命周期依赖于创建它们的会话。一旦会话(Session)结束，临时节点将被自动删除，当然可以也可以手动删除。虽然每个临时的Znode都会绑定到一个客户端会话，但他们对所有的客户端还是可见的。另外，ZooKeeper的临时节点不允许拥有子节点。</li>
+<li>服务提供者启动时: 向 /dubbo/com.foo.BarService/providers 目录下写入自己的 URL 地址；</li>
+<li>服务消费者启动时: 订阅 /dubbo/com.foo.BarService/providers 目录下的提供者 URL 地址。并向 /dubbo/com.foo.BarService/consumers 目录下写入自己的 URL 地址；</li>
+<li>监控中心启动时: 订阅 /dubbo/com.foo.BarService 目录下的所有提供者和消费者 URL 地址。</li>
 </ul>
-<blockquote>
-<p>注意是会话结束而不是连接被断开。</p>
-</blockquote>
+<p>ZooKeeper 启动的时候会把配置信息加载进内存并持久化到数据库，然后启动定时器脏数据检查定时器 DirtyCheckTask，分别检查消费者和提供者的地址列表缓存、消费者和提供者地址列表的数据库数据，清理不存活的消费者和提供者数据，对于缓存中的存在的消费者和提供者而数据库不存在，提供者重新注册和消费者重新订阅。</p>
+<p>Dubbo 提供了一些异常情况下的兜底方案：</p>
 <ul>
-<li>临时顺序节点（EPEMERAL_SEQUENTIAL）：类似持久顺序节点。</li>
+<li>当提供者出现断电等异常停机时，注册中心能自动删除提供者信息</li>
+<li>当注册中心重启时，能自动恢复注册数据，以及订阅请求</li>
+<li>当会话过期时，能自动恢复注册数据，以及订阅请求</li>
+<li>当设置 &lt;dubbo:registry check=“false” /&gt; 时，记录失败注册和订阅请求，后台定时重试</li>
 </ul>
-<h3 id="树"><a class="header-anchor" href="#树">¶</a>树</h3>
-<p>Zookeeper提供基于类似于文件系统的目录节点树方式的数据存储，但是Zookeeper并不是用来专门存储数据的，它的作用主要是用来<strong>维护和监控存储的数据的状态变化</strong>。通过监控这些数据状态的变化，从而可以达到基于数据的集群管理。<br>
-与Linux文件系统不同的是，Linux文件系统有目录和文件的区别，而Zookeeper的数据节点称为<strong>ZNode</strong>，ZNode是Zookeeper中数据的最小单元，每个ZNode都可以保存数据（ZooKeeper was designed to store coordination data: status information, configuration, location information, etc., so the data stored at each node is usually small, in the byte to kilobyte range.），同时还可以挂载子节点，因此构成了一个层次化的命名空间，称为<strong>树</strong>。<br>
-另外，client在创建znode时还可以指定一个sequential flag，创建的znode将会拥有一个递增的序号，该序号会加到znode的名字后面。<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_dominant.jpg" alt="read_dominant" title="read_dominant"></p>
-<h3 id="节点构成"><a class="header-anchor" href="#节点构成">¶</a>节点构成</h3>
-<p>一个节点主要包含以下属性：</p>
-<ul>
-<li>stat：此为状态信息, 描述该Znode的版本, 权限等信息</li>
-<li>data：与该Znode关联的数据</li>
-<li>children：该Znode下的子节点</li>
-</ul>
-<h3 id="内存结构"><a class="header-anchor" href="#内存结构">¶</a>内存结构</h3>
-<p>Zookeeper的数据模型是树结构，在内存数据库中，存储了整棵树的内容，包括所有的节点路径、节点数据、ACL信息，Zookeeper会定时将这个数据存储到磁盘上。</p>
-<ul>
-<li>DataTree：DataTree是内存数据存储的核心，是一个树结构，代表了内存中一份完整的数据。DataTree不包含任何与网络、客户端连接及请求处理相关的业务逻辑，是一个独立的组件。</li>
-<li>DataNode：DataNode是数据存储的最小单元，其内部除了保存了结点的数据内容、ACL列表、节点状态之外，还记录了父节点的引用和子节点列表两个属性，其也提供了对子节点列表进行操作的接口。</li>
-<li>ZKDatabase：Zookeeper的内存数据库，管理Zookeeper的所有会话、DataTree存储和事务日志。ZKDatabase会定时向磁盘dump快照数据，同时在Zookeeper启动时，会通过磁盘的事务日志和快照文件恢复成一个完整的内存数据库。</li>
-</ul>
-<h3 id="节点容量限制"><a class="header-anchor" href="#节点容量限制">¶</a>节点容量限制</h3>
-<p>管理调度数据，比如分布式应用中的配置文件信息、状态信息、汇集位置等等。这些数据的共同特性就是它们都是很小的数据，通常以KB为大小单位。ZooKeeper的服务器和客户端都被设计为严格检查并限制每个Znode的数据大小至多1M，但常规使用中应该远小于此值。</p>
-<h3 id="版本号"><a class="header-anchor" href="#版本号">¶</a>版本号</h3>
-<p>Znodes maintain a stat structure that includes version numbers for data changes, ACL changes, and timestamps, to allow cache validations and coordinated updates. Each time a znode’s data changes, the version number increases. For instance, whenever a client retrieves data it also receives the version of the data.</p>
-<h3 id="原子读写"><a class="header-anchor" href="#原子读写">¶</a>原子读写</h3>
-<p>ZooKeeper中的每个节点存储的数据要被原子性的操作。也就是说读操作将获取与节点相关的所有数据，写操作也将替换掉节点的所有数据。<br>
-The data stored at each znode in a namespace is read and written atomically. Reads get all the data bytes associated with a znode and a write replaces all the data. Each node has an Access Control List (ACL) that restricts who can do what.</p>
-<h3 id="acl"><a class="header-anchor" href="#acl">¶</a>ACL</h3>
-<p>Zookeeper内部存储了分布式系统运行时状态的元数据，这些元数据会直接影响基于Zookeeper进行构造的分布式系统的运行状态，如何保障系统中数据的安全，从而避免因误操作而带来的数据随意变更而导致的数据库异常十分重要，Zookeeper提供了一套完善的ACL权限控制机制来保障数据的安全。<br>
-我们可以从三个方面来理解ACL机制：权限模式 Scheme、授权对象 ID、权限 Permission，通常使用&quot;scheme:id:permission&quot;来标识一个有效的ACL信息。<br>
-每一个节点都拥有自己的ACL(访问控制列表)，这个列表规定了用户的权限，即限定了特定用户对目标节点可以执行的操作。</p>
-<h3 id="序列"><a class="header-anchor" href="#序列">¶</a>序列</h3>
-<p>当创建Znode的时候，用户可以请求在ZooKeeper的路径结尾添加一个递增的计数。这个计数对于此节点的父节点来说是唯一的，它的格式为&quot;%10d&quot;(10位数字，没有数值的数位用0补充，例如&quot;0000000001&quot;)。当计数值大于232-1时，计数器将溢出。</p>
-<h3 id="通知机制-watch"><a class="header-anchor" href="#通知机制-watch">¶</a>通知机制（watch）</h3>
-<p>客户端在查询znode时可以对其设置watch事件，当节点状态发生改变时（znode的增、删、改）将会触发watch所对应的事件，当watch被触发时，ZooKeeper将会向客户端发送且仅发送一条通知，因为watch只能被触发一次，这样可以减少网络流量。<br>
-ZooKeeper对节点的watch监听通知不是永久的，一个watch事件是一个<strong>一次性</strong>的触发器，当被设置了watch的数据发生了改变的时间，则服务器将这个改变发送给设置了watch的客户端，以便通知它们。<br>
-为什么不是永久的？举个例子，如果服务端变动频繁，而监听的客户端很多的情况下，每次变动都要通知到所有的客户端，这太消耗性能了。<br>
-一般是客户端执行getData(&quot;/节点A&quot;, true)，如果节点A发生了变更或删除，客户端会得到它的watch事件，但是在之后节点A又发生了变更，而客户端又没有设置watch事件，就不再给客户端发送了。<br>
-在实际应用中，很多情况下，我们的客户端不需要知道服务端的每一次变动，我只要最新的数据即可。</p>
-<p>Zookeeper的Watcher机制主要包括<strong>客户端线程</strong>、<strong>客户端WatcherManager</strong>、<strong>Zookeeper服务器</strong>三部分。<br>
-客户端在向Zookeeper服务器注册的同时，会将Watcher对象存储在客户端的WatcherManager当中。当Zookeeper服务器触发Watcher事件后，会向客户端发送通知，客户端线程从WatcherManager中取出对应的Watcher对象来执行回调逻辑。</p>
-<h3 id="通信模型-session"><a class="header-anchor" href="#通信模型-session">¶</a>通信模型（Session）</h3>
-<p>当client连接zookeeper时，会初始化一个session，session有一个超时时间，如在超时时间内，zookeeper没有从client收到任何信息（zookeeper会发状态检测信息），则认为client故障了，此时zookeeper会关闭这个session（session也可由client显式关闭）。</p>
-<h3 id="读写数据"><a class="header-anchor" href="#读写数据">¶</a>读写数据</h3>
-<p><img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_write.png" alt="read_write" title="read_write"></p>
-<ul>
-<li>写数据，一个客户端进行写数据请求时，如果是follower接收到写请求，就会把请求转发给Leader，Leader通过内部的Zab协议进行原子广播，直到所有Zookeeper节点都成功写了数据后（内存同步以及磁盘更新），这次写请求算是完成，然后Zookeeper Service就会给Client发回响应。</li>
-<li>读数据，因为集群中所有的Zookeeper节点都呈现一个同样的命名空间视图（就是结构数据），上面的写请求已经保证了写一次数据必须保证集群所有的Zookeeper节点都是同步命名空间的，所以读的时候可以在任意一台Zookeeper节点上。</li>
-</ul>
-<h3 id="logging"><a class="header-anchor" href="#logging">¶</a>Logging</h3>
-<p>ZooKeeper使用slf4j作为接口、log4j作为实现<br>
-Zookeeper uses slf4j as an abstraction layer for logging. log4j in version 1.2 is chosen as the final logging implementation for now. For better embedding support, it is planned in the future to leave the decision of choosing the final logging implementation to the end user. Therefore, always use the slf4j api to write log statements in the code, but configure log4j for how to log at runtime. Note that slf4j has no FATAL level, former messages at FATAL level have been moved to ERROR level. For information on configuring log4j for ZooKeeper, see the Logging section of the ZooKeeper Administrator’s Guide.<br>
-ZooKeeper is typically run in production such that log messages of INFO level severity and higher (more severe) are output to the log.</p>
-<ul>
-<li>ERROR level designates error events that might still allow the application to continue running.</li>
-<li>WARN level designates potentially harmful situations.</li>
-<li>INFO level designates informational messages that highlight the progress of the application at coarse-grained level.</li>
-<li>DEBUG Level designates fine-grained informational events that are most useful to debug an application.</li>
-<li>TRACE Level designates finer-grained informational events than the DEBUG.</li>
-</ul>
-<p>下面是一个示例：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = LoggerFactory.getLogger(Foo.class);</span><br><span class="line">LOG.debug(&quot;process completed successfully!&quot;);</span><br><span class="line">LOG.debug(&quot;got &#123;&#125; messages in &#123;&#125; minutes&quot;,new Object[]&#123;count,time&#125;);</span><br><span class="line">try &#123;</span><br><span class="line">  // code</span><br><span class="line">&#125; catch (XYZException e) &#123;</span><br><span class="line">  // do this</span><br><span class="line">  LOG.error(&quot;Something bad happened&quot;, e);</span><br><span class="line">  // don&apos;t do this (generally)</span><br><span class="line">  // LOG.error(e);</span><br><span class="line">  // why? because &quot;don&apos;t do&quot; case hides the stack trace</span><br><span class="line">  // continue process here as you need... recover or (re)throw</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="zookeeper集群原理"><a class="header-anchor" href="#zookeeper集群原理">¶</a>ZooKeeper集群原理</h2>
-<h3 id="zookeeper适合读多写少的场景"><a class="header-anchor" href="#zookeeper适合读多写少的场景">¶</a>ZooKeeper适合读多写少的场景</h3>
-<p>ZooKeeper适合读频率远大于写的场景，下图是ZooKeeper官网给出的吞吐量/读请求比率的压测结果<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/read_dominant.jpg" alt="read_dominant" title="read_dominant"><br>
-The figure ZooKeeper Throughput as the Read-Write Ratio Varies is a throughput graph of ZooKeeper release 3.2 running on servers with dual 2Ghz Xeon and two SATA 15K RPM drives.<br>
-为什么这个比率这么悬殊呢？主要是由于ZooKeeper的数据同步机制，它的核心是<strong>ZAB</strong>协议。</p>
-<h3 id="分布式协调和cap"><a class="header-anchor" href="#分布式协调和cap">¶</a>分布式协调和CAP</h3>
-<p>作为一个分布式系统，分区容错性是一个必须要考虑的关键点。一个分布式系统一旦丧失了分区容错性，也就表示放弃了扩展性。因为在分布式系统中，网络故障是经常出现的，一旦出现在这种问题就会导致整个系统不可用是绝对不能容忍的。所以，大部分分布式系统都会在保证分区容错性的前提下在一致性和可用性之间做权衡。<br>
-ZooKeeper是个CP（一致性+分区容错性）的分布式系统，即任何时刻对ZooKeeper的访问请求能得到一致的数据结果，同时系统对网络分割具备容错性；但是它不能保证每次服务请求的可用性。也就是在极端环境下，ZooKeeper可能会丢弃一些请求，消费者程序需要重新请求才能获得结果。<br>
-ZooKeeper是分布式协调服务，它的职责是保证数据在其管辖下的所有服务之间保持同步、一致；所以就不难理解为什么ZooKeeper被设计成CP而不是AP特性的了。而且， 作为ZooKeeper的核心实现算法Zab，就是解决了分布式系统下数据如何在多个服务之间保持同步问题的。<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/CAP.jpg" alt="CAP" title="CAP"></p>
-<h3 id="zookeeper集群系统的特性"><a class="header-anchor" href="#zookeeper集群系统的特性">¶</a>ZooKeeper集群系统的特性</h3>
-<ul>
-<li>Sequential Consistency - Updates from a client will be applied in the order that they were sent.</li>
-<li>Atomicity - Updates either succeed or fail. No partial results.</li>
-<li>Single System Image - A client will see the same view of the service regardless of the server that it connects to.</li>
-<li>Reliability - Once an update has been applied, it will persist from that time forward until a client overwrites the update.<br>
-①Failure and recovery of a follower<br>
-②Failure and recovery of a different follower<br>
-③Failure of the leader<br>
-④Failure and recovery of two followers<br>
-⑤Failure of another leader<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/Reliability.jpg" alt="Reliability" title="Reliability"></li>
-<li>Timeliness - The clients view of the system is guaranteed to be up-to-date within a certain time bound.</li>
-</ul>
-<h3 id="zookeeper消息系统提供的保证"><a class="header-anchor" href="#zookeeper消息系统提供的保证">¶</a>ZooKeeper消息系统提供的保证</h3>
-<p>ZooKeeper能在服务器之间建立点对点的FIFO通道，满足：</p>
-<ul>
-<li>Reliable delivery<br>
-If a message, m, is delivered by one server, it will be eventually delivered by all servers.</li>
-<li>Total order<br>
-If a message is delivered before message b by one server, a will be delivered before b by all servers. If a and b are delivered messages, either a will be delivered before b or b will be delivered before a.</li>
-<li>Causal order<br>
-If a message b is sent after a message a has been delivered by the sender of b, a must be ordered before b. If a sender sends c after sending b, c must be ordered after b.</li>
-</ul>
-<h3 id="zab协议依赖的tcp协议特性"><a class="header-anchor" href="#zab协议依赖的tcp协议特性">¶</a>ZAB协议依赖的TCP协议特性</h3>
-<ul>
-<li>Ordered delivery<br>
-Data is delivered in the same order it is sent and a message m is delivered only after all messages sent before m have been delivered. (The corollary to this is that if message m is lost all messages after m will be lost.)</li>
-<li>No message after close<br>
-Once a FIFO channel is closed, no messages will be received from it.</li>
-</ul>
-<h3 id="service网络结构-replicated-leader-follower"><a class="header-anchor" href="#service网络结构-replicated-leader-follower">¶</a>Service网络结构（replicated、Leader-Follower）</h3>
-<p>Like the distributed processes it coordinates, ZooKeeper itself is intended to be replicated over a sets of hosts called an <strong>ensemble</strong>.<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/replicated.jpg" alt="replicated" title="replicated"><br>
-The servers that make up the ZooKeeper service must all know about each other. They maintain an <strong>in-memory image of state</strong>, along with a <strong>transaction logs</strong> and <strong>snapshots</strong> in a persistent store. As long as a majority of the servers are available, the ZooKeeper service will be available.<br>
-Clients connect to a single ZooKeeper server. The client maintains a <strong>TCP</strong> connection through which it sends requests, gets responses, gets watch events, and sends heart beats. If the TCP connection to the server breaks, the client will connect to a different server.<br>
-Zookeeper的工作集群可以简单分成两类，一个是Leader，唯一一个，其余的都是follower，如何确定Leader是通过内部选举确定的。</p>
-<ul>
-<li>Leader和各个follower是互相通信的，对于Zookeeper系统的数据都是保存在内存里面的，同样也会备份一份在磁盘上。</li>
-<li>如果Leader挂了，Zookeeper集群会重新选举，在毫秒级别就会重新选举出一个Leader。</li>
-<li>集群中除非有一半以上的Zookeeper节点挂了，Zookeeper Service才不可用。</li>
-</ul>
-<h3 id="ordered"><a class="header-anchor" href="#ordered">¶</a>ordered</h3>
-<p>ZooKeeper stamps each update with a number that reflects the order of all ZooKeeper transactions. Subsequent operations can use the order to implement higher-level abstractions, such as synchronization primitives.</p>
-<h3 id="total-order原理"><a class="header-anchor" href="#total-order原理">¶</a>Total order原理</h3>
-<p>As stated above, ZooKeeper guarantees a total order of messages, and it also guarantees a total order of proposals. ZooKeeper exposes the total ordering using a ZooKeeper transaction id (zxid). All proposals will be stamped with a zxid when it is proposed and exactly reflects the total ordering. Proposals are sent to all ZooKeeper servers and committed when a quorum of them acknowledge the proposal. If a proposal contains a message, the message will be delivered when the proposal is committed. Acknowledgement means the server has recorded the proposal to persistent storage. Our quorums have the requirement that any pair of quorum must have at least one server in common. We ensure this by requiring that all quorums have size (n/2+1) where n is the number of servers that make up a ZooKeeper service.<br>
-The <strong>zxid</strong> has two parts: the epoch and a counter. In our implementation the zxid is a 64-bit number. We use the high order 32-bits for the epoch and the low order 32-bits for the counter. Because it has two parts represent the zxid both as a number and as a pair of integers, (epoch, count). The epoch number represents a change in leadership. Each time a new leader comes into power it will have its own epoch number. We have a simple algorithm to assign a unique zxid to a proposal: the leader simply increments the zxid to obtain a unique zxid for each proposal. Leadership activation will ensure that only one leader uses a given epoch, so our simple algorithm guarantees that every proposal will have a unique id.</p>
-<h3 id="多数派-quorum"><a class="header-anchor" href="#多数派-quorum">¶</a>多数派（Quorum）</h3>
-<p>一个由相同应用复制出来的组被称为一个多数派（Quorum），一个多数派中的所有服务器的配置文件都是一致的。<br>
-Atomic broadcast and leader election use the notion of quorum to guarantee a consistent view of the system. By default, ZooKeeper uses majority quorums, which means that every voting that happens in one of these protocols requires a majority to vote on. One example is acknowledging a leader proposal: the leader can only commit once it receives an acknowledgement from a quorum of servers.<br>
-If we extract the properties that we really need from our use of majorities, we have that we only need to guarantee that groups of processes used to validate an operation by voting (e.g., acknowledging a leader proposal) pairwise intersect in at least one server. Using majorities guarantees such a property. However, there are other ways of constructing quorums different from majorities. For example, we can assign weights to the votes of servers, and say that the votes of some servers are more important. To obtain a quorum, we get enough votes so that the sum of weights of all votes is larger than half of the total sum of all weights.<br>
-A different construction that uses weights and is useful in wide-area deployments (co-locations) is a hierarchical one. With this construction, we split the servers into disjoint groups and assign weights to processes. To form a quorum, we have to get a hold of enough servers from a majority of groups G, such that for each group g in G, the sum of votes from g is larger than half of the sum of weights in g. Interestingly, this construction enables smaller quorums. If we have, for example, 9 servers, we split them into 3 groups, and assign a weight of 1 to each server, then we are able to form quorums of size 4. Note that two subsets of processes composed each of a majority of servers from each of a majority of groups necessarily have a non-empty intersection. It is reasonable to expect that a majority of co-locations will have a majority of servers available with high probability.<br>
-With ZooKeeper, we provide a user with the ability of configuring servers to use majority quorums, weights, or a hierarchy of groups.</p>
-<h3 id="与通信相关的概念"><a class="header-anchor" href="#与通信相关的概念">¶</a>与通信相关的概念</h3>
-<ul>
-<li>Packet<br>
-a sequence of bytes sent through a FIFO channel</li>
-<li>Proposal（怎么翻译啊？？？）<br>
-a unit of agreement. Proposals are agreed upon by exchanging packets with a quorum of ZooKeeper servers. Most proposals contain messages, however the NEW_LEADER proposal is an example of a proposal that does not correspond to a message.</li>
-<li>Message<br>
-a sequence of bytes to be atomically broadcast to all ZooKeeper servers. A message put into a proposal and agreed upon before it is delivered.</li>
-</ul>
-<h3 id="使用超时来容错"><a class="header-anchor" href="#使用超时来容错">¶</a>使用超时来容错</h3>
-<p>FLP proved that consensus cannot be achieved in asynchronous distributed systems if failures are possible. To ensure we achieve consensus in the presence of failures we use timeouts. However, we rely on times for liveness not for correctness. So, if timeouts stop working (clocks malfunction for example) the messaging system may hang, but it will not violate its guarantees.</p>
-<h3 id="两阶段messaging"><a class="header-anchor" href="#两阶段messaging">¶</a>两阶段Messaging</h3>
-<ul>
-<li>Leader activation<br>
-In this phase a leader establishes the correct state of the system and gets ready to start making proposals.</li>
-<li>Active messaging<br>
-In this phase a leader accepts messages to propose and coordinates message delivery.</li>
-</ul>
-<p>ZooKeeper is a holistic protocol. We do not focus on individual proposals, rather look at the stream of proposals as a whole. Our strict ordering allows us to do this efficiently and greatly simplifies our protocol. Leadership activation embodies this holistic concept. A leader becomes active only when a quorum of followers (The leader counts as a follower as well. You can always vote for yourself ) has synced up with the leader, they have the same state. This state consists of all of the proposals that the leader believes have been committed and the proposal to follow the leader, the NEW_LEADER proposal. (Hopefully you are thinking to yourself, Does the set of proposals that the leader believes has been committed included all the proposals that really have been committed? The answer is yes. Below, we make clear why.)</p>
-<h4 id="zab协议"><a class="header-anchor" href="#zab协议">¶</a>ZAB协议</h4>
-<p>Zookeeper的核心是广播，这个机制保证了各个Server之间的同步。实现这个机制的协议叫做Zab协议。<br>
-Zab（ZooKeeper Atomic Broadcast）原子消息广播协议作为数据一致性的核心算法，Zab协议是专为Zookeeper设计的支持崩溃恢复原子消息广播算法。<br>
-Zab协议核心如下：<br>
-所有的事务请求必须一个全局唯一的服务器（Leader）来协调处理，集群其余的服务器称为follower服务器。Leader服务器负责将一个客户端请求转化为事务提议（Proposal），并将该proposal分发给集群所有的follower服务器。之后Leader服务器需要等待所有的follower服务器的反馈，一旦超过了半数的follower服务器进行了正确反馈后，那么Leader服务器就会再次向所有的follower服务器分发commit消息，要求其将前一个proposal进行提交。</p>
-<h4 id="zab的两种模式"><a class="header-anchor" href="#zab的两种模式">¶</a>ZAB的两种模式</h4>
-<p>Zab协议包括两种基本的模式：崩溃恢复和消息广播。</p>
-<ul>
-<li>当整个服务框架启动过程中或Leader服务器出现网络中断、崩溃退出与重启等异常情况时，Zab协议就会进入恢复模式并选举产生新的Leader服务器。</li>
-<li>当选举产生了新的Leader服务器，同时集群中已经有过半的机器与该Leader服务器完成了状态同步之后，Zab协议就会退出恢复模式，状态同步是指数据同步，用来保证集群在过半的机器能够和Leader服务器的数据状态保持一致。</li>
-<li>当集群中已经有过半的Follower服务器完成了和Leader服务器的状态同步，那么整个服务框架就可以进入消息广播模式。</li>
-<li>当一台同样遵守Zab协议的服务器启动后加入到集群中，如果此时集群中已经存在一个Leader服务器在负责进行消息广播，那么加入的服务器就会自觉地进入数据恢复模式：找到Leader所在的服务器，并与其进行数据同步，然后一起参与到消息广播流程中去。</li>
-</ul>
-<p>Zookeeper只允许唯一的一个Leader服务器来进行事务请求的处理，Leader服务器在接收到客户端的事务请求后，会生成对应的事务提议并发起一轮广播协议，而如果集群中的其他机器收到客户端的事务请求后，那么这些非Leader服务器会首先将这个事务请求转发给Leader服务器。</p>
-<h4 id="选举算法概述"><a class="header-anchor" href="#选举算法概述">¶</a>选举算法概述</h4>
-<p>当leader崩溃或者leader失去大多数的follower，这时zk进入恢复模式，恢复模式的主要目的是选出一个唯一Leader。<br>
-用一个小组开发作为场景，假设这个小组有两个开发经理（Leader）A和B，这两名经理都会发出proposal指令并在得到超过半数下属的答复后再发出一个accept指令，每条指令都带上当时的时间，下属只会在接受到时间最近的一条proposal对应的accept后才会真正开始工作，现在考虑这样的情况：</p>
+<p>在了解 ZooKeeper 基础上，还可以增加一些配置来修改注册细节：<br>
+可通过 <code>&lt;dubbo:registry username=&quot;admin&quot; password=&quot;1234&quot; /&gt;</code> 设置 ZooKeeper 登录信息<br>
+可通过 <code>&lt;dubbo:registry group=&quot;dubbo&quot; /&gt;</code> 设置 ZooKeeper 的根节点，不设置将使用无根树<br>
+支持 * 号通配符 <code>&lt;dubbo:reference group=&quot;*&quot; version=&quot;*&quot; /&gt;</code> ，可订阅服务的所有分组和所有版本的提供者</p>
+<p>在 Provider 启动完毕后，可以登录到 ZooKeeper 上查看注册的结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 11] ls /</span><br><span class="line">[dubbo, zookeeper]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 12] ls /dubbo</span><br><span class="line">[com.alibaba.dubbo.monitor.MonitorService, com.tallate.UserServiceBo]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 13] ls /dubbo/com.tallate.UserServiceBo</span><br><span class="line">[configurators, consumers, providers, routers]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 14] ls /dubbo/com.tallate.UserServiceBo/providers</span><br><span class="line">[dubbo%3A%2F%2F192.168.96.194%3A20880%2Fcom.tallate.UserServiceBo%3Fanyhost%3Dtrue%26application%3DdubboProvider%26dubbo%3D2.0.2%26generic%3Dfalse%26group%3Ddubbo%26interface%3Dcom.tallate.UserServiceBo%26methods%3DsayHello%2CtestPojo%2CsayHello2%26pid%3D28129%26revision%3D1.0.0%26side%3Dprovider%26timeout%3D3000%26timestamp%3D1575202776615%26version%3D1.0.0]</span><br></pre></td></tr></table></figure>
+<h3 id="服务调用过程"><a class="header-anchor" href="#服务调用过程">¶</a>服务调用过程</h3>
+<p>Consumer 端发送</p>
 <ol>
-<li>A发出proposal指令，并带上指令；</li>
-<li>下属接受该指令；</li>
-<li>B发出proposal指令；</li>
-<li>下属接受B的指令；</li>
-<li>A发出accept指令；</li>
-<li>被下属忽略（因为A的accept指令的时间戳晚于B的proposal指令）；</li>
-<li>A于是又发出下一个proposal；</li>
-<li>下属接受新proposal（覆盖掉B的指令）；</li>
-<li>接下来轮到B的指令被忽略掉了，这样会陷入一个死循环。</li>
+<li>调用代理类的方法<br>
+请求实际调用的是<code>InvokerInvocationHandler.invoke</code>。</li>
+<li>Cluster 层<br>
+封装了服务降级和容错机制，比如，如果调用失败则执行其他（<code>FailoverClusterInvoker</code>）、仍然调用失败则降级执行 mock（<code>MockClusterInvoker</code>）。</li>
+<li>LoadBalance<br>
+Cluster 层包含多个 Invoker，LoadBalance 负责从中选出一个来调用，有多种 LoadBalance 策略，比如随机选一个（<code>RandomLoadBalance</code>）、轮询（<code>RoundRobinLoadBalance</code>）。</li>
+<li>DubboInvoker<br>
+封装了同步和异步调用，Dubbo 实现同步和异步调用比较关键的一点就在于由谁调用 ResponseFuture 的 get 方法。同步调用模式下，由框架自身调用 ResponseFuture 的 get 方法。异步调用模式下，则由用户调用该方法。</li>
+<li>Exchange 层<br>
+封装了，包括对 Request 的序列化（HeaderExchangeChannel）、无引用时自动关闭客户端（ReferenceCountExchangeClient）、心跳检测（HeaderExchangeClient）</li>
+<li>数据编码<br>
+DubboCodec</li>
+<li>发送<br>
+NettyChannel#send</li>
 </ol>
-<p>因此，`Leader必须是唯一的，不然会发生上述<strong>脑裂现象</strong>。</p>
-<h4 id="zookeeper是如何保证事务的顺序一致性的？"><a class="header-anchor" href="#zookeeper是如何保证事务的顺序一致性的？">¶</a>ZooKeeper是如何保证事务的顺序一致性的？</h4>
-<p>ZooKeeper采用了递增的事务Id来标识，所有的proposal都在被提出的时候加上了zxid，zxid实际上是一个64位的数字，高32位是epoch用来标识leader是否发生改变，如果有新的leader产生出来，epoch会自增，低32位用来递增计数。当新产生proposal的时候，会依据数据库的两阶段过程，首先会向其他的server发出事务执行请求，如果超过半数的机器都能执行并且能够成功，那么就会开始执行。</p>
-<h4 id="leader-activation"><a class="header-anchor" href="#leader-activation">¶</a>Leader Activation</h4>
-<p>Leader activation includes leader election. We currently have two leader election algorithms in ZooKeeper: LeaderElection and FastLeaderElection (AuthFastLeaderElection is a variant of FastLeaderElection that uses UDP and allows servers to perform a simple form of authentication to avoid IP spoofing). ZooKeeper messaging doesn’t care about the exact method of electing a leader has long as the following holds:</p>
-<ul>
-<li>The leader has seen the highest zxid of all the followers.</li>
-<li>A quorum of servers have committed to following the leader.</li>
-</ul>
-<p>Of these two requirements only the first, the highest zxid amoung the followers needs to hold for correct operation. The second requirement, a quorum of followers, just needs to hold with high probability. We are going to recheck the second requirement, so if a failure happens during or after the leader election and quorum is lost, we will recover by abandoning leader activation and running another election.<br>
-After leader election a single server will be designated as a leader and start waiting for followers to connect. The rest of the servers will try to connect to the leader. The leader will sync up with followers by sending any proposals they are missing, or if a follower is missing too many proposals, it will send a full snapshot of the state to the follower.<br>
-There is a corner case in which a follower that has proposals, U, not seen by a leader arrives. Proposals are seen in order, so the proposals of U will have a zxids higher than zxids seen by the leader. The follower must have arrived after the leader election, otherwise the follower would have been elected leader given that it has seen a higher zxid. Since committed proposals must be seen by a quorum of servers, and a quorum of servers that elected the leader did not see U, the proposals of you have not been committed, so they can be discarded. When the follower connects to the leader, the leader will tell the follower to discard U.<br>
-A new leader establishes a zxid to start using for new proposals by getting the epoch, e, of the highest zxid it has seen and setting the next zxid to use to be (e+1, 0), fter the leader syncs with a follower, it will propose a NEW_LEADER proposal. Once the NEW_LEADER proposal has been committed, the leader will activate and start receiving and issuing proposals.<br>
-It all sounds complicated but here are the basic rules of operation during leader activation:</p>
-<ul>
-<li>A follower will ACK the NEW_LEADER proposal after it has synced with the leader.</li>
-<li>A follower will only ACK a NEW_LEADER proposal with a given zxid from a single server.</li>
-<li>A new leader will COMMIT the NEW_LEADER proposal when a quorum of followers have ACKed it.</li>
-<li>A follower will commit any state it received from the leader when the NEW_LEADER proposal is COMMIT.</li>
-<li>A new leader will not accept new proposals until the NEW_LEADER proposal has been COMMITED.<br>
-If leader election terminates erroneously, we don’t have a problem since the NEW_LEADER proposal will not be committed since the leader will not have quorum. When this happens, the leader and any remaining followers will timeout and go back to leader election.</li>
-</ul>
-<h4 id="leader选举"><a class="header-anchor" href="#leader选举">¶</a>Leader选举</h4>
-<p>Leader选举是保证分布式数据一致性的关键所在。当Zookeeper集群中的一台服务器出现以下两种情况之一时，需要进入Leader选举。</p>
+<p>Provider 端接收</p>
 <ol>
-<li>服务器初始化启动。</li>
-<li>服务器运行期间无法和Leader保持连接。</li>
+<li>接收请求<br>
+NettyClient<br>
+请求被接收后，通过 Netty 调用链向下传递执行<br>
+NettyHandler#messageReceived<br>
+NettyChannel</li>
+<li>解码<br>
+<code>ExchangeCodec</code></li>
+<li>线程派发<br>
+<code>Dispatcher</code><br>
+IO 线程接收请求后分发给事件处理线程执行，具体的派发逻辑在<code>ChannelHandler</code>中实现，比如<code>AllChannelHandler</code>。</li>
+<li>请求分发<br>
+<code>ChannelEventRunnable</code><br>
+根据请求类型将请求分发给不同的<code>ChannelHandler</code>处理。</li>
 </ol>
-<p>Zookeeper在3.4.0版本后只保留了TCP版本的 FastLeaderElection 选举算法。当一台机器进入Leader选举时，当前集群可能会处于以下两种状态：</p>
+<p>Provider 端响应</p>
+<p>Consumer 端接收响应</p>
 <ol>
-<li>集群中已存在Leader。</li>
-<li>集群中不存在Leader。</li>
+<li>发送完请求后阻塞<br>
+<code>HeaderExchangeHandler</code><br>
+用户线程在发送完请求后，会调用 <code>DefaultFuture</code> 的 <code>get</code> 方法等待响应对象的到来，这时每个<code>DefaultFuture</code>都会关联一个<strong>调用编号</strong>，用于在接收到响应时能对应上请求的<code>DefaultFuture</code>。<br>
+当响应对象到来后，IO 线程根据<strong>调用编号</strong>可以找到<code>DefaultFuture</code>，之后会将响应对象保存到<code>DefaultFuture</code>，并唤醒用户线程。</li>
 </ol>
-<p>对于集群中已经存在Leader而言，此种情况一般都是某台机器启动得较晚，在其启动之前，集群已经在正常工作，对这种情况，该机器试图去选举Leader时，会被告知当前服务器的Leader信息，对于该机器而言，仅仅需要和Leader机器建立起连接，并进行状态同步即可。</p>
-<p>而在集群中不存在Leader情况下则会相对复杂，其步骤如下：</p>
-<ol>
-<li>第一次投票。无论哪种导致进行Leader选举，集群的所有机器都处于试图选举出一个Leader的状态，即LOOKING状态，LOOKING机器会向所有其他机器发送消息，该消息称为投票。投票中包含了SID（服务器的唯一标识）和ZXID（事务ID），(SID, ZXID)形式来标识一次投票信息。假定Zookeeper由5台机器组成，SID分别为1、2、3、4、5，ZXID分别为9、9、9、8、8，并且此时SID为2的机器是Leader机器，某一时刻，1、2所在机器出现故障，因此集群开始进行Leader选举。在第一次投票时，每台机器都会将自己作为投票对象，于是SID为3、4、5的机器投票情况分别为(3, 9)，(4, 8)， (5, 8)。</li>
-<li>变更投票。每台机器发出投票后，也会收到其他机器的投票，每台机器会根据一定规则来处理收到的其他机器的投票，并以此来决定是否需要变更自己的投票，这个规则也是整个Leader选举算法的核心所在，其中术语描述如下</li>
-</ol>
+<h2 id="协议-protocol"><a class="header-anchor" href="#协议-protocol">¶</a>协议 - Protocol</h2>
+<p>Dubbo 支持多种协议，如下图所示：<br>
+<img src="http://47.88.24.11/imgs/Dubbo/Protocol%E6%89%A9%E5%B1%95.png" alt="Protocol扩展" title="Protocol扩展"><br>
+在通信过程中，不同的服务等级一般对应着不同的服务质量，那么选择合适的协议便是一件非常重要的事情，需要根据应用的特征来选择。例如，使用 RMI 协议，一般会受到防火墙的限制，所以对于外部与内部进行通信的场景，就不要使用 RMI 协议，而是基于 HTTP 协议或者 Hessian 协议。</p>
+<h3 id="hessian-协议"><a class="header-anchor" href="#hessian-协议">¶</a>Hessian 协议</h3>
 <ul>
-<li>vote_sid：接收到的投票中所推举Leader服务器的SID。</li>
-<li>vote_zxid：接收到的投票中所推举Leader服务器的ZXID。</li>
-<li>self_sid：当前服务器自己的SID。</li>
-<li>self_zxid：当前服务器自己的ZXID。</li>
+<li>连接个数：多连接</li>
+<li>连接方式：短连接</li>
+<li>传输协议：HTTP</li>
+<li>传输方式：同步传输</li>
+<li>序列化：Hessian 二进制序列化</li>
+<li>适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。</li>
+<li>适用场景：页面传输，文件传输，Hessian 是 Caucho 开源的一个 RPC 框架，其通讯效率高于 WebService 和 Java 自带的序列化，Hessian 底层采用 Http 通讯，采用 Servlet 暴露服务，Dubbo 缺省内嵌 Jetty 作为服务器实现。</li>
 </ul>
-<p>每次对收到的投票的处理，都是对(vote_sid, vote_zxid)和(self_sid, self_zxid)对比的过程。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--定义 hessian 协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;hessian&quot; port=&quot;8080&quot; server=&quot;jetty&quot; /&gt;</span><br><span class="line">&lt;!--设置默认协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line">&lt;!--设置 service 协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.caucho&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hessian&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.0.33&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="http-协议"><a class="header-anchor" href="#http-协议">¶</a>Http 协议</h3>
 <ul>
-<li>规则一：如果vote_zxid大于self_zxid，就认可当前收到的投票，并再次将该投票发送出去。</li>
-<li>规则二：如果vote_zxid小于self_zxid，那么坚持自己的投票，不做任何变更。</li>
-<li>规则三：如果vote_zxid等于self_zxid，那么就对比两者的SID，如果vote_sid大于self_sid，那么就认可当前收到的投票，并再次将该投票发送出去。</li>
-<li>规则四：如果vote_zxid等于self_zxid，并且vote_sid小于self_sid，那么坚持自己的投票，不做任何变更。</li>
+<li>连接个数：多连接</li>
+<li>连接方式：短连接</li>
+<li>传输协议：HTTP</li>
+<li>传输方式：同步传输</li>
+<li>序列化：表单序列化</li>
+<li>适用范围：传入传出参数数据包大小混合，提供者比消费者个数多，可用浏览器查看，可用表单或 URL 传入参数，暂不支持传文件。</li>
+<li>适用场景：需同时给应用程序和浏览器 JS 使用的服务。</li>
 </ul>
-<p><img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/Leader%E9%80%89%E4%B8%BE.png" alt="Leader选举" title="Leader选举"><br>
-结合上面规则，给出下面的集群变更过程。</p>
-<ol start="3">
-<li>确定Leader。经过第二轮投票后，集群中的每台机器都会再次接收到其他机器的投票，然后开始统计投票，如果一台机器收到了超过半数的相同投票，那么这个投票对应的SID机器即为Leader。此时Server3将成为Leader。</li>
-</ol>
-<p>由上面规则可知，通常那台服务器上的数据越新（ZXID会越大），其成为Leader的可能性越大，也就越能够保证数据的恢复。如果ZXID相同，则SID越大机会越大。</p>
-<h4 id="active-messaging"><a class="header-anchor" href="#active-messaging">¶</a>Active Messaging</h4>
-<p>Leader Activation does all the heavy lifting. Once the leader is coronated he can start blasting out proposals. As long as he remains the leader no other leader can emerge since no other leader will be able to get a quorum of followers. If a new leader does emerge, it means that the leader has lost quorum, and the new leader will clean up any mess left over during her leadership activation.<br>
-ZooKeeper messaging operates similar to a classic two-phase commit.<br>
-<img src="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/%E4%B8%A4%E9%98%B6%E6%AE%B5Messaging.jpg" alt="两阶段Messaging" title="两阶段Messaging"><br>
-All communication channels are FIFO, so everything is done in order. Specifically the following operating constraints are observed:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--配置协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;http&quot; port=&quot;8080&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="thrift-协议"><a class="header-anchor" href="#thrift-协议">¶</a>Thrift 协议</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.thrift&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;libthrift&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;0.8.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol name=&quot;thrift&quot; port=&quot;3030&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>Dubbo 使用的 Thrift 和原生的 Thrift 协议不兼容，在原生协议的基础上添加了一些额外的头信息，比如 service name，magic number 等。</p>
+<h3 id="rest-协议"><a class="header-anchor" href="#rest-协议">¶</a>Rest 协议</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 用rest协议在8080端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;rest&quot; port=&quot;8080&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 声明需要暴露的服务接口 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.service.OrderService&quot; ref=&quot;orderService&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 和本地bean一样实现服务 --&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;com.service.OrderServiceImpl&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>在代码中需要通过注解指定访问路径：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public class OrderService &#123;    </span><br><span class="line">   void createOrder(Order order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Path(&quot;orders&quot;) // 访问Url的相对路径</span><br><span class="line">public class OrderServiceImpl implements OrderService &#123;</span><br><span class="line"></span><br><span class="line">    @POST</span><br><span class="line">    @Path(&quot;create&quot;) // 访问Url的相对路径</span><br><span class="line">    // 将传递过来的JSON数据反序列化为Order对象</span><br><span class="line">    @Consumes(&#123;MediaType.APPLICATION_JSON&#125;) </span><br><span class="line">    public void createOrder(Order order) &#123;</span><br><span class="line">        // create the order...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="长连接-or-短连接"><a class="header-anchor" href="#长连接-or-短连接">¶</a>长连接 OR 短连接</h3>
+<p>Dubbo 协议缺省每服务每提供者每消费者使用单一长连接，如果数据量较大，可以使用多个连接。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 表示该服务使用 JVM 共享长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;0&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;0&quot;&gt;</span><br><span class="line">&lt;!-- 表示该服务使用独立长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;1&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;1&quot;&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="为什么要消费者比提供者个数多"><a class="header-anchor" href="#为什么要消费者比提供者个数多">¶</a>为什么要消费者比提供者个数多</h3>
+<p>因为 dubbo 协议采用单一长连接，假设网络为千兆网卡 3，根据测试经验数据每条连接最多只能压满 7MByte（不同的环境可能不一样），理论上 1 个服务提供者需要 20 个服务消费者才能压满网卡。</p>
+<h3 id="为什么不能传大包"><a class="header-anchor" href="#为什么不能传大包">¶</a>为什么不能传大包</h3>
+<p>因 dubbo 协议采用单一长连接，如果每次请求的数据包大小为 500KByte，假设网络为千兆网卡 3，每条连接最大 7MByte(不同的环境可能不一样，供参考)，单个服务提供者的 TPS(每秒处理事务数)最大为：128MByte / 500KByte = 262。单个消费者调用单个服务提供者的 TPS(每秒处理事务数)最大为：7MByte / 500KByte = 14。如果能接受，可以考虑使用，否则网络将成为瓶颈。</p>
+<h3 id="为什么采用异步单一长连接"><a class="header-anchor" href="#为什么采用异步单一长连接">¶</a>为什么采用异步单一长连接</h3>
+<p>因为服务的现状大都是服务提供者少，通常只有几台机器，而服务的消费者多，可能整个网站都在访问该服务，比如 Morgan 的提供者只有 6 台提供者，却有上百台消费者，每天有 1.5 亿次调用，如果采用常规的 hessian 服务，服务提供者很容易就被压跨，通过单一连接，保证单一消费者不会压死提供者，长连接，减少连接握手验证等，并使用异步 IO，复用线程池，防止 C10K 问题（服务器无法服务 1w 左右的并发连接）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 配置协议端口和服务提供方最大连接数，防止服务被压垮 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot; accepts=&quot;1000&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo默认协议 --&gt;</span><br><span class="line">&lt;dubbo:provider protocol=&quot;dubbo&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo设置服务协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;dubbo&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<h2 id="集群-cluster"><a class="header-anchor" href="#集群-cluster">¶</a>集群 - Cluster</h2>
+<p>提供基于接口方法的透明远程过程调用，包括多协议支持，以及软负载均衡，失败容错，地址路由，动态配置等集群支持。</p>
+<h3 id="服务目录-directory"><a class="header-anchor" href="#服务目录-directory">¶</a>服务目录（Directory）</h3>
+<p><strong>服务目录</strong>中存储了一些和服务提供者有关的信息，通过服务目录，服务消费者可获取到服务提供者的信息，比如 ip、端口、服务协议等。通过这些信息，服务消费者就可通过 Netty 等客户端进行远程调用。<br>
+服务目录与注册中心之间的区别：</p>
 <ul>
-<li>The leader sends proposals to all followers using the same order. Moreover, this order follows the order in which requests have been received. Because we use FIFO channels this means that followers also receive proposals in order.</li>
-<li>Followers process messages in the order they are received. This means that messages will be ACKed in order and the leader will receive ACKs from followers in order, due to the FIFO channels. It also means that if message $m$ has been written to non-volatile storage, all messages that were proposed before $m$ have been written to non-volatile storage.</li>
-<li>The leader will issue a COMMIT to all followers as soon as a quorum of followers have ACKed a message. Since messages are ACKed in order, COMMITs will be sent by the leader as received by the followers in order.</li>
-<li>COMMITs are processed in order. Followers deliver a proposals message when that proposal is committed.</li>
+<li>注册中心存储服务提供者信息，在 Dubbo 中通过 ZooKeeper 实现；</li>
+<li>服务目录是 Invoker 的集合，且这个集合中的元素会随注册中心的变化而进行动态调整。</li>
 </ul>
-<p>Zab协议的消息广播过程使用是一个原子广播协议，类似一个2PC提交过程。具体的：</p>
+<p>服务目录会在客户端启动时初始化完成，并订阅注册中心的更新：<br>
+<code>com.alibaba.dubbo.registry.support.FailbackRegistry#FailbackRegistry</code><br>
+<code>com.alibaba.dubbo.registry.support.FailbackRegistry#subscribe</code></p>
+<h4 id="directory-继承结构"><a class="header-anchor" href="#directory-继承结构">¶</a>Directory 继承结构</h4>
+<p>Directory 接口包含了一个获取配置信息的方法 getUrl，实现该接口的类可以向外提供配置信息。Directory 有多个实现。</p>
 <ul>
-<li>ZooKeeper使用单一主进程Leader用于处理客户端所有事务请求，并采用Zab的原子广播协议，将服务器数据状态变更以事务Proposal的形式广播Follower上，因此能很好的处理客户端的大量并发请求。</li>
-<li>另一方面，由于事务间可能存在着依赖关系，Zab协议保证Leader广播的变更序列被顺序的处理，有些状态的变更必须依赖于比它早生成的那些状态变更。</li>
-<li>最后，考虑到主进程Leader在任何时候可能崩溃或者异常退出， 因此Zab协议还要Leader进程崩溃的时候可以重新选出Leader并且保证数据的完整性；Follower收到Proposal后，写到磁盘，返回Ack。Leader收到大多数ACK后，广播Commit消息，自己也提交该消息。Follower收到Commit之后，提交该消息。</li>
+<li>StaticDirectory<br>
+获取一次 Invoker 列表后就不变了。</li>
+<li>RegistryDirectory<br>
+实现了 NotifyListener 接口，当注册中心服务配置发生变化后，RegistryDirectory 可收到与当前服务相关的变化，然后根据配置变更信息刷新 Invoker 列表。<br>
+刷新 Invoker 列表代码：com.alibaba.dubbo.registry.integration.RegistryDirectory#refreshInvoker</li>
 </ul>
-<p>Zab协议简化了2PC事务提交：</p>
+<h3 id="路由-router"><a class="header-anchor" href="#路由-router">¶</a>路由（Router）</h3>
+<p>服务目录中包含多个 Invoker，需要通过路由规则来选择调用哪个，Dubbo 提供了 3 种路由实现：<strong>条件路由 ConditionRouter</strong>、<strong>脚本路由 ScriptRouter</strong> 和<strong>标签路由 TagRouter</strong>。</p>
+<h4 id="条件路由-conditionrouter"><a class="header-anchor" href="#条件路由-conditionrouter">¶</a>条件路由（ConditionRouter）</h4>
+<h3 id="容错方案"><a class="header-anchor" href="#容错方案">¶</a>容错方案</h3>
+<p><img src="http://47.88.24.11/imgs/Dubbo/%E9%9B%86%E7%BE%A4%E5%AE%B9%E9%94%99.png" alt="集群容错" title="集群容错"><br>
+Dubbo 提供多种集群的容错方案，默认情况下为 Failover。</p>
+<h4 id="failover"><a class="header-anchor" href="#failover">¶</a>Failover</h4>
+<p>失败自动切换，当出现失败，重试其它服务器 （该配置为默认配置）。通常用于读操作，但重试会带来更长延迟。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--配置集群容错模式为失败自动切换 --&gt;</span><br><span class="line">&lt;dubbo:reference cluster=&quot;failover&quot; /&gt;</span><br><span class="line">&lt;!-- 调用queryOrder方法如果失败共调3次，重试2次，如果成功则只调1次 --&gt;</span><br><span class="line">&lt;dubbo:reference&gt;</span><br><span class="line">    &lt;dubbo:method name=&quot;queryOrder&quot; retries=&quot;2&quot; /&gt;</span><br><span class="line">&lt;/dubbo:reference&gt;</span><br></pre></td></tr></table></figure>
+<p>通常用于幂等操作，多次调用副作用相同，譬如只读请求，Failover 使用得较多，推荐使用，但重试会带来更长延迟，应用于消费者和提供者的服务调用。</p>
+<h4 id="failfast"><a class="header-anchor" href="#failfast">¶</a>Failfast</h4>
+<p>快速失败，只发起一次调用，失败立即报错。通常用于非幂等性的写操作，比如新增记录和修改数据，Failfast 使用得较多，但如果有机器正在重启，可能会出现调用失败，应用于消费者和提供者的服务调用。</p>
+<h4 id="failsafe"><a class="header-anchor" href="#failsafe">¶</a>Failsafe</h4>
+<p>失败安全，出现异常时，直接忽略。通常用于写入审计日志等操作，Failsafe 使用得不多，但调用信息会丢失，应用于发送统计信息到监控中心。</p>
+<h4 id="failback"><a class="header-anchor" href="#failback">¶</a>Failback</h4>
+<p>失败自动恢复，后台记录失败请求，定时重发。通常用于消息通知操作，使用得很少，不可靠，重启会丢失，应用于注册服务到注册中心。</p>
+<h4 id="forking"><a class="header-anchor" href="#forking">¶</a>Forking</h4>
+<p>并行调用多个服务器，只要一个成功即返回。通常用于实时性要求较高的读操作，使用得很少，但需要浪费更多服务资源。</p>
+<h4 id="broadcast"><a class="header-anchor" href="#broadcast">¶</a>Broadcast</h4>
+<p>广播调用所有提供者，逐个调用，任意一台报错则报错 。通常用于通知所有提供者更新缓存或日志等本地资源信息，速度慢，任意一台报错则报错，使用得很少。</p>
+<h3 id="负载均衡"><a class="header-anchor" href="#负载均衡">¶</a>负载均衡</h3>
+<h4 id="random-loadbalance"><a class="header-anchor" href="#random-loadbalance">¶</a>Random LoadBalance</h4>
+<p>随机调用（默认配置），按权重设置随机概率，在一个截面上碰撞的概率高，但调用量越大分布越均匀，而且按概率使用权重后也比较均匀，有利于动态调整提供者权重，使用较多，推荐使用，但重试时，可能出现瞬间压力不均。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 服务端方法基本负载均衡设置 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.service.dubbo.queryOrder&quot;&gt;</span><br><span class="line">    &lt;dubbo:method name=&quot;queryOrder&quot; loadbalance=&quot;roundrobin&quot; /&gt;</span><br><span class="line">&lt;/dubbo:service&gt;</span><br></pre></td></tr></table></figure>
+<h4 id="roundrobin-loadbalance"><a class="header-anchor" href="#roundrobin-loadbalance">¶</a>RoundRobin LoadBalance</h4>
+<p>轮循调用，按公约后的权重设置轮循比率，存在慢的提供者累积请求的问题，比如：第二台机器很慢，但没挂，当请求调到第二台时就卡在那，久而久之，所有请求都卡在调到第二台上，极端情况可能产生雪崩。</p>
+<h4 id="leastactive-loadbalance"><a class="header-anchor" href="#leastactive-loadbalance">¶</a>LeastActive LoadBalance</h4>
+<p>最少活跃数调用，相同活跃数的随机，活跃数指调用前后计数差，使慢的提供者收到更少请求，因为越慢的提供者的调用前后计数差（与时间有关）会越大，但不支持权重。</p>
+<h4 id="consistenthash-loadbalance"><a class="header-anchor" href="#consistenthash-loadbalance">¶</a>ConsistentHash LoadBalance</h4>
+<p>一致性 Hash，相同参数的请求总是发到同一提供者，当某一台提供者挂时，原本发往该提供者的请求，基于虚拟节点，平摊到其它提供者，不会引起剧烈变动。缺省只对第一个参数 Hash，如果要修改，请配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;dubbo:parameter key=&quot;hash.arguments&quot; value=&quot;0,1&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>缺省用 160 份虚拟节点，如果要修改，请配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;dubbo:parameter key=&quot;hash.nodes&quot; value=&quot;320&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>由于是通过哈希算法分摊调用，有可能出现调用不均匀的情况</p>
+<h2 id="远程通信-transport"><a class="header-anchor" href="#远程通信-transport">¶</a>远程通信 - Transport</h2>
+<p>提供对多种基于长连接的 NIO 框架抽象封装，包括多种线程模型，序列化，以及“请求-响应”模式的信息交换方式。<br>
+Dubbo 支持如下网络通信框架：</p>
 <ul>
-<li>去除中断逻辑移除，follower要么ack，要么抛弃Leader。</li>
-<li>Leader不需要所有的Follower都响应成功，只要一个多数派Ack即可。</li>
+<li>Mina</li>
+<li>Netty</li>
+<li>Grizzly</li>
 </ul>
-<h4 id="paxos-zab-区别？"><a class="header-anchor" href="#paxos-zab-区别？">¶</a>Paxos &amp; ZAB 区别？</h4>
-<p>Paxos是分布式选举算法，ZooKeeper使用的ZAB协议（ZooKeeper Atomic Broadcast）。<br>
-二者有相同的地方。比如都有一个Leader，用来协调N个Follower的运行；Leader要等待超半数的Follower做出正确反馈之后才进行提案；二者都有一个值来代表Leader的周期（zxid的前32位）。<br>
-二者不同的地方在于，ZAB用来构建高可用的分布式数据主备系统（ZooKeeper），Paxos是用来构建分布式一致性状态机系统的。</p>
-<h3 id="summary"><a class="header-anchor" href="#summary">¶</a>Summary</h3>
-<p>So there you go. Why does it work? Specifically, why does is set of proposals believed by a new leader always contain any proposal that has actually been committed? First, all proposals have a unique zxid, so unlike other protocols, we never have to worry about two different values being proposed for the same zxid; followers (a leader is also a follower) see and record proposals in order; proposals are committed in order; there is only one active leader at a time since followers only follow a single leader at a time; a new leader has seen all committed proposals from the previous epoch since it has seen the highest zxid from a quorum of servers; any uncommited proposals from a previous epoch seen by a new leader will be committed by that leader before it becomes active.</p>
-<h3 id="comparisons"><a class="header-anchor" href="#comparisons">¶</a>Comparisons</h3>
-<p>Isn’t this just Multi-Paxos? No, Multi-Paxos requires some way of assuring that there is only a single coordinator. We do not count on such assurances. Instead we use the leader activation to recover from leadership change or old leaders believing they are still active.<br>
-Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of Paxos? Actually, to us active messaging looks just like 2 phase commit without the need to handle aborts. Active messaging is different from both in the sense that it has cross proposal ordering requirements. If we do not maintain strict FIFO ordering of all packets, it all falls apart. Also, our leader activation phase is different from both of them. In particular, our use of epochs allows us to skip blocks of uncommitted proposals and to not worry about duplicate proposals for a given zxid.</p>
+<h2 id="序列化-serialize"><a class="header-anchor" href="#序列化-serialize">¶</a>序列化 - Serialize</h2>
+<h3 id="反射"><a class="header-anchor" href="#反射">¶</a>反射</h3>
+<p>通过缓存加载的 Class、setAccessible(false)去掉安全校验等来提高反射效率，或者使用反射包<strong>ReflectASM</strong>。</p>
+<h3 id="序列化"><a class="header-anchor" href="#序列化">¶</a>序列化</h3>
+<p>对性能敏感，对开发体验要求不高的内部系统 thrift 或 protobuf<br>
+对开发体验敏感，性能有要求的内外部系统 hessian2<br>
+对序列化后的数据要求有良好的可读性 jackson/gson/xml<br>
+对兼容性和性能要求较高的系统 protobuf 或 kryo ，它们的性能相差不多，但是 protobuf 有个缺点就是要传输的每一个类的结构都要生成对应的 proto 文件。</p>
+<h2 id="filter"><a class="header-anchor" href="#filter">¶</a>Filter</h2>
+<p>ProtocolFilterWrapper#export：如果当前 protocol 不是 registry，则调用 buildInvokerChain<br>
+-&gt; ProtocolFilterWrapper#buildInvokerChain<br>
+-&gt; ExtensionLoader#getActivateExtension(URL url, String key, String group)：获取系统自动激活的 Filter 和用户自定义的 Filter，最后合并返回</p>
+<h2 id="更多功能"><a class="header-anchor" href="#更多功能">¶</a>更多功能</h2>
+<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
+<p>限流最好配置在 Provider 端，因为 Consumer 可能有很多个服务器实例，如果他们同时发起对同一 Provider 实例的请求可能会超出机器的处理能力上限。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 限制接口OrderService里的每个方法，服务提供者端的执行线程不超过10个 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.bubbo.service.OrderService&quot; executes=&quot;10&quot; /&gt;</span><br><span class="line">&lt;!-- 限制接口OrderService里的queryOrderList方法，服务提供者端的执行线程不超过10个 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.bubbo.service.OrderService&quot;&gt;</span><br><span class="line">    &lt;dubbo:method name=&quot;queryOrderList&quot; executes=&quot;10&quot; /&gt;</span><br><span class="line">&lt;/dubbo:service&gt;</span><br><span class="line">&lt;!--限制使用dubbo协议时在服务提供者端启用的连接数不超过1000个--&gt;</span><br><span class="line">&lt;dubbo:provider protocol=&quot;dubbo&quot; accepts=&quot;1000&quot;/&gt;</span><br></pre></td></tr></table></figure>
+<p>上述配置限制的是线程数，即并发连接数，Consumer 和 Provider 默认通过一条共享的 TCP 长连接通信，连接成功的情况下请求线程交由 IO 线程池异步读写数据，数据被反序列化后交由业务线程池处理具体业务，也就是对应的 Impl 实现类的具体方法。</p>
+<h3 id="服务隔离"><a class="header-anchor" href="#服务隔离">¶</a>服务隔离</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--当同一个接口有多个实现时，可以通过group来隔离  --&gt;</span><br><span class="line">&lt;!--服务提供者  --&gt;</span><br><span class="line">&lt;dubbo:service group=&quot;ImplA&quot; interface=&quot;com.bubbo.service.OrderService&quot;/&gt;</span><br><span class="line">&lt;dubbo:service group=&quot;ImplB&quot; interface=&quot;com.bubbo.service.OrderService&quot;/&gt;</span><br><span class="line">&lt;!--服务调用者  --&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;MethodA&quot; group=&quot;ImplA&quot; interface=&quot;com.bubbo.service.OrderService&quot;/&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;MethodB&quot; group=&quot;ImplB&quot; interface=&quot;com.bubbo.service.OrderService&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!--当一个接口出现升级，新旧实现同时存在时，可以通过版本号来隔离，通常版本号隔离也用于联调阶段，不同版本号的服务无法调用，版本号相同的服务才能调用  --&gt;</span><br><span class="line">&lt;!--服务提供者  --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.bubbo.service.OrderService&quot; version=&quot;new2.0.0&quot;/&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.bubbo.service.OrderService&quot; version=&quot;old1.0.0&quot;/&gt;</span><br><span class="line">&lt;!--服务调用者  --&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;NewMethodA&quot; interface=&quot;com.bubbo.service.OrderService&quot; version=&quot;new2.0.0&quot;/&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;OldMethodB&quot; interface=&quot;com.bubbo.service.OrderService&quot; version=&quot;old1.0.0&quot;/&gt;</span><br></pre></td></tr></table></figure>
+<p>通过版本号，也可以实现消费者和提供者服务端直接连接，因为发起调用默认使用随机调用端负载均衡模式，当有多台提供者的时候，会随机选取，通常联调阶段都会调用指定服务进行联调，直连一般用在调试，开发阶段，只需要消费者和提供者 version 相同即可。</p>
+<h3 id="灰度发布"><a class="header-anchor" href="#灰度发布">¶</a>灰度发布</h3>
+<p>有三台服务器 A、B、C 要上线，现在三台服务器都是旧版本代码，那首先从 Ngnix 负载均衡列表里移除 A 服务器的配置，切断对 A 的访问，然后在 A 服务器不受新的代码，重新把 A 配置进 Ngnix 负载均衡列表。如果在线使用没有问题，则继续升级 B、C 服务器，否则回滚，恢复旧版本代码，这是针对三端（PC 端，微信端，移动端）跟网关系统的。<br>
+如果是针对子系统，譬如用户系统、订单系统等，可以通过分组 group 来实现子系统的灰度发布。服务提供者有两组，One、Two，将新版本代码 group 改为 Two，旧版本 group 还是 One，将新版本的消费者 group 改为 Two，这时请求定位到新的消费者再调用新的提供者，而且旧的消费者还是请求旧的提供者，如果线上没有问题，那就把提供者 group 为 One 的组改为 Two，并部署新代码，旧的消费者也改成 Two 并部署新代码如果有问题，那消费端和提供端都回滚到旧版本。</p>
+<h3 id="异步调用"><a class="header-anchor" href="#异步调用">¶</a>异步调用</h3>
+<p>Dubbo 默认情况下是同步调用的，就是调用后立刻返回，但如果消费端调用服务端创建文件并转化成 PDF 格式的文件这种在 IO 密集操作时，消费端同步调用需要等待对方转换结束才返回，很消耗性能，这时选择异步调用和回调调用更合适。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--</span><br><span class="line">async=&quot;true&quot; 异步调用，调用后不用等待，继续往下执行</span><br><span class="line">onreturn =&quot;CallBack.onreturn&quot; 返回后调用自定义的类CallBack类的onreturn方法</span><br><span class="line">onthrow=&quot;CallBack.onthrow&quot; 调用后，提供者抛出异常后，返回调用自定义的类CallBack类的onthrow方法</span><br><span class="line">--&gt;    </span><br><span class="line">&lt;!--服务调用者  --&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;tranfromPDF&quot; interface=&quot;com.bubbo.service.OrderService&quot; &gt;</span><br><span class="line">    &lt;dubbo:method name=&quot;tranPDF&quot; async=&quot;true&quot; </span><br><span class="line">    onreturn =&quot;CallBack.onreturn&quot; </span><br><span class="line">    onthrow=&quot;CallBack.onthrow&quot;/&gt;</span><br><span class="line"> &lt;/dubbo:reference&gt;</span><br></pre></td></tr></table></figure>
+<p>可以在 onthrow 事件里实现服务降级的方法，譬如遇到网络抖动，调用超时返回时可在 onthrow 里 return null。</p>
+<ul>
+<li>
+<p>调用方</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Test</span><br><span class="line">public void testQueryOrder() &#123;</span><br><span class="line">    // 此时调用会立即拿到null值</span><br><span class="line">    List&lt;Order&gt; list = this.orderService.queryOrderList();</span><br><span class="line">    // 拿到Future的引用，在提供方返回结果后，结果值会被设置进Future</span><br><span class="line">    Future&lt;String&gt; orderFuture = RpcContext.getContext().getFuture();</span><br><span class="line">    try &#123;</span><br><span class="line">        // 该方法是阻塞方法，在拿到值之前一直等待，直到拿到值才会被唤醒，该方法会抛出异常，可以捕获</span><br><span class="line">        String returnValue = orderFuture.get();</span><br><span class="line">    &#125; catch (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125; catch (ExecutionException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>回调方</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">// 回调接口</span><br><span class="line">interface ICallBack &#123;</span><br><span class="line">    // 第一个参数是返回值，第二个参数是原参数</span><br><span class="line">    public void onreturn(String returnValue, String initParameter);</span><br><span class="line"></span><br><span class="line">    // 第一个参数是异常，第二个参数是原参数</span><br><span class="line">    public void onthrow(Throwable ex, String initParameter);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 实现类</span><br><span class="line">class CallBackImpl implements ICallBack &#123;</span><br><span class="line">    public void onreturn(String returnValue, String initParameter) &#123;</span><br><span class="line">        // do something</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    public void onthrow(Throwable ex, String initParameter) &#123;</span><br><span class="line">        // do something</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p><img src="http://47.88.24.11/imgs/Dubbo/%E5%BC%82%E6%AD%A5%E8%B0%83%E7%94%A8.png" alt="异步调用" title="异步调用"><br>
+调用方有一个用户线程池用于处理调用请求（比如 Tomcat 里那个线程池），请求被转发到 IO 线程池，由 IO 线程来发起对提供方的调用，此时 IO 线程会新建一个 Future 对象进 RpcContext，用户线程可以继续继续自己的业务逻辑，然后在需要的时候调用 Future 的 get 方法阻塞等待，而服务端只需要将结果返回给 IO 线程，由 IO 线程调用 notify 方法唤醒阻塞等待中的用户线程。</p>
+<h3 id="服务降级"><a class="header-anchor" href="#服务降级">¶</a>服务降级</h3>
+<p>服务降级用于在服务高峰期将次要服务降级，仅保留关键服务，从而降低系统负载、提升可用性。比如，订单列表正常情况下展示所有订单，但是如果是在网站开展秒杀之类的大促活动时，就可以降级展示当月的订单而不是所有，再其次，如果服务器宕机了，也最好展示兜底页而不是 504。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;dubbo:service interface=&quot;com.bubbo.service.OrderService&quot; mock=&quot;com.dubbo.service.MonthOderMock&quot;/&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="热点缓存"><a class="header-anchor" href="#热点缓存">¶</a>热点缓存</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--服务调用者 --&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;queryCatalog&quot; interface=&quot;com.bubbo.service.CatalogService&quot;&gt;</span><br><span class="line">    &lt;dubbo:method name=&quot;queryCatalog&quot; cache=&quot;lru&quot; /&gt;</span><br><span class="line">&lt;/dubbo:reference&gt;</span><br><span class="line">&lt;dubbo:monitor protocol=&quot;registry&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>如果查询的对象改变很少但又数据量很大的时候，如首页目录，可以避免每次都频繁调用服务端，可以设置本地缓存，加快热点数据的访问，Dubbo 的缓存类型 LRU 缓存，最近最少使用的数据会被清除，使用频繁的数据被保留，Thredlocal 缓存，当前线程的缓存，假如当前线程有多次请求，每次请求都需要相同的用户信息，那就适用，避免每次都去查询用户基本信息。</p>
+<h2 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h2>
+<p>环境配置比较简单，就是 zk-&gt;provider-&gt;consumer，在此不再赘述。</p>
+<h3 id="失败重试"><a class="header-anchor" href="#失败重试">¶</a>失败重试</h3>
+<p>Dubbo 中的失败重试机制比较丰富，基本考虑到常用的场景<br>
+<a href="http://dubbo.apache.org/zh-cn/docs/user/demos/fault-tolerent-strategy.html" target="_blank" rel="noopener">http://dubbo.apache.org/zh-cn/docs/user/demos/fault-tolerent-strategy.html</a><br>
+FailoverClusterInvoker、FailfastClusterInvoker 等，以 FailoverClusterInvoker 为例：<br>
+FailoverClusterInvoker.doInvoke 重试几次，把失败的添加到 invoked 列表里<br>
+-&gt; AbstractClusterInvoker.select 选一个可用的调用，如果是已经被选过或因为其他条件不可用则 reselect</p>
+<h3 id="负载均衡-v2"><a class="header-anchor" href="#负载均衡-v2">¶</a>负载均衡</h3>
+<p><a href="http://dubbo.apache.org/zh-cn/docs/user/demos/loadbalance.html" target="_blank" rel="noopener">http://dubbo.apache.org/zh-cn/docs/user/demos/loadbalance.html</a></p>
+<h3 id="幂等"><a class="header-anchor" href="#幂等">¶</a>幂等</h3>
+<p>Dubbo 没有提供幂等性检查功能，需要自定义。</p>
+<h3 id="限流-v2"><a class="header-anchor" href="#限流-v2">¶</a>限流</h3>
+<p>Dubbo 中的限流比较简单，采用的是<strong>计数器算法</strong>，单位时间内超出阈值的流量会被直接丢弃，而且只支持 PORVIDER 端的限流，而且为了让它生效还要搞复杂的 SPI 配置。<br>
+<a href="https://www.jianshu.com/p/7112a8d3d869" target="_blank" rel="noopener">https://www.jianshu.com/p/7112a8d3d869</a><br>
+入口：TpsLimitFilter.invoke<br>
+-&gt; TPSLimiter.isAllowable 为每个 Service 创建一个计数器 StatItem（粒度是整个 Service 有没有太大了）</p>
+<h3 id="降级"><a class="header-anchor" href="#降级">¶</a>降级</h3>
+<p>Dubbo 里的降级比较水，即调用出错就改成调用 Mock 接口，没有 Hystrix 中那么复杂的逻辑：<br>
+<a href="http://dubbo.apache.org/zh-cn/docs/user/demos/service-downgrade.html" target="_blank" rel="noopener">http://dubbo.apache.org/zh-cn/docs/user/demos/service-downgrade.html</a><br>
+<a href="https://www.cnblogs.com/java-zhao/p/8320519.html" target="_blank" rel="noopener">https://www.cnblogs.com/java-zhao/p/8320519.html</a><br>
+入口：ReferenceConfig.createProxy 创建代理<br>
+-&gt; ProxyFactory.getProxy<br>
+-&gt; InvokerInvocationHandler.invoke<br>
+-&gt; MockClusterInvoker.invoke 如果配置中有 fail 开头，则在远程调用失败后调用 doMockInvoke，大概逻辑是实例化一个 XxxServiceMock 服务然后调用</p>
+<h3 id="优雅停机"><a class="header-anchor" href="#优雅停机">¶</a>优雅停机</h3>
+<p><a href="https://www.jianshu.com/p/6e4d1ecb0815" target="_blank" rel="noopener">https://www.jianshu.com/p/6e4d1ecb0815</a></p>
+<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
+<h3 id="说一下你们怎么用-dubbo-的-考对-dubbo-的应用能力"><a class="header-anchor" href="#说一下你们怎么用-dubbo-的-考对-dubbo-的应用能力">¶</a>说一下你们怎么用 Dubbo 的（考对 Dubbo 的应用能力）</h3>
+<h3 id="说一下-dubbo-的工作原理"><a class="header-anchor" href="#说一下-dubbo-的工作原理">¶</a>说一下 Dubbo 的工作原理</h3>
+<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9E%B6%E6%9E%84.png" alt="Dubbo架构" title="Dubbo架构"><br>
+描述 Registry、Consumer、Provider 之间的关系。</p>
+<h3 id="dubbo-负载均衡策略和集群容错策略都有哪些"><a class="header-anchor" href="#dubbo-负载均衡策略和集群容错策略都有哪些">¶</a>Dubbo 负载均衡策略和集群容错策略都有哪些</h3>
+<p>负载均衡策略和集群容错策略见上面的《集群》小节。</p>
+<h3 id="dubbo-的动态代理策略"><a class="header-anchor" href="#dubbo-的动态代理策略">¶</a>Dubbo 的动态代理策略</h3>
+<p>javassist，类似 CGLIB，通过继承目标类以生成代理类。</p>
+<h3 id="说一下服务注册-导出-过程"><a class="header-anchor" href="#说一下服务注册-导出-过程">¶</a>说一下服务注册（导出）过程</h3>
+<p>分本地暴露和远程暴露两种</p>
+<h3 id="说一下服务消费-引入-过程"><a class="header-anchor" href="#说一下服务消费-引入-过程">¶</a>说一下服务消费（引入）过程</h3>
+<h3 id="服务的运行过程中-如果-zookeeper-挂掉了-这时还能正常请求吗？"><a class="header-anchor" href="#服务的运行过程中-如果-zookeeper-挂掉了-这时还能正常请求吗？">¶</a>服务的运行过程中，如果 ZooKeeper 挂掉了，这时还能正常请求吗？</h3>
+<h3 id="说一下-dubbo-协议"><a class="header-anchor" href="#说一下-dubbo-协议">¶</a>说一下 Dubbo 协议</h3>
+<h3 id="dubbo-有几种容错机制"><a class="header-anchor" href="#dubbo-有几种容错机制">¶</a>Dubbo 有几种容错机制</h3>
+<h3 id="dubbo-有几种服务降级机制"><a class="header-anchor" href="#dubbo-有几种服务降级机制">¶</a>dubbo 有几种服务降级机制</h3>
+<h3 id="dubbo-有几种服务降级机制-v2"><a class="header-anchor" href="#dubbo-有几种服务降级机制-v2">¶</a>dubbo 有几种服务降级机制</h3>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
-<li><a href="https://blog.acolyer.org/2015/01/27/zookeeper-wait-free-coordination-for-internet-scale-systems/" target="_blank" rel="noopener">ZooKeeper: wait-free coordination for internet scale systems</a></li>
-<li><a href="https://www.usenix.org/conference/usenix-atc-10/zookeeper-wait-free-coordination-internet-scale-systems" target="_blank" rel="noopener">一个讲座视频 Presentation Video</a></li>
-<li><a href="https://www.zhihu.com/question/42931473/answer/228592730" target="_blank" rel="noopener">zookeeper有什么缺点？</a></li>
-<li><a href="http://www.linkedkeeper.com/mobile/item.action?bid=1014" target="_blank" rel="noopener">浅谈分布式服务协调技术 Zookeeper</a></li>
+<li><a href="https://github.com/apache/incubator-dubbo" target="_blank" rel="noopener">apache/incubator-dubbo</a></li>
+<li><a href="http://dubbo.apache.org/en-us/docs/user/preface/background.html" target="_blank" rel="noopener">Dubbo 文档</a></li>
+<li><a href="http://dubbo.apache.org/en-us/docs/user/demos/preflight-check.html" target="_blank" rel="noopener">Dubbo 实例 Demos</a><br>
+<a href="http://dubbo.apache.org/zh-cn/docs/user/demos/preflight-check.html" target="_blank" rel="noopener">中文版</a></li>
+<li><a href="https://blog.csdn.net/j3t9z7h/article/details/81437570" target="_blank" rel="noopener">设计 RPC 接口时，你有考虑过这些吗？</a></li>
+<li><a href="https://blog.csdn.net/wolfcode_cn/article/details/81907241" target="_blank" rel="noopener">解密 Dubbo:自己动手编写 RPC 框架</a></li>
 </ol>
-<h3 id="集群原理"><a class="header-anchor" href="#集群原理">¶</a>集群原理</h3>
+<h3 id="启动过程"><a class="header-anchor" href="#启动过程">¶</a>启动过程</h3>
 <ol>
-<li><a href="http://zookeeper.apache.org/doc/r3.4.10/zookeeperInternals.html#sc_quorum" target="_blank" rel="noopener">ZooKeeper Internals</a></li>
-<li>Documentation <a href="http://zookeeper.apache.org/doc/current/index.html" target="_blank" rel="noopener">http://zookeeper.apache.org/doc/current/index.html</a></li>
-<li><a href="https://www.cnblogs.com/gossip/p/7237991.html" target="_blank" rel="noopener">浅谈分布式服务协调技术 Zookeeper</a></li>
-<li><a href="https://www.cnblogs.com/hapjin/p/5626889.html" target="_blank" rel="noopener">分布式系统理论之Quorum机制</a></li>
+<li><a href="https://blog.csdn.net/j3T9Z7H/article/details/82836811" target="_blank" rel="noopener">研究优雅停机时的一点思考</a><br>
+<code>kill -9</code>与<code>kill -15</code>的区别，SpringBoot 的停机机制。</li>
+<li><a href="http://www.solves.com.cn/it/cxkf/bk/2019-10-14/6046.html" target="_blank" rel="noopener">一文聊透 Dubbo 优雅停机</a></li>
+<li><a href="https://cloud.tencent.com/developer/article/1543749" target="_blank" rel="noopener">一文聊透 Dubbo 优雅上线</a></li>
+<li><a href="https://segmentfault.com/a/1190000015276158" target="_blank" rel="noopener">Spring-boot+Dubbo 应用启停源码分析</a></li>
+<li><a href="http://dubbo.apache.org/zh-cn/docs/source_code_guide/export-service.html" target="_blank" rel="noopener">服务导出</a></li>
+<li><a href="http://dubbo.apache.org/zh-cn/docs/source_code_guide/refer-service.html" target="_blank" rel="noopener">服务引入</a></li>
+</ol>
+<h3 id="spi"><a class="header-anchor" href="#spi">¶</a>SPI</h3>
+<ol>
+<li><a href="http://dubbo.apache.org/zh-cn/docs/source_code_guide/dubbo-spi.html" target="_blank" rel="noopener">Dubbo SPI</a></li>
+<li><a href="http://dubbo.apache.org/zh-cn/docs/source_code_guide/adaptive-extension.html" target="_blank" rel="noopener">自适应拓展机制</a></li>
+</ol>
+<h3 id="协议"><a class="header-anchor" href="#协议">¶</a>协议</h3>
+<ol>
+<li><a href="https://blog.csdn.net/X5fnncxzq4/article/details/80729942" target="_blank" rel="noopener">【RPC 专栏】深入理解 RPC 之协议篇</a></li>
+<li><a href="https://blog.csdn.net/weixin_43970890/article/details/103348778" target="_blank" rel="noopener">Dubbo 在跨语言和协议穿透性方向的探索：支持 HTTP/2 gRPC</a></li>
+<li><a href="https://blog.csdn.net/u013815546/article/details/96364814" target="_blank" rel="noopener">一文详细解读 Dubbo 中的 http 协议</a></li>
+<li><a href="http://blog.itpub.net/31556476/viewspace-2375225/" target="_blank" rel="noopener">聊聊 TCP 长连接和心跳那些事</a></li>
+<li><a href="http://blog.itpub.net/31556476/viewspace-2305549/" target="_blank" rel="noopener">Dubbo 中的 URL 统一模型</a></li>
+<li><a href="https://www.cnkirito.moe/network-interfaces/" target="_blank" rel="noopener">研究网卡地址注册时的一点思考</a></li>
+<li><a href="https://tools.ietf.org/html/rfc5234" target="_blank" rel="noopener">RFC 5234 - Augmented BNF for Syntax Specifications: ABNF</a></li>
+<li><a href="https://juejin.im/post/5cac08a26fb9a068996d5fb2" target="_blank" rel="noopener">服务端经典的 C10k 问题(译)</a></li>
+</ol>
+<h3 id="心跳机制"><a class="header-anchor" href="#心跳机制">¶</a>心跳机制</h3>
+<ol>
+<li><a href="https://blog.csdn.net/weixin_34175509/article/details/87997148" target="_blank" rel="noopener">一种心跳，两种设计</a></li>
+<li><a href="http://blog.itpub.net/31556476/viewspace-2375225/" target="_blank" rel="noopener">聊聊 TCP 长连接和心跳那些事</a></li>
+</ol>
+<h3 id="序列化-v2"><a class="header-anchor" href="#序列化-v2">¶</a>序列化</h3>
+<ol>
+<li><a href="https://blog.csdn.net/X5fnncxzq4/article/details/80333364" target="_blank" rel="noopener">【RPC 专栏】深入理解 RPC 之序列化篇–总结篇</a></li>
+<li><a href="https://blog.csdn.net/X5fnncxzq4/article/details/80276182" target="_blank" rel="noopener">【RPC 专栏】深入理解 RPC 之序列化篇 —— Kryo</a></li>
+<li><a href="https://blog.csdn.net/loveqishan/article/details/89531587" target="_blank" rel="noopener">如何提高使用 Java 反射的效率？</a></li>
+<li><a href="https://blog.csdn.net/qq_26525215/article/details/82943040" target="_blank" rel="noopener">Java 序列化框架性能比较</a></li>
 </ol>
 
       
@@ -773,7 +1146,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
       
         <div class="post-tags">
           
-            <a href="/tags/ZooKeeper/" rel="tag"># ZooKeeper</a>
+            <a href="/tags/Dubbo/" rel="tag"># Dubbo</a>
           
         </div>
       
@@ -786,8 +1159,8 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/cc7a2f74.html" rel="next" title="ZooKeeper的替代品">
-                <i class="fa fa-chevron-left"></i> ZooKeeper的替代品
+              <a href="/b13b8cb6.html" rel="next" title="Docker 与常用中间件">
+                <i class="fa fa-chevron-left"></i> Docker 与常用中间件
               </a>
             
           </div>
@@ -796,8 +1169,8 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/4ea5471b.html" rel="prev" title="ZooKeeper应用总结">
-                ZooKeeper应用总结 <i class="fa fa-chevron-right"></i>
+              <a href="/89826705.html" rel="prev" title="Docker 入门">
+                Docker 入门 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -880,7 +1253,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">65</span>
+                  <span class="site-state-item-count">107</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -891,7 +1264,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -902,7 +1275,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">34</span>
+                  <span class="site-state-item-count">52</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -937,7 +1310,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么使用zookeeper"><span class="nav-number">1.</span> <span class="nav-text">¶为什么使用ZooKeeper</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式应用面对的问题"><span class="nav-number">1.1.</span> <span class="nav-text">¶分布式应用面对的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#可用性"><span class="nav-number">1.1.1.</span> <span class="nav-text">¶可用性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#一致性"><span class="nav-number">1.1.2.</span> <span class="nav-text">¶一致性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地事务和分布式事务"><span class="nav-number">1.2.</span> <span class="nav-text">¶本地事务和分布式事务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cap和base"><span class="nav-number">1.3.</span> <span class="nav-text">¶CAP和BASE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper的应用场景"><span class="nav-number">1.4.</span> <span class="nav-text">¶ZooKeeper的应用场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zookeeper原理"><span class="nav-number">2.</span> <span class="nav-text">¶ZooKeeper原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#路径-path"><span class="nav-number">2.1.</span> <span class="nav-text">¶路径（path）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#节点类型-znode"><span class="nav-number">2.2.</span> <span class="nav-text">¶节点类型（znode）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#树"><span class="nav-number">2.3.</span> <span class="nav-text">¶树</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#节点构成"><span class="nav-number">2.4.</span> <span class="nav-text">¶节点构成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存结构"><span class="nav-number">2.5.</span> <span class="nav-text">¶内存结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#节点容量限制"><span class="nav-number">2.6.</span> <span class="nav-text">¶节点容量限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#版本号"><span class="nav-number">2.7.</span> <span class="nav-text">¶版本号</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#原子读写"><span class="nav-number">2.8.</span> <span class="nav-text">¶原子读写</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#acl"><span class="nav-number">2.9.</span> <span class="nav-text">¶ACL</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#序列"><span class="nav-number">2.10.</span> <span class="nav-text">¶序列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#通知机制-watch"><span class="nav-number">2.11.</span> <span class="nav-text">¶通知机制（watch）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#通信模型-session"><span class="nav-number">2.12.</span> <span class="nav-text">¶通信模型（Session）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#读写数据"><span class="nav-number">2.13.</span> <span class="nav-text">¶读写数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#logging"><span class="nav-number">2.14.</span> <span class="nav-text">¶Logging</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zookeeper集群原理"><span class="nav-number">3.</span> <span class="nav-text">¶ZooKeeper集群原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper适合读多写少的场景"><span class="nav-number">3.1.</span> <span class="nav-text">¶ZooKeeper适合读多写少的场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式协调和cap"><span class="nav-number">3.2.</span> <span class="nav-text">¶分布式协调和CAP</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper集群系统的特性"><span class="nav-number">3.3.</span> <span class="nav-text">¶ZooKeeper集群系统的特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper消息系统提供的保证"><span class="nav-number">3.4.</span> <span class="nav-text">¶ZooKeeper消息系统提供的保证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zab协议依赖的tcp协议特性"><span class="nav-number">3.5.</span> <span class="nav-text">¶ZAB协议依赖的TCP协议特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#service网络结构-replicated-leader-follower"><span class="nav-number">3.6.</span> <span class="nav-text">¶Service网络结构（replicated、Leader-Follower）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ordered"><span class="nav-number">3.7.</span> <span class="nav-text">¶ordered</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#total-order原理"><span class="nav-number">3.8.</span> <span class="nav-text">¶Total order原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多数派-quorum"><span class="nav-number">3.9.</span> <span class="nav-text">¶多数派（Quorum）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#与通信相关的概念"><span class="nav-number">3.10.</span> <span class="nav-text">¶与通信相关的概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用超时来容错"><span class="nav-number">3.11.</span> <span class="nav-text">¶使用超时来容错</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#两阶段messaging"><span class="nav-number">3.12.</span> <span class="nav-text">¶两阶段Messaging</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#zab协议"><span class="nav-number">3.12.1.</span> <span class="nav-text">¶ZAB协议</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zab的两种模式"><span class="nav-number">3.12.2.</span> <span class="nav-text">¶ZAB的两种模式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#选举算法概述"><span class="nav-number">3.12.3.</span> <span class="nav-text">¶选举算法概述</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zookeeper是如何保证事务的顺序一致性的？"><span class="nav-number">3.12.4.</span> <span class="nav-text">¶ZooKeeper是如何保证事务的顺序一致性的？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#leader-activation"><span class="nav-number">3.12.5.</span> <span class="nav-text">¶Leader Activation</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#leader选举"><span class="nav-number">3.12.6.</span> <span class="nav-text">¶Leader选举</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#active-messaging"><span class="nav-number">3.12.7.</span> <span class="nav-text">¶Active Messaging</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#paxos-zab-区别？"><span class="nav-number">3.12.8.</span> <span class="nav-text">¶Paxos &amp; ZAB 区别？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#summary"><span class="nav-number">3.13.</span> <span class="nav-text">¶Summary</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#comparisons"><span class="nav-number">3.14.</span> <span class="nav-text">¶Comparisons</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群原理"><span class="nav-number">4.1.</span> <span class="nav-text">¶集群原理</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么使用-dubbo"><span class="nav-number">1.</span> <span class="nav-text">¶为什么使用 Dubbo</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#最佳实践"><span class="nav-number">1.1.</span> <span class="nav-text">¶最佳实践</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#开始使用-dubbo"><span class="nav-number">2.</span> <span class="nav-text">¶开始使用 Dubbo</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#zookeeper"><span class="nav-number">2.1.</span> <span class="nav-text">¶ZooKeeper</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sdk"><span class="nav-number">2.2.</span> <span class="nav-text">¶SDK</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#provider"><span class="nav-number">2.3.</span> <span class="nav-text">¶Provider</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer"><span class="nav-number">2.4.</span> <span class="nav-text">¶Consumer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调用-dubbo-原生-api-启动"><span class="nav-number">2.5.</span> <span class="nav-text">¶调用 Dubbo 原生 API 启动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#泛化调用"><span class="nav-number">2.6.</span> <span class="nav-text">¶泛化调用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#dubbo-架构"><span class="nav-number">3.</span> <span class="nav-text">¶Dubbo 架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#cp-三大中心"><span class="nav-number">3.1.</span> <span class="nav-text">¶CP+三大中心</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#元数据中心"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶元数据中心</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dubbo-层次化结构"><span class="nav-number">3.2.</span> <span class="nav-text">¶Dubbo 层次化结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#接口扩展策略注解-spi"><span class="nav-number">4.</span> <span class="nav-text">¶接口扩展策略注解 @SPI</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读取扩展点"><span class="nav-number">4.1.</span> <span class="nav-text">¶读取扩展点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#生成-adaptive-实例"><span class="nav-number">4.2.</span> <span class="nav-text">¶生成 Adaptive 实例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#通过-url-动态选择协议"><span class="nav-number">4.3.</span> <span class="nav-text">¶通过 URL 动态选择协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存"><span class="nav-number">4.4.</span> <span class="nav-text">¶缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#服务注册-自动发现"><span class="nav-number">5.</span> <span class="nav-text">¶服务注册 &amp; 自动发现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#角色分类"><span class="nav-number">5.1.</span> <span class="nav-text">¶角色分类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#注册中心分类"><span class="nav-number">5.2.</span> <span class="nav-text">¶注册中心分类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置"><span class="nav-number">5.3.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务自动发现流程"><span class="nav-number">5.4.</span> <span class="nav-text">¶服务自动发现流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#注册和注销服务-provider-执行流程"><span class="nav-number">5.5.</span> <span class="nav-text">¶注册和注销服务（Provider 执行流程）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#provider-启动源码-服务导出"><span class="nav-number">5.6.</span> <span class="nav-text">¶Provider 启动源码（服务导出）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务订阅和取消-consumer-执行流程"><span class="nav-number">5.7.</span> <span class="nav-text">¶服务订阅和取消（Consumer 执行流程）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-启动源码-服务引入"><span class="nav-number">5.8.</span> <span class="nav-text">¶Consumer 启动源码（服务引入）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看服务注册-暴露结果"><span class="nav-number">5.9.</span> <span class="nav-text">¶查看服务注册/暴露结果</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务调用过程"><span class="nav-number">5.10.</span> <span class="nav-text">¶服务调用过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#协议-protocol"><span class="nav-number">6.</span> <span class="nav-text">¶协议 - Protocol</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#hessian-协议"><span class="nav-number">6.1.</span> <span class="nav-text">¶Hessian 协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#http-协议"><span class="nav-number">6.2.</span> <span class="nav-text">¶Http 协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#thrift-协议"><span class="nav-number">6.3.</span> <span class="nav-text">¶Thrift 协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rest-协议"><span class="nav-number">6.4.</span> <span class="nav-text">¶Rest 协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#长连接-or-短连接"><span class="nav-number">6.5.</span> <span class="nav-text">¶长连接 OR 短连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么要消费者比提供者个数多"><span class="nav-number">6.6.</span> <span class="nav-text">¶为什么要消费者比提供者个数多</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么不能传大包"><span class="nav-number">6.7.</span> <span class="nav-text">¶为什么不能传大包</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么采用异步单一长连接"><span class="nav-number">6.8.</span> <span class="nav-text">¶为什么采用异步单一长连接</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#集群-cluster"><span class="nav-number">7.</span> <span class="nav-text">¶集群 - Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#服务目录-directory"><span class="nav-number">7.1.</span> <span class="nav-text">¶服务目录（Directory）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#directory-继承结构"><span class="nav-number">7.1.1.</span> <span class="nav-text">¶Directory 继承结构</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#路由-router"><span class="nav-number">7.2.</span> <span class="nav-text">¶路由（Router）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#条件路由-conditionrouter"><span class="nav-number">7.2.1.</span> <span class="nav-text">¶条件路由（ConditionRouter）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容错方案"><span class="nav-number">7.3.</span> <span class="nav-text">¶容错方案</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#failover"><span class="nav-number">7.3.1.</span> <span class="nav-text">¶Failover</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#failfast"><span class="nav-number">7.3.2.</span> <span class="nav-text">¶Failfast</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#failsafe"><span class="nav-number">7.3.3.</span> <span class="nav-text">¶Failsafe</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#failback"><span class="nav-number">7.3.4.</span> <span class="nav-text">¶Failback</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#forking"><span class="nav-number">7.3.5.</span> <span class="nav-text">¶Forking</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#broadcast"><span class="nav-number">7.3.6.</span> <span class="nav-text">¶Broadcast</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡"><span class="nav-number">7.4.</span> <span class="nav-text">¶负载均衡</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#random-loadbalance"><span class="nav-number">7.4.1.</span> <span class="nav-text">¶Random LoadBalance</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#roundrobin-loadbalance"><span class="nav-number">7.4.2.</span> <span class="nav-text">¶RoundRobin LoadBalance</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#leastactive-loadbalance"><span class="nav-number">7.4.3.</span> <span class="nav-text">¶LeastActive LoadBalance</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#consistenthash-loadbalance"><span class="nav-number">7.4.4.</span> <span class="nav-text">¶ConsistentHash LoadBalance</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#远程通信-transport"><span class="nav-number">8.</span> <span class="nav-text">¶远程通信 - Transport</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#序列化-serialize"><span class="nav-number">9.</span> <span class="nav-text">¶序列化 - Serialize</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#反射"><span class="nav-number">9.1.</span> <span class="nav-text">¶反射</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#序列化"><span class="nav-number">9.2.</span> <span class="nav-text">¶序列化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#filter"><span class="nav-number">10.</span> <span class="nav-text">¶Filter</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#更多功能"><span class="nav-number">11.</span> <span class="nav-text">¶更多功能</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#限流"><span class="nav-number">11.1.</span> <span class="nav-text">¶限流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务隔离"><span class="nav-number">11.2.</span> <span class="nav-text">¶服务隔离</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#灰度发布"><span class="nav-number">11.3.</span> <span class="nav-text">¶灰度发布</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步调用"><span class="nav-number">11.4.</span> <span class="nav-text">¶异步调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务降级"><span class="nav-number">11.5.</span> <span class="nav-text">¶服务降级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#热点缓存"><span class="nav-number">11.6.</span> <span class="nav-text">¶热点缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码分析"><span class="nav-number">12.</span> <span class="nav-text">¶源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#失败重试"><span class="nav-number">12.1.</span> <span class="nav-text">¶失败重试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡-v2"><span class="nav-number">12.2.</span> <span class="nav-text">¶负载均衡</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#幂等"><span class="nav-number">12.3.</span> <span class="nav-text">¶幂等</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#限流-v2"><span class="nav-number">12.4.</span> <span class="nav-text">¶限流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#降级"><span class="nav-number">12.5.</span> <span class="nav-text">¶降级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#优雅停机"><span class="nav-number">12.6.</span> <span class="nav-text">¶优雅停机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">13.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#说一下你们怎么用-dubbo-的-考对-dubbo-的应用能力"><span class="nav-number">13.1.</span> <span class="nav-text">¶说一下你们怎么用 Dubbo 的（考对 Dubbo 的应用能力）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#说一下-dubbo-的工作原理"><span class="nav-number">13.2.</span> <span class="nav-text">¶说一下 Dubbo 的工作原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dubbo-负载均衡策略和集群容错策略都有哪些"><span class="nav-number">13.3.</span> <span class="nav-text">¶Dubbo 负载均衡策略和集群容错策略都有哪些</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dubbo-的动态代理策略"><span class="nav-number">13.4.</span> <span class="nav-text">¶Dubbo 的动态代理策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#说一下服务注册-导出-过程"><span class="nav-number">13.5.</span> <span class="nav-text">¶说一下服务注册（导出）过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#说一下服务消费-引入-过程"><span class="nav-number">13.6.</span> <span class="nav-text">¶说一下服务消费（引入）过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务的运行过程中-如果-zookeeper-挂掉了-这时还能正常请求吗？"><span class="nav-number">13.7.</span> <span class="nav-text">¶服务的运行过程中，如果 ZooKeeper 挂掉了，这时还能正常请求吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#说一下-dubbo-协议"><span class="nav-number">13.8.</span> <span class="nav-text">¶说一下 Dubbo 协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dubbo-有几种容错机制"><span class="nav-number">13.9.</span> <span class="nav-text">¶Dubbo 有几种容错机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dubbo-有几种服务降级机制"><span class="nav-number">13.10.</span> <span class="nav-text">¶dubbo 有几种服务降级机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dubbo-有几种服务降级机制-v2"><span class="nav-number">13.11.</span> <span class="nav-text">¶dubbo 有几种服务降级机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">14.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#启动过程"><span class="nav-number">14.1.</span> <span class="nav-text">¶启动过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#spi"><span class="nav-number">14.2.</span> <span class="nav-text">¶SPI</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#协议"><span class="nav-number">14.3.</span> <span class="nav-text">¶协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#心跳机制"><span class="nav-number">14.4.</span> <span class="nav-text">¶心跳机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#序列化-v2"><span class="nav-number">14.5.</span> <span class="nav-text">¶序列化</span></a></li></ol></li></ol></div>
             
 
           </div>
@@ -959,7 +1332,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
       <div class="footer-inner">
         
 
-<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>

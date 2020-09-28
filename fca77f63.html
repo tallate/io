@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Linux,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="5 种 IO 模型 ¶Blocking   用户程序调用系统调用 read()，应用程序阻塞； 当内核把数据准备好后，将数据从内核拷贝到用户内存； 内核返回，用户线程解除 block 状态。  ¶Non-Blocking   用户进程轮询调用 recvfrom，直到内核将数据准备好； 轮询期间用户可以去做别的事； 当内核中的数据准备好了，再次接收到 recvfrom 调用时会将数据拷贝到用户内存">
+<meta name="keywords" content="Linux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux 与 IO">
+<meta property="og:url" content="https://tallate.github.io/fca77f63.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="5 种 IO 模型 ¶Blocking   用户程序调用系统调用 read()，应用程序阻塞； 当内核把数据准备好后，将数据从内核拷贝到用户内存； 内核返回，用户线程解除 block 状态。  ¶Non-Blocking   用户进程轮询调用 recvfrom，直到内核将数据准备好； 轮询期间用户可以去做别的事； 当内核中的数据准备好了，再次接收到 recvfrom 调用时会将数据拷贝到用户内存">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-BIO.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-NIO.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-epoll%E6%8B%86%E5%88%86%E5%8A%9F%E8%83%BD.jpg">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-Reactor%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-%E5%8D%95Reactor%E5%8D%95%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-%E5%8D%95Reactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-%E5%A4%9AReactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-5%E7%A7%8DIO%E6%A8%A1%E5%9E%8B%E7%9A%84%E6%AF%94%E8%BE%83.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-pageCache%E4%B8%8Emmap.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-%E4%B8%80%E6%AC%A1IO%E5%8F%91%E7%94%9F%E7%9A%84%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-mmap.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png">
+<meta property="og:updated_time" content="2020-09-28T13:11:01.949Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Linux 与 IO">
+<meta name="twitter:description" content="5 种 IO 模型 ¶Blocking   用户程序调用系统调用 read()，应用程序阻塞； 当内核把数据准备好后，将数据从内核拷贝到用户内存； 内核返回，用户线程解除 block 状态。  ¶Non-Blocking   用户进程轮询调用 recvfrom，直到内核将数据准备好； 轮询期间用户可以去做别的事； 当内核中的数据准备好了，再次接收到 recvfrom 调用时会将数据拷贝到用户内存">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Linux/Linux-BIO.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/fca77f63.html">
+
+
+
+
+
+
+
+  <title>Linux 与 IO | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fca77f63.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Linux 与 IO</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T11:34:43+08:00">
+                2019-09-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  19 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <a id="more"></a>
+<h1>5 种 IO 模型</h1>
+<h2 id="blocking"><a class="header-anchor" href="#blocking">¶</a>Blocking</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-BIO.png" alt="Linux-BIO" title="Linux-BIO"></p>
+<ol>
+<li>用户程序调用系统调用 read()，应用程序阻塞；</li>
+<li>当内核把数据准备好后，将数据从内核拷贝到用户内存；</li>
+<li>内核返回，用户线程解除 block 状态。</li>
+</ol>
+<h2 id="non-blocking"><a class="header-anchor" href="#non-blocking">¶</a>Non-Blocking</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-NIO.png" alt="Linux-NIO" title="Linux-NIO"></p>
+<ol>
+<li>用户进程轮询调用 recvfrom，直到内核将数据准备好；</li>
+<li>轮询期间用户可以去做别的事；</li>
+<li>当内核中的数据准备好了，再次接收到 recvfrom 调用时会将数据拷贝到用户内存并返回。</li>
+</ol>
+<h2 id="io-multiplexing-多路复用"><a class="header-anchor" href="#io-multiplexing-多路复用">¶</a>IO Multiplexing（多路复用）</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.png" alt="Linux-IO多路复用" title="Linux-IO多路复用"><br>
+又称为事件驱动 IO。</p>
+<ol>
+<li>内核会同时监听多个 select 负责的 socket，当其中任何一个 socket 中的数据准备好了，select 就会返回；</li>
+<li>当数据准备好了，用户进程再调用 read、内核会将数据从内核拷贝到用户进程。</li>
+</ol>
+<p>优势：</p>
+<ol>
+<li>能同时监听多个 socket；</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>如果 socket 较少，因为有两次系统调用，性能甚至不如 BIO；</li>
+</ol>
+<h3 id="select"><a class="header-anchor" href="#select">¶</a>select</h3>
+<p>原理：如上所述<br>
+缺点：</p>
+<ol>
+<li>select 最大的缺陷是单个进程打开的 fd 数量有限（因为是用数组保存的）；</li>
+<li>对多个 socket 的扫描是线性轮询扫描的，效率较低，当 socket 较多时，select 会浪费很多 CPU 时间，且 socket 越多，这个现象会越明显；</li>
+<li>需要一个大数据结构来存放打开的 fd，这样会使得用户空间和内核空间在传递该结构时复制开销大。</li>
+</ol>
+<h3 id="poll"><a class="header-anchor" href="#poll">¶</a>poll</h3>
+<p>原理：本质上与 select 没有区别，只是存储 fd 的结构是链表。<br>
+优点（相对 select）：</p>
+<ol>
+<li>没有最大连接数的限制</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>大量 fd 组成的链表被整体复制于用户态和内核地址空间之间，很多时候这样的复制没有意义；</li>
+</ol>
+<h3 id="epoll"><a class="header-anchor" href="#epoll">¶</a>epoll</h3>
+<p>原理：</p>
+<ol>
+<li>更灵活，使用一个文件描述符管理多个描述符，将用户关系的文件描述符的事件存放到内核的一个事件表中，这样在用户空间和内核空间的 copy 只需一次；</li>
+<li>通过回调通知进程，而不是轮询。</li>
+</ol>
+<p>优点：</p>
+<ol>
+<li>没有描述符限制，epoll 会把所有创建的描述符放到一个事件表（文件）中由一个描述符统一管理；</li>
+<li>效率更高、IO 的效率不会随着监视 fd 的数量的增长而下降，fd 变为活跃时才会调用 callback 函数通知用户进程，而不是通过轮询的方式；</li>
+<li>使用 mmap()文件映射内存加速与内核空间的消息传递，减少了复制的开销。</li>
+</ol>
+<h4 id="进程调度原理"><a class="header-anchor" href="#进程调度原理">¶</a>进程调度原理</h4>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6.png" alt="Linux-操作系统的进程调度" title="Linux-操作系统的进程调度"></p>
+<ol>
+<li>进程刚开始处于运行中状态，这时进程处于<strong>工作队列</strong>内，进程调度程序会分时执行各个运行状态的进程；</li>
+<li>进程调用了<code>recv</code>这种需要阻塞的系统调用，这时，进程从运行状态变为等待状态，会被添加到对应<strong>socket</strong>中的<strong>等待队列</strong>内，这时进程调度程序不会分配时间片给该进程，因此也不会占用任何 CPU 资源；</li>
+<li>socket 接收到数据后，操作系统将该 socket<strong>等待队列</strong>上的进程重新放回到<strong>工作队列</strong>，该进程变成运行状态，继续执行代码。也由于 socket 的接收缓冲区已经有了数据，recv 可以返回接收到的数据。</li>
+</ol>
+<h4 id="操作系统如何知道网络数据对应于哪个-socket"><a class="header-anchor" href="#操作系统如何知道网络数据对应于哪个-socket">¶</a>操作系统如何知道网络数据对应于哪个 socket</h4>
+<p>如上面进程调度原理所述，操作系统接收数据后需要唤醒 socket 上等待队列里的进程，但是操作系统接收数据后怎么知道网络数据属于哪个 socket 呢？<br>
+不妨回忆下我们平时创建 socket 时给出的参数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new Socket(serverHost, serverPort)</span><br></pre></td></tr></table></figure>
+<p>实际上因为每个 socket 都对应着一个端口号，而网络数据包中包含了 ip 和端口的信息，内核可以通过端口号找到对应的 socket。<br>
+而且为了提高处理速度，操作系统会维护端口号到 socket 的索引结构。</p>
+<h4 id="多路复用的基石-select-及其存在的问题"><a class="header-anchor" href="#多路复用的基石-select-及其存在的问题">¶</a>多路复用的基石-select 及其存在的问题</h4>
+<p>前面我们讨论了操作系统如何唤醒进程，如果进程和 socket 是一一对应的，那么我们就实现了 BIO。<br>
+不过 epoll 等模型的特点是一个进程同时监听多个 socket，即一对多的多路复用。<br>
+最普通的 select 模型中，进程将所有监听的 socket 放到一个列表内，只要有一个 socket 监听到数据到，操作系统会唤醒该进程，然后程序需要遍历一次该列表，就可以拿到所有就绪的 socket。<br>
+这种方式的缺点主要是：</p>
+<ul>
+<li>有两次遍历过程：每次 socket 读取到数据后需要遍历该 socket 的<strong>等待队列</strong>；每次进程被唤醒后，都需要遍历一次它监听的 socket 列表。<br>
+这里涉及了两次遍历，而且每次都要将整个 fds 列表传递给内核，有一定的开销。正是因为遍历操作开销大，出于效率的考量，才会规定 select 的最大监视数量，默认只能监视 1024 个 socket。</li>
+</ul>
+<p>poll 与 select 没有本质区别，只不过 poll 使用链表来保存监听的 socket，没有最大监听数量限制。</p>
+<h4 id="为什么使用-epoll"><a class="header-anchor" href="#为什么使用-epoll">¶</a>为什么使用 epoll</h4>
+<ol>
+<li>功能分离<br>
+传统 select 每次调用 select 都需要将运行队列中的进程添加到 socket 的等待队列，唤醒时再移除，然而大多数应用场景中，需要监视的 socket 相对固定，并不需要每次都修改。<br>
+epoll 的改进是只添加一次等待队列，之后每次都只需要阻塞进程，如下图所示：<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-epoll%E6%8B%86%E5%88%86%E5%8A%9F%E8%83%BD.jpg" alt="Linux-epoll拆分功能" title="Linux-epoll拆分功能"></li>
+<li>就绪列表<br>
+epoll 中，操作系统唤醒进程后，进程不需要遍历所有监听的 socket，因为收到数据的 socket 会被添加到一个<strong>就绪队列</strong>内，然后唤醒等待队列中的所有进程，这时进程只需要遍历<strong>就绪队列</strong>即可拿到所有接收到数据的 socket。<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png" alt="Linux-epoll原理" title="Linux-epoll原理"></li>
+</ol>
+<h3 id="kqueue"><a class="header-anchor" href="#kqueue">¶</a>kqueue</h3>
+<p>与 epoll 非常相似，注册一批 socket 描述符到 kqueue 以后，当其中的描述符状态发生变化时，kqueue 将一次性通知应用程序哪些描述符可读、可写或出错了。</p>
+<blockquote>
+<p>可能是因为不同 Linux 发行版之间存在接口兼容性问题，所以在已有 epoll 的情况下又有人开发了 kqueue，kqueue 主要应用在 freebsd 和 macosx 内核的操作系统上。</p>
+</blockquote>
+<h3 id="reactor"><a class="header-anchor" href="#reactor">¶</a>Reactor</h3>
+<p>Reactor 是 Java 中的一种设计模式：</p>
+<ol>
+<li>事件驱动；</li>
+<li>一次性处理一个或多个事件（输入源）；</li>
+<li>通过 Service Handler 同步的将输入事件（Event）采用多路复用分发给相应的 Request Handler（多个）处理。</li>
+</ol>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-Reactor%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%A8%A1%E5%9E%8B.png" alt="Linux-Reactor事件分发模型" title="Linux-Reactor事件分发模型"></p>
+<p>Reactor 的实现上有 3 种模式：</p>
+<ol>
+<li>单 Reactor 单线程模型<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-%E5%8D%95Reactor%E5%8D%95%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-单Reactor单线程模型" title="Linux-单Reactor单线程模型"></li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line">@Slf4j</span><br><span class="line">public class Reactor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private Selector selector;</span><br><span class="line"></span><br><span class="line">    public Reactor(int port) throws Exception &#123;</span><br><span class="line">        ServerSocketChannel server = ServerSocketChannel.open();</span><br><span class="line">        ServerSocket serverSocket = server.socket();</span><br><span class="line">        serverSocket.bind(new InetSocketAddress(port));</span><br><span class="line">        // 设置为非阻塞模式</span><br><span class="line">        server.configureBlocking(false);</span><br><span class="line">        selector = Selector.open();</span><br><span class="line">        SelectionKey sk = server.register(selector,</span><br><span class="line">                SelectionKey.OP_ACCEPT);</span><br><span class="line">        // attach Acceptor 处理新连接</span><br><span class="line">        sk.attach(new Acceptor(server, selector));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            while (!Thread.interrupted()) &#123;</span><br><span class="line">                selector.select();</span><br><span class="line">                Set selected = selector.selectedKeys();</span><br><span class="line">                Iterator it = selected.iterator();</span><br><span class="line">                while (it.hasNext()) &#123;</span><br><span class="line">                    it.remove();</span><br><span class="line">                    //分发事件处理</span><br><span class="line">                    dispatch((SelectionKey) (it.next()));</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (IOException ex) &#123;</span><br><span class="line">            log.info(&quot;异常&quot;, ex);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void dispatch(SelectionKey k) &#123;</span><br><span class="line">        // 若是连接事件获取是acceptor</span><br><span class="line">        // 若是IO读写事件获取是handler</span><br><span class="line">        Runnable runnable = (Runnable) (k.attachment());</span><br><span class="line">        if (runnable != null) &#123;</span><br><span class="line">            runnable.run();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Slf4j</span><br><span class="line">public class Acceptor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private ServerSocketChannel serverSocket;</span><br><span class="line"></span><br><span class="line">    private Selector selector;</span><br><span class="line"></span><br><span class="line">    private ExecutorService tp = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);</span><br><span class="line"></span><br><span class="line">    public Acceptor(ServerSocketChannel serverSocket,</span><br><span class="line">            Selector selector) &#123;</span><br><span class="line">        this.serverSocket = serverSocket;</span><br><span class="line">        this.selector = selector;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            SocketChannel c = serverSocket.accept();</span><br><span class="line">            if (c != null) &#123;</span><br><span class="line">                // 每个连接一个Handler</span><br><span class="line">                tp.submit(new SimpleHandler(c, selector));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            log.info(&quot;异常&quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Slf4j</span><br><span class="line">public class SimpleHandler implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    public static final int READING = 0, WRITING = 1;</span><br><span class="line"></span><br><span class="line">    int state;</span><br><span class="line">    private SocketChannel socketChannel;</span><br><span class="line">    private SelectionKey sk;</span><br><span class="line"></span><br><span class="line">    public SimpleHandler(SocketChannel socketChannel, Selector selector) throws IOException &#123;</span><br><span class="line">        this.state = READING;</span><br><span class="line">        this.socketChannel = socketChannel;</span><br><span class="line">        sk = socketChannel.register(selector, SelectionKey.OP_READ);</span><br><span class="line">        sk.attach(this);</span><br><span class="line">        socketChannel.configureBlocking(false);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        if (state == READING) &#123;</span><br><span class="line">            read();</span><br><span class="line">        &#125; else if (state == WRITING) &#123;</span><br><span class="line">            write();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        // TODO 处理读</span><br><span class="line">        //下一步处理写事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_WRITE);</span><br><span class="line">        this.state = WRITING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        // TODO 处理写</span><br><span class="line">        //下一步处理读事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">        this.state = READING;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如代码可知，Reactor 线程启动后监听客户端请求、多路分离 socket，将 connect 事件分发给 Acceptor 处理，有 IO 读写事件后交给 Handler 处理，分发过程中并没有创建新线程。<br>
+这种单线程模型不能充分利用多核资源，所以实际使用不多。</p>
+<ol>
+<li>单 Reactor 多线程模型<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-%E5%8D%95Reactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-单Reactor多线程模型" title="Linux-单Reactor多线程模型"><br>
+与上面的区别是 Handler 通过多线程来执行读写任务：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">public class MultiThreadHandler implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private static final int READING = 0, WRITING = 1;</span><br><span class="line">    private int state;</span><br><span class="line">    private final SocketChannel socket;</span><br><span class="line">    private final SelectionKey sk;</span><br><span class="line"></span><br><span class="line">    //多线程处理业务逻辑</span><br><span class="line">    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());</span><br><span class="line"></span><br><span class="line">    public MultiThreadHandler(SocketChannel socket, Selector selector) throws Exception &#123;</span><br><span class="line">        this.state = READING;</span><br><span class="line">        this.socket = socket;</span><br><span class="line">        sk = socket.register(selector, SelectionKey.OP_READ);</span><br><span class="line">        sk.attach(this);</span><br><span class="line">        socket.configureBlocking(false);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        if (state == READING) &#123;</span><br><span class="line">            read();</span><br><span class="line">        &#125; else if (state == WRITING) &#123;</span><br><span class="line">            write();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(this::process);</span><br><span class="line"></span><br><span class="line">        //下一步处理写事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_WRITE);</span><br><span class="line">        this.state = WRITING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(this::process);</span><br><span class="line"></span><br><span class="line">        //下一步处理读事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">        this.state = READING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * task 业务处理</span><br><span class="line">     */</span><br><span class="line">    public void process() &#123;</span><br><span class="line">        //do IO ,task,queue something</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>多 Reactor 多线程模型<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-%E5%A4%9AReactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-多Reactor多线程模型" title="Linux-多Reactor多线程模型"><br>
+相对上面两种来说，第三种将 Reactor 分成了两部分：
+<ul>
+<li>mainReactor 负责监听 server socket，用来处理新连接的建立，将建立的 socketChannel 指定注册给 subReactor。</li>
+<li>subReactor 维护自己的 selector, 基于 mainReactor 注册的 socketChannel 多路分离 IO 读写事件，读写网络数据，对业务处理的功能，将其扔给 worker 线程池来完成。</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * 多work 连接事件Acceptor,处理连接事件</span><br><span class="line"> */</span><br><span class="line">public class MultiWorkThreadAcceptor implements Runnable &#123; </span><br><span class="line">    </span><br><span class="line">    // cpu线程数相同多work线程</span><br><span class="line">    private int workCount =Runtime.getRuntime().availableProcessors();</span><br><span class="line">    private SubReactor[] workThreadHandlers = new SubReactor[workCount];</span><br><span class="line">    private volatile int nextHandler = 0;</span><br><span class="line">    </span><br><span class="line">    public MultiWorkThreadAcceptor() &#123;</span><br><span class="line">        this.init();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    public void init() &#123;</span><br><span class="line">        nextHandler = 0;</span><br><span class="line">        for (int i = 0; i &lt; workThreadHandlers.length; i++) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                workThreadHandlers[i] = new SubReactor();</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            SocketChannel c = serverSocket.accept();</span><br><span class="line">            if (c != null) &#123;// 注册读写</span><br><span class="line">                synchronized (c) &#123;</span><br><span class="line">                    // 顺序获取SubReactor，然后注册channel</span><br><span class="line">                    SubReactor work = workThreadHandlers[nextHandler];</span><br><span class="line">                    work.registerChannel(c);</span><br><span class="line">                    nextHandler++;</span><br><span class="line">                    if (nextHandler &gt;= workThreadHandlers.length) &#123;</span><br><span class="line">                        nextHandler = 0;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * 多work线程处理读写业务逻辑</span><br><span class="line"> */</span><br><span class="line">@Slf4j</span><br><span class="line">public class SubReactor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private final Selector mySelector;</span><br><span class="line"></span><br><span class="line">    //多线程处理业务逻辑</span><br><span class="line">    private int workCount = Runtime.getRuntime().availableProcessors();</span><br><span class="line">    private ExecutorService executorService = Executors.newFixedThreadPool(workCount);</span><br><span class="line"></span><br><span class="line">    public SubReactor() throws Exception &#123;</span><br><span class="line">        // 每个SubReactor 一个selector </span><br><span class="line">        this.mySelector = SelectorProvider.provider().openSelector();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 注册chanel</span><br><span class="line">     */</span><br><span class="line">    public void registerChannel(SocketChannel sc) throws Exception &#123;</span><br><span class="line">        sc.register(mySelector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        while (true) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                //每个SubReactor 自己做事件分派处理读写事件</span><br><span class="line">                selector.select();</span><br><span class="line">                Set&lt;SelectionKey&gt; keys = selector.selectedKeys();</span><br><span class="line">                Iterator&lt;SelectionKey&gt; iterator = keys.iterator();</span><br><span class="line">                while (iterator.hasNext()) &#123;</span><br><span class="line">                    SelectionKey key = iterator.next();</span><br><span class="line">                    iterator.remove();</span><br><span class="line">                    if (key.isReadable()) &#123;</span><br><span class="line">                        read();</span><br><span class="line">                    &#125; else if (key.isWritable()) &#123;</span><br><span class="line">                        write();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">                log.warn(&quot;出错&quot;, e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(() -&gt; process());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(() -&gt; process());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * task 业务处理</span><br><span class="line">     */</span><br><span class="line">    public void process() &#123;</span><br><span class="line">        //do IO ,task,queue something</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="signal-driven-io-信号驱动的-io"><a class="header-anchor" href="#signal-driven-io-信号驱动的-io">¶</a>Signal Driven IO（信号驱动的 IO）</h2>
+<p>用户注册一个信号处理函数，一旦数据准备好，由内核生成一个 SIGIO 信号，通知数据已经准备好的事件，之后用户进程可以调用 recvfrom 把数据从内核拷贝出来并返回结果。</p>
+<h2 id="aio"><a class="header-anchor" href="#aio">¶</a>AIO</h2>
+<p>与信号驱动 IO 的主要区别是：在信号驱动的 I/O 中，内核告诉我们何时可以启动 I/O 操作，但是异步 I/O 时，内核告诉我们何时 I/O 操作完成。</p>
+<h3 id="proactor"><a class="header-anchor" href="#proactor">¶</a>Proactor</h3>
+<h2 id="5-种-io-模型的比较"><a class="header-anchor" href="#5-种-io-模型的比较">¶</a>5 种 IO 模型的比较</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-5%E7%A7%8DIO%E6%A8%A1%E5%9E%8B%E7%9A%84%E6%AF%94%E8%BE%83.png" alt="Linux-5种IO模型的比较" title="Linux-5种IO模型的比较"></p>
+<h1>优化</h1>
+<h2 id="pagecache"><a class="header-anchor" href="#pagecache">¶</a>pageCache</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-pageCache%E4%B8%8Emmap.png" alt="Linux-pageCache与mmap" title="Linux-pageCache与mmap"></p>
+<ul>
+<li>Linux里所有处理文件的IO请求均需经过pageCache，对于操作系统来说，磁盘文件都是由一系列的数据块顺序组成。<br>
+比如要读的磁盘位置若未加载到pageCache（pageCache中的每一个数据块都设置了文件以及偏移量地址信息），则发起一次<strong>缺页中断</strong>，由操作系统加载该页到pageCache中的一个空闲块，并注册到<strong>页表</strong>，然后再copy到用户缓冲区中。换进新页面时会通过<strong>页面置换算法</strong>将老页面换出，Linux中一般是基于LRU实现的。</li>
+<li>预读取（局部性原理）<br>
+page cache本身也会对数据文件进行预读取，对于每个文件的第一个读请求操作，系统在读入所请求页面的同时会读入紧随其后的少数几个页面。</li>
+</ul>
+<p>PageCache机制也不是完全无缺点的，当遇到OS进行脏页回写，内存回收，内存swap等情况时，就会引起较大的消息读写延迟，优化方式主要包括内存预分配，文件预热和mlock系统调用。</p>
+<h2 id="零拷贝"><a class="header-anchor" href="#零拷贝">¶</a>零拷贝</h2>
+<p>零拷贝技术主要有以下几种：</p>
+<ol>
+<li>直接 I/O：对于这种数据传输方式来说，应用程序可以直接访问硬件存储，操作系统内核只是辅助数据传输：这类零拷贝技术针对的是操作系统内核并不需要对数据进行直接处理的情况，数据可以在应用程序地址空间的缓冲区和磁盘之间直接进行传输，完全不需要 Linux 操作系统内核提供的页缓存的支持。</li>
+<li>在数据传输的过程中，避免数据在<strong>操作系统内核地址空间的缓冲区</strong>和<strong>用户应用程序地址空间的缓冲区</strong>之间进行拷贝。有的时候，应用程序在数据进行传输的过程中不需要对数据进行访问，那么，将数据从 Linux 的<strong>pageCache</strong>拷贝到用户进程的缓冲区中就可以完全避免，传输的数据在<strong>pageCache</strong>中就可以得到处理。在某些特殊的情况下，这种零拷贝技术可以获得较好的性能。Linux 中提供类似的系统调用主要有 <code>mmap()</code>，<code>sendfile()</code> 以及 <code>splice()</code>。</li>
+<li>对数据在 <strong>Linux 的页缓存</strong>和<strong>用户进程的缓冲区</strong>之间的传输过程进行优化。该零拷贝技术侧重于灵活地处理数据在用户进程的缓冲区和操作系统的页缓存之间的拷贝操作。这种方法延续了传统的通信方式，但是更加灵活。在 Linux 中，该方法主要利用了<strong>写时复制</strong>技术。</li>
+</ol>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-%E4%B8%80%E6%AC%A1IO%E5%8F%91%E7%94%9F%E7%9A%84%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D.png" alt="Linux-一次IO发生的内存拷贝" title="Linux-一次IO发生的内存拷贝"><br>
+当应用程序访问某块数据时，操作系统首先会检查，是不是最近访问过此文件，文件内容是否缓存在内核缓冲区，如果是，操作系统则直接根据 read 系统调用提供的 buf 地址，将内核缓冲区的内容拷贝到 buf 所指定的用户空间缓冲区中去。如果不是，操作系统则首先将磁盘上的数据拷贝的内核缓冲区，这一步目前主要依靠 DMA 来传输，然后再把内核缓冲区上的内容拷贝到用户缓冲区中。 接下来，write 系统调用再把用户缓冲区的内容拷贝到网络堆栈相关的内核缓冲区中，最后 socket 再把内核缓冲区的内容发送到网卡上。<br>
+这期间，一共进行了 4 次数据拷贝，且用户态和内核态也发生了多次上下文切换。</p>
+<p>从代码层面上来看，从硬盘上将文件读入内存，都要经过文件系统进行数据拷贝，并且数据拷贝操作是由文件系统和硬件驱动实现的，理论上来说，拷贝数据的效率是一样的。<br>
+但是通过内存映射的方法访问硬盘文件效率会比 read 和 write 系统调用高：</p>
+<ol>
+<li>read()是系统调用，首先将文件从硬盘拷贝到内核空间的一个缓冲区，再将这些数据拷贝到用户空间，实际上进行了两次数据拷贝；</li>
+<li>map()也是系统调用，但没有进行数据拷贝，当缺页中断发生时，直接将文件从硬盘拷贝到用户空间，只进行了一次数据拷贝。</li>
+</ol>
+<h3 id="mmap"><a class="header-anchor" href="#mmap">¶</a>mmap</h3>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-mmap.png" alt="Linux-mmap" title="Linux-mmap"><br>
+mmap是零拷贝的实现方案，mmap 将内核缓冲区与应用程序缓冲区共享，减少了 2 次拷贝及拷贝过程中必经的上下文切换过程。</p>
+<h3 id="java-中的零拷贝"><a class="header-anchor" href="#java-中的零拷贝">¶</a>Java 中的零拷贝</h3>
+<p>Java 中的 NIO 相对 BIO 的优势之一就是 NIO 提供了零拷贝提高了 IO 速度，实现是<code>MappedByteBuffer</code>，核心方法是<code>map()</code>，该方法把文件映射到内存中，获得内存地址 addr，然后通过这个 addr 构造<code>MappedByteBuffer</code>类，以暴露各种文件操作 API。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">public class MappedByteBufferTest &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        File file = new File(&quot;/Users/huanggaochi/Downloads/a.txt&quot;);</span><br><span class="line">        long len = file.length();</span><br><span class="line">        byte[] ds = new byte[(int) len];</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            // 读文件到字节数组</span><br><span class="line">            MappedByteBuffer mappedByteBuffer = new RandomAccessFile(file, &quot;r&quot;)</span><br><span class="line">                    .getChannel()</span><br><span class="line">                    .map(FileChannel.MapMode.READ_ONLY, 0, len);</span><br><span class="line">            for (int offset = 0; offset &lt; len; offset++) &#123;</span><br><span class="line">                byte b = mappedByteBuffer.get();</span><br><span class="line">                ds[offset] = b;</span><br><span class="line">            &#125;</span><br><span class="line">            // 从字节数组读</span><br><span class="line">            Scanner scan = new Scanner(new ByteArrayInputStream(ds)).useDelimiter(&quot; &quot;);</span><br><span class="line">            while (scan.hasNext()) &#123;</span><br><span class="line">                System.out.print(scan.next() + &quot; &quot;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (IOException e) &#123;</span><br><span class="line">            System.out.println(e.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>MappedByteBuffer</code>本身是一个抽象类，它申请的是堆外内存，因此<strong>不受 Minor GC 控制</strong>，只能在发生 Full GC 时才能被回收。而<code>DirectByteBuffer</code>改善了这一情况，原理是在<code>MappedByteBuffer</code>的基础上，维护了一个 Cleaner 对象来完成内存的回收工作，因此它既可以通过 Full GC 来回收内存，也可以调用 clean()方法来进行回收。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (address == 0) &#123;</span><br><span class="line">    // Paranoia</span><br><span class="line">    return;</span><br><span class="line">&#125;</span><br><span class="line">unsafe.freeMemory(address);</span><br><span class="line">address = 0;</span><br><span class="line">Bits.unreserveMemory(size, capacity);</span><br></pre></td></tr></table></figure>
+<p>读取内存和写入数据都是直接调用 Unsafe 的对应接口 getByte 和 putByte，通过（address + 偏移量）获取指定内存的数据。：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public byte get(int i) &#123;</span><br><span class="line">    return ((unsafe.getByte(ix(checkIndex(i)))));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public ByteBuffer put(int i, byte x) &#123;</span><br><span class="line">    unsafe.putByte(ix(checkIndex(i)), ((x)));</span><br><span class="line">    return this;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>第一次访问 address 所指向的内存区域，导致缺页中断，中断响应函数会在交换区中查找相对应的页面，如果找不到（也就是该文件从来没有被读入内存的情况），则从硬盘上将文件指定页读取到物理内存中（非 jvm 堆内存）。</li>
+<li>如果在拷贝数据时，发现物理内存不够用，则会通过虚拟内存机制（swap）将暂时不用的物理页面交换到硬盘的虚拟内存中。</li>
+</ol>
+<blockquote>
+<p>MappedByteBuffer 还有一个兄弟 HeapByteBuffer，它在堆中申请内存，本质上是一个数组，由于位于堆中，因此可受 GC 管控，易于回收。</p>
+</blockquote>
+<h1>C10K问题</h1>
+<p>两个限制：</p>
+<ol>
+<li>可打开文件句柄数的限制<br>
+可以通过ulimit命令调整。</li>
+<li>线程数的限制<br>
+注意内存容量限制，线程本身会占用堆栈空间内存。</li>
+</ol>
+<p>解决C10K问题采用的IO模型：epoll<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png" alt="Linux-epoll原理" title="Linux-epoll原理"><br>
+epoll具体原理描述见之前的小节。</p>
+<h1>参考</h1>
+<ol>
+<li>为什么说NIO是同步非阻塞的？和BIO有什么区别？<br>
+非阻塞指的是：通过轮询selector监听socket是否来数据，而不是阻塞等待。<br>
+同步指的是：一个socket来数据后需要创建一个线程读取，读取过程是同步的。<br>
+异步指的是：读取数据由操作系统做好，业务线程等着数据读取完毕的通知。</li>
+<li>多路复用机制如何支持海量连接？<br>
+多路复用可以用很少的线程监听很多客户端的请求。<br>
+因此多路复用常用于解决C10K问题。</li>
+</ol>
+<h1>参考文档</h1>
+<ol>
+<li><a href="https://wenchao.ren/2019/07/Select%E3%80%81Epoll%E3%80%81KQueue%E5%8C%BA%E5%88%AB/" target="_blank" rel="noopener">Select、poll、Epoll、KQueue 区别</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/63179839" target="_blank" rel="noopener">如果这篇文章说不清 epoll 的本质，那就过来掐死我吧！ （1）</a></li>
+<li><a href="https://www.jianshu.com/p/275602182f39" target="_blank" rel="noopener">零拷贝</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"># Linux</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/283c6d00.html" rel="next" title="Linux 与文件系统">
+                <i class="fa fa-chevron-left"></i> Linux 与文件系统
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/485e1bd7.html" rel="prev" title="Vim 使用总结">
+                Vim 使用总结 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">107</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">5 种 IO 模型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#blocking"><span class="nav-number">1.1.</span> <span class="nav-text">¶Blocking</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#non-blocking"><span class="nav-number">1.2.</span> <span class="nav-text">¶Non-Blocking</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#io-multiplexing-多路复用"><span class="nav-number">1.3.</span> <span class="nav-text">¶IO Multiplexing（多路复用）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#select"><span class="nav-number">1.3.1.</span> <span class="nav-text">¶select</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#poll"><span class="nav-number">1.3.2.</span> <span class="nav-text">¶poll</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#epoll"><span class="nav-number">1.3.3.</span> <span class="nav-text">¶epoll</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#进程调度原理"><span class="nav-number">1.3.3.1.</span> <span class="nav-text">¶进程调度原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#操作系统如何知道网络数据对应于哪个-socket"><span class="nav-number">1.3.3.2.</span> <span class="nav-text">¶操作系统如何知道网络数据对应于哪个 socket</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多路复用的基石-select-及其存在的问题"><span class="nav-number">1.3.3.3.</span> <span class="nav-text">¶多路复用的基石-select 及其存在的问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#为什么使用-epoll"><span class="nav-number">1.3.3.4.</span> <span class="nav-text">¶为什么使用 epoll</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kqueue"><span class="nav-number">1.3.4.</span> <span class="nav-text">¶kqueue</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#reactor"><span class="nav-number">1.3.5.</span> <span class="nav-text">¶Reactor</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#signal-driven-io-信号驱动的-io"><span class="nav-number">1.4.</span> <span class="nav-text">¶Signal Driven IO（信号驱动的 IO）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#aio"><span class="nav-number">1.5.</span> <span class="nav-text">¶AIO</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#proactor"><span class="nav-number">1.5.1.</span> <span class="nav-text">¶Proactor</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-种-io-模型的比较"><span class="nav-number">1.6.</span> <span class="nav-text">¶5 种 IO 模型的比较</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#pagecache"><span class="nav-number">2.1.</span> <span class="nav-text">¶pageCache</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#零拷贝"><span class="nav-number">2.2.</span> <span class="nav-text">¶零拷贝</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#mmap"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶mmap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#java-中的零拷贝"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶Java 中的零拷贝</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">C10K问题</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

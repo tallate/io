@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hystrix,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶降级有几种方案 ¶降级分类 降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：  超时降级 配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。 失败次数降级 失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。 故障降级 如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务">
+<meta name="keywords" content="Hystrix">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hystrix 原理分析">
+<meta property="og:url" content="https://tallate.github.io/1d8a54ea.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶降级有几种方案 ¶降级分类 降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：  超时降级 配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。 失败次数降级 失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。 故障降级 如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png">
+<meta property="og:updated_time" content="2020-09-28T13:11:01.949Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Hystrix 原理分析">
+<meta name="twitter:description" content="¶降级有几种方案 ¶降级分类 降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：  超时降级 配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。 失败次数降级 失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。 故障降级 如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/1d8a54ea.html">
+
+
+
+
+
+
+
+  <title>Hystrix 原理分析 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Hystrix 原理分析</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.4k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <a id="more"></a>
+<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
+<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
+<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
+<ol>
+<li>超时降级<br>
+配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
+<li>失败次数降级<br>
+失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
+<li>故障降级<br>
+如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
+和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
+<li>限流降级<br>
+单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
+</ol>
+<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
+<p>降级后，在代码层面，可以进行的处理策略如下：</p>
+<ol>
+<li>抛异常</li>
+<li>返回 NULL</li>
+<li>调用 Mock 数据</li>
+<li>调用 Fallback 处理逻辑</li>
+</ol>
+<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
+<p><img src="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
+<ul>
+<li>toObservable()<br>
+最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
+<li>observe()<br>
+调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
+<li>queue()<br>
+调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
+<li>execute()<br>
+调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
+</ul>
+<p>HystrixCommand.execute<br>
+-&gt; HystrixCommand.queue<br>
+-&gt; AbstractCommand.toObservable</p>
+<p>AbstractCommand.observe<br>
+-&gt; AbstractCommand.toObservable</p>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
+开启配置：<br>
+HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
+HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
+-&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
+<p>实施信号量隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
+<p>实施线程隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; AbstractCommand.executeCommandAndObserve<br>
+-&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
+-&gt; AbstractCommand.getUserExecutionObservable<br>
+-&gt; HystrixCommand.getExecutionObservable</p>
+<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
+<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
+当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
+Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
+<img src="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
+<ol>
+<li>熔断关闭状态（Closed）<br>
+服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
+<li>熔断开启状态（Open）<br>
+在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
+<li>半熔断状态（Half-Open）<br>
+在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
+</ol>
+<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
+<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
+<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
+<ol>
+<li>run()方法抛出非 HystrixBadRequestException 异常<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
+HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
+<li>run()方法调用超时<br>
+对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
+-&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
+-&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
+可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
+<li>熔断器开启拦截调用<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution</li>
+<li>线程池/队列/信号量是否跑满<br>
+在《隔离》那一节中已经说明了代码的位置。</li>
+<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
+HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
+</ol>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
+结果缓存这个功能我觉得应该由幂等框架来做。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
+<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
+<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
+<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
+<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Hystrix/" rel="tag"># Hystrix</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/807599f6.html" rel="next" title="JVM调优">
+                <i class="fa fa-chevron-left"></i> JVM调优
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/5961a39a.html" rel="prev" title="ShardingJDBC 原理总结">
+                ShardingJDBC 原理总结 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">107</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#降级有几种方案"><span class="nav-number">1.</span> <span class="nav-text">¶降级有几种方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#降级分类"><span class="nav-number">1.1.</span> <span class="nav-text">¶降级分类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#降级处理方案"><span class="nav-number">1.2.</span> <span class="nav-text">¶降级处理方案</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#hystrix-原理"><span class="nav-number">2.</span> <span class="nav-text">¶Hystrix 原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-种调用方法"><span class="nav-number">2.1.</span> <span class="nav-text">¶4 种调用方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#隔离"><span class="nav-number">2.2.</span> <span class="nav-text">¶隔离</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#熔断"><span class="nav-number">2.3.</span> <span class="nav-text">¶熔断</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#降级-fallback"><span class="nav-number">2.4.</span> <span class="nav-text">¶降级（Fallback）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存"><span class="nav-number">2.5.</span> <span class="nav-text">¶缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

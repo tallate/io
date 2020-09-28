@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="MapReduce,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="开个头，之后慢慢补。 背景 6.824：https://pdos.csail.mit.edu/6.824/  MapReduce 介绍：https://zh.wikipedia.org/wiki/MapReduce">
+<meta name="keywords" content="MapReduce">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Lab_1_MapReduce">
+<meta property="og:url" content="https://tallate.github.io/92a2fe93.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="开个头，之后慢慢补。 背景 6.824：https://pdos.csail.mit.edu/6.824/  MapReduce 介绍：https://zh.wikipedia.org/wiki/MapReduce">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/6.824/1/lab1_part1_1.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/6.824/1/lab1_part1_2.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/6.824/1/lab1_part1_3.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/6.824/1/lab1_result.png">
+<meta property="og:updated_time" content="2020-09-28T13:11:01.945Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Lab_1_MapReduce">
+<meta name="twitter:description" content="开个头，之后慢慢补。 背景 6.824：https://pdos.csail.mit.edu/6.824/  MapReduce 介绍：https://zh.wikipedia.org/wiki/MapReduce">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/6.824/1/lab1_part1_1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/92a2fe93.html">
+
+
+
+
+
+
+
+  <title>Lab_1_MapReduce | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/92a2fe93.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Lab_1_MapReduce</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-09-28T21:11:01+08:00">
+                2020-09-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/6-824/" itemprop="url" rel="index">
+                    <span itemprop="name">6.824</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  7 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>开个头，之后慢慢补。</p>
+<h1>背景</h1>
+<p>6.824：<a href="https://pdos.csail.mit.edu/6.824/" target="_blank" rel="noopener">https://pdos.csail.mit.edu/6.824/</a> <br>
+MapReduce 介绍：<a href="https://zh.wikipedia.org/wiki/MapReduce" target="_blank" rel="noopener">https://zh.wikipedia.org/wiki/MapReduce</a></p>
+<a id="more"></a>
+<h1>Part I</h1>
+<p>完成 mapreduce 的 Sequential 版本，主要是 doMap 和 doReduce 函数，它们分别在 common_map.go 和 common_reduce.go 中定义。<br>
+程序从 test_test.go 进入，先产生 input 文件，根据参数调用测试函数；<br>
+调用 master.go 的 Sequential 函数，Sequential 函数顺序地执行 nMap 个 mapTask，一个输入文件一个 mapper，每个 mapper 将产生的数据随机放入 nReduce 个文件中，然后顺序执行 nReduce 个 reduceTask，每个 reducer 读取分配给它的数据文件，排序数据再调用 reduce 函数。<br>
+排序因为目标数据是数字字符串，所以策略是先转换成数字再做比较：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">k1, _ := strconv.Atoi(kv1.Key);k2, _ := strconv.Atoi(kv2.Key);return k1 &lt; k2;</span><br></pre></td></tr></table></figure>
+<p>例子 1 1 个 mapper1 个 reducer<br>
+mapper 将数据输入到中间文件中，后 reducer 读出来</p>
+<p>例子 2 5 个 mapper3 个 reducer<br>
+1.Makeinput 函数产生 5 个 input 文件，分别包括 0 - 19999、20000 - 39999、40000 - 59999、60000 - 79999、80000 - 99999；<br>
+<img src="http://47.88.24.11/imgs/6.824/1/lab1_part1_1.png" alt="lab1_part1_1" title="lab1_part1_1"><br>
+2.mapper0 处理文件 0，将 0 - 19999 随机分散到 3 个文件中，文件名显示该 mapper 号和其指定的 reduce 号，其他 mapper 同理；<br>
+<img src="http://47.88.24.11/imgs/6.824/1/lab1_part1_2.png" alt="lab1_part1_2" title="lab1_part1_2"><br>
+3.reducer0 处理分配给它的数据文件，即 0-0、1-0、2-0、3-0、4-0，分别包括 0 - 19999、20000 - 39999、40000 - 59999、60000 - 79999、80000 - 99999 的数据，reducer 读取这些数据然后整合成一个 res 文件，其他 reducer 同理；<br>
+<img src="http://47.88.24.11/imgs/6.824/1/lab1_part1_3.png" alt="lab1_part1_3" title="lab1_part1_3"></p>
+<p>结果</p>
+<h1>Part II</h1>
+<p>问题，reduce 函数需要统计 key 相同的项，所以 doReduce 函数在排序后，需要将相邻的 key 相同的项组织成一个[]string。修改后的 reduce 部分：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">l := len(kvs);values := []string&#123;kvs[0].Value&#125;;for i := 1; i &lt; l; i++&#123;if kvs[i].Key == kvs[i - 1].Key&#123;    values = append(values, kvs[i].Value);&#125; else&#123;    enc.Encode(KeyValue&#123;kvs[i - 1].Key, reduceF(kvs[i - 1].Key, values)&#125;);    values = nil;    values = append(values, kvs[i].Value);&#125;&#125;enc.Encode(KeyValue&#123;kvs[l - 1].Key, reduceF(kvs[l - 1].Key, values)&#125;);</span><br></pre></td></tr></table></figure>
+<p>上题排序函数因为是给数字字符串排序所以采取的策略是&quot;先转换成数字再比较数字大小排序&quot;，而本题需要给 word 排序，也即按字母序排序：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">return strings.Compare(kv1.Key, kv2.Key) &lt; 0;</span><br></pre></td></tr></table></figure>
+<h1>Part III</h1>
+<p>part II 的 distributed 版本，使用 golang 的 RPC 和 channel 模拟现实环境。<br>
+master 和 worker 通过 RPC 交互，master.go 中的 run()调用 schedule.go 中的 schedule()来分派任务给 worker，schedule()先 doMap 然后 doReduce 最后调用 master_splitmerge.go 中的 merge()来将中间文件组织成最终结果。<br>
+根据需要 schedule 需要等待 worker 来才能执行 task，那么这些 worker 从哪里来？<br>
+首先看本题的测试函数 TestBasic，它调用了 worker.go 中的 RunWorker()来生成 worker<br>
+RunWorker()内部 new 一个 wk 并初始化后，调用了 wk.register(MasterAddress)，这个方法使用 RPC 方式调用 Master.Register 向 master 传这个 wk 的 name 以告知该 wk 空闲准备接受 task，同时 wk.register(MasterAddress)函数在 rpc server 注册了 wk，<a href="http://wk.name" target="_blank" rel="noopener">wk.name</a> 就是其地址，这样 schedule 可以使用 RPC 来远程调用 wc.DoTask()；（但是有个问题，官方文档说不可注册同类型的多个对象，但是这里注册的多个 worker 都是相同的类型，为什么？）<br>
+run 函数内部先调用 schedule(map)进行 map 处理，本题有 100 个文件，也就是说有 100 个 task，而 worker 只有 2 个（这里的 worker 和 mapper 不是一回事），每个 task 都需要等待空闲的 worker，在处理完毕后即释放 worker；</p>
+<h1>Part IV: Handling worker failures</h1>
+<p>处理 worker 发生的错误。通过检测 RPC 是否超时可以判断 worker 是否出现错误，当 master 通过 RPC 分配给 worker 的任务失败，这个任务需要重新分配给其他 worker。<br>
+超时错误发生在 RPC 调用，本程序的 RPC 调用由 common_rpc.go 中的 call()函数负责，若发生超时它将返回 false。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line">// schedule starts and waits for all tasks in the given phase (Map or Reduce).</span><br><span class="line">func (mr *Master) schedule(phase jobPhase) &#123;</span><br><span class="line">    var ntasks int</span><br><span class="line">    var nios int // number of inputs (for reduce) or outputs (for map)</span><br><span class="line">    switch phase &#123;</span><br><span class="line">    case mapPhase:</span><br><span class="line">        ntasks = len(mr.files)</span><br><span class="line">        nios = mr.nReduce</span><br><span class="line">    case reducePhase:</span><br><span class="line">        ntasks = mr.nReduce</span><br><span class="line">        nios = len(mr.files)</span><br><span class="line">    &#125;</span><br><span class="line">​</span><br><span class="line">    fmt.Printf(&quot;Schedule: %v %v tasks (%d I/Os)\n&quot;, ntasks, phase, nios)</span><br><span class="line">​</span><br><span class="line">    // All ntasks tasks have to be scheduled on workers, and only once all of</span><br><span class="line">    // them have been completed successfully should the function return.</span><br><span class="line">    // Remember that workers may fail, and that any given worker may finish</span><br><span class="line">    // multiple tasks.</span><br><span class="line">    //</span><br><span class="line">    // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO</span><br><span class="line">    //</span><br><span class="line">​</span><br><span class="line">    /*</span><br><span class="line">        schedule只需要将输入文件名mr.files[task]和任务task告诉worker，worker知道应该从哪个文件输入哪个文件输出</span><br><span class="line">​</span><br><span class="line">        worker上线后调用Master.Register并通过mr.registerChannel来传递新worker的信息，schedule需要读取这个channel</span><br><span class="line">        master通过调用Worker.DoTask(DoTaskArgs)来通知worker新任务，Master结构体保存了当前运行job的信息，但是它不知道Map和Reduce函数的内部情况，那是worker自己的事</span><br><span class="line">        worker处理结束后需要重新调用mr.registerChannel &lt;- args.Worker，表示这个worker重新空闲</span><br><span class="line">    */</span><br><span class="line">    /*</span><br><span class="line">    for task := 0; task &lt; ntasks; task++&#123;</span><br><span class="line">        worker := &lt;-mr.registerChannel;</span><br><span class="line">        args := DoTaskArgs&#123;mr.jobName, mr.files[task], phase, task, nios&#125;;</span><br><span class="line">        ok := call(worker, &quot;Worker.DoTask&quot;, args, new(struct&#123;&#125;))</span><br><span class="line">        if ok == false &#123;</span><br><span class="line">            fmt.Printf(&quot;DoTask: RPC %s register error\n&quot;, worker);</span><br><span class="line">        &#125;</span><br><span class="line">        mr.registerChannel &lt;- worker;</span><br><span class="line">    &#125;</span><br><span class="line">    */</span><br><span class="line">    sem := make(chan int);</span><br><span class="line">    var deal func(int) = func(task int) &#123;</span><br><span class="line">        worker := &lt;-mr.registerChannel;</span><br><span class="line">        args := DoTaskArgs&#123;mr.jobName, mr.files[task], phase, task, nios&#125;;</span><br><span class="line">        // 通知worker工作</span><br><span class="line">        okDo := call(worker, &quot;Worker.DoTask&quot;, args, new(struct&#123;&#125;));</span><br><span class="line">        if okDo == false &#123;</span><br><span class="line">            fmt.Printf(&quot;DoTask: RPC %s register error\n&quot;, worker);</span><br><span class="line">            // 重新调用一次</span><br><span class="line">            deal(task);</span><br><span class="line">        &#125;</span><br><span class="line">        // 通知master有新worker空闲了</span><br><span class="line">        argsmr := RegisterArgs&#123;worker&#125;;</span><br><span class="line">        okRg := call(mr.address, &quot;Master.Register&quot;, argsmr, new(struct&#123;&#125;));</span><br><span class="line">        if okRg == false &#123;</span><br><span class="line">            fmt.Printf(&quot;Register: RPC %s register error&quot;, worker);</span><br><span class="line">        &#125;</span><br><span class="line">        // 不能使用下面这行！！！</span><br><span class="line">        // mr.registerChannel &lt;- worker;</span><br><span class="line">        if okDo == true &#123;</span><br><span class="line">            sem &lt;- 1;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">    for task := 0; task &lt; ntasks; task++ &#123;</span><br><span class="line">        go deal(task);</span><br><span class="line">    &#125;</span><br><span class="line">    for i := 0; i &lt; ntasks - 1; i++ &#123;</span><br><span class="line">        &lt;-sem;</span><br><span class="line">    &#125;</span><br><span class="line">    fmt.Printf(&quot;Schedule: %v phase done\n&quot;, phase)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在发生错误时重新调用 deal 来寻找另一个 worker 来解决这个 task，这个 task 解决掉后才 sem &lt;- 1。</p>
+<h1>Part V: Inverted index generation</h1>
+<p>实验 2 使用 mapreduce 来统计文件中各单词的出现次数，这是个经典的例子但是基本没有实际价值，接下来实验 5 要使用 mapreduce 实现一个倒排索引；<br>
+倒排索引广泛应用于文献查找领域，基本需要实现输入一个 key 返回这个 key 的出处，所以不仅要统计单词的出现次数，还要记录单词的出现位置（文件名）；</p>
+<h1>Result</h1>
+<p><img src="http://47.88.24.11/imgs/6.824/1/lab1_result.png" alt="lab1_result" title="lab1_result"></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/MapReduce/" rel="tag"># MapReduce</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/80b748be.html" rel="next" title="项目总结-bm">
+                <i class="fa fa-chevron-left"></i> 项目总结-bm
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/d1a34b57.html" rel="prev" title="Lab_1_Booting_a_PC">
+                Lab_1_Booting_a_PC <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">107</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">Part I</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">Part II</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">Part III</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">Part IV: Handling worker failures</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">Part V: Inverted index generation</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">Result</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

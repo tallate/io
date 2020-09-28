@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Redis,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶Client - Jedis ¶配置 Jedis 1.添加 Jedis 的 Maven 依赖 2.设置服务端 设置服务器防火墙关闭或放行 6379 端口（redis 占用） 然后关闭服务器的保护模式，因为保护模式下不能写入数据 12CONFIG SET protected-mode noconfig rewrite （或直接修改 redis.conf 中 protected-mode 或在运行">
+<meta name="keywords" content="Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 客户端">
+<meta property="og:url" content="https://tallate.github.io/d3d5fdbf.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶Client - Jedis ¶配置 Jedis 1.添加 Jedis 的 Maven 依赖 2.设置服务端 设置服务器防火墙关闭或放行 6379 端口（redis 占用） 然后关闭服务器的保护模式，因为保护模式下不能写入数据 12CONFIG SET protected-mode noconfig rewrite （或直接修改 redis.conf 中 protected-mode 或在运行">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E7%9C%8B%E9%97%A8%E7%8B%97.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7.png">
+<meta property="og:updated_time" content="2020-09-28T13:11:01.953Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis 客户端">
+<meta name="twitter:description" content="¶Client - Jedis ¶配置 Jedis 1.添加 Jedis 的 Maven 依赖 2.设置服务端 设置服务器防火墙关闭或放行 6379 端口（redis 占用） 然后关闭服务器的保护模式，因为保护模式下不能写入数据 12CONFIG SET protected-mode noconfig rewrite （或直接修改 redis.conf 中 protected-mode 或在运行">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E7%9C%8B%E9%97%A8%E7%8B%97.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/d3d5fdbf.html">
+
+
+
+
+
+
+
+  <title>Redis 客户端 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d3d5fdbf.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis 客户端</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-25T13:21:48+08:00">
+                2019-10-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  18 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <a id="more"></a>
+<h2 id="client-jedis"><a class="header-anchor" href="#client-jedis">¶</a>Client - Jedis</h2>
+<h3 id="配置-jedis"><a class="header-anchor" href="#配置-jedis">¶</a>配置 Jedis</h3>
+<p>1.添加 Jedis 的 Maven 依赖<br>
+2.设置服务端<br>
+设置服务器防火墙关闭或放行 6379 端口（redis 占用）<br>
+然后关闭服务器的保护模式，因为保护模式下不能写入数据</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CONFIG SET protected-mode no</span><br><span class="line">config rewrite</span><br></pre></td></tr></table></figure>
+<p>（或直接修改 redis.conf 中 protected-mode<br>
+或在运行服务器的配置中加上–protected-mode no<br>
+或 Setup a bind address or an authentication password）<br>
+然后注释掉 redis.conf 中的 bind 127.0.0.1，或者在后面添上本机的 ip</p>
+<ol>
+<li>普通单例连接</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Jedis jedis = new Jedis(host, 6379);</span><br><span class="line">jedis.set(&quot;name&quot;, &quot;bar&quot;);</span><br><span class="line">String name = jedis.get(&quot;name&quot;);</span><br><span class="line">System.out.println(name);</span><br><span class="line">jedis.close();</span><br></pre></td></tr></table></figure>
+<ol>
+<li>使用连接池连接</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">// 配置连接池</span><br><span class="line">JedisPoolConfig config = new JedisPoolConfig();</span><br><span class="line">config.setMaxTotal(30); // 最大连接数</span><br><span class="line">config.setMaxIdle(2); // 最大连接空闲数</span><br><span class="line">JedisPool pool =</span><br><span class="line">        new JedisPool(config, host, 6379);</span><br><span class="line">// 从连接池中获取连接</span><br><span class="line">Jedis jedis = pool.getResource();</span><br><span class="line">jedis.set(&quot;name&quot;, &quot;李四&quot;);</span><br><span class="line">String name = jedis.get(&quot;name&quot;);</span><br><span class="line">System.out.println(name);</span><br><span class="line">// 关闭，返回到连接池</span><br><span class="line">jedis.close();</span><br></pre></td></tr></table></figure>
+<h3 id="并发安全问题"><a class="header-anchor" href="#并发安全问题">¶</a>并发安全问题</h3>
+<p>Jedis 不是并发安全的，如果有并发安全的需求，可以考虑采用 apache 的 commons-pool 对象池进行包装，或者，换用一个更先进的 Redis 客户端 Lettuce</p>
+<h2 id="client-spring-data-redis"><a class="header-anchor" href="#client-spring-data-redis">¶</a>Client - spring-data-redis</h2>
+<p>1.引入依赖 spring-data-redis<br>
+2.创建 redis 缓冲配置类</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">// 配置头部用于被Spring识别</span><br><span class="line">@Configuration</span><br><span class="line">@EnableCaching</span><br><span class="line">public class RedisCacheConfig &#123;</span><br><span class="line">    private volatile JedisConnectionFactory mJedisConnectionFactory;</span><br><span class="line">    private volatile RedisTemplate&lt;String, String&gt; mRedisTemplate;</span><br><span class="line">    private volatile RedisCacheManager mRedisCacheManager;</span><br><span class="line">    public RedisCacheConfig() &#123;</span><br><span class="line">        super();</span><br><span class="line">    &#125;</span><br><span class="line">    public RedisCacheConfig(JedisConnectionFactory mJedisConnectionFactory, RedisTemplate&lt;String,String&gt; mRedisTemplate,</span><br><span class="line">                            RedisCacheManager mRedisCacheManager) &#123;</span><br><span class="line">        super();</span><br><span class="line">        this.mJedisConnectionFactory = mJedisConnectionFactory;</span><br><span class="line">        this.mRedisTemplate = mRedisTemplate;</span><br><span class="line">        this.mRedisCacheManager = mRedisCacheManager;</span><br><span class="line">    &#125;</span><br><span class="line">    public JedisConnectionFactory redisConnectionFactory() &#123;</span><br><span class="line">        return mJedisConnectionFactory;</span><br><span class="line">    &#125;</span><br><span class="line">    public RedisTemplate&lt;String, String&gt; redisTemplate(RedisConnectionFactory cf) &#123;</span><br><span class="line">        return mRedisTemplate;</span><br><span class="line">    &#125;</span><br><span class="line">    public CacheManager cacheManager(RedisTemplate&lt;?, ?&gt; redisTemplate) &#123;</span><br><span class="line">        return mRedisCacheManager;</span><br><span class="line">    &#125;</span><br><span class="line">    // 用于生成主键</span><br><span class="line">    @Bean</span><br><span class="line">    public KeyGenerator customKeyGenerator() &#123;</span><br><span class="line">        return new KeyGenerator() &#123;</span><br><span class="line">            public Object generate(Object o, Method method, Object... objects) &#123;</span><br><span class="line">                StringBuilder sb = new StringBuilder();</span><br><span class="line">                sb.append(o.getClass().getName());</span><br><span class="line">                sb.append(method.getName());</span><br><span class="line">                for (Object obj : objects) &#123;</span><br><span class="line">                    sb.append(obj.toString());</span><br><span class="line">                &#125;</span><br><span class="line">                return sb.toString();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>3.创建 redis 属性文件 redis.properties</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">redis.host=192.168.157.128</span><br><span class="line">redis.port=6379</span><br><span class="line">redis.pass=1234</span><br><span class="line">redis.maxIdle=300</span><br><span class="line">redis.maxActive=600</span><br><span class="line">redis.maxWait=1000</span><br><span class="line">#借出连接时不要测试,否则很影响性能</span><br><span class="line">redis.testOnBorrow=true</span><br><span class="line">redis.dbIndex=0</span><br><span class="line">redis.expiration=30</span><br></pre></td></tr></table></figure>
+<p>当然必须在 Spring 配置文件中引入属性文件扫描标签<br>
+4.在 Spring 配置文件中引入 redis<br>
+问题<br>
+ERR Client sent AUTH, but no password is set<br>
+因为 redis 没有配置密码而建立连接时却发送了密码，所以出错，解决办法是在下面 jedisConnectionFactory 标签中去掉 password 属性</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 配置JedisPoolConfig实例 --&gt;</span><br><span class="line">&lt;bean id=&quot;poolConfig&quot; class=&quot;redis.clients.jedis.JedisPoolConfig&quot;&gt;</span><br><span class="line">    &lt;property name=&quot;maxIdle&quot; value=&quot;$&#123;redis.maxIdle&#125;&quot; /&gt;</span><br><span class="line">    &lt;property name=&quot;maxTotal&quot; value=&quot;$&#123;redis.maxActive&#125;&quot; /&gt;</span><br><span class="line">    &lt;property name=&quot;maxWaitMillis&quot; value=&quot;$&#123;redis.maxWait&#125;&quot; /&gt;</span><br><span class="line">    &lt;property name=&quot;testOnBorrow&quot; value=&quot;$&#123;redis.testOnBorrow&#125;&quot; /&gt;</span><br><span class="line">&lt;/bean&gt;</span><br><span class="line">&lt;!-- 配置JedisConnectionFactory --&gt;</span><br><span class="line">&lt;bean id=&quot;jedisConnectionFactory&quot; class=&quot;org.springframework.data.redis.connection.jedis.JedisConnectionFactory&quot;&gt;</span><br><span class="line">    &lt;property name=&quot;hostName&quot; value=&quot;$&#123;redis.host&#125;&quot;/&gt;</span><br><span class="line">    &lt;property name=&quot;port&quot; value=&quot;$&#123;redis.port&#125;&quot;/&gt;</span><br><span class="line">    &lt;property name=&quot;password&quot; value=&quot;$&#123;redis.pass&#125;&quot;/&gt;</span><br><span class="line">    &lt;property name=&quot;database&quot; value=&quot;$&#123;redis.dbIndex&#125;&quot;/&gt;</span><br><span class="line">    &lt;property name=&quot;poolConfig&quot; ref=&quot;poolConfig&quot;/&gt;</span><br><span class="line">&lt;/bean&gt;</span><br><span class="line">&lt;!-- 配置RedisTemplate --&gt;</span><br><span class="line">&lt;bean id=&quot;redisTemplate&quot; class=&quot;org.springframework.data.redis.core.RedisTemplate&quot;&gt;</span><br><span class="line">    &lt;property name=&quot;connectionFactory&quot; ref=&quot;jedisConnectionFactory&quot;/&gt;</span><br><span class="line">&lt;/bean&gt;</span><br><span class="line">&lt;!-- 配置RedisCacheManager --&gt;</span><br><span class="line">&lt;bean id=&quot;redisCacheManager&quot; class=&quot;org.springframework.data.redis.cache.RedisCacheManager&quot;&gt;</span><br><span class="line">    &lt;constructor-arg name=&quot;redisOperations&quot; ref=&quot;redisTemplate&quot; /&gt;</span><br><span class="line">    &lt;property name=&quot;defaultExpiration&quot; value=&quot;$&#123;redis.expiration&#125;&quot;/&gt;</span><br><span class="line">&lt;/bean&gt;</span><br><span class="line">&lt;!-- 配置RedisCacheConfig --&gt;</span><br><span class="line">&lt;bean id=&quot;redisCacheConfig&quot; class=&quot;com.ebuy.util.RedisCacheConfig&quot;&gt;</span><br><span class="line">    &lt;constructor-arg ref=&quot;jedisConnectionFactory&quot; /&gt;</span><br><span class="line">    &lt;constructor-arg ref=&quot;redisTemplate&quot; /&gt;</span><br><span class="line">    &lt;constructor-arg ref=&quot;redisCacheManager&quot; /&gt;</span><br><span class="line">&lt;/bean&gt;</span><br></pre></td></tr></table></figure>
+<p>5.测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">/* 缓存</span><br><span class="line"> @Cacheable 缓存返回值，下次调用时会优先使用缓存数据</span><br><span class="line">    value 缓存将被存到的地方</span><br><span class="line"> @CacgeEvict 清除缓存</span><br><span class="line"> */</span><br><span class="line">@CacheEvict(value = &#123;&quot;save&quot;&#125;, allEntries = true)</span><br><span class="line">public void save(TbContent content) &#123;</span><br><span class="line">    contentDao.insert(content);</span><br><span class="line">&#125;</span><br><span class="line">@Cacheable(&quot;findall&quot;)</span><br><span class="line">public TbContent findall() &#123;</span><br><span class="line">    TbContent content = new TbContent();</span><br><span class="line">    content.setCategoryId((long) 1);</span><br><span class="line">    return content;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试时可以在 findall 中设置打印语句，连续调用 findall 两次，若第二次没有输出东西则说明使用了缓存。<br>
+6.配置连接池</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 连接池配置 --&gt;</span><br><span class="line">&lt;bean id=&quot;jedisPoolConfig&quot; class=&quot;redis.clients.jedis.JedisPoolConfig&quot;&gt;</span><br><span class="line">    &lt;!-- 最大连接数 --&gt;</span><br><span class="line">    &lt;property name=&quot;maxTotal&quot; value=&quot;30&quot; /&gt;</span><br><span class="line">    &lt;!-- 最大空闲连接数 --&gt;</span><br><span class="line">    &lt;property name=&quot;maxIdle&quot; value=&quot;10&quot; /&gt;</span><br><span class="line">    &lt;!-- 每次释放连接的最大数目 --&gt;</span><br><span class="line">    &lt;property name=&quot;numTestsPerEvictionRun&quot; value=&quot;1024&quot; /&gt;</span><br><span class="line">    &lt;!-- 释放连接的扫描间隔（毫秒） --&gt;</span><br><span class="line">    &lt;property name=&quot;timeBetweenEvictionRunsMillis&quot; value=&quot;30000&quot; /&gt;</span><br><span class="line">    &lt;!-- 连接最小空闲时间 --&gt;</span><br><span class="line">    &lt;property name=&quot;minEvictableIdleTimeMillis&quot; value=&quot;1800000&quot; /&gt;</span><br><span class="line">    &lt;!-- 连接空闲多久后释放, 当空闲时间&gt;该值 且 空闲连接&gt;最大空闲连接数 时直接释放 --&gt;</span><br><span class="line">    &lt;property name=&quot;softMinEvictableIdleTimeMillis&quot; value=&quot;10000&quot; /&gt;</span><br><span class="line">    &lt;!-- 获取连接时的最大等待毫秒数,小于零:阻塞不确定的时间,默认-1 --&gt;</span><br><span class="line">    &lt;property name=&quot;maxWaitMillis&quot; value=&quot;1500&quot; /&gt;</span><br><span class="line">    &lt;!-- 在获取连接的时候检查有效性, 默认false --&gt;</span><br><span class="line">    &lt;property name=&quot;testOnBorrow&quot; value=&quot;true&quot; /&gt;</span><br><span class="line">    &lt;!-- 在空闲时检查有效性, 默认false --&gt;</span><br><span class="line">    &lt;property name=&quot;testWhileIdle&quot; value=&quot;true&quot; /&gt;</span><br><span class="line">    &lt;!-- 连接耗尽时是否阻塞, false报异常,ture阻塞直到超时, 默认true --&gt;</span><br><span class="line">    &lt;property name=&quot;blockWhenExhausted&quot; value=&quot;false&quot; /&gt;</span><br><span class="line">&lt;/bean&gt;</span><br><span class="line">&lt;!-- redis单机 通过连接池 --&gt;</span><br><span class="line">&lt;bean id=&quot;jedisPool&quot; class=&quot;redis.clients.jedis.JedisPool&quot; destroy-method=&quot;close&quot;&gt;</span><br><span class="line">    &lt;constructor-arg name=&quot;poolConfig&quot; ref=&quot;jedisPoolConfig&quot;/&gt;</span><br><span class="line">    &lt;constructor-arg name=&quot;host&quot; value=&quot;172.16.205.141&quot;/&gt;</span><br><span class="line">    &lt;constructor-arg name=&quot;port&quot; value=&quot;6379&quot;/&gt;</span><br><span class="line">&lt;/bean&gt;</span><br></pre></td></tr></table></figure>
+<p>7.测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">JedisPool pool =</span><br><span class="line">        (JedisPool) applicationContext.getBean(&quot;jedisPool&quot;);</span><br><span class="line">Jedis jedis = pool.getResource();</span><br><span class="line">jedis.set(&quot;name&quot;, &quot;李四&quot;);</span><br><span class="line">String name = jedis.get(&quot;name&quot;);</span><br><span class="line">System.out.println(name);</span><br><span class="line">jedis.close();</span><br></pre></td></tr></table></figure>
+<h2 id="redisson"><a class="header-anchor" href="#redisson">¶</a>Redisson</h2>
+<h3 id="与-jedis-的区别"><a class="header-anchor" href="#与-jedis-的区别">¶</a>与 Jedis 的区别</h3>
+<ol>
+<li>Jedis 提供了对 Redis-API 的简单封装，使用 Jedis 时，需要关注 Redis 服务器的部署细节，而 Redisson 屏蔽了这些细节，使得使用者可以将精力更集中地放到自己希望实现的功能上。</li>
+<li>Jedis 只提供简单的 API 调用，并不关注用户如何使用这些 API，比如 string 可以实现原子变量，不过需要用户手动封装，而 Redisson 中已经有了现成的 AtomicLong。</li>
+<li>Jedis 不支持 Cluster 环境下的事务、Lua</li>
+</ol>
+<h3 id="sentinel-模式获取连接"><a class="header-anchor" href="#sentinel-模式获取连接">¶</a>Sentinel 模式获取连接</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line">public class RedissonSentinelConnectionTest &#123;</span><br><span class="line"></span><br><span class="line">    RedissonClient redisson;</span><br><span class="line">    RedisSentinelConnection connection;</span><br><span class="line">    RedisRunner.RedisProcess master;</span><br><span class="line">    RedisRunner.RedisProcess slave1;</span><br><span class="line">    RedisRunner.RedisProcess slave2;</span><br><span class="line">    RedisRunner.RedisProcess sentinel1;</span><br><span class="line">    RedisRunner.RedisProcess sentinel2;</span><br><span class="line">    RedisRunner.RedisProcess sentinel3;</span><br><span class="line"></span><br><span class="line">    @Before</span><br><span class="line">    public void before() throws FailedToStartRedisException, IOException, InterruptedException &#123;</span><br><span class="line">        master = new RedisRunner()</span><br><span class="line">                .nosave()</span><br><span class="line">                .randomDir()</span><br><span class="line">                .run();</span><br><span class="line">        slave1 = new RedisRunner()</span><br><span class="line">                .port(6380)</span><br><span class="line">                .nosave()</span><br><span class="line">                .randomDir()</span><br><span class="line">                .slaveof(&quot;127.0.0.1&quot;, 6379)</span><br><span class="line">                .run();</span><br><span class="line">        slave2 = new RedisRunner()</span><br><span class="line">                .port(6381)</span><br><span class="line">                .nosave()</span><br><span class="line">                .randomDir()</span><br><span class="line">                .slaveof(&quot;127.0.0.1&quot;, 6379)</span><br><span class="line">                .run();</span><br><span class="line">        sentinel1 = new RedisRunner()</span><br><span class="line">                .nosave()</span><br><span class="line">                .randomDir()</span><br><span class="line">                .port(26379)</span><br><span class="line">                .sentinel()</span><br><span class="line">                .sentinelMonitor(&quot;myMaster&quot;, &quot;127.0.0.1&quot;, 6379, 2)</span><br><span class="line">                .run();</span><br><span class="line">        sentinel2 = new RedisRunner()</span><br><span class="line">                .nosave()</span><br><span class="line">                .randomDir()</span><br><span class="line">                .port(26380)</span><br><span class="line">                .sentinel()</span><br><span class="line">                .sentinelMonitor(&quot;myMaster&quot;, &quot;127.0.0.1&quot;, 6379, 2)</span><br><span class="line">                .run();</span><br><span class="line">        sentinel3 = new RedisRunner()</span><br><span class="line">                .nosave()</span><br><span class="line">                .randomDir()</span><br><span class="line">                .port(26381)</span><br><span class="line">                .sentinel()</span><br><span class="line">                .sentinelMonitor(&quot;myMaster&quot;, &quot;127.0.0.1&quot;, 6379, 2)</span><br><span class="line">                .run();</span><br><span class="line"></span><br><span class="line">        Thread.sleep(5000);</span><br><span class="line"></span><br><span class="line">        Config config = new Config();</span><br><span class="line">        config.useSentinelServers()</span><br><span class="line">                .setLoadBalancer(new RandomLoadBalancer())</span><br><span class="line">                .addSentinelAddress(sentinel3.getRedisServerAddressAndPort()).setMasterName(&quot;myMaster&quot;);</span><br><span class="line">        redisson = Redisson.create(config);</span><br><span class="line"></span><br><span class="line">        RedissonConnectionFactory factory = new RedissonConnectionFactory(redisson);</span><br><span class="line">        connection = factory.getSentinelConnection();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @After</span><br><span class="line">    public void after() &#123;</span><br><span class="line">        sentinel1.stop();</span><br><span class="line">        sentinel2.stop();</span><br><span class="line">        sentinel3.stop();</span><br><span class="line">        master.stop();</span><br><span class="line">        slave1.stop();</span><br><span class="line">        slave2.stop();</span><br><span class="line"></span><br><span class="line">        redisson.shutdown();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testMasters() &#123;</span><br><span class="line">        Collection&lt;RedisServer&gt; masters = connection.masters();</span><br><span class="line">        assertThat(masters).hasSize(1);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testSlaves() &#123;</span><br><span class="line">        Collection&lt;RedisServer&gt; masters = connection.masters();</span><br><span class="line">        Collection&lt;RedisServer&gt; slaves = connection.slaves(masters.iterator().next());</span><br><span class="line">        assertThat(slaves).hasSize(2);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testRemove() &#123;</span><br><span class="line">        Collection&lt;RedisServer&gt; masters = connection.masters();</span><br><span class="line">        connection.remove(masters.iterator().next());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testMonitor() &#123;</span><br><span class="line">        Collection&lt;RedisServer&gt; masters = connection.masters();</span><br><span class="line">        RedisServer master = masters.iterator().next();</span><br><span class="line">        master.setName(master.getName() + &quot;:&quot;);</span><br><span class="line">        connection.monitor(master);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testFailover() throws InterruptedException &#123;</span><br><span class="line">        Collection&lt;RedisServer&gt; masters = connection.masters();</span><br><span class="line">        connection.failover(masters.iterator().next());</span><br><span class="line"></span><br><span class="line">        Thread.sleep(10000);</span><br><span class="line"></span><br><span class="line">        RedisServer newMaster = connection.masters().iterator().next();</span><br><span class="line">        assertThat(masters.iterator().next().getPort()).isNotEqualTo(newMaster.getPort());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>确定 Sentinel 集群内的所有节点地址<br>
+创建连接管理器（ConnectionManager）时读取所有 Master、Slave 和 Sentinel 节点的地址（org.redisson.connection.SentinelConnectionManager#SentinelConnectionManager）<br>
+Sentinel 通过监听 master 可以得到所有节点的地址。</li>
+<li>尝试连接一个 Sentinel<br>
+只要有一个 Sentinel 能通过 PING-PONG 校验，则返回对该 Sentinel 的连接。</li>
+<li>执行操作<br>
+获取连接（org.redisson.command.RedisExecutor#getConnection）。<br>
+如果是只读的操作，会从 slave 中通过负载均衡选一个操作（org.redisson.connection.MasterSlaveConnectionManager#connectionReadOp）；<br>
+如果是非只读操作，从 master 里选一个操作（org.redisson.connection.ConnectionManager#connectionWriteOp）。</li>
+</ol>
+<h3 id="cluster-模式获取连接"><a class="header-anchor" href="#cluster-模式获取连接">¶</a>Cluster 模式获取连接</h3>
+<ol>
+<li>添加节点初始化 Redisson<br>
+对于客户端来说，Cluster 模式可以看做几个 Master、Slave 的组合（org.redisson.ClusterRunner#addNode）。</li>
+<li>连接时从节点中选一个<br>
+先计算 key 属于哪个 slot（org.redisson.cluster.ClusterConnectionManager#calcSlot）；<br>
+再由 slot 计算应该请求哪对主从（org.redisson.connection.MasterSlaveConnectionManager#getEntry）。</li>
+</ol>
+<h3 id="分布式锁"><a class="header-anchor" href="#分布式锁">¶</a>分布式锁</h3>
+<p>文档：<a href="https://github.com/redisson/redisson/wiki/8.-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E5%92%8C%E5%90%8C%E6%AD%A5%E5%99%A8" target="_blank" rel="noopener">8. 分布式锁和同步器</a><br>
+下面记录一下 Redisson 中对应功能所在的代码位置和基本思路。</p>
+<h4 id="可重入锁-reentrant-lock"><a class="header-anchor" href="#可重入锁-reentrant-lock">¶</a>可重入锁（Reentrant Lock）</h4>
+<p>测试代码见：<code>org.redisson.RedissonLockTest#testGetHoldCount</code><br>
+源码主要为：<code>org.redisson.RedissonLock</code></p>
+<p><strong>可重入性</strong>是通过加锁时传的 threadId 实现的，下面是 Redisson 中用于加锁的 lua 脚本（<code>org.redisson.RedissonLock#tryLockInnerAsync</code>）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">-- KEYS[1]: RedissonObject中的name字段，这里表示锁的名字</span><br><span class="line">-- ARGV[1]: leaseTime，过期时间，这里为30000</span><br><span class="line">-- ARGV[2]: 锁的value，这里为threadId</span><br><span class="line"></span><br><span class="line">-- 未加过锁的情况</span><br><span class="line">&quot;if (redis.call(&apos;exists&apos;, KEYS[1]) == 0) then &quot; +</span><br><span class="line">    &quot;redis.call(&apos;hset&apos;, KEYS[1], ARGV[2], 1); &quot; +</span><br><span class="line">    &quot;redis.call(&apos;pexpire&apos;, KEYS[1], ARGV[1]); &quot; +</span><br><span class="line">    &quot;return nil; &quot; +</span><br><span class="line">&quot;end; &quot; +</span><br><span class="line">-- 当前线程已加过锁的情况</span><br><span class="line">&quot;if (redis.call(&apos;hexists&apos;, KEYS[1], ARGV[2]) == 1) then &quot; +</span><br><span class="line">    &quot;redis.call(&apos;hincrby&apos;, KEYS[1], ARGV[2], 1); &quot; +</span><br><span class="line">    &quot;redis.call(&apos;pexpire&apos;, KEYS[1], ARGV[1]); &quot; +</span><br><span class="line">    &quot;return nil; &quot; +</span><br><span class="line">&quot;end; &quot; +</span><br><span class="line">-- 其他线程加过锁的情况</span><br><span class="line">&quot;return redis.call(&apos;pttl&apos;, KEYS[1]);&quot;</span><br></pre></td></tr></table></figure>
+<p>所有锁都保存在一个 key 为 lock 的 hash 对象下，第一次加锁时保存的结果为<code>&lt;lock, {threadId}, 1&gt;</code>，过期时间为 30s，同一线程第二次加锁时，更新为<code>&lt;lock, {threadId}, 2&gt;</code>，且过期时间被刷新。<br>
+当加锁成功时（包括同一线程调用重入多次）返回 null，而加锁失败时，返回锁的剩余过期时间，<strong>根据返回值是否为空可以判断加锁是否成功</strong>，当还未获取到锁时，客户端会轮询检查（<code>org.redisson.RedissonLock#lock(long leaseTime, TimeUnit unit, boolean interruptibly)</code>中的 while 循环），也就是说这种加锁方式并<strong>不是公平的</strong>。<br>
+<strong>加锁监控</strong>保证了当业务执行时间超过加锁时间时，不会因为锁过期而让其他线程进入临界区，在 Redisson 中是通过一个 TimerTask 每隔 10s（即加锁时间 / 3）刷新一次锁的过期时间来实现的（<code>org.redisson.RedissonLock#renewExpiration</code>）。</p>
+<p>另外，由于加锁时保存了 threadId，<strong>unlock</strong>时同样会传 threadId、只能释放当前线程加上的锁，下面是用于释放锁的 lua 脚本（<code>org.redisson.RedissonLock#unlockInnerAsync</code>）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">-- KEYS[1]: &#123;lockName&#125;</span><br><span class="line">-- KEYS[2]: </span><br><span class="line">-- ARGS[1]: UNLOCK_MESSAGE</span><br><span class="line">-- ARGS[2]: 加锁时间，默认30s</span><br><span class="line">-- ARGS[3]: &#123;threadId&#125;</span><br><span class="line"></span><br><span class="line">-- 检查当前线程是否有加该锁</span><br><span class="line">&quot;if (redis.call(&apos;hexists&apos;, KEYS[1], ARGV[3]) == 0) then &quot; +</span><br><span class="line">    &quot;return nil;&quot; +</span><br><span class="line">&quot;end; &quot; +</span><br><span class="line">-- 计数器-1</span><br><span class="line">&quot;local counter = redis.call(&apos;hincrby&apos;, KEYS[1], ARGV[3], -1); &quot; +</span><br><span class="line">-- 如果计数器未减完，说明重入了多次，且这里刷新了一次过期时间</span><br><span class="line">&quot;if (counter &gt; 0) then &quot; +</span><br><span class="line">    &quot;redis.call(&apos;pexpire&apos;, KEYS[1], ARGV[2]); &quot; +</span><br><span class="line">    &quot;return 0; &quot; +</span><br><span class="line">-- 计数器减完，删除该锁，并通知其他正在等待的线程</span><br><span class="line">&quot;else &quot; +</span><br><span class="line">    &quot;redis.call(&apos;del&apos;, KEYS[1]); &quot; +</span><br><span class="line">    &quot;redis.call(&apos;publish&apos;, KEYS[2], ARGV[1]); &quot; +</span><br><span class="line">    &quot;return 1; &quot;+</span><br><span class="line">&quot;end; &quot; +</span><br><span class="line">&quot;return nil;&quot;</span><br></pre></td></tr></table></figure>
+<h4 id="公平锁-fair-lock"><a class="header-anchor" href="#公平锁-fair-lock">¶</a>公平锁（Fair Lock）</h4>
+<p>测试代码见：<code>org.redisson.RedissonFairLockTest#testIsLockedOtherThread</code><br>
+源码主要为：<code>org.redisson.RedissonFairLock</code></p>
+<p><strong>公平性</strong>是通过队列实现的，（<code>org.redisson.RedissonFairLock#tryLockInnerAsync</code>）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">// remove stale threads</span><br><span class="line">&quot;while true do &quot; +</span><br><span class="line">    &quot;local firstThreadId2 = redis.call(&apos;lindex&apos;, KEYS[2], 0);&quot; +</span><br><span class="line">    &quot;if firstThreadId2 == false then &quot; +</span><br><span class="line">        &quot;break;&quot; +</span><br><span class="line">    &quot;end;&quot; +</span><br><span class="line"></span><br><span class="line">    &quot;local timeout = tonumber(redis.call(&apos;zscore&apos;, KEYS[3], firstThreadId2));&quot; +</span><br><span class="line">    &quot;if timeout &lt;= tonumber(ARGV[4]) then &quot; +</span><br><span class="line">        // remove the item from the queue and timeout set</span><br><span class="line">        // NOTE we do not alter any other timeout</span><br><span class="line">        &quot;redis.call(&apos;zrem&apos;, KEYS[3], firstThreadId2);&quot; +</span><br><span class="line">        &quot;redis.call(&apos;lpop&apos;, KEYS[2]);&quot; +</span><br><span class="line">    &quot;else &quot; +</span><br><span class="line">        &quot;break;&quot; +</span><br><span class="line">    &quot;end;&quot; +</span><br><span class="line">&quot;end;&quot; +</span><br><span class="line"></span><br><span class="line">// check if the lock can be acquired now</span><br><span class="line">&quot;if (redis.call(&apos;exists&apos;, KEYS[1]) == 0) &quot; +</span><br><span class="line">    &quot;and ((redis.call(&apos;exists&apos;, KEYS[2]) == 0) &quot; +</span><br><span class="line">        &quot;or (redis.call(&apos;lindex&apos;, KEYS[2], 0) == ARGV[2])) then &quot; +</span><br><span class="line"></span><br><span class="line">    // remove this thread from the queue and timeout set</span><br><span class="line">    &quot;redis.call(&apos;lpop&apos;, KEYS[2]);&quot; +</span><br><span class="line">    &quot;redis.call(&apos;zrem&apos;, KEYS[3], ARGV[2]);&quot; +</span><br><span class="line"></span><br><span class="line">    // decrease timeouts for all waiting in the queue</span><br><span class="line">    &quot;local keys = redis.call(&apos;zrange&apos;, KEYS[3], 0, -1);&quot; +</span><br><span class="line">    &quot;for i = 1, #keys, 1 do &quot; +</span><br><span class="line">        &quot;redis.call(&apos;zincrby&apos;, KEYS[3], -tonumber(ARGV[3]), keys[i]);&quot; +</span><br><span class="line">    &quot;end;&quot; +</span><br><span class="line"></span><br><span class="line">    // acquire the lock and set the TTL for the lease</span><br><span class="line">    &quot;redis.call(&apos;hset&apos;, KEYS[1], ARGV[2], 1);&quot; +</span><br><span class="line">    &quot;redis.call(&apos;pexpire&apos;, KEYS[1], ARGV[1]);&quot; +</span><br><span class="line">    &quot;return nil;&quot; +</span><br><span class="line">&quot;end;&quot; +</span><br><span class="line"></span><br><span class="line">// check if the lock is already held, and this is a re-entry</span><br><span class="line">&quot;if redis.call(&apos;hexists&apos;, KEYS[1], ARGV[2]) == 1 then &quot; +</span><br><span class="line">    &quot;redis.call(&apos;hincrby&apos;, KEYS[1], ARGV[2],1);&quot; +</span><br><span class="line">    &quot;redis.call(&apos;pexpire&apos;, KEYS[1], ARGV[1]);&quot; +</span><br><span class="line">    &quot;return nil;&quot; +</span><br><span class="line">&quot;end;&quot; +</span><br><span class="line"></span><br><span class="line">// the lock cannot be acquired</span><br><span class="line">// check if the thread is already in the queue</span><br><span class="line">&quot;local timeout = redis.call(&apos;zscore&apos;, KEYS[3], ARGV[2]);&quot; +</span><br><span class="line">&quot;if timeout ~= false then &quot; +</span><br><span class="line">    // the real timeout is the timeout of the prior thread</span><br><span class="line">    // in the queue, but this is approximately correct, and</span><br><span class="line">    // avoids having to traverse the queue</span><br><span class="line">    &quot;return timeout - tonumber(ARGV[3]) - tonumber(ARGV[4]);&quot; +</span><br><span class="line">&quot;end;&quot; +</span><br><span class="line"></span><br><span class="line">// add the thread to the queue at the end, and set its timeout in the timeout set to the timeout of</span><br><span class="line">// the prior thread in the queue (or the timeout of the lock if the queue is empty) plus the</span><br><span class="line">// threadWaitTime</span><br><span class="line">&quot;local lastThreadId = redis.call(&apos;lindex&apos;, KEYS[2], -1);&quot; +</span><br><span class="line">&quot;local ttl;&quot; +</span><br><span class="line">&quot;if lastThreadId ~= false and lastThreadId ~= ARGV[2] then &quot; +</span><br><span class="line">    &quot;ttl = tonumber(redis.call(&apos;zscore&apos;, KEYS[3], lastThreadId)) - tonumber(ARGV[4]);&quot; +</span><br><span class="line">&quot;else &quot; +</span><br><span class="line">    &quot;ttl = redis.call(&apos;pttl&apos;, KEYS[1]);&quot; +</span><br><span class="line">&quot;end;&quot; +</span><br><span class="line">&quot;local timeout = ttl + tonumber(ARGV[3]) + tonumber(ARGV[4]);&quot; +</span><br><span class="line">&quot;if redis.call(&apos;zadd&apos;, KEYS[3], timeout, ARGV[2]) == 1 then &quot; +</span><br><span class="line">    &quot;redis.call(&apos;rpush&apos;, KEYS[2], ARGV[2]);&quot; +</span><br><span class="line">&quot;end;&quot; +</span><br><span class="line">&quot;return ttl;&quot;</span><br></pre></td></tr></table></figure>
+<h4 id="联锁-multilock"><a class="header-anchor" href="#联锁-multilock">¶</a>联锁（MultiLock）</h4>
+<p>源码位置：<code>org.redisson.RedissonMultiLock</code></p>
+<p>联锁是对批量加锁的封装，其关键是如何实现<strong>死锁避免</strong>，其中的关键代码如下（org.redisson.RedissonMultiLock#tryLock(long waitTime, long leaseTime, TimeUnit unit)）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// 将已经获取的锁释放掉</span><br><span class="line">unlockInner(acquiredLocks);</span><br><span class="line">if (waitTime == -1) &#123;</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br><span class="line">failedLocksLimit = failedLocksLimit();</span><br><span class="line">acquiredLocks.clear();</span><br><span class="line">// 重置iterator，重新加一遍锁</span><br><span class="line">while (iterator.hasPrevious()) &#123;</span><br><span class="line">    iterator.previous();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="红锁-redlock"><a class="header-anchor" href="#红锁-redlock">¶</a>红锁（RedLock）</h4>
+<p>测试代码：<code>org.redisson.RedissonRedLockTest#testLockLeasetime</code><br>
+源码位置：<code>org.redisson.RedissonRedLock</code></p>
+<p>红锁实际上是联锁的子类，原理基本一致，它和联锁的区别主要是：</p>
+<ul>
+<li>联锁不允许加锁失败（<code>org.redisson.RedissonMultiLock#failedLocksLimit</code>），而红锁允许少于半数次的加锁失败（<code>org.redisson.RedissonRedLock#failedLocksLimit</code>）。</li>
+<li>使用时，红锁的加锁目标最好包含多个 Redis 实例，从而实现高可用。</li>
+</ul>
+<p>看门狗<br>
+看门狗原理，下图来自于<a href="https://www.cnblogs.com/wang-meng/p/12525029.html" target="_blank" rel="noopener">这里</a><br>
+<img src="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E7%9C%8B%E9%97%A8%E7%8B%97.png" alt="红锁-看门狗" title="红锁-看门狗"><br>
+加锁时启动定时任务刷新锁的过期时间：<br>
+org.redisson.RedissonLock#tryAcquireOnceAsync<br>
+-&gt; org.redisson.RedissonLock#scheduleExpirationRenewal<br>
+释放锁时关掉该定时任务：<br>
+org.redisson.RedissonLock#unlock<br>
+-&gt; org.redisson.RedissonLock#cancelExpirationRenewal</p>
+<p>可重入性<br>
+可重入性原理，下图来自于<a href="https://www.cnblogs.com/wang-meng/p/12525029.html" target="_blank" rel="noopener">这里</a><br>
+<img src="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7.png" alt="红锁-可重入性" title="红锁-可重入性"></p>
+<h4 id="读写锁-readwritelock"><a class="header-anchor" href="#读写锁-readwritelock">¶</a>读写锁（ReadWriteLock）</h4>
+<p>TODO</p>
+<h4 id="信号量-semaphore"><a class="header-anchor" href="#信号量-semaphore">¶</a>信号量（Semaphore）</h4>
+<p>TODO</p>
+<h4 id="可过期性信号量-permitexpirablesemaphore"><a class="header-anchor" href="#可过期性信号量-permitexpirablesemaphore">¶</a>可过期性信号量（PermitExpirableSemaphore）</h4>
+<p>TODO</p>
+<h4 id="闭锁-countdownlatch"><a class="header-anchor" href="#闭锁-countdownlatch">¶</a>闭锁（CountDownLatch）</h4>
+<p>TODO</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Redis/" rel="tag"># Redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/6577ef90.html" rel="next" title="SpringBoot 与常见中间件的搭建">
+                <i class="fa fa-chevron-left"></i> SpringBoot 与常见中间件的搭建
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/6ce879b3.html" rel="prev" title="规则引擎">
+                规则引擎 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">107</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#client-jedis"><span class="nav-number">1.</span> <span class="nav-text">¶Client - Jedis</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#配置-jedis"><span class="nav-number">1.1.</span> <span class="nav-text">¶配置 Jedis</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发安全问题"><span class="nav-number">1.2.</span> <span class="nav-text">¶并发安全问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#client-spring-data-redis"><span class="nav-number">2.</span> <span class="nav-text">¶Client - spring-data-redis</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redisson"><span class="nav-number">3.</span> <span class="nav-text">¶Redisson</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#与-jedis-的区别"><span class="nav-number">3.1.</span> <span class="nav-text">¶与 Jedis 的区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-模式获取连接"><span class="nav-number">3.2.</span> <span class="nav-text">¶Sentinel 模式获取连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-模式获取连接"><span class="nav-number">3.3.</span> <span class="nav-text">¶Cluster 模式获取连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式锁"><span class="nav-number">3.4.</span> <span class="nav-text">¶分布式锁</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#可重入锁-reentrant-lock"><span class="nav-number">3.4.1.</span> <span class="nav-text">¶可重入锁（Reentrant Lock）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#公平锁-fair-lock"><span class="nav-number">3.4.2.</span> <span class="nav-text">¶公平锁（Fair Lock）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#联锁-multilock"><span class="nav-number">3.4.3.</span> <span class="nav-text">¶联锁（MultiLock）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#红锁-redlock"><span class="nav-number">3.4.4.</span> <span class="nav-text">¶红锁（RedLock）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#读写锁-readwritelock"><span class="nav-number">3.4.5.</span> <span class="nav-text">¶读写锁（ReadWriteLock）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#信号量-semaphore"><span class="nav-number">3.4.6.</span> <span class="nav-text">¶信号量（Semaphore）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#可过期性信号量-permitexpirablesemaphore"><span class="nav-number">3.4.7.</span> <span class="nav-text">¶可过期性信号量（PermitExpirableSemaphore）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#闭锁-countdownlatch"><span class="nav-number">3.4.8.</span> <span class="nav-text">¶闭锁（CountDownLatch）</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="一般来说，查问题有以下几个层次：  看服务器指标 看日志 review 代码 debug  debug 可以说是撒手锏了，一般不到万不得已的情况不会 debug，费时费力，而且上线后谁还能在服务器上开个 debug 端口？印象中，遇到非常棘手的问题时，只能 review 代码然后在关键位置加日志，究其根本原因，是没法看到进程运行时的内存状况。Arthas 就是为了解决这种问题而诞生的。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-10-03T02:52:33.374Z">
+<meta property="og:updated_time" content="2020-03-16T01:32:30.017Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用 Arthas 排查线上问题">
 <meta name="twitter:description" content="一般来说，查问题有以下几个层次：  看服务器指标 看日志 review 代码 debug  debug 可以说是撒手锏了，一般不到万不得已的情况不会 debug，费时费力，而且上线后谁还能在服务器上开个 debug 端口？印象中，遇到非常棘手的问题时，只能 review 代码然后在关键位置加日志，究其根本原因，是没法看到进程运行时的内存状况。Arthas 就是为了解决这种问题而诞生的。">
@@ -357,7 +357,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2k 字
+                  2.1k 字
                 </span>
               
 
@@ -373,7 +373,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  8 分钟
+                  9 分钟
                 </span>
               
             </div>
@@ -423,7 +423,7 @@
 <h3 id="分析方法调用参数-返回值-watch"><a class="header-anchor" href="#分析方法调用参数-返回值-watch">¶</a>分析方法调用参数 &amp; 返回值（watch）</h3>
 <p>默认情况下 watch 会把每次调用的结果都打印出来、非常混乱，其实是可以用 ognl 表达式来过滤的，源码中，搜索表达式的核心对象是 Advice 对象。<br>
 仍然是使用上面给出的例子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"># 查看第一个参数</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0]&quot;</span><br><span class="line"># 调用某个参数的方法</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].getA1()&quot;</span><br><span class="line"># 在方法参数或返回值类型是嵌套类的情况下，查看对象的内部结构</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123; #this.a1 &#125;&quot;</span><br><span class="line"># 解决方法重载问题（如果目标方法被重载了，单纯用上边的命令会把这些重载方法的调用也拦下来）</span><br><span class="line">watch com.tallate.localcache.A test &quot;params.length==1&quot;</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[1] instanceof Integer&quot;</span><br><span class="line"># 按条件过滤参数</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 == 1 &#125;&quot; -x 2</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 == null &#125;&quot; -x 2</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 != null &#125;&quot; -x 2</span><br><span class="line"># 过滤后统计，注意&#123;? expr &#125;的结果是ArrayList类型的</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 != null &#125;.size()&quot; -x 2</span><br><span class="line"># 子表达式求值</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 &lt; 10 &#125;.size().(#this &gt;= 2 ? #this - 10 : &apos;other condition&apos;)&quot; -x 2</span><br><span class="line"># 选择第一个满足条件，注意例子中的方法有两个参数</span><br><span class="line">watch com.tallate.localcache.A test &quot;params.&#123;^ #this.a1 != null &#125;&quot; -x 2</span><br><span class="line"># 选择最后一个满足条件</span><br><span class="line">watch com.tallate.localcache.A test &quot;params.&#123;$ #this.a1 != null &#125;&quot; -x 2</span><br><span class="line"># 访问静态变量</span><br><span class="line">watch com.tallate.localcache.A test &quot;@com.tallate.localcache.A@x&quot;</span><br><span class="line"># 上面这种方式受到classloader限制，不推荐使用</span><br><span class="line"># 使用新版getstatic命令，通过-c指定classloader，可以查看任意static变量，同时支持ognl表达式</span><br><span class="line">getstatic com.tallate.localcache.A x</span><br><span class="line">getstatic com.tallate.localcache.A m &apos;entrySet().iterator.&#123;? #this.key == 1 &#125;&apos;</span><br><span class="line">getstatic com.tallate.localcache.A m &apos;entrySet().iterator.&#123;? #this.key == &quot;1&quot; &#125;&apos;</span><br><span class="line"># 调用静态方法</span><br><span class="line">watch com.tallate.localcache.A test &quot;@java.lang.Thread@currentThread()&quot;</span><br><span class="line">watch com.tallate.localcache.A test &quot;@java.lang.Thread@currentThread().getContextClassLoader()&quot;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"># 查看第一个参数</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0]&quot;</span><br><span class="line"># 调用某个参数的方法</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].getA1()&quot;</span><br><span class="line"># 在方法参数或返回值类型是嵌套类的情况下，查看对象的内部结构</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123; #this.a1 &#125;&quot;</span><br><span class="line"># 解决方法重载问题（如果目标方法被重载了，单纯用上边的命令会把这些重载方法的调用也拦下来）</span><br><span class="line">watch com.tallate.localcache.A test &quot;params.length==1&quot;</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[1] instanceof Integer&quot;</span><br><span class="line"># 按条件过滤参数</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 == 1 &#125;&quot; -x 2</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 == null &#125;&quot; -x 2</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 != null &#125;&quot; -x 2</span><br><span class="line">watch com.tallate.localcache.A test &quot;&#123;params[0], params[1], returnObj&#125;&quot; &quot;params[0] == &apos;过滤条件&apos;&quot;</span><br><span class="line">watch com.tallate.localcache.A test &quot;&#123;params[0], params[1], returnObj&#125;&quot; | grep &quot;过滤条件&quot;</span><br><span class="line"># 过滤后统计，注意&#123;? expr &#125;的结果是ArrayList类型的</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 != null &#125;.size()&quot; -x 2</span><br><span class="line"># 子表达式求值</span><br><span class="line">watch com.tallate.localcache.A test &quot;params[0].&#123;? #this.a1 &lt; 10 &#125;.size().(#this &gt;= 2 ? #this - 10 : &apos;other condition&apos;)&quot; -x 2</span><br><span class="line"># 选择第一个满足条件，注意例子中的方法有两个参数</span><br><span class="line">watch com.tallate.localcache.A test &quot;params.&#123;^ #this.a1 != null &#125;&quot; -x 2</span><br><span class="line"># 选择最后一个满足条件</span><br><span class="line">watch com.tallate.localcache.A test &quot;params.&#123;$ #this.a1 != null &#125;&quot; -x 2</span><br><span class="line"># 访问静态变量</span><br><span class="line">watch com.tallate.localcache.A test &quot;@com.tallate.localcache.A@x&quot;</span><br><span class="line"># 上面这种方式受到classloader限制，不推荐使用</span><br><span class="line"># 使用新版getstatic命令，通过-c指定classloader，可以查看任意static变量，同时支持ognl表达式</span><br><span class="line">getstatic com.tallate.localcache.A x</span><br><span class="line">getstatic com.tallate.localcache.A m &apos;entrySet().iterator.&#123;? #this.key == 1 &#125;&apos;</span><br><span class="line">getstatic com.tallate.localcache.A m &apos;entrySet().iterator.&#123;? #this.key == &quot;1&quot; &#125;&apos;</span><br><span class="line"># 调用静态方法</span><br><span class="line">watch com.tallate.localcache.A test &quot;@java.lang.Thread@currentThread()&quot;</span><br><span class="line">watch com.tallate.localcache.A test &quot;@java.lang.Thread@currentThread().getContextClassLoader()&quot;</span><br></pre></td></tr></table></figure>
 <h3 id="分析方法调用链路-trace"><a class="header-anchor" href="#分析方法调用链路-trace">¶</a>分析方法调用链路（trace）</h3>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">trace com.tallate.localcache.A test</span><br><span class="line"># 跳过jdk方法</span><br><span class="line">trace -j com.tallate.localcache.A test</span><br><span class="line"># 按方法的执行耗时进行过滤（为了方便下面过滤出大于0.01ms的调用路径，相当于没有过滤）</span><br><span class="line">trace *A test &apos;#cost &gt; 0.01&apos;</span><br></pre></td></tr></table></figure>
 <p>一些特殊结果的说明：<br>
@@ -450,6 +450,10 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
 <h2 id="arthas-原理"><a class="header-anchor" href="#arthas-原理">¶</a>Arthas 原理</h2>
 <p>Arthas 的原理是<code>Java Agent</code>。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="线上问题排查"><a class="header-anchor" href="#线上问题排查">¶</a>线上问题排查</h3>
+<ol>
+<li><a href="https://my.oschina.net/leejun2005/blog/1524687" target="_blank" rel="noopener">线上服务 CPU 100%？一键定位 so easy！</a></li>
+</ol>
 <h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
 <ol>
 <li><a href="https://alibaba.github.io/arthas/advanced-use.html" target="_blank" rel="noopener">进阶使用</a></li>
@@ -462,6 +466,7 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
 </ol>
 <h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
 <ol>
+<li><a href="https://mp.weixin.qq.com/s/ZlNcvwJ_swspifWTLHA92Q" target="_blank" rel="noopener">Java 动态调试技术原理及实践</a></li>
 <li><a href="https://www.cnblogs.com/LittleHann/p/4783581.html" target="_blank" rel="noopener">Java Attach API</a></li>
 <li><a href="http://tech.dianwoda.com/2018/12/20/arthasyuan-ma-fen-xi/" target="_blank" rel="noopener">Arthas 源码分析</a></li>
 </ol>
@@ -489,8 +494,8 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/7ce17c9e.html" rel="next" title="一些有意思的观点">
-                <i class="fa fa-chevron-left"></i> 一些有意思的观点
+              <a href="/c395b48b.html" rel="next" title="ES 应用总结">
+                <i class="fa fa-chevron-left"></i> ES 应用总结
               </a>
             
           </div>
@@ -583,7 +588,7 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">65</span>
+                  <span class="site-state-item-count">107</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -594,7 +599,7 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -605,7 +610,7 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">34</span>
+                  <span class="site-state-item-count">52</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -640,7 +645,7 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#开始使用-arthas"><span class="nav-number">1.</span> <span class="nav-text">¶开始使用 Arthas</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#注意事项"><span class="nav-number">1.1.</span> <span class="nav-text">¶注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#arthas-问题排查"><span class="nav-number">1.2.</span> <span class="nav-text">¶arthas 问题排查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看更多命令-help"><span class="nav-number">1.3.</span> <span class="nav-text">¶查看更多命令（help）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#比较代码-jad"><span class="nav-number">1.4.</span> <span class="nav-text">¶比较代码（jad）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#打印线程堆栈-thread"><span class="nav-number">1.5.</span> <span class="nav-text">¶打印线程堆栈（thread）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分析方法调用参数-返回值-watch"><span class="nav-number">1.6.</span> <span class="nav-text">¶分析方法调用参数 &amp; 返回值（watch）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分析方法调用链路-trace"><span class="nav-number">1.7.</span> <span class="nav-text">¶分析方法调用链路（trace）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#记录方法执行的快照-tt"><span class="nav-number">1.8.</span> <span class="nav-text">¶记录方法执行的快照（tt）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arthas-原理"><span class="nav-number">2.</span> <span class="nav-text">¶Arthas 原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">3.1.</span> <span class="nav-text">¶应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#原理"><span class="nav-number">3.2.</span> <span class="nav-text">¶原理</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#开始使用-arthas"><span class="nav-number">1.</span> <span class="nav-text">¶开始使用 Arthas</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#注意事项"><span class="nav-number">1.1.</span> <span class="nav-text">¶注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#arthas-问题排查"><span class="nav-number">1.2.</span> <span class="nav-text">¶arthas 问题排查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看更多命令-help"><span class="nav-number">1.3.</span> <span class="nav-text">¶查看更多命令（help）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#比较代码-jad"><span class="nav-number">1.4.</span> <span class="nav-text">¶比较代码（jad）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#打印线程堆栈-thread"><span class="nav-number">1.5.</span> <span class="nav-text">¶打印线程堆栈（thread）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分析方法调用参数-返回值-watch"><span class="nav-number">1.6.</span> <span class="nav-text">¶分析方法调用参数 &amp; 返回值（watch）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分析方法调用链路-trace"><span class="nav-number">1.7.</span> <span class="nav-text">¶分析方法调用链路（trace）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#记录方法执行的快照-tt"><span class="nav-number">1.8.</span> <span class="nav-text">¶记录方法执行的快照（tt）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arthas-原理"><span class="nav-number">2.</span> <span class="nav-text">¶Arthas 原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#线上问题排查"><span class="nav-number">3.1.</span> <span class="nav-text">¶线上问题排查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">3.2.</span> <span class="nav-text">¶应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#原理"><span class="nav-number">3.3.</span> <span class="nav-text">¶原理</span></a></li></ol></li></ol></div>
             
 
           </div>
@@ -662,7 +667,7 @@ tt 命令仅仅将当前环境对象的引用保存起来，如果方法对入�
       <div class="footer-inner">
         
 
-<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>

@@ -79,18 +79,23 @@
 
 
 
-<meta name="description" content="¶无锁栈 ¶Treiber Stack ¶无锁队列 ¶ArrayBlockingQueue 和 LinkedBlockingQueue ¶Disruptor   无锁内存队列   优化CPU伪共享   RingBuffer 环形队列，使用定长数组存储，长度是2^N，可以使用位运算提升性能。 无锁：无锁设计减少了竞争。 预热：预先填充好任务/事件，不需要像链表那样每次添加/删除节点时去创建/回收节点">
+<meta name="description" content="无锁栈 ¶Treiber Stack 无锁列表 ¶CopyOnWriteArrayList CopyOnWriteArrayList 是一个线程安全的 ArrayList，对其进行的修改操作和元素迭代操作都是在底层创建一个拷贝的数组（快照）上进行的，也就是写时拷贝策略。CopyOnWriteArrayList 适合读多写少的场景，但如果应用在写操作频繁的场景下反而会降低性能。   lock：保证">
 <meta name="keywords" content="Distributed System">
 <meta property="og:type" content="article">
-<meta property="og:title" content="异步任务和并发安全容器">
+<meta property="og:title" content="并发和并发安全容器">
 <meta property="og:url" content="https://tallate.github.io/1a8406e8.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="¶无锁栈 ¶Treiber Stack ¶无锁队列 ¶ArrayBlockingQueue 和 LinkedBlockingQueue ¶Disruptor   无锁内存队列   优化CPU伪共享   RingBuffer 环形队列，使用定长数组存储，长度是2^N，可以使用位运算提升性能。 无锁：无锁设计减少了竞争。 预热：预先填充好任务/事件，不需要像链表那样每次添加/删除节点时去创建/回收节点">
+<meta property="og:description" content="无锁栈 ¶Treiber Stack 无锁列表 ¶CopyOnWriteArrayList CopyOnWriteArrayList 是一个线程安全的 ArrayList，对其进行的修改操作和元素迭代操作都是在底层创建一个拷贝的数组（快照）上进行的，也就是写时拷贝策略。CopyOnWriteArrayList 适合读多写少的场景，但如果应用在写操作频繁的场景下反而会降低性能。   lock：保证">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-10-07T17:10:11.750Z">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/CopyOnWriteArrayList%E7%B1%BB%E5%9B%BE.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentLinkedQueue%E7%B1%BB%E5%9B%BE.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentLinkedQueue%E7%9A%84%E9%98%9F%E5%88%97%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentHashMap%E7%BB%93%E6%9E%84.png">
+<meta property="og:updated_time" content="2020-09-28T13:14:49.872Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="异步任务和并发安全容器">
-<meta name="twitter:description" content="¶无锁栈 ¶Treiber Stack ¶无锁队列 ¶ArrayBlockingQueue 和 LinkedBlockingQueue ¶Disruptor   无锁内存队列   优化CPU伪共享   RingBuffer 环形队列，使用定长数组存储，长度是2^N，可以使用位运算提升性能。 无锁：无锁设计减少了竞争。 预热：预先填充好任务/事件，不需要像链表那样每次添加/删除节点时去创建/回收节点">
+<meta name="twitter:title" content="并发和并发安全容器">
+<meta name="twitter:description" content="无锁栈 ¶Treiber Stack 无锁列表 ¶CopyOnWriteArrayList CopyOnWriteArrayList 是一个线程安全的 ArrayList，对其进行的修改操作和元素迭代操作都是在底层创建一个拷贝的数组（快照）上进行的，也就是写时拷贝策略。CopyOnWriteArrayList 适合读多写少的场景，但如果应用在写操作频繁的场景下反而会降低性能。   lock：保证">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/CopyOnWriteArrayList%E7%B1%BB%E5%9B%BE.png">
 
 
 
@@ -128,7 +133,7 @@
 
 
 
-  <title>异步任务和并发安全容器 | Tallate</title>
+  <title>并发和并发安全容器 | Tallate</title>
   
 
 
@@ -287,7 +292,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">异步任务和并发安全容器</h1>
+          <h1 class="post-title" itemprop="name headline">并发和并发安全容器</h1>
         
 
         <div class="post-meta">
@@ -358,7 +363,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  183 字
+                  2.4k 字
                 </span>
               
 
@@ -374,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1 分钟
+                  9 分钟
                 </span>
               
             </div>
@@ -395,38 +400,154 @@
       
 
       
-        <h2 id="无锁栈"><a class="header-anchor" href="#无锁栈">¶</a>无锁栈</h2>
-<h3 id="treiber-stack"><a class="header-anchor" href="#treiber-stack">¶</a>Treiber Stack</h3>
-<h2 id="无锁队列"><a class="header-anchor" href="#无锁队列">¶</a>无锁队列</h2>
-<h3 id="arrayblockingqueue-和-linkedblockingqueue"><a class="header-anchor" href="#arrayblockingqueue-和-linkedblockingqueue">¶</a>ArrayBlockingQueue 和 LinkedBlockingQueue</h3>
-<h3 id="disruptor"><a class="header-anchor" href="#disruptor">¶</a>Disruptor</h3>
+        <a id="more"></a>
+<h1>无锁栈</h1>
+<h2 id="treiber-stack"><a class="header-anchor" href="#treiber-stack">¶</a>Treiber Stack</h2>
+<h1>无锁列表</h1>
+<h2 id="copyonwritearraylist"><a class="header-anchor" href="#copyonwritearraylist">¶</a>CopyOnWriteArrayList</h2>
+<p>CopyOnWriteArrayList 是一个线程安全的 ArrayList，对其进行的修改操作和元素迭代操作都是在底层创建一个拷贝的数组（快照）上进行的，也就是写时拷贝策略。CopyOnWriteArrayList 适合读多写少的场景，但如果应用在写操作频繁的场景下反而会降低性能。<br>
+<img src="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/CopyOnWriteArrayList%E7%B1%BB%E5%9B%BE.png" alt="CopyOnWriteArrayList类图" title="CopyOnWriteArrayList类图"></p>
+<ul>
+<li>lock：保证写操作时的并发安全；</li>
+</ul>
+<h3 id="add-e-e"><a class="header-anchor" href="#add-e-e">¶</a>add(E e)</h3>
+<p>添加操作拷贝了份快照，在快照上添加元素，最后替代原数组</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">public boolean add(E e) &#123;</span><br><span class="line"></span><br><span class="line">    // 加独占锁</span><br><span class="line">    final ReentrantLock lock = this.lock;</span><br><span class="line">    lock.lock();</span><br><span class="line">    try &#123;</span><br><span class="line">        // 获取array</span><br><span class="line">        Object[] elements = getArray();</span><br><span class="line"></span><br><span class="line">        // 拷贝array到新数组，添加元素到新数组</span><br><span class="line">        // 新数组长度是原数组长度+1，可见CopyOnWriteArrayList是无界的</span><br><span class="line">        int len = elements.length;</span><br><span class="line">        Object[] newElements = Arrays.copyOf(elements, len + 1);</span><br><span class="line">        newElements[len] = e;</span><br><span class="line"></span><br><span class="line">        // 使用新数组替换添加前的数组</span><br><span class="line">        setArray(newElements);</span><br><span class="line">        return true;</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        // 释放独占锁</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="get-int-index"><a class="header-anchor" href="#get-int-index">¶</a>get(int index)</h3>
+<p>get 操作获取下标处的元素，实际上 get 可以被分解为以下两个步骤：</p>
+<ol>
+<li>获取 array 的引用；</li>
+<li>通过下标访问 array 指定位置的元素。</li>
+</ol>
+<p>整个过程并没有加锁，如果在访问期间有另一个线程删除了某个元素，实际上因为修改操作是发生在原数组的一个快照上的，get 操作仍然获取的是原数组上的元素，因此不会发生类似数组越界的问题。但同时也不可避免这个过程带来的<strong>弱一致性</strong>，因为元素事实上已经被删除了却仍然可以被访问到。</p>
+<h3 id="set-int-index-e-element"><a class="header-anchor" href="#set-int-index-e-element">¶</a>set(int index, E element)</h3>
+<p>修改 list 中指定元素的值。</p>
+<ul>
+<li>如果指定位置的元素不存在则抛出 IndexOutOfBoundsException 异常；</li>
+<li>如果指定位置元素与新值不一致，则创建新数组、在新数组上修改，最后设置新数组到 array（COW）。</li>
+<li>即使没有变化，也还是需要重新设置一次 array，这主要是因为 array 本身是 volatile 的，set 方法应当提供 volatile 的语义。</li>
+</ul>
+<h3 id="remove-int-index"><a class="header-anchor" href="#remove-int-index">¶</a>remove(int index)</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">public E remove(int index) &#123;</span><br><span class="line"></span><br><span class="line">    //获取独占锁</span><br><span class="line">    final ReentrantLock lock = this.lock;</span><br><span class="line">    lock.lock();</span><br><span class="line">    try &#123;</span><br><span class="line"></span><br><span class="line">        //获取数组</span><br><span class="line">        Object[] elements = getArray();</span><br><span class="line">        int len = elements.length;</span><br><span class="line"></span><br><span class="line">        //获取指定元素</span><br><span class="line">        E oldValue = get(elements, index);</span><br><span class="line">        int numMoved = len - index - 1;</span><br><span class="line"></span><br><span class="line">        //如果要删除的是最后一个元素</span><br><span class="line">        if (numMoved == 0)</span><br><span class="line">            setArray(Arrays.copyOf(elements, len - 1));</span><br><span class="line">        else &#123;</span><br><span class="line">            //分两次拷贝除删除后的元素到新数组</span><br><span class="line">            Object[] newElements = new Object[len - 1];</span><br><span class="line">            System.arraycopy(elements, 0, newElements, 0, index);</span><br><span class="line">            System.arraycopy(elements, index + 1, newElements, index,</span><br><span class="line">                             numMoved);</span><br><span class="line">            //使用新数组代替老的                </span><br><span class="line">            setArray(newElements);</span><br><span class="line">        &#125;</span><br><span class="line">        return oldValue;</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        //释放锁</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="remove-object-o"><a class="header-anchor" href="#remove-object-o">¶</a>remove(Object o)</h3>
+<h3 id="remove-object-o-object-snapshot-int-index"><a class="header-anchor" href="#remove-object-o-object-snapshot-int-index">¶</a>remove(Object o, Object[] snapshot, int index)</h3>
+<h3 id="iterator"><a class="header-anchor" href="#iterator">¶</a>iterator</h3>
+<p>CopyOnWriteArrayList 中的 iterator 是弱一致性的，其他线程的修改操作对 iterator 不可见的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">public Iterator&lt;E&gt; iterator() &#123;</span><br><span class="line">    return new COWIterator&lt;E&gt;(getArray(), 0);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">static final class COWIterator&lt;E&gt; implements ListIterator&lt;E&gt; &#123;</span><br><span class="line">    //array的快照版本</span><br><span class="line">    private final Object[] snapshot;</span><br><span class="line"></span><br><span class="line">    //数组下标</span><br><span class="line">    private int cursor;</span><br><span class="line"></span><br><span class="line">    //构造函数</span><br><span class="line">    private COWIterator(Object[] elements, int initialCursor) &#123;</span><br><span class="line">        cursor = initialCursor;</span><br><span class="line">        snapshot = elements;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //是否遍历结束</span><br><span class="line">    public boolean hasNext() &#123;</span><br><span class="line">        return cursor &lt; snapshot.length;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //获取元素</span><br><span class="line">    public E next() &#123;</span><br><span class="line">        if (! hasNext())</span><br><span class="line">            throw new NoSuchElementException();</span><br><span class="line">        return (E) snapshot[cursor++];</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>如果在该线程使用返回的迭代器遍历元素的过程中，其它线程没有对 list 进行增删改，那么 snapshot 本身就是 list 的 array，因为它们是引用关系。</li>
+<li>如果在遍历期间存在其他线程对 list 的增删改操作，那么 snapshot 会成为原 array 的快照，此时其他线程对 list 进行的增删改是不可见的，因为它们操作的是两个不同的数组。</li>
+</ul>
+<h1>无锁队列</h1>
+<h2 id="concurrentlinkedqueue"><a class="header-anchor" href="#concurrentlinkedqueue">¶</a>ConcurrentLinkedQueue</h2>
+<ul>
+<li>线程安全</li>
+<li>无界</li>
+<li>非阻塞</li>
+</ul>
+<h3 id="数据结构"><a class="header-anchor" href="#数据结构">¶</a>数据结构</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentLinkedQueue%E7%B1%BB%E5%9B%BE.png" alt="ConcurrentLinkedQueue类图" title="ConcurrentLinkedQueue类图"></p>
+<ul>
+<li>底层队列使用单向链表实现。</li>
+<li>两个volatile的Node节点（head和tail）分别存放队列的首尾节点，从下面无参构造函数可知默认头尾节点都是指向 item 为 null 的哨兵节点。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public ConcurrentLinkedQueue() &#123;</span><br><span class="line">    head = tail = new Node(null);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Node节点内部为一个volatile修饰的变量item用来存放节点的值，next用来存放链表的下一个节点，从而链接成一个单向无界链表，如下图所示：<br>
+<img src="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentLinkedQueue%E7%9A%84%E9%98%9F%E5%88%97%E7%BB%93%E6%9E%84.png" alt="ConcurrentLinkedQueue的队列结构" title="ConcurrentLinkedQueue的队列结构"></li>
+</ul>
+<h3 id="入队-offer"><a class="header-anchor" href="#入队-offer">¶</a>入队 - offer</h3>
+<p>使用CAS操作实现线程安全</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">public boolean offer(E e) &#123;</span><br><span class="line">    checkNotNull(e);</span><br><span class="line">    final Node&lt;E&gt; newNode = new Node&lt;E&gt;(e);</span><br><span class="line">    // 从尾节点进行插入</span><br><span class="line">    for (Node&lt;E&gt; t = tail, p = t;;) &#123;</span><br><span class="line">        Node&lt;E&gt; q = p.next;</span><br><span class="line">        </span><br><span class="line">        // 如果q==null说明p是尾节点，则执行插入</span><br><span class="line">        if (q == null) &#123;</span><br><span class="line">            // 使用CAS设置p节点的next节点</span><br><span class="line">            if (p.casNext(null, newNode)) &#123;</span><br><span class="line">                // cas成功，则说明新增节点已经被放入链表，然后设置当前尾节点</span><br><span class="line">                if (p != t)</span><br><span class="line">                    casTail(t, newNode); // Failure is OK.</span><br><span class="line">                return true;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        else if (p == q)</span><br><span class="line">            // 多线程操作时候，由于poll操作移除元素后有可能会把head变为自引用，然后head的next变为新head，所以这里需要</span><br><span class="line">            // 重新找新的head，因为新的head后面的节点才是正常的节点。</span><br><span class="line">            p = (t != (t = tail)) ? t : head;</span><br><span class="line">        else</span><br><span class="line">            //（8） 寻找尾节点</span><br><span class="line">            p = (p != t &amp;&amp; t != (t = tail)) ? t : q;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="出队-poll"><a class="header-anchor" href="#出队-poll">¶</a>出队 - poll</h3>
+<p>poll 操作是在队列头部获取并且移除一个元素，如果队列为空则返回 null。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">public E poll() &#123;</span><br><span class="line">    // goto标记</span><br><span class="line">    restartFromHead:</span><br><span class="line"></span><br><span class="line">    // 无限循环</span><br><span class="line">    for (;;) &#123;</span><br><span class="line">        for (Node&lt;E&gt; h = head, p = h, q;;) &#123;</span><br><span class="line">            // 保存当前节点值</span><br><span class="line">            E item = p.item;</span><br><span class="line"></span><br><span class="line">            // 当前节点有值则cas变为null</span><br><span class="line">            if (item != null &amp;&amp; p.casItem(item, null)) &#123;</span><br><span class="line">                //（5）cas成功标志当前节点以及从链表中移除</span><br><span class="line">                if (p != h) </span><br><span class="line">                    updateHead(h, ((q = p.next) != null) ? q : p);</span><br><span class="line">                return item;</span><br><span class="line">            &#125;</span><br><span class="line">            // 当前队列为空则返回null</span><br><span class="line">            else if ((q = p.next) == null) &#123;</span><br><span class="line">                updateHead(h, p);</span><br><span class="line">                return null;</span><br><span class="line">            &#125;</span><br><span class="line">            // 自引用了，则重新找新的队列头节点</span><br><span class="line">            else if (p == q)</span><br><span class="line">                continue restartFromHead;</span><br><span class="line">            else</span><br><span class="line">                // </span><br><span class="line">                p = q;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">final void updateHead(Node&lt;E&gt; h, Node&lt;E&gt; p) &#123;</span><br><span class="line">    if (h != p &amp;&amp; casHead(h, p))</span><br><span class="line">        h.lazySetNext(h);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="arrayblockingqueue-和-linkedblockingqueue"><a class="header-anchor" href="#arrayblockingqueue-和-linkedblockingqueue">¶</a>ArrayBlockingQueue 和 LinkedBlockingQueue</h2>
+<h2 id="priorityblockingqueue"><a class="header-anchor" href="#priorityblockingqueue">¶</a>PriorityBlockingQueue</h2>
+<h2 id="队列比较"><a class="header-anchor" href="#队列比较">¶</a>队列比较</h2>
+<h2 id="disruptor"><a class="header-anchor" href="#disruptor">¶</a>Disruptor</h2>
 <ul>
 <li>
 <p>无锁内存队列</p>
 </li>
 <li>
-<p>优化CPU伪共享</p>
+<p>优化 CPU 伪共享</p>
 </li>
 <li>
 <p>RingBuffer<br>
-环形队列，使用定长数组存储，长度是2^N，可以使用位运算提升性能。<br>
+环形队列，使用定长数组存储，长度是 2^N，可以使用位运算提升性能。<br>
 无锁：无锁设计减少了竞争。<br>
 预热：预先填充好任务/事件，不需要像链表那样每次添加/删除节点时去创建/回收节点，从而可以避免一定的垃圾回收。<br>
-缓存行填充解决了CPU伪共享问题。</p>
+缓存行填充解决了 CPU 伪共享问题。</p>
 </li>
 <li>
 <p>WorkPool<br>
-存储WorkProcessor的池子，Disruptor可以通过Executor并发启动每一个WorkProcessor</p>
+存储 WorkProcessor 的池子，Disruptor 可以通过 Executor 并发启动每一个 WorkProcessor</p>
 </li>
 <li>
 <p>WorkProcessor<br>
-从RindBuffer消费事件/任务，并交由WorkHandler处理。</p>
+从 RindBuffer 消费事件/任务，并交由 WorkHandler 处理。</p>
 </li>
 <li>
 <p>WorkHandler<br>
-处理任务的工作者，根据任务类型委托给不同的EventHandler。</p>
+处理任务的工作者，根据任务类型委托给不同的 EventHandler。</p>
 </li>
 </ul>
+<h2 id="logback-框架中异步日志打印中-arrayblockingqueue-的使用"><a class="header-anchor" href="#logback-框架中异步日志打印中-arrayblockingqueue-的使用">¶</a>Logback 框架中异步日志打印中 ArrayBlockingQueue 的使用</h2>
+<p>异步模型是业务线程把要打印的日志任务写入一个队列后直接返回，然后使用一个线程专门负责从队列中获取日志任务写入磁盘，对用户线程来说，耗时只有将数据写入队列中。</p>
+<h1>并发安全 Map</h1>
+<h2 id="concurrenthashmap"><a class="header-anchor" href="#concurrenthashmap">¶</a>ConcurrentHashMap</h2>
+<p><img src="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentHashMap%E7%BB%93%E6%9E%84.png" alt="ConcurrentHashMap结构" title="ConcurrentHashMap结构"></p>
+<h3 id="get"><a class="header-anchor" href="#get">¶</a>get</h3>
+<p>代码：java.util.concurrent.ConcurrentHashMap.get</p>
+<ol>
+<li>计算 key 的散列值，可以使用该散列值定位到散列表中的某个槽。<br>
+如果 key 是自定义类型对象，需要实现重写 hash 方法。</li>
+<li>找到对象<br>
+hash 值是不精确匹配的，hash 值的关键是计算简单而且有一定的区分度，比如取 string 的前 3 位的和作为 hash 值。<br>
+要精确匹配需要使用对象的 equals 方法。<br>
+ConcurrentHashMap 中哈希槽的实现方法有两种：链表和红黑树，链表和红黑树的查找过程就不必细说了。</li>
+</ol>
+<h3 id="put"><a class="header-anchor" href="#put">¶</a>put</h3>
+<p>代码：java.util.concurrent.ConcurrentHashMap.put</p>
+<ol>
+<li>hash</li>
+<li>找对象<br>
+找对象过程与 get 的区别主要是 put 需要并发控制：
+<ul>
+<li>如果槽是空的，则通过 CAS 直接赋值；</li>
+<li>如果槽非空，则先用<code>synchronized</code>锁住槽，接下来根据槽的数据结构来插入节点，如果槽是链表，则遍历链表找该 Node 是否已存在，不存在的情况下插入到末尾，如果槽是红黑树，则通过二叉树的遍历找目标 Node，找不到的情况下插入到叶子并重新执行红黑平衡。</li>
+</ul>
+</li>
+</ol>
+<h3 id="rehash"><a class="header-anchor" href="#rehash">¶</a>rehash</h3>
+<p><code>java.util.concurrent.ConcurrentHashMap.transfer</code><br>
+扩容的触发条件与HashMap一致。<br>
+扩容流程大致上是：遍历哈希槽，对每个需要迁移的哈希槽进行<code>synchronized</code>加锁。<br>
+当扩容开始后，其他线程必须等扩容完成后才能工作，但其他线程也不是就一直阻塞等扩容完成，而是调用<code>helpTransfer</code>方法一起帮助进行扩容，实际上扩容的单位是哈希槽，因此多线程并发执行扩容并不会导致冲突增加。</p>
+<h1>QA</h1>
+<ol>
+<li>
+<p>JUC 并发包中并发组件 CopyOnWriteArrayList 的实现原理，CopyOnWriteArrayList 是如何通过写时拷贝实现并发安全的 List？</p>
+</li>
+<li>
+<p>什么是弱一致性？</p>
+</li>
+<li>
+<p>说一下 ConcurrentHashMap。</p>
+</li>
+<li>
+<p>ConcurrentHashMap 怎么实现并发安全？<br>
+相对 Hashtable 来说 ConcurrentHashMap 的锁粒度是更小的，Hashtable 中使用 synchronized 实现的一种方法级的悲观锁，相当于把整个散列表锁住了，不利于系统整体吞吐量的提升。<br>
+JDK1.7 中它使用的是一种分段锁来保证并发安全，是一种粒度较小的锁，写操作每次只锁住一个哈希槽，<br>
+JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安全，当然，和 HashMap 一样，每个哈希槽在增长到一定程度后会自动转换为红黑树。</p>
+</li>
+</ol>
+<h1>参考</h1>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/5550043.html" target="_blank" rel="noopener">【目录】JUC 集合框架目录</a></li>
+<li><a href="http://ifeve.com/disruptor/" target="_blank" rel="noopener">并发框架 Disruptor 译文</a></li>
+</ol>
 
       
     </div>
@@ -457,8 +578,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/4e8abc71.html" rel="next" title="异步任务和线程状态机">
-                <i class="fa fa-chevron-left"></i> 异步任务和线程状态机
+              <a href="/4e8abc71.html" rel="next" title="并发和线程">
+                <i class="fa fa-chevron-left"></i> 并发和线程
               </a>
             
           </div>
@@ -551,7 +672,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">65</span>
+                  <span class="site-state-item-count">107</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -562,7 +683,7 @@
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -573,7 +694,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">34</span>
+                  <span class="site-state-item-count">52</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -608,7 +729,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#无锁栈"><span class="nav-number">1.</span> <span class="nav-text">¶无锁栈</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#treiber-stack"><span class="nav-number">1.1.</span> <span class="nav-text">¶Treiber Stack</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#无锁队列"><span class="nav-number">2.</span> <span class="nav-text">¶无锁队列</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#arrayblockingqueue-和-linkedblockingqueue"><span class="nav-number">2.1.</span> <span class="nav-text">¶ArrayBlockingQueue 和 LinkedBlockingQueue</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#disruptor"><span class="nav-number">2.2.</span> <span class="nav-text">¶Disruptor</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">无锁栈</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#treiber-stack"><span class="nav-number">1.1.</span> <span class="nav-text">¶Treiber Stack</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">无锁列表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#copyonwritearraylist"><span class="nav-number">2.1.</span> <span class="nav-text">¶CopyOnWriteArrayList</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#add-e-e"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶add(E e)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get-int-index"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶get(int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#set-int-index-e-element"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶set(int index, E element)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-int-index"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶remove(int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-object-o"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶remove(Object o)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-object-o-object-snapshot-int-index"><span class="nav-number">2.1.6.</span> <span class="nav-text">¶remove(Object o, Object[] snapshot, int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#iterator"><span class="nav-number">2.1.7.</span> <span class="nav-text">¶iterator</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">无锁队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#concurrentlinkedqueue"><span class="nav-number">3.1.</span> <span class="nav-text">¶ConcurrentLinkedQueue</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#数据结构"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#入队-offer"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶入队 - offer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#出队-poll"><span class="nav-number">3.1.3.</span> <span class="nav-text">¶出队 - poll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arrayblockingqueue-和-linkedblockingqueue"><span class="nav-number">3.2.</span> <span class="nav-text">¶ArrayBlockingQueue 和 LinkedBlockingQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#priorityblockingqueue"><span class="nav-number">3.3.</span> <span class="nav-text">¶PriorityBlockingQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#队列比较"><span class="nav-number">3.4.</span> <span class="nav-text">¶队列比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#disruptor"><span class="nav-number">3.5.</span> <span class="nav-text">¶Disruptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#logback-框架中异步日志打印中-arrayblockingqueue-的使用"><span class="nav-number">3.6.</span> <span class="nav-text">¶Logback 框架中异步日志打印中 ArrayBlockingQueue 的使用</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">并发安全 Map</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#concurrenthashmap"><span class="nav-number">4.1.</span> <span class="nav-text">¶ConcurrentHashMap</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#get"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶get</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#put"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶put</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rehash"><span class="nav-number">4.1.3.</span> <span class="nav-text">¶rehash</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">QA</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>
@@ -630,7 +751,7 @@
       <div class="footer-inner">
         
 
-<div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>

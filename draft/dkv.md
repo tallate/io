@@ -137,9 +137,15 @@ sql优化原理
 数据库排名
 ### 键值对存储
 1. [分布式键值对存储系统的设计与实现](https://m.doc88.com/p-8962526015056.html)
+1. [Google利器之Chubby](http://blog.csdn.net/historyasamirror/article/details/3870168)
+1. https://pdos.csail.mit.edu/6.824/papers/zookeeper.pdf
+1. [【翻译】 ZooKeeper Wait-free coordination for Internet-scale systems](https://www.cnblogs.com/xiaodeshan/p/7799442.html)
+1. [Zookeeper和 Google Chubby对比分析](https://www.cnblogs.com/grefr/p/6088115.html)
 ### 数据库
 1. [Readings in Database Systems](http://www.redbook.io/index.html)
 第5版是最新的，这一系列包含了数据管理的一些经典和前沿研究。
+### 分布式数据库
+1. [如何编写一个分布式数据库](https://studygolang.com/articles/4860)
 ### 去中心化存储
 1. 《区块链核心算法解析》
 1. [去中心化的分布式存储模型](https://www.ixueshu.com/download/bdae7db2d3cee26e14a4dc030e7d94c3.html)
