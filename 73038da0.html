@@ -96,7 +96,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/replicated.jpg">
 <meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/Leader%E9%80%89%E4%B8%BE.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/ZooKeeper%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/%E4%B8%A4%E9%98%B6%E6%AE%B5Messaging.jpg">
-<meta property="og:updated_time" content="2020-09-28T13:11:01.953Z">
+<meta property="og:updated_time" content="2020-10-05T02:22:41.789Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ZooKeeper 原理总结">
 <meta name="twitter:description" content="ZooKeeper 是分布式的、开源的分布式应用程序协调服务，原本是 Hadoop、HBase 的一个重要组件。它为分布式应用提供一致性服务的软件，包括：配置维护、域名服务、分布式同步、组服务等。">
@@ -368,7 +368,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  11.8k 字
+                  11.9k 字
                 </span>
               
 
@@ -646,12 +646,13 @@ In this phase a leader accepts messages to propose and coordinates message deliv
 <p>Zookeeper 的核心是广播，这个机制保证了各个 Server 之间的同步。实现这个机制的协议叫做 Zab 协议。<br>
 Zab（ZooKeeper Atomic Broadcast）原子消息广播协议作为数据一致性的核心算法，Zab 协议是专为 Zookeeper 设计的支持崩溃恢复原子消息广播算法。<br>
 Zab 协议核心如下：<br>
-所有的事务请求必须一个全局唯一的服务器（Leader）来协调处理，集群其余的服务器称为 follower 服务器。Leader 服务器负责将一个客户端请求转化为事务提议（Proposal），并将该 proposal 分发给集群所有的 follower 服务器。之后 Leader 服务器需要等待所有的 follower 服务器的反馈，一旦超过了半数的 follower 服务器进行了正确反馈后，那么 Leader 服务器就会再次向所有的 follower 服务器分发 commit 消息，要求其将前一个 proposal 进行提交。</p>
+所有的事务请求必须一个全局唯一的服务器（Leader）来协调处理，集群其余的服务器称为 follower 服务器。Leader 服务器负责将一个客户端请求转化为事务提议（Proposal），并将该 proposal 分发给集群所有的 follower 服务器。之后 Leader 服务器需要等待所有的 follower 服务器的反馈，一旦<strong>超过了半数的 follower 服务器进行了正确反馈</strong>后，那么 Leader 服务器就会再次向所有的 follower 服务器分发 commit 消息，要求其将前一个 proposal 进行提交。<br>
+以上对Zab协议的简单描述有点像两阶段提交协议，只是“Prepare”阶段现在只需要半数以上返回正确反馈就可以进入“Commit”阶段了。</p>
 <h4 id="zab-的两种模式"><a class="header-anchor" href="#zab-的两种模式">¶</a>ZAB 的两种模式</h4>
-<p>Zab 协议包括两种基本的模式：崩溃恢复和消息广播。</p>
+<p>Zab 协议包括两种基本的模式：<strong>崩溃恢复</strong>和<strong>消息广播</strong>。</p>
 <ul>
 <li>当整个服务框架启动过程中或 Leader 服务器出现网络中断、崩溃退出与重启等异常情况时，Zab 协议就会进入恢复模式并选举产生新的 Leader 服务器。</li>
-<li>当选举产生了新的 Leader 服务器，同时集群中已经有过半的机器与该 Leader 服务器完成了状态同步之后，Zab 协议就会退出恢复模式，状态同步是指数据同步，用来保证集群在过半的机器能够和 Leader 服务器的数据状态保持一致。</li>
+<li>当选举产生了新的 Leader 服务器，同时集群中已经<strong>有过半的机器与该 Leader 服务器完成了状态同步</strong>之后，Zab 协议就会退出恢复模式，状态同步是指数据同步，用来保证集群在过半的机器能够和 Leader 服务器的数据状态保持一致。</li>
 <li>当集群中已经有过半的 Follower 服务器完成了和 Leader 服务器的状态同步，那么整个服务框架就可以进入消息广播模式。</li>
 <li>当一台同样遵守 Zab 协议的服务器启动后加入到集群中，如果此时集群中已经存在一个 Leader 服务器在负责进行消息广播，那么加入的服务器就会自觉地进入数据恢复模式：找到 Leader 所在的服务器，并与其进行数据同步，然后一起参与到消息广播流程中去。</li>
 </ul>
@@ -899,7 +900,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">107</span>
+                  <span class="site-state-item-count">109</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -921,7 +922,7 @@ Isn’t this just Paxos? Your active messaging phase looks just like phase 2 of 
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-count">55</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

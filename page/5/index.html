@@ -266,6 +266,533 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e94a0a.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e94a0a.html" itemprop="url">Redis 应用</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-25T13:21:48+08:00">
+                2019-09-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  14 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="环境准备"><a class="header-anchor" href="#环境准备">¶</a>环境准备</h2>
+<ol>
+<li>启动 Redis 服务器</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">docker pull redislabs/rebloom</span><br><span class="line">docker run -p6379:6379 redislabs/rebloom</span><br><span class="line">// 连接容器中的redis服务</span><br><span class="line">redis-cli</span><br></pre></td></tr></table></figure>
+<ol>
+<li>使用 python 连接 Redis 服务器</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 导入redis 模块</span><br><span class="line">import redis</span><br><span class="line"></span><br><span class="line">pool = redis.ConnectionPool(host=&apos;localhost&apos;, port=6379, decode_responses=True)</span><br><span class="line">r = redis.Redis(host=&apos;localhost&apos;, port=6379, decode_responses=True)  </span><br><span class="line">r.set(&apos;name&apos;, &apos;runoob&apos;)</span><br><span class="line">print(r.get(&apos;name&apos;))</span><br></pre></td></tr></table></figure>
+<h2 id="分布式锁"><a class="header-anchor" href="#分布式锁">¶</a>分布式锁</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">set key value ex nx</span><br><span class="line">do sth...</span><br><span class="line">del key</span><br></pre></td></tr></table></figure>
+<ol>
+<li>为什么要加过期时间？<br>
+怕中间遇到异常退出，del 没有执行，导致陷入死锁。<br>
+set 命令现在支持加 ex 和 nx 参数，既保证原子性，又支持加过期时间。</li>
+<li>过早过期释放别人的锁<br>
+业务执行时间过长，锁过期了，可能导致其他线程先获取到了锁，这样当前线程 del 的时候相当于将别人的锁释放掉了。<br>
+可以给 value 设置一个随机数，释放前检查一下，这是个“读后写”的过程，为了保证其原子性，一般会使用 Lua 脚本来实现（类似 Redisson 中的实现）。<br>
+Redisson 中的解决方案是加一个“看门狗”，定时刷新过期时间。</li>
+<li>重入性<br>
+为了实现可重入性，一般是在客户端使用 ThreadLocal 存储当前持有锁的计数。<br>
+在 Redisson 中，可重入锁是通过在 Lua 脚本中对客户端线程 ID 进行计数来实现的。</li>
+</ol>
+<h2 id="延时队列"><a class="header-anchor" href="#延时队列">¶</a>延时队列</h2>
+<h3 id="异步消息队列"><a class="header-anchor" href="#异步消息队列">¶</a>异步消息队列</h3>
+<p>可以使用 list 数据结构来实现异步消息队列，使用 rpush/lpush 操作入队列，使用 lpop 和 rpop 来出队列。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">rpush notify-queue a b</span><br><span class="line">llen notify-queue</span><br><span class="line">lpop notify-queue</span><br><span class="line">llen notify-queue</span><br><span class="line">lpop notify-queue</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>如果队列空了怎么办？<br>
+客户端通过轮询队列 pop 获取消息处理，如果队列空了，那么就会陷入 pop 的死循环。<br>
+一般的解决办法是<code>sleep</code>，每次 pop 后可以暂停个 1 秒。<br>
+但是<code>sleep</code>同样会带来延迟增大的问题，因此，更好的解决办法是<code>blpop / brpop</code>，即阻塞读：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 等待一秒若还没有数据则直接返回</span><br><span class="line">blpop notify-queue 1</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>空闲连接<br>
+如果线程一直阻塞，则 Redis 的客户端连接将成为闲置连接，闲置过久，服务器一般会主动断开连接，减少闲置资源占用。这个时候 blpop/brpop 会抛出异常来，这时要<strong>注意对异常的捕获和重试</strong>。</p>
+</li>
+<li>
+<p>锁冲突处理<br>
+加锁失败一般有 3 种处理方式：</p>
+<ul>
+<li>直接抛出异常，由用户稍后重试；<br>
+适合由用户直接发起的请求，比如商城下单，下单失败后由用户决定是否重新请求。</li>
+<li>sleep<br>
+sleep 会阻塞消息处理线程，会导致后续消息处理出现延迟，不适合高并发（锁冲突频繁）或队列消息较多的情况，并且，如果是由于死锁导致的加锁不成功，sleep 将导致线程一直处于阻塞状态、后续的消息永远得不到处理。</li>
+<li>延时队列<br>
+将当前冲突的请求扔到另一个队列延后处理以避开冲突，适合异步消息处理的场景。</li>
+</ul>
+</li>
+</ol>
+<p>下面的实现例子来自《Redis 深度历险》：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line">public class RedisDelayingQueue&lt;T&gt; &#123;</span><br><span class="line"></span><br><span class="line">  static class TaskItem&lt;T&gt; &#123;</span><br><span class="line">    public String id;</span><br><span class="line">    public T msg;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // fastjson 序列化对象中存在 generic 类型时，需要使用 TypeReference</span><br><span class="line">  private Type TaskType = new TypeReference&lt;TaskItem&lt;T&gt;&gt;() &#123;</span><br><span class="line">  &#125;.getType();</span><br><span class="line"></span><br><span class="line">  private Jedis jedis;</span><br><span class="line">  private String queueKey;</span><br><span class="line"></span><br><span class="line">  public RedisDelayingQueue(Jedis jedis, String queueKey) &#123;</span><br><span class="line">    this.jedis = jedis;</span><br><span class="line">    this.queueKey = queueKey;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public void delay(T msg) &#123;</span><br><span class="line">    TaskItem&lt;T&gt; task = new TaskItem&lt;T&gt;();</span><br><span class="line">    task.id = UUID.randomUUID().toString();</span><br><span class="line">    task.msg = msg;</span><br><span class="line">    String s = JSON.toJSONString(task);</span><br><span class="line">    // key是当前时间</span><br><span class="line">    jedis.zadd(queueKey, System.currentTimeMillis() + 5000, s); // 塞入延时队列 ,5s 后再试</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public void loop() &#123;</span><br><span class="line">    while (!Thread.interrupted()) &#123;</span><br><span class="line">      // 取时间范围是0到当前时间内的一条记录</span><br><span class="line">      // 第3个参数0表示不记分数，</span><br><span class="line">      Set&lt;String&gt; values = jedis.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, 1);</span><br><span class="line">      if (values.isEmpty()) &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">          // 暂停一会，避免浪费CPU</span><br><span class="line">          Thread.sleep(500);</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">          break;</span><br><span class="line">        &#125;</span><br><span class="line">        continue;</span><br><span class="line">      &#125;</span><br><span class="line">      String s = values.iterator().next();</span><br><span class="line">      // 说明抢到了</span><br><span class="line">      if (jedis.zrem(queueKey, s) &gt; 0) &#123;</span><br><span class="line">        TaskItem&lt;T&gt; task = JSON.parseObject(s, TaskType);</span><br><span class="line">        this.handleMsg(task.msg);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public void handleMsg(T msg) &#123;</span><br><span class="line">    System.out.println(msg);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public static void main(String[] args) &#123;</span><br><span class="line">    Jedis jedis = new Jedis();</span><br><span class="line">    RedisDelayingQueue&lt;String&gt; queue = new RedisDelayingQueue&lt;&gt;(jedis, &quot;q-demo&quot;);</span><br><span class="line">    Thread producer = new Thread() &#123;</span><br><span class="line"></span><br><span class="line">      public void run() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 10; i++) &#123;</span><br><span class="line">          queue.delay(&quot;codehole&quot; + i);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line">    Thread consumer = new Thread() &#123;</span><br><span class="line"></span><br><span class="line">      public void run() &#123;</span><br><span class="line">        queue.loop();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line">    producer.start();</span><br><span class="line">    consumer.start();</span><br><span class="line">    try &#123;</span><br><span class="line">      producer.join();</span><br><span class="line">      Thread.sleep(6000);</span><br><span class="line">      consumer.interrupt();</span><br><span class="line">      consumer.join();</span><br><span class="line">    &#125; catch (InterruptedException e) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>一些优化点：</p>
+<ol>
+<li>注意<code>zrangeByScore</code>和<code>zrem</code>不是一个原子操作，可能会有多个线程争抢同一个 key，这可以通过 lua 脚本来优化。</li>
+<li>使用 Redis 作为消息队列并不能保证 100%的可靠性，因为 rem 执行后如果客户端崩溃了消息就丢失了，或者 Redis 崩溃了消息也有可能丢失（这个可以通过主备来避免）。</li>
+</ol>
+<h2 id="位图"><a class="header-anchor" href="#位图">¶</a>位图</h2>
+<h3 id="场景"><a class="header-anchor" href="#场景">¶</a>场景</h3>
+<p>位图数据结构与 java 中的 Set 类似，占用空间小，但是并不能防止冲突，适合数据离散性比较大且对数据准确性不高的场景。</p>
+<ol>
+<li>统计月活<br>
+统计月活的时候我们需要对 userId 进行去重，每个用户就可以定位到这个位图上的一个确定的位置上，0 表示不活跃，1 表示活跃，遍历一次就可以知道月活用户数有多少。</li>
+</ol>
+<h3 id="使用"><a class="header-anchor" href="#使用">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">set s a</span><br><span class="line">getbit s 2</span><br><span class="line">setbit s 6 1</span><br><span class="line">get s</span><br></pre></td></tr></table></figure>
+<p>注意下标并不是从低位到高位递增的，而是反过来的，a 的 ASCII 码值是<code>01100001</code>，<code>setbit s 6 1</code>设置第 7 位为 1 后值就变成了 c。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// 指定范围内1的个数</span><br><span class="line">bitcount s 0 7</span><br><span class="line">// 第一个1的位置</span><br><span class="line">bitpos s 1</span><br><span class="line">// 下标0到7范围内第一个1的位置</span><br><span class="line">bitpos s 1 0 7</span><br></pre></td></tr></table></figure>
+<p>比如用位数组记录用户登录的日期，bitcount 可以用于统计用户一共签到了多少天，bitpos 可以用于查找用户从哪一天开始第一次签到。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// 从第一个位（0）开始取4个位，结果是无符号数（u）</span><br><span class="line">bitfield s get u4 0</span><br><span class="line">// 从第三个位（2）开始取3个位，结果是有符号数（i）</span><br><span class="line">bitfield s get i3 2</span><br><span class="line">// 一次性执行多个子命令</span><br><span class="line">bitfield s get u4 0 get u3 2 get i4 0 get i3 2</span><br></pre></td></tr></table></figure>
+<p>如果 s 的值是 c，二进制值是<code>0110 0011</code>，取前 4 位结果是 6（0110）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// +1，结果为0，因为溢出了</span><br><span class="line">bitfield s incrby u2 1 1</span><br><span class="line">// 不执行，返回nil</span><br><span class="line">bitfield s overflow fail incrby u2 1 1</span><br><span class="line">// 结果为3</span><br><span class="line">bitfield s overflow sat incrby u2 1 1</span><br></pre></td></tr></table></figure>
+<p>位的增加操作有 3 种策略：</p>
+<ol>
+<li>默认的 wrap：</li>
+<li>fail：失败报错不执行</li>
+<li>sat：饱和截断，如果有溢出就停留在最大最小值。</li>
+</ol>
+<h2 id="hyperloglog"><a class="header-anchor" href="#hyperloglog">¶</a>HyperLogLog</h2>
+<p>HyperLogLog 主要用于大数据量的计数，比如访问频繁的页面需要统计 UV（一天内访问的用户数），不同于 PV，UV 需要去重。<br>
+HyperLogLog 只能粗略统计，理论上会有不到 1%的误差。</p>
+<h3 id="使用-v2"><a class="header-anchor" href="#使用-v2">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">pfadd s user1</span><br><span class="line">pfcount s</span><br><span class="line">pfadd s user1</span><br><span class="line">pfadd s user2</span><br><span class="line">// 结果仍然为2</span><br><span class="line">pfcount s</span><br><span class="line">// 将两个计数器累加</span><br><span class="line">pfmerge s b</span><br></pre></td></tr></table></figure>
+<h2 id="布隆过滤器"><a class="header-anchor" href="#布隆过滤器">¶</a>布隆过滤器</h2>
+<p>HyperLogLog 可以用于计数，但是不能用于判断一个值是否存在于该结构里，这时最好使用布隆过滤器（Bloom Filter）：</p>
+<ol>
+<li>去重；</li>
+<li>支持 contains 判断；</li>
+<li>节省空间；</li>
+<li>不精确，存在误判的可能（当布隆过滤器说某个值存在时，这个值可能不存在，当它说不存在时，那就肯定不存在，这个问题是由 hash 函数的冲突引起的）；</li>
+<li>不支持计数。</li>
+</ol>
+<h3 id="使用-v3"><a class="header-anchor" href="#使用-v3">¶</a>使用</h3>
+<p>插入值并且判断该值是否存在于 bf 对象内：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bf.add s user1</span><br><span class="line">bf.add s user2</span><br><span class="line">bf.madd s user3 user4</span><br><span class="line">bf.exists s user1</span><br><span class="line">bf.mexists s user1 user5</span><br></pre></td></tr></table></figure>
+<p>第一次 bf.add 会创建一个默认参数的布隆过滤器，也可以显式创建：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 创建一个名为key的布隆过滤器，错误率0.1，预计放入的元素数量为10</span><br><span class="line">bf.reserve key 0.1 10</span><br></pre></td></tr></table></figure>
+<ul>
+<li>错误率越低，需要的空间越大，默认值为 0.01<br>
+对于不需要非常精确的场合，错误率设置得稍大一点也无伤大雅。</li>
+<li>当实际数量超出预计放入数量时，误判率会上升，默认值为 100<br>
+该值设置得过大，会浪费存储空间，估计得过小，就会影响准确率，最理想的情况下是略大于实际元素数量。</li>
+</ul>
+<p>当实际元素数超出初始化大小时，应该对布隆过滤器进行重建，重新分配一个 size 更大的过滤器，再将所有的历史元素批量 add 进去（比如如果布隆过滤器保存的是 userId，那么就需要把历史 userId 重新保存到一个新的布隆过滤器中）。</p>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
+<p>布隆过滤器本身是一个大型的位数组和几个不同的无偏 hash 函数。</p>
+<blockquote>
+<p>无偏指的是该 hash 函数能把值分布得比较均匀。</p>
+</blockquote>
+<ul>
+<li>add：使用这些 hash 函数计算 hash(key)%length(bit_arr)，每个 hash 函数都可以得到一个位置，将这些位置置为 1；</li>
+<li>exists：同样用这些 hash 函数计算位置，如果有一个不为 1 说明 key 不存在，如果都为 1 也不一定说明 key 一定存在，因为这些位置可能会被其他 key 设置到。</li>
+</ul>
+<h2 id="geohash"><a class="header-anchor" href="#geohash">¶</a>GeoHash</h2>
+<h3 id="一种简单的方法"><a class="header-anchor" href="#一种简单的方法">¶</a>一种简单的方法</h3>
+<p>找一个节点附近的所有节点，可以近似看做以该节点为中心的一个矩形范围内有哪些节点，可以用类似下面的 SQL 来查询：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select id from positions where x0-r &lt; x &lt; x0+r and y0-r &lt; y &lt; y0+r</span><br></pre></td></tr></table></figure>
+<p>对 x 和 y 字段加索引后该 SQL 的性能也不会太差。</p>
+<h3 id="geohash-v2"><a class="header-anchor" href="#geohash-v2">¶</a>GeoHash</h3>
+<p>GeoHash 的基本思想是“降维”，将二维坐标映射到直线上的一个点，要寻找二维平面上的“附近的人”就相当于在直线上找相邻的点。<br>
+GeoHash 本质是一个 zset（带 score 的 set），底层结构是 skiplist：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">geoadd company 116.489033 40.007669 meituan</span><br><span class="line">geoadd company 116.562108 39.787602 jd 116.334255 40.027400 xiaomi</span><br><span class="line">// geoadd指令添加一个节点，因为geo存储结构上使用的是zset，因此可以使用zset相关的指令来操作，比如可以使用zrem指令来删除</span><br><span class="line">zrem company jd</span><br><span class="line">geoadd company 116.562108 39.787602 jd</span><br><span class="line">// 计算两个节点之间的距离</span><br><span class="line">geodist company meituan jd</span><br><span class="line">// 单位km</span><br><span class="line">geodist company meituan jd km</span><br><span class="line">// 获取节点位置</span><br><span class="line">geopos company meituan jd</span><br><span class="line">// 获取元素的hash值</span><br><span class="line">geohash company meituan</span><br><span class="line">// 查询指定元素附近的其他元素</span><br><span class="line">// 范围20公里内最多3个元素按距离正序排列，</span><br><span class="line">georadiusbymember company meituan 20 km count 3 asc</span><br></pre></td></tr></table></figure>
+<p>GeoHash 算法的执行流程如下：</p>
+<ol>
+<li>将坐标编码为一个 52 位整数，这个整数也可以还原为原坐标；</li>
+<li>zset 的 value 是元素的 key（即上面的 meituan、jd 等），score 是 GeoHash 的 52 位整数值，通过 zset 的 score 排序即可得到坐标附近的其它元素。</li>
+</ol>
+<p>其中主要问题是坐标是如何编码的，编码后为什么可以通过比较大小来判断是否相邻？<br>
+GeoHash 算法的原理是按经纬度区间对半分来进行编码，比如，维度的区间是<code>(-90, 90)</code>，如果坐标的维度值大于 0，则记 1，否则记 0，进一步的，如果坐标维度大于 45，则记 1，否则记 0，以此类推，对于<code>39.918118</code>来说，最后的编码值就是<code>10111000110001011011</code>。</p>
+<blockquote>
+<p>一般实现中还会进行 BASE64 编码，本质是一样的，只是编码后占用的空间更小了。</p>
+</blockquote>
+<h2 id="scan"><a class="header-anchor" href="#scan">¶</a>Scan</h2>
+<p>扫描大量 key 找到目标 key 的需求有两种实现方法：</p>
+<ol>
+<li>keys 命令<br>
+不支持分页，一次性吐出所有满足条件的 key，如果数据量过大、耗时过长，可能导致服务端卡顿。</li>
+</ol>
+<blockquote>
+<p>因为 Redis 是单线程模型。</p>
+</blockquote>
+<ol>
+<li>scan<br>
+和 keys 命令一样提供模式匹配，但它是通过游标扫描的，每次只扫描指定数量的数据，并将其中匹配的结果返回。</li>
+</ol>
+<h3 id="使用-v4"><a class="header-anchor" href="#使用-v4">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"># 从cursor=0开始，匹配&quot;key99*&quot;，共扫描1000条</span><br><span class="line">scan 0 match key99* count 1000</span><br><span class="line">1) &quot;11928&quot;</span><br><span class="line">2)  1) &quot;key9956&quot;</span><br><span class="line">    2) &quot;key9993&quot;</span><br><span class="line">    3) &quot;key9911&quot;</span><br><span class="line">    4) &quot;key996&quot;</span><br><span class="line">    5) &quot;key9933&quot;</span><br><span class="line">    6) &quot;key9962&quot;</span><br><span class="line">    7) &quot;key991&quot;</span><br><span class="line">    8) &quot;key9981&quot;</span><br><span class="line">    9) &quot;key9990&quot;</span><br><span class="line">   10) &quot;key9946&quot;</span><br><span class="line">   11) &quot;key9971&quot;</span><br><span class="line">   12) &quot;key99&quot;</span><br><span class="line">   13) &quot;key9951&quot;</span><br></pre></td></tr></table></figure>
+<p>返回值中，第一个&quot;11928&quot;是结果中最后一条的 cursor，下一次遍历时可以使用该值作为初始 cursor。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">scan 11928 match key99* count 10</span><br><span class="line">1) &quot;3480&quot;</span><br><span class="line">2) (empty list or set)</span><br></pre></td></tr></table></figure>
+<p>结果为空集合并不意味着遍历结束了，只有 cursor=0 才是遍历结束的标识。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">scan 11928 match key99* count 10000</span><br><span class="line">1) &quot;0&quot;</span><br><span class="line">2)  1) &quot;key9952&quot;</span><br><span class="line">    2) &quot;key9961&quot;</span><br><span class="line">    3) &quot;key9988&quot;</span><br><span class="line">    4) &quot;key9931&quot;</span><br><span class="line">    5) &quot;key9998&quot;</span><br><span class="line">    ...忽略更多的</span><br></pre></td></tr></table></figure>
+<h3 id="原理-v2"><a class="header-anchor" href="#原理-v2">¶</a>原理</h3>
+<p>Redis 中所有 key 都存储在一个非常大的字典中，这个字典的结构和 Java 的 HashMap 类似：<br>
+<img src="http://47.88.24.11/imgs/Redis/Redis-%E5%AD%97%E5%85%B8.png" alt="Redis-字典" title="Redis-字典"></p>
+<ol>
+<li>一维数组大小为 2^n（n &gt;= 0），扩容一次大小翻倍，保存的是所有 key 的下标，或者称为槽（slot）；</li>
+<li>二维链表保存的是所有的 key，不同 key 是有可能被 hash 到同一个槽上的，这时这个槽里所有元素都会被模式匹配过滤后一次性返回。</li>
+</ol>
+<p>scan 的遍历并不是从 0 开始递增，而是通过二进制高位进位加法来遍历，比如遍历顺序：</p>
+<ol>
+<li>0000 -&gt; 0</li>
+<li>1000 -&gt; 8</li>
+<li>0100 -&gt; 4</li>
+<li>1100 -&gt; 12</li>
+<li>以此类推</li>
+</ol>
+<p><img src="http://47.88.24.11/imgs/Redis/Redis-%E9%AB%98%E4%BD%8D%E9%80%92%E5%A2%9E%E9%81%8D%E5%8E%86.png" alt="Redis-高位递增遍历" title="Redis-高位递增遍历"><br>
+这种遍历方式的好处是可以避免扩容缩容后相同元素被反复遍历到。<br>
+因为槽数组的长度总是 2 的 n 次方，因此取模运算等价于位与操作，比如原来数组长度为 8，15（1111）会被 hash 到 7 号槽，而扩容后数组长度变成 16，增加了一个高位的 1，15（1111）会被 hash 到 15 号槽。<br>
+因此从低到高的遍历方式可能会导致重复遍历，而从高到低的方式则可以避免。</p>
+<p>Redis 的 rehash 是渐进式的，在 rehash 的过程中，操作需要同时访问新旧的两个数组结构，如果旧的找不到就需要再到新的下面去找，scan 同理。</p>
+<h3 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 key 问题</h3>
+<p>大 key 会导致数据迁移和扩容时需要分配更大的一块内存空间，导致卡顿，删除时，同样需要一次性回收大 key，卡顿会再一次产生。<br>
+为了定位大 key，可以使用 redis-cli 的扫描功能</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -h 127.0.0.1 -p 7001 –-bigkeys</span><br><span class="line"># 如果担心这个指令会大幅抬升 Redis 的 ops 导致线上报警，还可以增加一个休眠参数</span><br><span class="line"># 每隔100条scan指令就会休眠0.1s</span><br><span class="line">redis-cli -h 127.0.0.1 -p 7001 –-bigkeys -i 0.1</span><br></pre></td></tr></table></figure>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/3a140985.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/3a140985.html" itemprop="url">并发和同步策略</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-24T23:54:49+08:00">
+                2019-09-24
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  27.4k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  109 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>通过操作 Thread、Object 的 API 和内置锁我们可以解决大部分的线程协调问题，但这绝不是最优雅的方式，接下来我们就来见识一下 JUC 中的各种高效线程同步工具。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/3a140985.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/3b3d260d.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -854,201 +1381,6 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/358700b7.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/358700b7.html" itemprop="url">Redis 中的 LRU 淘汰策略</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
-                2019-09-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  263 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  1 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>Redis 中的数据淘汰机制</h1>
-<ol>
-<li>设置过期时间<br>
-过期时间到了后，Redis 会在读的时候判断是否过期并清除，或者由一个定时任务执行清除操作。</li>
-<li>超过 maxmemory 回收<br>
-可以设置淘汰机制，比如 LRU、LFU。</li>
-</ol>
-<h1>LRU 算法的一种简单实现</h1>
-<p>简单版本的 LRU 算法分两个部分：</p>
-<ol>
-<li>一个链表记录 key 的最终访问次序，比如最新访问的在链表头部，最久没访问的在链表末尾，LRU 淘汰机制就是删除链表末尾的节点；</li>
-<li>一个散列表记录某个 key 是否存在，并可以找到其在链表中的位置；</li>
-</ol>
-<h1>Redis 中的 LRU</h1>
-<p>代码位置：evict.c/freeMemoryIfNeeded<br>
-Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU 链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
-<ol>
-<li>每次从缓存对象集合中随机取出一部分样本；</li>
-<li>按 LRU 算法排序；</li>
-<li>取 idle 值（评分）最小的淘汰。</li>
-</ol>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"></p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/df2941e1.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -1134,7 +1466,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  29.3k 字
+                  30k 字
                 </span>
               
 
@@ -1150,7 +1482,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  108 分钟
+                  110 分钟
                 </span>
               
             </div>
@@ -1769,7 +2101,8 @@ EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间�
 <p>当用户往 Master 端写入数据时，通过<code>Redis Sync</code>机制将数据文件发送至 Slave，Slave 也会执行相同的操作确保数据一致。</p>
 <ol>
 <li>同一个 Master 可以拥有多个 Slaves。Master 下的 Slave 还可以接受同一架构中其它 Slave 的链接与同步请求，实现数据的<strong>级联复制</strong>，即 Master-&gt;Slave-&gt;Slave 模式；<br>
-<code>repl-diskless-sync-delay</code>参数可以延迟启动数据传输，目的可以在第一个 slave 就绪后，等待更多的 slave 就绪。</li>
+<code>repl-diskless-sync-delay</code>参数可以延迟启动数据传输，目的可以在第一个 slave 就绪后，等待更多的 slave 就绪。<br>
+主从复制最好配置成级联复制，因为这样更容易解决单点问题。</li>
 <li>Master 以<strong>非阻塞</strong>的方式同步数据至 slave，这将意味着 Master 会继续处理一个或多个 slave 的读写请求；</li>
 <li>Slave 端同步数据也可以修改为非阻塞的方式，当 slave 在执行新的同步时，它仍可以用旧的数据信息来提供查询；否则，当 slave 与 master 失去联系时，slave 会返回一个错误给客户端；</li>
 <li>主从复制可以做到<strong>读写分离</strong>，保证了可扩展性，即多个 slave 专门提供只读查询与数据的冗余，Master 端专门提供写操作；</li>
@@ -1891,15 +2224,6 @@ TODO</p>
  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
 </li>
 </ol>
-<h3 id="sentinel-需要定期执行的任务"><a class="header-anchor" href="#sentinel-需要定期执行的任务">¶</a>Sentinel 需要定期执行的任务</h3>
-<ul>
-<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 PING 命令。</li>
-<li>如果一个实例（instance）距离最后一次有效回复 PING 命令的时间超过 down-after-milliseconds 选项所指定的值， 那么这个实例会被 Sentinel 标记为主观下线。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN 。</li>
-<li>如果一个主服务器被标记为主观下线， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
-<li>如果一个主服务器被标记为主观下线， 并且有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为客观下线。</li>
-<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 INFO 命令。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
-<li>当没有足够数量的 Sentinel 同意主服务器已经下线， 主服务器的客观下线状态就会被移除。 当主服务器重新向 Sentinel 的 PING 命令返回有效回复时， 主服务器的主观下线状态就会被移除。</li>
-</ul>
 <h3 id="sentinel执行流程"><a class="header-anchor" href="#sentinel执行流程">¶</a>Sentinel执行流程</h3>
 <p><img src="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
 在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
@@ -1910,11 +2234,33 @@ TODO</p>
 <blockquote>
 <p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
 </blockquote>
+<h3 id="sentinel-需要定期执行的任务"><a class="header-anchor" href="#sentinel-需要定期执行的任务">¶</a>Sentinel 需要定期执行的任务</h3>
+<ul>
+<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。</li>
+<li>如果一个实例（instance）距离最后一次有效回复 PING 命令的时间超过 down-after-milliseconds 选项所指定的值， 那么这个实例会被 Sentinel 标记为主观下线。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN 。</li>
+<li>如果一个主服务器被标记为主观下线， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
+<li>如果一个主服务器被标记为主观下线， 并且有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为客观下线。</li>
+<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
+<li>当没有足够数量的 Sentinel 同意主服务器已经下线， 主服务器的客观下线状态就会被移除。 当主服务器重新向 Sentinel 的 PING 命令返回有效回复时， 主服务器的主观下线状态就会被移除。</li>
+</ul>
+<h3 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h3>
+<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
+哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
+<ul>
+<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
+<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
+</ul>
+<h3 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h3>
+<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
+每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
+<blockquote>
+<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
+</blockquote>
 <h3 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h3>
 <ul>
 <li>主观下线（Subjectively Down， 简称 SDOWN）<br>
 主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
-如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 PING 命令的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
+如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
 </ul>
 <blockquote>
 <p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
@@ -1928,29 +2274,36 @@ TODO</p>
 <blockquote>
 <p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
 </blockquote>
-<h3 id="故障迁移-master-挂掉"><a class="header-anchor" href="#故障迁移-master-挂掉">¶</a>故障迁移（Master 挂掉）</h3>
+<h3 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h3>
 <p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
 <ul>
 <li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
 <li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
 </ul>
-<p>故障转移的具体流程如下：</p>
+<p>故障转移主要分为Sentinel选主和Slave选主两个步骤，Sentinel选主流程如下：</p>
 <ul>
-<li>发现主服务器已经进入客观下线状态。</li>
-<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个纪元中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
-<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行以下步骤。</li>
-<li>选出一个从服务器，并将它升级为主服务器。</li>
-<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
-<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
-<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
-<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
+<li>Sentinel发现主服务器已经进入客观下线状态。</li>
+<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
+<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
 </ul>
-<p>主服务器选举的规则如下：</p>
+<p>Slave选举的规则如下：</p>
 <ul>
 <li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
 <li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
 <li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
 </ul>
+<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
+<p>提升新的Master的流程如下：</p>
+<ul>
+<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
+<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
+<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
+<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
+</ul>
+<p>客户端感知新master流程如下：<br>
+哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
+另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
+一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
 <h3 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h3>
 <p>配置安全性：</p>
 <ul>
@@ -2352,6 +2705,201 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/358700b7.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/358700b7.html" itemprop="url">Redis 中的 LRU 淘汰策略</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
+                2019-09-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  263 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  1 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>Redis 中的数据淘汰机制</h1>
+<ol>
+<li>设置过期时间<br>
+过期时间到了后，Redis 会在读的时候判断是否过期并清除，或者由一个定时任务执行清除操作。</li>
+<li>超过 maxmemory 回收<br>
+可以设置淘汰机制，比如 LRU、LFU。</li>
+</ol>
+<h1>LRU 算法的一种简单实现</h1>
+<p>简单版本的 LRU 算法分两个部分：</p>
+<ol>
+<li>一个链表记录 key 的最终访问次序，比如最新访问的在链表头部，最久没访问的在链表末尾，LRU 淘汰机制就是删除链表末尾的节点；</li>
+<li>一个散列表记录某个 key 是否存在，并可以找到其在链表中的位置；</li>
+</ol>
+<h1>Redis 中的 LRU</h1>
+<p>代码位置：evict.c/freeMemoryIfNeeded<br>
+Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU 链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
+<ol>
+<li>每次从缓存对象集合中随机取出一部分样本；</li>
+<li>按 LRU 算法排序；</li>
+<li>取 idle 值（评分）最小的淘汰。</li>
+</ol>
+<p><img src="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"></p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/bcd62ed6.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2510,183 +3058,6 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
 </ol>
 
           
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e913f4bd.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e913f4bd.html" itemprop="url">JVM 与动态内存管理</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T15:26:49+08:00">
-                2019-09-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  19.5k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  71 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>在 Java 体系中，提到并发就不得不提到 JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/e913f4bd.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
         
       
     </div>
@@ -3535,6 +3906,183 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e913f4bd.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e913f4bd.html" itemprop="url">JVM 与动态内存管理</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T15:26:49+08:00">
+                2019-09-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  19.5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  71 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>在 Java 体系中，提到并发就不得不提到 JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/e913f4bd.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/92a28d62.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -3700,391 +4248,6 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/3e0c4ce6.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/3e0c4ce6.html" itemprop="url">Spring 总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T13:09:11+08:00">
-                2019-09-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  671 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  2 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>Spring 三级缓存</h1>
-<h2 id="spring-中产生循环依赖的三种情况"><a class="header-anchor" href="#spring-中产生循环依赖的三种情况">¶</a>Spring 中产生循环依赖的三种情况</h2>
-<ol>
-<li>构造器注入循环依赖 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class A &#123;</span><br><span class="line">    public A(B b) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">@Service</span><br><span class="line">public class B &#123;</span><br><span class="line">    public B(A a) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>构造器注入构成的循环依赖，此种循环依赖方式是无法解决的，只能抛出 BeanCurrentlyInCreationException 异常表示循环依赖。<br>
-不能解决的原因是：Spring 解决循环依赖的原理是实例化 Bean 后先把引用存到一个 Map 中，之后初始化成员变量时，可以直接从这个 Map 中取。但是构造器注入相当于<strong>实例化和初始化是同时进行的</strong>，因此无法解决。</p>
-<ol>
-<li>
-<p>singleton 模式 field 属性注入循环依赖</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class A &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private B b;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">@Service</span><br><span class="line">public class B &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private A a;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>prototype 模式 field 属性注入循环依赖</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)</span><br><span class="line">@Service</span><br><span class="line">public class A &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private B b;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)</span><br><span class="line">@Service</span><br><span class="line">public class B &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private A a;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h2 id="spring-创建-bean-的流程"><a class="header-anchor" href="#spring-创建-bean-的流程">¶</a>Spring 创建 Bean 的流程</h2>
-<ol>
-<li>createBeanInstance：实例化，其实也就是调用对象的构造方法实例化对象</li>
-<li>populateBean：填充属性，这一步主要是对 bean 的依赖属性进行注入(@Autowired)</li>
-<li>initializeBean：回到一些形如 initMethod、InitializingBean 等方法</li>
-</ol>
-<p>其中，循环依赖可能发生在第一步和第二步，其中第一步是因为构造方法中可能会需要传入其他 Bean。</p>
-<h2 id="spring-三级缓存如何解决循环依赖"><a class="header-anchor" href="#spring-三级缓存如何解决循环依赖">¶</a>Spring 三级缓存如何解决循环依赖</h2>
-<h3 id="缓存生效时间"><a class="header-anchor" href="#缓存生效时间">¶</a>缓存生效时间</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry &#123;</span><br><span class="line"></span><br><span class="line">    // 用于存放完全初始化好的 bean，从该缓存中取出的 bean 可以直接使用</span><br><span class="line">	/** Cache of singleton objects: bean name --&gt; bean instance */</span><br><span class="line">	private final Map&lt;String, Object&gt; singletonObjects = new ConcurrentHashMap&lt;String, Object&gt;(256);</span><br><span class="line"></span><br><span class="line">    // 提前曝光的单例对象的cache，存放原始的 bean 对象（尚未填充属性），用于解决循环依赖</span><br><span class="line">	/** Cache of early singleton objects: bean name --&gt; bean instance */</span><br><span class="line">	private final Map&lt;String, Object&gt; earlySingletonObjects = new HashMap&lt;String, Object&gt;(16);</span><br><span class="line">	</span><br><span class="line">	// 单例对象工厂的cache，存放 bean 工厂对象，用于解决循环依赖</span><br><span class="line">	/** Cache of singleton factories: bean name --&gt; ObjectFactory */</span><br><span class="line">    private final Map&lt;String, ObjectFactory&lt;?&gt;&gt; singletonFactories = new HashMap&lt;String, ObjectFactory&lt;?&gt;&gt;(16);</span><br></pre></td></tr></table></figure>
-<h3 id="获取单例-bean-的过程"><a class="header-anchor" href="#获取单例-bean-的过程">¶</a>获取单例 Bean 的过程</h3>
-<p><code>org.springframework.beans.factory.support.DefaultSingletonBeanRegistry#getSingleton(java.lang.String)</code></p>
-<ol>
-<li>先从一级缓存 singletonObjects 中去获取，如果获取到就直接 return。</li>
-<li>如果获取不到或者对象正在创建中（isSingletonCurrentlyInCreation()），那就再从二级缓存 earlySingletonObjects 中获取，如果获取到就直接 return。</li>
-<li>如果还是获取不到，且允许 singletonFactories（allowEarlyReference=true）通过 getObject()获取。就从三级缓存 singletonFactory.getObject()获取，如果获取到了就从 singletonFactories 中移除，并且放进 earlySingletonObjects，其实也就是从三级缓存移动到了二级缓存。</li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/485e1bd7.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/485e1bd7.html" itemprop="url">Vim 使用总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T20:09:11+08:00">
-                2019-09-14
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  501 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  2 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>平时在 Linux 环境下待的久了，免不了和 Vim 打交道。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/485e1bd7.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -4135,7 +4298,7 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">107</span>
+                  <span class="site-state-item-count">109</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -4157,7 +4320,7 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">52</span>
+                  <span class="site-state-item-count">55</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
