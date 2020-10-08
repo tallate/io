@@ -105,7 +105,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%86%85%E5%AD%98%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/JVM/%E5%90%84%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB.png">
-<meta property="og:updated_time" content="2020-09-28T13:11:01.949Z">
+<meta property="og:updated_time" content="2020-10-08T04:52:30.714Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="JVM与垃圾收集器">
 <meta name="twitter:description" content="¶垃圾收集（GC） ¶垃圾检测 在实际回收垃圾对象前，我们必须标识出哪些对象该被回收，即垃圾检测。 ¶对象引用类型  强引用(StrongReference) Object obj = new Object()的 obj 就是一个强引用。 当内存不足，JVM 宁愿抛出 OutOfMemoryError 错误，使程序异常终止，也不会回收强引用对象来释放内存，除非已经没有引用关联这些对象了。 除了强">
@@ -843,8 +843,11 @@ CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时�
 <h3 id="缺点-v4"><a class="header-anchor" href="#缺点-v4">¶</a>缺点</h3>
 <ul>
 <li>对 CPU 资源非常敏感。其实，面向并发设计的程序都对 CPU 资源比较敏感。在并发阶段，它虽然不会导致用户线程停顿，但会因为占用了一部分线程（或者说 CPU 资源）而导致应用程序变慢，总吞吐量会降低。CMS 默认启动的回收线程数是（CPU 数量+3）/4，也就是当 CPU 在 4 个以上时，并发回收时垃圾收集线程不少于 25%的 CPU 资源，并且随着 CPU 数量的增加而下降。但是当 CPU 不足 4 个时（比如 2 个），CMS 对用户程序的影响就可能变得很大，如果本来 CPU 负载就比较大，还要分出一半的运算能力去执行收集器线程，就可能导致用户程序的执行速度忽然降低了 50%，其实也让人无法接受。</li>
-<li>无法处理<strong>浮动垃圾（Floating Garbage）</strong>，可能出现“Concurrent Mode Failure”失败而导致另一次 Full GC 的产生。由于 CMS 并发清理阶段用户线程还在运行着，伴随程序运行自然就还会有新的垃圾不断产生。这一部分垃圾出现在标记过程之后，CMS 无法在当次收集中处理掉它们，只好留待下一次 GC 时再清理掉。这一部分垃圾就被称为“浮动垃圾”。也是由于在垃圾收集阶段用户线程还需要运行，那也就还需要预留有足够的内存空间给用户线程使用，因此 CMS 收集器不能像其他收集器那样等到老年代几乎完全被填满了再进行收集，需要预留一部分空间提供并发收集时的程序运作使用。</li>
-<li>标记-清除算法导致的<strong>内存碎片</strong>。CMS 是一款基于“标记-清除”算法实现的收集器，这意味着收集结束时会有大量空间碎片产生，可能会提前触发一次 FullGC。空间碎片过多时，将会给大对象分配带来很大麻烦，往往出现老年代空间剩余，但无法找到足够大连续空间来分配当前对象。</li>
+<li>标记-清除算法导致的<strong>内存碎片</strong>。<br>
+CMS 是一款基于“标记-清除”算法实现的收集器，这意味着收集结束时会有大量空间碎片产生，可能会提前触发一次 FullGC。空间碎片过多时，将会给大对象分配带来很大麻烦，往往出现老年代空间剩余，但无法找到足够大连续空间来分配当前对象。<br>
+可能会引起<strong>Promotion Failed</strong>（空间分配担保失败），即进行Minor GC时，发现Survivor Space放不下，对象只能放到老年代，而老年代也放不下。</li>
+<li>无法处理<strong>浮动垃圾（Floating Garbage）</strong>，可能出现<strong>Concurrent Mode Failure</strong>失败而导致另一次 Full GC 的产生。<br>
+由于 CMS 并发清理阶段用户线程还在运行着，伴随程序运行自然就还会有新的垃圾不断产生。这一部分垃圾出现在标记过程之后，CMS 无法在当次收集中处理掉它们，只好留待下一次 GC 时再清理掉。这一部分垃圾就被称为“浮动垃圾”。也是由于在垃圾收集阶段用户线程还需要运行，那也就还需要预留有足够的内存空间给用户线程使用，因此 CMS 收集器不能像其他收集器那样等到老年代几乎完全被填满了再进行收集，需要预留一部分空间提供并发收集时的程序运作使用。</li>
 </ul>
 <h3 id="应用场景-v2"><a class="header-anchor" href="#应用场景-v2">¶</a>应用场景</h3>
 <ul>
@@ -1074,8 +1077,8 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/e913f4bd.html" rel="next" title="JVM 与动态内存管理">
-                <i class="fa fa-chevron-left"></i> JVM 与动态内存管理
+              <a href="/92a28d62.html" rel="next" title="SpringCloud 配置总结">
+                <i class="fa fa-chevron-left"></i> SpringCloud 配置总结
               </a>
             
           </div>
@@ -1084,8 +1087,8 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/bcd62ed6.html" rel="prev" title="并发和常见并发问题">
-                并发和常见并发问题 <i class="fa fa-chevron-right"></i>
+              <a href="/e913f4bd.html" rel="prev" title="JVM 与动态内存管理">
+                JVM 与动态内存管理 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
