@@ -88,7 +88,7 @@
 <meta property="og:description" content="为什么使用RocketMQ ¶使用MQ的优点  解耦 直连的情况下，每接入一个系统就需要直接改代码调新系统接口； 使用 RocketMQ 的情况下，新系统可以自己监听消息。 异步 非必要的业务逻辑异步处理，加快响应速度。 削峰 直连的情况下，所有请求会直接全部打到下游服务，引入消息队列后，消息队列可以暂存消息，让下游服务慢慢消费；  ¶使用 MQ 的缺点 系统可用性降低：消息队列挂掉将影响系统可">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://rocketmq.apache.org/docs/quick-start/">
-<meta property="og:updated_time" content="2020-09-28T13:11:01.953Z">
+<meta property="og:updated_time" content="2020-10-20T10:13:48.064Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="RocketMQ 的应用">
 <meta name="twitter:description" content="为什么使用RocketMQ ¶使用MQ的优点  解耦 直连的情况下，每接入一个系统就需要直接改代码调新系统接口； 使用 RocketMQ 的情况下，新系统可以自己监听消息。 异步 非必要的业务逻辑异步处理，加快响应速度。 削峰 直连的情况下，所有请求会直接全部打到下游服务，引入消息队列后，消息队列可以暂存消息，让下游服务慢慢消费；  ¶使用 MQ 的缺点 系统可用性降低：消息队列挂掉将影响系统可">
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.6k 字
+                  4.8k 字
                 </span>
               
 
@@ -376,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  18 分钟
+                  23 分钟
                 </span>
               
             </div>
@@ -413,12 +413,57 @@
 <p>系统可用性降低：消息队列挂掉将影响系统可用性。<br>
 系统复杂性增加：加入了消息队列，要多考虑很多方面的问题，比如：一致性问题、如何保证消息不被重复消费、如何保证消息可靠性传输等。因此，需要考虑的东西更多，系统复杂性增大。</p>
 <h1>使用 RocketMQ</h1>
-<h2 id="搭建-name-server-和-broker-server"><a class="header-anchor" href="#搭建-name-server-和-broker-server">¶</a>搭建 Name Server 和 Broker Server</h2>
+<h2 id="搭建-name-server-和-broker-server-单点"><a class="header-anchor" href="#搭建-name-server-和-broker-server-单点">¶</a>搭建 Name Server 和 Broker Server（单点）</h2>
 <p><img src="http://rocketmq.apache.org/docs/quick-start/" alt=""><br>
 为了方便，需要设置 Broker 服务器的一些属性，在 broker.conf 中：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 允许使用SQL语法过滤消息</span><br><span class="line">enablePropertyFilter=true</span><br><span class="line"># 自动创建Topic，否则使用新Topic时还需要在控制台创建</span><br><span class="line">autoCreateTopicEnable=true</span><br></pre></td></tr></table></figure>
 <p>对 Broker 服务器的启动可以使用下面的命令：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">start mqbroker.cmd -n 127.0.0.1:9876 -c ../conf/broker.conf &amp;</span><br></pre></td></tr></table></figure>
+<h2 id="多主多从-2主多从"><a class="header-anchor" href="#多主多从-2主多从">¶</a>多主多从（2主多从）</h2>
+<p>同上下载源码并编译完成后，第一步是创建配置文件，我计划将所有主从放到同一台服务器上，因此在本地创建所有配置文件和数据存储目录：<br>
+1、创建数据存储目录</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /home/hgc/Documents/project/open/rocketmq/store1/&#123;rootdir-a-m,commitlog-a-m,rootdir-a-s,commitlog-a-s&#125;</span><br><span class="line">mkdir -p /home/hgc/Documents/project/open/rocketmq/store2/&#123;rootdir-b-m,commitlog-b-m,rootdir-b-s,commitlog-b-s&#125;</span><br></pre></td></tr></table></figure>
+<p>2、配置环境变量<br>
+在<code>/etc/profile</code>文件中加入：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># RocketMQ</span><br><span class="line">export ROCKETMQ_HOME=/home/hgc/Documents/project/open/rocketmq</span><br><span class="line">export PATH=$PATH:$ROCKETMQ_HOME/bin</span><br></pre></td></tr></table></figure>
+<p>3、创建配置文件<br>
+/home/hgc/Documents/project/open/rocketmq/conf.1.m/broker.conf</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">brokerClusterName = DefaultCluster</span><br><span class="line">brokerName = rocketmq-nameserver-1</span><br><span class="line">#brokerId 0 表示 Master，&gt;0 表示 Slave</span><br><span class="line">brokerId=0</span><br><span class="line"># Broker 对外服务的监听端口</span><br><span class="line">listenPort=10911</span><br><span class="line">#nameServer地址，分号分割</span><br><span class="line">namesrvAddr=127.0.0.1:9876</span><br><span class="line"># 删除文件时间点，默认凌晨 4点</span><br><span class="line">deleteWhen=04</span><br><span class="line">#文件保留时间，默认 48 小时</span><br><span class="line">fileReservedTime=72</span><br><span class="line">#Broker role有3种：SYNC_MASTER、ASYNC_MASTER、SLAVE。关键词SYNC和ASYNC表示Master和Slave之间同步消息的机制，SYNC即同步更新，指当Slave和Master消息同步完成后，再返回发送成功的状态。ASYNC即异步更新，master与slave有短暂消息延迟，毫&gt; 秒级。本文在此使用了异步复制集群模式，线上环境推荐使用同步双写模式，即SYNC_MASTER</span><br><span class="line">brokerRole=SYNC_MASTER</span><br><span class="line"># 刷盘方式 ASYNC_FLUSH 异步刷盘</span><br><span class="line">flushDiskType=ASYNC_FLUSH</span><br><span class="line">#存储路径</span><br><span class="line">storePathRootDir=/home/hgc/Documents/project/open/rocketmq/store1/rootdir-a-m</span><br><span class="line">storePathCommitLog=/home/hgc/Documents/project/open/rocketmq/store1/commitlog-a-m</span><br><span class="line"># 是否允许 Broker 自动创建Topic</span><br><span class="line">autoCreateTopicEnable=true</span><br><span class="line"># 是否允许 Broker 自动创建订阅组</span><br><span class="line">autoCreateSubscriptionGroup=true</span><br></pre></td></tr></table></figure>
+<p>/home/hgc/Documents/project/open/rocketmq/conf.2.m/broker.conf</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">brokerName=rocketmq-nameserver-2</span><br><span class="line">listenPort=10921</span><br><span class="line">namesrvAddr=rocketmq-nameserver-1:9876</span><br><span class="line">brokerId=0</span><br><span class="line">deleteWhen=04</span><br><span class="line">fileReservedTime=72</span><br><span class="line">brokerRole=SYNC_MASTER</span><br><span class="line">storePathRootDir=/home/hgc/Documents/project/open/rocketmq/store2/rootdir-b-m</span><br><span class="line">storePathCommitLog=/home/hgc/Documents/project/open/rocketmq/store2/commitlog-b-m</span><br><span class="line">autoCreateTopicEnable=true</span><br><span class="line">autoCreateSubscriptionGroup=true</span><br><span class="line">flushDiskType=ASYNC_FLUSH</span><br></pre></td></tr></table></figure>
+<p>/home/hgc/Documents/project/open/rocketmq/conf.1.s/broker.conf</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">brokerClusterName = DefaultCluster</span><br><span class="line">brokerName = rocketmq-nameserver-1</span><br><span class="line">brokerId=1</span><br><span class="line">listenPort=10917</span><br><span class="line">namesrvAddr=127.0.0.1:9876</span><br><span class="line">deleteWhen=04</span><br><span class="line">fileReservedTime=72</span><br><span class="line">brokerRole=SLAVE</span><br><span class="line">flushDiskType=ASYNC_FLUSH</span><br><span class="line">storePathRootDir=/home/hgc/Documents/project/open/rocketmq/store1/rootdir-a-s</span><br><span class="line">storePathCommitLog=/home/hgc/Documents/project/open/rocketmq/store1/commitlog-a-s</span><br><span class="line">autoCreateTopicEnable=true</span><br><span class="line">autoCreateSubscriptionGroup=true</span><br></pre></td></tr></table></figure>
+<p>/home/hgc/Documents/project/open/rocketmq/conf.2.s/broker.conf</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">brokerName=rocketmq-nameserver-2</span><br><span class="line">listenPort=10927</span><br><span class="line">namesrvAddr=127.0.0.1:9876</span><br><span class="line">brokerId=1</span><br><span class="line">deleteWhen=04</span><br><span class="line">fileReservedTime=72</span><br><span class="line">brokerRole=SLAVE</span><br><span class="line">storePathRootDir=/home/hgc/Documents/project/open/rocketmq/store2/rootdir-b-s</span><br><span class="line">storePathCommitLog=/home/hgc/Documents/project/open/rocketmq/store2/commitlog-b-s</span><br><span class="line">autoCreateTopicEnable=true</span><br><span class="line">autoCreateSubscriptionGroup=true</span><br><span class="line">flushDiskType=ASYNC_FLUSH</span><br></pre></td></tr></table></figure>
+<p>4、启动NameServer<br>
+启动前先修改启动脚本，因为是单机使用，把堆大小稍微改小点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">JAVA_OPT=&quot;$&#123;JAVA_OPT&#125; -server -Xms1g -Xmx1g -Xmn1g -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=320m&quot;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nohup sh bin/mqnamesrv &amp;</span><br></pre></td></tr></table></figure>
+<p>5、启动Broker<br>
+同理改下启动脚本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">JAVA_OPT=&quot;$&#123;JAVA_OPT&#125; -server -Xms1g -Xmx1g -Xmn1g&quot;</span><br></pre></td></tr></table></figure>
+<p>按master - slave的顺序启动每个Broker</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">nohup sh bin/mqbroker -c conf.1.m/broker.conf &gt; conf.1.m/logs/broker.1.m.log &amp;</span><br><span class="line">nohup sh bin/mqbroker -c conf.2.m/broker.conf &gt; conf.2.m/logs/broker.2.m.log &amp;</span><br><span class="line">nohup sh bin/mqbroker -c conf.1.s/broker.conf &gt; conf.1.s/logs/broker.1.s.log &amp;</span><br><span class="line">nohup sh bin/mqbroker -c conf.2.s/broker.conf &gt; conf.2.s/logs/broker.2.s.log &amp;</span><br></pre></td></tr></table></figure>
+<p>6、查看注册情况</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"># 看看集群注册情况</span><br><span class="line">./mqadmin clusterList -n 127.0.0.1:9876</span><br><span class="line"># 创建一个Topic</span><br><span class="line">./mqadmin updateTopic -c DefaultCluster -n localhost:9876 -t TopicTest</span><br><span class="line"># 看看Topic列表</span><br><span class="line">./mqadmin topicList -n 127.0.0.1:9876</span><br><span class="line"># 看看Topic路由信息</span><br><span class="line">./mqadmin topicRoute -n 127.0.0.1:9876 -t TopicTest</span><br><span class="line"># 查看Topic统计信息</span><br><span class="line">mqadmin topicStatus -n 127.0.0.1:9876 -t TopicTest</span><br><span class="line"># 根据消息key查询消息</span><br><span class="line">./mqadmin queryMsgByKey -n &quot;127.0.0.1:9876&quot; -t TopicTest -k messageKey</span><br><span class="line"># 根据消息ID查询消息</span><br><span class="line">./mqadmin queryMsgById -n &quot;127.0.0.1:9876&quot; -t TopicTest -i 240882208B134140BD0FB45F5DBD2075000018B4AAC2130BE69B0001</span><br><span class="line"># 查询Producer的网络连接</span><br><span class="line">./mqadmin producerConnection -n 127.0.0.1:9876 -g ExampleProducerGroup -t TopicTest</span><br><span class="line"># 查询Consumer的网络连接</span><br><span class="line">./mqadmin consumerConnection -n 127.0.0.1:9876 -g ExampleConsumerGroup -t TopicTest</span><br><span class="line"># 查看订阅组的消费状态</span><br><span class="line">consumerProgress</span><br><span class="line"># 添加KV配置信息</span><br><span class="line">updateKvConfig</span><br><span class="line"># 删除KV配置信息</span><br><span class="line">deleteKvConfig</span><br><span class="line"># 添加project group配置信息</span><br><span class="line">updateProjectGroup</span><br><span class="line"># 删除project group配置信息</span><br><span class="line">deleteProjectGroup</span><br><span class="line"># 获取product group配置信息</span><br><span class="line">getProjectGroup</span><br><span class="line"># 设置消费进度</span><br><span class="line">resetOffsetByTime</span><br><span class="line"># 清除特定Broker权限</span><br><span class="line">wipeWritePerm</span><br><span class="line"># 获取Consumer消费进度</span><br><span class="line">getConsumerStatus</span><br></pre></td></tr></table></figure>
+<p>7、使用客户端测试<br>
+略<br>
+8、关闭服务器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sh mqshutdown namesrv</span><br><span class="line">sh mqshutdown broker</span><br></pre></td></tr></table></figure>
+<h2 id="主从自动切换-dledger"><a class="header-anchor" href="#主从自动切换-dledger">¶</a>主从自动切换（DLedger）</h2>
+<p>TODO</p>
+<h2 id="客户端配置"><a class="header-anchor" href="#客户端配置">¶</a>客户端配置</h2>
+<h3 id="消费模式"><a class="header-anchor" href="#消费模式">¶</a>消费模式</h3>
+<p>有以下3种：</p>
+<ol>
+<li>CONSUME_FROM_LAST_OFFSET：默认策略，从该队列最尾开始消费，即跳过历史消息</li>
+<li>CONSUME_FROM_FIRST_OFFSET：从队列最开始开始消费，即历史消息（还储存在broker的）全部消费一遍</li>
+<li>CONSUME_FROM_TIMESTAMP：从某个时间点开始消费，和setConsumeTimestamp()配合使用，默认是半个小时以前</li>
+</ol>
+<h3 id="其他概念"><a class="header-anchor" href="#其他概念">¶</a>其他概念</h3>
+<p>msgId：根据 queueNum 取模放到 broker 队列<br>
+instanceName：每个集群不一致，同一集群 groupName 不能重，两个 topic 的 groupName 不能一样<br>
+两种模式本质都是拉：push 是构建长连接，一次拉完，一个一个给 broker 回执 ack，多个 Consumer 平分（必须是 4 的倍数，不够再给余数，比如 9 个消息三个 Consumer 分别拉到 4、4、1），poll 模式批量，按设定拉取</p>
 <h2 id="消息的生成和消费"><a class="header-anchor" href="#消息的生成和消费">¶</a>消息的生成和消费</h2>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.rocketmq&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;rocketmq-client&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.3.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
 <p>消息生产：</p>
@@ -485,6 +530,7 @@
 <li>提交给用户的目标主题消息可能会失败，目前这依日志的记录而定。它的高可用性通过 RocketMQ 本身的高可用性机制来保证，如果希望确保事务消息不丢失、并且事务完整性得到保证，建议使用同步的双重写入机制。</li>
 <li>事务消息的生产者 ID 不能与其他类型消息的生产者 ID 共享。与其他类型的消息不同，事务消息允许反向查询、MQ 服务器能通过它们的生产者 ID 查询到消费者。</li>
 </ul>
+<h1>RocketMQ的运维</h1>
 
       
     </div>
@@ -515,8 +561,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/1e6a7cbc.html" rel="next" title="海量数据处理方法">
-                <i class="fa fa-chevron-left"></i> 海量数据处理方法
+              <a href="/e095c2f.html" rel="next" title="RocketMQ 原理总结">
+                <i class="fa fa-chevron-left"></i> RocketMQ 原理总结
               </a>
             
           </div>
@@ -525,8 +571,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/e095c2f.html" rel="prev" title="RocketMQ 原理总结">
-                RocketMQ 原理总结 <i class="fa fa-chevron-right"></i>
+              <a href="/b5a259aa.html" rel="prev" title="QMQ 总结">
+                QMQ 总结 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -609,7 +655,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">109</span>
+                  <span class="site-state-item-count">112</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -631,7 +677,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">55</span>
+                  <span class="site-state-item-count">56</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -666,7 +712,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">为什么使用RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用mq的优点"><span class="nav-number">1.1.</span> <span class="nav-text">¶使用MQ的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用-mq-的缺点"><span class="nav-number">1.2.</span> <span class="nav-text">¶使用 MQ 的缺点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">使用 RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#搭建-name-server-和-broker-server"><span class="nav-number">2.1.</span> <span class="nav-text">¶搭建 Name Server 和 Broker Server</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息的生成和消费"><span class="nav-number">2.2.</span> <span class="nav-text">¶消息的生成和消费</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#顺序消息"><span class="nav-number">2.3.</span> <span class="nav-text">¶顺序消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#延时消息"><span class="nav-number">2.4.</span> <span class="nav-text">¶延时消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#批量消息"><span class="nav-number">2.5.</span> <span class="nav-text">¶批量消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息订阅"><span class="nav-number">2.6.</span> <span class="nav-text">¶消息订阅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务消息"><span class="nav-number">2.7.</span> <span class="nav-text">¶事务消息</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">为什么使用RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用mq的优点"><span class="nav-number">1.1.</span> <span class="nav-text">¶使用MQ的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用-mq-的缺点"><span class="nav-number">1.2.</span> <span class="nav-text">¶使用 MQ 的缺点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">使用 RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#搭建-name-server-和-broker-server-单点"><span class="nav-number">2.1.</span> <span class="nav-text">¶搭建 Name Server 和 Broker Server（单点）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多主多从-2主多从"><span class="nav-number">2.2.</span> <span class="nav-text">¶多主多从（2主多从）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从自动切换-dledger"><span class="nav-number">2.3.</span> <span class="nav-text">¶主从自动切换（DLedger）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端配置"><span class="nav-number">2.4.</span> <span class="nav-text">¶客户端配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#消费模式"><span class="nav-number">2.4.1.</span> <span class="nav-text">¶消费模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他概念"><span class="nav-number">2.4.2.</span> <span class="nav-text">¶其他概念</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息的生成和消费"><span class="nav-number">2.5.</span> <span class="nav-text">¶消息的生成和消费</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#顺序消息"><span class="nav-number">2.6.</span> <span class="nav-text">¶顺序消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#延时消息"><span class="nav-number">2.7.</span> <span class="nav-text">¶延时消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#批量消息"><span class="nav-number">2.8.</span> <span class="nav-text">¶批量消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息订阅"><span class="nav-number">2.9.</span> <span class="nav-text">¶消息订阅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务消息"><span class="nav-number">2.10.</span> <span class="nav-text">¶事务消息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">RocketMQ的运维</span></a></li></ol></div>
             
 
           </div>

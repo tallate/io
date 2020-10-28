@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Distributed System,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="� 分布式一致性协议的演化� 2PC� 3PC 与 2PC 的区别是：  将 2PC 的 prepare 阶段拆为 CanCommit 和 PreCommit 两个阶段，其中：  CanCommit 阶段：参与者需要判断是否可以执行事务提交操作 这个阶段如果出现超时、某个参与者返回 No 等情况，事务直接失败； 在所有参与者 CanCommit 阶段都返回 Yes 响应后可以进入 PreComm">
+<meta name="keywords" content="Distributed System">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式一致性协议">
+<meta property="og:url" content="https://tallate.github.io/466d4e65.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="� 分布式一致性协议的演化� 2PC� 3PC 与 2PC 的区别是：  将 2PC 的 prepare 阶段拆为 CanCommit 和 PreCommit 两个阶段，其中：  CanCommit 阶段：参与者需要判断是否可以执行事务提交操作 这个阶段如果出现超时、某个参与者返回 No 等情况，事务直接失败； 在所有参与者 CanCommit 阶段都返回 Yes 响应后可以进入 PreComm">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Raft%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.jpg">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Zab%E5%8E%9F%E7%90%86.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Paxos%E3%80%81Raft%E3%80%81Zab%E6%AF%94%E8%BE%83.jpg">
+<meta property="og:updated_time" content="2020-10-12T04:58:46.289Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="分布式一致性协议">
+<meta name="twitter:description" content="� 分布式一致性协议的演化� 2PC� 3PC 与 2PC 的区别是：  将 2PC 的 prepare 阶段拆为 CanCommit 和 PreCommit 两个阶段，其中：  CanCommit 阶段：参与者需要判断是否可以执行事务提交操作 这个阶段如果出现超时、某个参与者返回 No 等情况，事务直接失败； 在所有参与者 CanCommit 阶段都返回 Yes 响应后可以进入 PreComm">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Raft%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.jpg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/466d4e65.html">
+
+
+
+
+
+
+
+  <title>分布式一致性协议 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/466d4e65.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">分布式一致性协议</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-08-19T18:13:15+08:00">
+                2020-08-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2.9k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  11 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <a id="more"></a>
+<p>�</p>
+<h1>分布式一致性协议的演化�</h1>
+<h1>2PC�</h1>
+<h1>3PC</h1>
+<p>与 2PC 的区别是：</p>
+<ol>
+<li>将 2PC 的 prepare 阶段拆为 CanCommit 和 PreCommit 两个阶段，其中：
+<ul>
+<li>CanCommit 阶段：参与者需要判断是否可以执行事务提交操作<br>
+这个阶段如果出现超时、某个参与者返回 No 等情况，事务直接失败；<br>
+在所有参与者 CanCommit 阶段都返回 Yes 响应后可以进入 PreCommit 阶段；</li>
+<li>PreCommit 阶段：预提交即执行事务操作，并记录 undo 和 redo 日志，这时本地事务还未 commit<br>
+这个阶段如果有任何一个参与者向协调者返回了 No 响应或超时协调者还未接收到参与者的响应，则协调者会开始执行事务的 abort；<br>
+如果所有参与者都返回了 ACK 响应，则可以进入最终的 doCommit 阶段；</li>
+<li>abort：上一步，如果要开始执行中断事务，协调者会向所有参与者发送 abort 请求，参与者接收</li>
+<li>doCommit 阶段：�</li>
+</ul>
+</li>
+</ol>
+<h1>Paxos</h1>
+<h2 id="与-2pc-及其衍生协议-区别"><a class="header-anchor" href="#与-2pc-及其衍生协议-区别">¶</a>与 2PC（及其衍生协议）区别</h2>
+<p>Paxos 协议和 2PC 协议在分布式系统中所起的作用并不相同。Paxos 协议用于保证同一个数据分片的多个副本之间的数据一致性。当这些副本分布到不同的数据中心时，这个需求尤其强烈。2PC 协议用于保证属于多个数据分片上的操作的原子性。这些数据分片可能分布在不同的服务器上，2PC 协议保证多台服务器上的操作要么全部成功，要么全部失败。<br>
+Paxos 协议有两种用法：一种用法是用它来实现全局的锁服务或者命名和配置服务，例如 Google Chubby 以及 Apache Zookeeper。另外一种用法是用它来将用户数据复制到多个数据中心，例如 Google Megastore 以及 Google Spanner。<br>
+2PC 协议最大的缺陷在于无法处理协调者宕机问题。如果协调者宕机，那么，2PC 协议中的每个参与者可能都不知道事务应该提交还是回滚，整个协议被阻塞，执行过程中申请的资源都无法释放。因此，常见的做法是将 2PC 和 Paxos 协议结合起来，通过 2PC 保证多个数据分片上的操作的原子性，通过 Paxos 协议实现同一个数据分片的多个副本之间的一致性（一般）。另外，通过 Paxos 协议解决 2PC 协议中协调者宕机问题。当 2PC 协议中的协调者出现故障时，通过 Paxos 协议选举出新的协调者继续提供服务，可以解决<strong>单点故障</strong>问题（但是你确定服务参与者足够多能够发起一次选举吗？）。</p>
+<h2 id="basic-paxos-单值-paxos"><a class="header-anchor" href="#basic-paxos-单值-paxos">¶</a>Basic Paxos（单值 Paxos）</h2>
+<p>何为一致性问题？简单而言，一致性问题是在节点宕机、消息无序等场景可能出现的情况下，相互独立的节点之间如何达成决议的问题，作为解决一致性问题的协议，Paxos 的核心是节点间如何确定并只确定一个值(value)。<br>
+和 2PC 类似，Paxos 先把节点分成两类，发起<strong>提议(proposal)<strong>的一方为</strong>proposer</strong>，参与决议的一方为<strong>acceptor</strong>。</p>
+<h3 id="paxos-中的-5-条规则"><a class="header-anchor" href="#paxos-中的-5-条规则">¶</a>Paxos 中的 5 条规则</h3>
+<p>Paxos 协议由以下 5 条规则描述：</p>
+<ul>
+<li>P1. 一个 acceptor 接受它收到的第一项提议</li>
+<li>P2. 如果一项值为 v 的提议被确定，那么后续只确定值为 v 的提议</li>
+<li>P2a. 如果一项值为 v 的提议被确定，那么 acceptor 后续只接受值为 v 的提议</li>
+<li>P2b. 如果一项值为 v 的提议被确定，那么 proposer 后续只发起值为 v 的提议</li>
+<li>P2c. 对于提议(n,v)，acceptor 的多数派 S 中，如果存在 acceptor 最近一次(即 ID 值最大)接受的提议的值为 v’，那么要求 v = v’；否则 v 可为任意值</li>
+</ul>
+<p>后面的规则可以保证前面的规则，也就是说，P2c 是 Paxos 的核心，接下来我们来讨论每条规则产生的原因、不足，及后面规则对前者的补足，P2c =&gt; P2b =&gt; P2a =&gt; P2。</p>
+<h3 id="p1"><a class="header-anchor" href="#p1">¶</a>P1</h3>
+<p>假如只有一个 proposer 发起提议，并且节点不宕机、消息不丢包，那么 acceptor 做到<strong>P1</strong>就可以确定一个值。<br>
+当然上面要求的前提条件有些严苛，节点不能宕机、消息不能丢包，还只能由一个 proposer 发起提议。<br>
+如果放宽条件——多个 proposer 可以同时发起提议——又怎样才能做到确定并只确定一个值呢？首先 proposer 和 acceptor 需要满足以下两个条件：</p>
+<ol>
+<li>proposer 发起的每项提议分别用一个 ID 标识，提议的组成因此变为(ID, value)</li>
+<li>acceptor 可以接受(accept)不止一项提议，当多数(quorum) acceptor 接受一项提议时该提议被确定(chosen)</li>
+</ol>
+<blockquote>
+<p>注意接受（accept）和确定（chosen）的区别。</p>
+</blockquote>
+<p>若要满足这两个条件，acceptor 需要做到<strong>P2</strong>。</p>
+<h3 id="p2"><a class="header-anchor" href="#p2">¶</a>P2</h3>
+<p>由于一项提议被确定(chosen)前必须先被多数派 acceptor 接受(accepted)，为实现 P2，实质上 acceptor 需要做到<strong>P2a</strong>。<br>
+满足 P2a 则 P2 成立（P2a =&gt; P2）。</p>
+<h3 id="paxos-的一个例子"><a class="header-anchor" href="#paxos-的一个例子">¶</a>Paxos 的一个例子</h3>
+<p>下面的例子来自<a href="https://www.microsoft.com/en-us/research/publication/part-time-parliament/?from=http%3A%2F%2Fresearch.microsoft.com%2Fen-us%2Fum%2Fpeople%2Flamport%2Fpubs%2Flamport-paxos.pdf" target="_blank" rel="noopener">The Part-Time Parliament</a>。</p>
+<h1>Raft</h1>
+<p>Paxos 偏向于理论、对如何应用到工程实践提及较少。理解的难度加上现实的骨感，在生产环境中基于 Paxos 实现一个正确的分布式系统非常难。<br>
+Raft 在 2013 年提出，提出的时间虽然不长，但已经有很多系统基于 Raft 实现。相比 Paxos，Raft 的优点就是更利于理解、更易于实行。<br>
+为达到更容易理解和实行的目的，Raft 将问题分解和具体化：Leader 统一处理变更操作请求，一致性协议的作用具化为保证节点间操作日志副本(log replication)一致，以 term 作为逻辑时钟(logical clock)保证时序，节点运行相同状态机(state machine)得到一致结果。Raft 协议具体过程如下：</p>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Raft%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.jpg" alt="Raft执行流程" title="Raft执行流程"></p>
+<ol>
+<li>Client 发起请求，每一条请求包含操作指令</li>
+<li>请求交由 Leader 处理，Leader 将操作指令(entry)追加(append)至操作日志，紧接着对 Follower 发起 AppendEntries 请求、尝试让操作日志副本在 Follower 落地</li>
+<li>如果 Follower 多数派(quorum)同意 AppendEntries 请求，Leader 进行 commit 操作、把指令交由状态机处理</li>
+<li>状态机处理完成后将结果返回给 Client</li>
+</ol>
+<p>指令通过 log index(指令 id)和 term number 保证时序，正常情况下 Leader、Follower 状态机按相同顺序执行指令，得出相同结果、状态一致。<br>
+宕机、网络分化等情况可引起 Leader 重新选举(每次选举产生新 Leader 的同时，产生新的 term)、Leader/Follower 间状态不一致。Raft 中 Leader 为自己和所有 Follower 各维护一个 nextIndex 值，其表示 Leader 紧接下来要处理的指令 id 以及将要发给 Follower 的指令 id，LnextIndex 不等于 FnextIndex 时代表 Leader 操作日志和 Follower 操作日志存在不一致，这时将从 Follower 操作日志中最初不一致的地方开始，由 Leader 操作日志覆盖 Follower，直到 LnextIndex、FnextIndex 相等。<br>
+Paxos 中 Leader 的存在是为了提升决议效率，Leader 的有无和数目并不影响决议一致性，Raft 要求具备唯一 Leader，并把一致性问题具体化为保持日志副本的一致性，以此实现相较 Paxos 而言更容易理解、更容易实现的目标。</p>
+<h1>Zab</h1>
+<p>Zab 的全称是 Zookeeper atomic broadcast protocol，是 Zookeeper 内部用到的一致性协议。相比 Paxos，Zab 最大的特点是保证强一致性(strong consistency，或叫线性一致性 linearizable consistency)。<br>
+和 Raft 一样，Zab 要求唯一 Leader 参与决议，Zab 可以分解成 discovery、sync、broadcast 三个阶段：<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Zab%E5%8E%9F%E7%90%86.png" alt="Zab原理" title="Zab原理"></p>
+<ul>
+<li>discovery<br>
+<strong>选举</strong>产生<strong>PL(prospective leader)</strong>，PL 收集<strong>Follower epoch(cepoch)</strong>，根据<strong>Follower</strong>的反馈 PL 产生<strong>newepoch</strong>(每次选举产生新 Leader 的同时产生新 epoch，类似 Raft 的 term)。</li>
+<li>sync<br>
+PL 补齐相比 Follower 多数派缺失的状态、之后各 Follower 再补齐相比 PL 缺失的状态，PL 和 Follower 完成状态同步后 PL 变为<strong>正式 Leader(established leader)</strong>。</li>
+<li>broadcast<br>
+Leader 处理 Client 的写操作，并将状态变更广播至 Follower，Follower<strong>多数派</strong>通过之后 Leader 发起将状态变更<strong>提交(deliver/commit)</strong>。</li>
+</ul>
+<p>Leader 和 Follower 之间通过<strong>心跳</strong>判别健康状态，正常情况下 Zab 处在 broadcast 阶段，出现 Leader 宕机、网络隔离等异常情况时 Zab 重新回到 discovery 阶段。</p>
+<h2 id="zab-如何保证强一致"><a class="header-anchor" href="#zab-如何保证强一致">¶</a>Zab 如何保证强一致</h2>
+<p>Zab 通过约束事务先后顺序达到强一致性，先广播的事务先 commit、FIFO，Zab 称之为<strong>primary order(以下简称 PO)</strong>。实现 PO 的核心是<code>zxid</code>。<br>
+Zab 中每个事务对应一个 zxid，它由两部分组成：<code>&lt;e, c&gt;</code>，e 即 Leader 选举时生成的 epoch，c 表示当次 epoch 内事务的编号、依次递增。假设有两个事务的 zxid 分别是 z、z’，当满足 <code>z.e &lt; z'.e</code> 或者 <code>z.e = z'.e &amp;&amp; z.c &lt; z'.c</code> 时，定义 z 先于 z’发生(<code>z &lt; z'</code>)。<br>
+为实现 PO，Zab 对 Follower、Leader 有以下约束：</p>
+<ol>
+<li>有事务 z 和 z’，如果 Leader 先广播 z，则 Follower 需保证先 commit z 对应的事务</li>
+<li>有事务 z 和 z’，z 由 Leader p 广播，z’由 Leader q 广播，Leader p 先于 Leader q，则 Follower 需保证先 commit z 对应的事务</li>
+<li>有事务 z 和 z’，z 由 Leader p 广播，z’由 Leader q 广播，Leader p 先于 Leader q，如果 Follower 已经 commit z，则 q 需保证已 commit z 才能广播 z’</li>
+</ol>
+<p>第 1、2 点保证事务 FIFO，第 3 点保证 Leader 上具备所有已 commit 的事务。<br>
+相比 Paxos，Zab 约束了事务顺序、适用于有强一致性需求的场景。</p>
+<h1>Paxos、Raft、Zab 比较</h1>
+<p>除 Paxos、Raft 和 Zab 外，Viewstamped Replication(简称 VR)也是讨论比较多的一致性协议。这些协议包含很多共同的内容(Leader、quorum、state machine 等)，因而我们不禁要问：Paxos、Raft、Zab 和 VR 等分布式一致性协议区别到底在哪，还是根本就是一回事？<br>
+Paxos、Raft、Zab 和 VR 都是解决一致性问题的协议，Paxos 协议原文倾向于理论，Raft、Zab、VR 倾向于实践，一致性保证程度等的不同也导致这些协议间存在差异。下图帮助我们理解这些协议的相似点和区别<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/Paxos%E3%80%81Raft%E3%80%81Zab%E6%AF%94%E8%BE%83.jpg" alt="Paxos、Raft、Zab比较" title="Paxos、Raft、Zab比较"></p>
+<h1>参考</h1>
+<h2 id="paxos"><a class="header-anchor" href="#paxos">¶</a>Paxos�</h2>
+<ol>
+<li><a href="https://zhuanlan.zhihu.com/p/23279058" target="_blank" rel="noopener">分布式系统理论进阶 - Paxos</a>�</li>
+<li><a href="https://www.microsoft.com/en-us/research/publication/paxos-made-simple/?from=http%3A%2F%2Fresearch.microsoft.com%2Fen-us%2Fum%2Fpeople%2Flamport%2Fpubs%2Fpaxos-simple.pdf" target="_blank" rel="noopener">Paxos Made Simple</a>�</li>
+<li><a href="https://www.microsoft.com/en-us/research/publication/part-time-parliament/?from=http%3A%2F%2Fresearch.microsoft.com%2Fen-us%2Fum%2Fpeople%2Flamport%2Fpubs%2Flamport-paxos.pdf" target="_blank" rel="noopener">The Part-Time Parliament</a>�</li>
+<li><a href="https://zhuanlan.zhihu.com/p/23279058" target="_blank" rel="noopener">Tencent/phxpaxos</a>�</li>
+</ol>
+<h2 id="raft"><a class="header-anchor" href="#raft">¶</a>Raft�</h2>
+<ol>
+<li><a href="http://www.cs.utexas.edu/users/lorenzo/corsi/cs380d/papers/paper2-1.pdf" target="_blank" rel="noopener">[1] Paxos made live - An engineering perspective, Tushar Chandra, Robert Griesemer and Joshua Redstone, 2007</a></li>
+<li><a href="http://files.catwell.info/misc/mirror/raft/raft.pdf" target="_blank" rel="noopener">[2] In Search of an Understandable Consensus Algorithm, Diego Ongaro and John Ousterhout, 2013</a></li>
+<li><a href="https://www.baidu.com/link?url=59S8Pf5DhEUcoYrNaNCLLF9d-rKeHrakboBuYcNcn86jxgxEIH-LzSzP_isdeyhTA3hkn7AYn64x1KCNAvSy22SJEMKGlqG5Ypum8iTcd9AT2QQwHoHAwVuTR7yBFc4n&amp;wd=&amp;eqid=8c4a598b000007f000000006580cec0c" target="_blank" rel="noopener">[3] In Search of an Understandable Consensus Algorithm (Extended Version), Diego Ongaro and John Ousterhout, 2013</a></li>
+<li><a href="http://www.infosys.tuwien.ac.at/teaching/courses/AdvancedDistributedSystems/download/1990_Schneider_Implementing%20fault-tolerant%20services%20using%20the%20state%20machine%20approach.pdf" target="_blank" rel="noopener">[4] Implementing Fault-Tolerant Services Using the State Machine, Fred B. Schneider, 1990</a>�</li>
+</ol>
+<h2 id="zab"><a class="header-anchor" href="#zab">¶</a>Zab�</h2>
+<ol>
+<li><a href="http://www.cs.cornell.edu/courses/cs6452/2012sp/papers/zab-ieee.pdf" target="_blank" rel="noopener">[5] Zab:High-performance broadcast for primary-backup systems, FlavioP.Junqueira,BenjaminC.Reed,andMarcoSeraﬁni, 2011</a></li>
+<li><a href="http://www.tcs.hut.fi/Studies/T-79.5001/reports/2012-deSouzaMedeiros.pdf" target="_blank" rel="noopener">[6] ZooKeeper’s atomic broadcast protocol: Theory and practice, Andr´e Medeiros, 2012</a></li>
+<li><a href="http://pmg.csail.mit.edu/papers/vr.pdf" target="_blank" rel="noopener">[7] Viewstamped Replication A New Primary Copy Method to Support Highly-Available Distributed Systems, Brian M.Oki and Barbar H.Liskov, 1988</a></li>
+<li><a href="http://pmg.csail.mit.edu/papers/vr-revisited.pdf" target="_blank" rel="noopener">[8] Viewstamped Replication Revisited, Barbara Liskov and James Cowling, Barbara Liskov and James Cowling ,2012</a></li>
+<li><a href="https://blog.acolyer.org/2015/03/01/cant-we-all-just-agree/" target="_blank" rel="noopener">[9] Can’t we all just agree? The morning paper, 2015</a></li>
+<li><a href="https://arxiv.org/pdf/1309.5671.pdf" target="_blank" rel="noopener">[10] Vive La Difference: Paxos vs. Viewstamped Replication vs. Zab, Robbert van Renesse, Nicolas Schiper and Fred B. Schneider, 2014</a>�</li>
+</ol>
+<h2 id="paxos-变种和优化"><a class="header-anchor" href="#paxos-变种和优化">¶</a>Paxos 变种和优化�</h2>
+<ol>
+<li><a href="http://cseweb.ucsd.edu/classes/wi09/cse223a/mencius.pdf" target="_blank" rel="noopener">[1] Mencius: Building Efficient Replicated State Machines for WANs, Yanhua Mao,Flavio P. Junqueira,Keith Marzullo, 2018</a></li>
+<li><a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-112.pdf" target="_blank" rel="noopener">[2] Fast Paxos, Leslie Lamport, 2005</a></li>
+<li><a href="http://diyhpl.us/~bryan/papers2/distributed/distributed-systems/generalized-consensus-and-paxos.2004.pdf" target="_blank" rel="noopener">[3] Generalized Consensus and Paxos, Leslie Lamport, 2004</a></li>
+<li><a href="http://sigops.org/sosp/sosp13/papers/p358-moraru.pdf" target="_blank" rel="noopener">[4] There Is More Consensus in Egalitarian Parliaments, Iulian Moraru, David G. Andersen, Michael Kaminsky, 2013</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Distributed-System/" rel="tag"># Distributed System</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/b5a259aa.html" rel="next" title="QMQ 总结">
+                <i class="fa fa-chevron-left"></i> QMQ 总结
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/90599567.html" rel="prev" title="oslab_在开始之前">
+                oslab_在开始之前 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">112</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">56</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分布式一致性协议的演化�</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">2PC�</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">3PC</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">Paxos</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#与-2pc-及其衍生协议-区别"><span class="nav-number">4.1.</span> <span class="nav-text">¶与 2PC（及其衍生协议）区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#basic-paxos-单值-paxos"><span class="nav-number">4.2.</span> <span class="nav-text">¶Basic Paxos（单值 Paxos）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#paxos-中的-5-条规则"><span class="nav-number">4.2.1.</span> <span class="nav-text">¶Paxos 中的 5 条规则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#p1"><span class="nav-number">4.2.2.</span> <span class="nav-text">¶P1</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#p2"><span class="nav-number">4.2.3.</span> <span class="nav-text">¶P2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#paxos-的一个例子"><span class="nav-number">4.2.4.</span> <span class="nav-text">¶Paxos 的一个例子</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">Raft</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">Zab</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#zab-如何保证强一致"><span class="nav-number">6.1.</span> <span class="nav-text">¶Zab 如何保证强一致</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">Paxos、Raft、Zab 比较</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">8.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#paxos"><span class="nav-number">8.1.</span> <span class="nav-text">¶Paxos�</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#raft"><span class="nav-number">8.2.</span> <span class="nav-text">¶Raft�</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zab"><span class="nav-number">8.3.</span> <span class="nav-text">¶Zab�</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#paxos-变种和优化"><span class="nav-number">8.4.</span> <span class="nav-text">¶Paxos 变种和优化�</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

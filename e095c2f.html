@@ -79,13 +79,13 @@
 
 
 
-<meta name="description" content="架构 ¶概念  groupName：一个 group 可能包含多个主机，生产和消费都是针对 group 来的  ¶选型  顺序消息     消息队列 Kafka RocketMQ     适用场景 大量消息快速消费如流式计算 高性能、稳定、高可靠   热度 与周边生态系统的兼容性最好 有活跃中文社区   消息可靠传递 √ √   延迟 毫秒级 毫秒级   性能 每秒几十万 每秒几十万   消息丢">
+<meta name="description" content="架构 ¶选型    消息队列 Kafka RocketMQ     适用场景 大量消息快速消费如流式计算 高性能、稳定、高可靠   热度 与周边生态系统的兼容性最好 有活跃中文社区   消息可靠传递 √ √   延迟 毫秒级 毫秒级   性能 每秒几十万 每秒几十万   消息丢失 参数优化配置后0丢失 参数优化配置后0丢失   消费模式 Pull Pull + Push（原理都是Pull）">
 <meta name="keywords" content="RocketMQ">
 <meta property="og:type" content="article">
 <meta property="og:title" content="RocketMQ 原理总结">
 <meta property="og:url" content="https://tallate.github.io/e095c2f.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="架构 ¶概念  groupName：一个 group 可能包含多个主机，生产和消费都是针对 group 来的  ¶选型  顺序消息     消息队列 Kafka RocketMQ     适用场景 大量消息快速消费如流式计算 高性能、稳定、高可靠   热度 与周边生态系统的兼容性最好 有活跃中文社区   消息可靠传递 √ √   延迟 毫秒级 毫秒级   性能 每秒几十万 每秒几十万   消息丢">
+<meta property="og:description" content="架构 ¶选型    消息队列 Kafka RocketMQ     适用场景 大量消息快速消费如流式计算 高性能、稳定、高可靠   热度 与周边生态系统的兼容性最好 有活跃中文社区   消息可靠传递 √ √   延迟 毫秒级 毫秒级   性能 每秒几十万 每秒几十万   消息丢失 参数优化配置后0丢失 参数优化配置后0丢失   消费模式 Pull Pull + Push（原理都是Pull）">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E6%9E%B6%E6%9E%84%E5%9B%BE.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E9%83%A8%E7%BD%B2%E5%9B%BE.png">
@@ -103,10 +103,10 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E5%85%A8%E5%B1%80%E6%9C%89%E5%BA%8F.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E5%88%86%E5%8C%BA%E6%9C%89%E5%BA%8F.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF.png">
-<meta property="og:updated_time" content="2020-10-04T15:18:19.111Z">
+<meta property="og:updated_time" content="2020-10-19T01:17:37.311Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="RocketMQ 原理总结">
-<meta name="twitter:description" content="架构 ¶概念  groupName：一个 group 可能包含多个主机，生产和消费都是针对 group 来的  ¶选型  顺序消息     消息队列 Kafka RocketMQ     适用场景 大量消息快速消费如流式计算 高性能、稳定、高可靠   热度 与周边生态系统的兼容性最好 有活跃中文社区   消息可靠传递 √ √   延迟 毫秒级 毫秒级   性能 每秒几十万 每秒几十万   消息丢">
+<meta name="twitter:description" content="架构 ¶选型    消息队列 Kafka RocketMQ     适用场景 大量消息快速消费如流式计算 高性能、稳定、高可靠   热度 与周边生态系统的兼容性最好 有活跃中文社区   消息可靠传递 √ √   延迟 毫秒级 毫秒级   性能 每秒几十万 每秒几十万   消息丢失 参数优化配置后0丢失 参数优化配置后0丢失   消费模式 Pull Pull + Push（原理都是Pull）">
 <meta name="twitter:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E6%9E%B6%E6%9E%84%E5%9B%BE.png">
 
 
@@ -375,7 +375,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  12.2k 字
+                  13k 字
                 </span>
               
 
@@ -391,7 +391,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  45 分钟
+                  47 分钟
                 </span>
               
             </div>
@@ -414,14 +414,7 @@
       
         <a id="more"></a>
 <h1>架构</h1>
-<h2 id="概念"><a class="header-anchor" href="#概念">¶</a>概念</h2>
-<ul>
-<li>groupName：一个 group 可能包含多个主机，生产和消费都是针对 group 来的</li>
-</ul>
 <h2 id="选型"><a class="header-anchor" href="#选型">¶</a>选型</h2>
-<ol>
-<li>顺序消息</li>
-</ol>
 <table>
 <thead>
 <tr>
@@ -464,7 +457,7 @@
 <tr>
 <td>消费模式</td>
 <td>Pull</td>
-<td>Pull + Push</td>
+<td>Pull + Push（原理都是Pull）</td>
 </tr>
 <tr>
 <td>可用性</td>
@@ -541,6 +534,10 @@
 但是要注意，一个消费组内可能会有多个消费者，这些消费者不能重复消费一条消息，主要一个消息被其中一个消费者消费了，那同组的其他消费者就不会再收到这条消息。<br>
 那么如何实现多个消费组能重复消费一条消息的功能呢？<br>
 在RocketMQ中，Broker会为每个消费组在每个队列上维护一个</strong>消费位置（Consumer Offset）</strong>，这个位置之前的消息都被消费过，之后的消息都没有被消费过，每成功消费一条消息，消费位置就加一。</p>
+<h3 id="为什么rocketmq中都需要预先创建topic？"><a class="header-anchor" href="#为什么rocketmq中都需要预先创建topic？">¶</a>为什么RocketMQ中都需要预先创建Topic？</h3>
+<p>使用rocketmq的时候，需要去控制台预先创建topic，为什么要这么设计，因为rocketmq topic的创建机制：<br>
+rocketmq在发送消息时，会先去获取topic的路由信息，如果topic是第一次发送消息，由于nameserver没有topic的路由信息，所以会再次以“TBW102”这个默认topic获取路由信息，假设broker都开启了自动创建开关，那么此时会获取所有broker的路由信息，消息的发送会根据负载算法选择其中一台Broker发送消息，消息到达broker后，发现本地没有该topic，会创建该topic的信息再塞进本地缓存中，同时会将topic路由信息注册到nameserver中，那么这样就会造成一个后果：<strong>以后所有该topic的消息，都将发送到这台broker上，如果该topic消息量非常大，会造成某个broker上负载过大，这样消息的存储就达不到负载均衡的目的了</strong>。<br>
+因此，自动创建Topic开关一般只会在线下开启，线上是关闭的。</p>
 <h2 id="按-message-id-查询消息"><a class="header-anchor" href="#按-message-id-查询消息">¶</a>按 Message ID 查询消息</h2>
 <p>MessageID 包含：</p>
 <ul>
@@ -857,10 +854,23 @@ Push模式使用一个线程轮询Broker拉取消息，然后调用客户端提�
 <h2 id="延时消息"><a class="header-anchor" href="#延时消息">¶</a>延时消息</h2>
 <p>RocketMQ里延时消息功能并不能指定时间，而是只能指定延时级别：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Message message = new Message(&quot;TopicTest&quot;, &quot;TagA&quot;, (&quot;Hello scheduled message &quot; + i).getBytes());</span><br><span class="line">// 设置延时等级3,这个消息将在10s之后发送(现在只支持固定的几个时间,详看delayTimeLevel)</span><br><span class="line">message.setDelayTimeLevel(3);</span><br><span class="line">producer.send(message);</span><br></pre></td></tr></table></figure>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
 <ol>
 <li>延时消息和普通消息一样会先被写入<code>commitLog</code>，但不会立刻写入<code>consumerQueue</code>中，而是存放到<code>SCHEDULE_TOPIC_XXX</code>的topic下面，并且以延时粒度作为queueId区分；</li>
 <li>之后Broker端会有定时任务扫描<code>SCHEDULE_TOPIC_XXX</code>下的每个Queue，到时候后写入到consumerQueue中。</li>
 </ol>
+<p>源码入口是<code>ScheduleMessageService.start</code>，启动时会调用：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">public void start() &#123;</span><br><span class="line">    if (started.compareAndSet(false, true)) &#123;</span><br><span class="line">        this.timer = new Timer(&quot;ScheduleMessageTimerThread&quot;, true);</span><br><span class="line">        // 1. 根据支持的各种延迟级别，添加不同延迟时间的TimeTask</span><br><span class="line">        for (Map.Entry&lt;Integer, Long&gt; entry : this.delayLevelTable.entrySet()) &#123;</span><br><span class="line">            Integer level = entry.getKey();</span><br><span class="line">            Long timeDelay = entry.getValue();</span><br><span class="line">            // 每个延迟级别对应一个offset，代表一个普通消息队列文件</span><br><span class="line">            Long offset = this.offsetTable.get(level);</span><br><span class="line">            if (null == offset) &#123;</span><br><span class="line">                offset = 0L;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            if (timeDelay != null) &#123;</span><br><span class="line">                this.timer.schedule(new DeliverDelayedMessageTimerTask(level, offset), FIRST_DELAY_TIME);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        // 2. 添加一个10s执行一次的TimeTask</span><br><span class="line">        this.timer.scheduleAtFixedRate(new TimerTask() &#123;</span><br><span class="line"></span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                try &#123;</span><br><span class="line">                    if (started.get()) ScheduleMessageService.this.persist();</span><br><span class="line">                &#125; catch (Throwable e) &#123;</span><br><span class="line">                    log.error(&quot;scheduleAtFixedRate flush exception&quot;, e);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, 10000, this.defaultMessageStore.getMessageStoreConfig().getFlushDelayOffsetInterval());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>DeliverDelayedMessageTimerTask<br>
+<code>ScheduleMessageService.executeOnTimeup</code>：<br>
+扫描延迟消息队列（<code>SCHEDULE_TOPIC_XXX</code>）的消息，将该延迟消息转换为指定的topic的消息。<br>
+1、读取不同延迟级别对应的延迟消息；<br>
+2、取得对应延迟级别读取的开始位置offset；<br>
+3、将延迟消息转换为指定topic的普通消息并存放起来。<br>
+4、修改下一次读取的offset值（修改的只是缓存），并指定下一次转换延迟消息的timetask。</p>
+<p><code>ScheduleMessageService.this.persist</code>：<br>
+将延迟队列扫描处理的进度offset持久化到delayOffset.json文件中。</p>
+<p>RocketMQ延迟队列也有一个缺点：Java中的Timer是单线程，而延迟消息的原理是Timer，也就是说当同时发送的延迟消息过多的时候一个线程处理速度一定是有瓶颈的，因此在实际项目中使用延迟消息一定不要过多依赖，只能作为一个辅助手段。</p>
 <h2 id="消息可靠性"><a class="header-anchor" href="#消息可靠性">¶</a>消息可靠性</h2>
 <p>只要不是存储硬件发生不可逆的损坏，RocketMQ 都可以保证消息不丢或少丢，比如 Broker 挂掉、操作系统挂掉等；<br>
 如果硬件发生不可逆的损坏，则该节点的消息就无法恢复了，需要通过异步复制来恢复。</p>
@@ -932,6 +942,7 @@ RocketMQ 支持<strong>把一个主题分布到多对主从节点上去，每对
 <p>RocketMQ 支持 pull 和 push 两种消息消费模式，但 push 是使用长轮询 Pull 的方式实现的，可保证消息非常实时，消息实时性不低于 Push。<br>
 长轮询 pull 的原理是：发起 pull 请求失败后（比如 Broker 端暂时没有可以消费的消息），先 hold 住线程并挂起该请求。</p>
 <h2 id="事务消息"><a class="header-anchor" href="#事务消息">¶</a>事务消息</h2>
+<h3 id="rocketmq中的实现"><a class="header-anchor" href="#rocketmq中的实现">¶</a>RocketMQ中的实现</h3>
 <ul>
 <li><strong>半事务消息</strong>：发事务消息时，发送方会先发送一条半事务消息给 Broker，此时 Broker 暂未收到 Producer 对该消息的二次确认，此时该消息被标记成<strong>暂不能投递</strong>状态，处于该种状态下的消息即半事务消息；</li>
 <li><strong>消息回查</strong>：由于网络闪断、生产者应用重启等原因，导致某条事务消息的二次确认丢失，Broker 通过扫描发现某条消息长期处于<strong>半事务消息</strong>时，需要主动向 Producer 询问该消息的最终状态（Commit 或是 Rollback），该询问过程即消息回查。</li>
@@ -940,7 +951,12 @@ RocketMQ 支持<strong>把一个主题分布到多对主从节点上去，每对
 事务消息的处理流程如上图所示：<br>
 图片来自<a href="https://help.aliyun.com/document_detail/43348.html?spm=5176.doc43490.6.566.Zd5Bl7" target="_blank" rel="noopener">事务消息</a></p>
 <ol>
-<li>Producer 发半事务消息给 Broker；</li>
+<li>Producer 发半事务消息给 Broker，Producer需要记录消息状态到一张<strong>本地消息事务表</strong>内，和业务数据在一个事务里提交，之后生产消费者均通过这张表里的状态来判断事务的状态；</li>
+</ol>
+<blockquote>
+<p>如果业务数据本身就是有状态的，其实也可以通过查询业务数据状态来判断事务状态。</p>
+</blockquote>
+<ol>
 <li>Broker 将半事务消息持久化后，向 Producer 返回 ACK 确认消息已发送成功，此时消息为半事务消息；</li>
 <li>Producer 端开始执行本地事务逻辑；</li>
 <li>Producer 端根据本地事务执行结果向服务端提交<strong>二次确认（Commit 或是 Rollback）</strong>，Broker 收到 Commit 状态则将半事务消息标记为<strong>可投递</strong>，Consumer 最终将收到该消息；Broker 收到 Rollback 状态则删除半事务消息，Consumer 将不会接受该消息。</li>
@@ -994,7 +1010,7 @@ RocketMQ 支持<strong>把一个主题分布到多对主从节点上去，每对
 定时从半消息队列中读出所有待反查的半消息，针对每个需要反查的半消息，Broker 会给对应的 Producer 发一个要求执行事务状态反查的 RPC 请求，根据 RPC 返回响应中的反查结果，来决定这个半消息是需要提交还是回滚，或者后续继续来反查。</li>
 <li>结束事务<br>
 <code>org.apache.rocketmq.broker.processor.EndTransactionProcessor#processRequest</code><br>
-最后，提交或者回滚事务实现的逻辑是差不多的，首先把半消息标记为已处理，如果是提交事务，那就把半消息从半消息队列中复制到这个消息真正的主题和队列中去，如果要回滚事务，这一步什么都不需要做，最后结束这个事务。</li>
+最后，提交或者回滚事务实现的逻辑是差不多的，首先把半消息标记为已处理，如果是提交事务，那就<strong>把半消息从半消息队列中复制到这个消息真正的主题和队列中去</strong>，如果要回滚事务，这一步什么都不需要做，最后结束这个事务。</li>
 </ol>
 <h1>QA</h1>
 <h2 id="消息队列可以做什么？"><a class="header-anchor" href="#消息队列可以做什么？">¶</a>消息队列可以做什么？</h2>
@@ -1023,7 +1039,27 @@ RocketMQ 支持<strong>把一个主题分布到多对主从节点上去，每对
 <h2 id="rocketmq能否做到单队列的并行消费？"><a class="header-anchor" href="#rocketmq能否做到单队列的并行消费？">¶</a>RocketMQ能否做到单队列的并行消费？</h2>
 <p>RocketMQ 在消费的时候，为了保证消息的不丢失和严格顺序，每个队列只能串行消费（一个消费者可以消费多个队列），无法做到并发，否则会出现消费空洞的问题。那如果放宽一下限制，不要求严格顺序，能否做到单个队列的并行消费呢？</p>
 <h2 id="怎么实现负载均衡？"><a class="header-anchor" href="#怎么实现负载均衡？">¶</a>怎么实现负载均衡？</h2>
-<h2 id="rocketmq如何保证消息不丢？"><a class="header-anchor" href="#rocketmq如何保证消息不丢？">¶</a>RocketMQ如何保证消息不丢？</h2>
+<h2 id="rocketmq如何保证消息不丢-消息一定能被消费-？"><a class="header-anchor" href="#rocketmq如何保证消息不丢-消息一定能被消费-？">¶</a>RocketMQ如何保证消息不丢（消息一定能被消费）？</h2>
+<ol>
+<li>Producer端重试<br>
+默认push重试3次。</li>
+<li>Broker端只有在复制半数以上副本之后才会返回发送成功。</li>
+</ol>
+<blockquote>
+<p>和MySQL里的semisync有点像。</p>
+</blockquote>
+<ol>
+<li>Consumer端重复消费<br>
+DefaultMQPushConsumer默认超时重试无限次，默认异常重试16次，过期或重试不成功则进入死信队列、默认凌晨 3 点会清除死信队列，为了确保重试不会出现重复消费，业务逻辑一般都需要保证幂等（幂等key可以使用业务oid或uniqId）。<br>
+Consumer有两种返回值，CONSUME_SUCCESS和CONSUME_LATER，后者令Broker将消息转移到另一个Retry队列中供重试使用。</li>
+</ol>
+<h2 id="rocketmq如何实现消息去重？"><a class="header-anchor" href="#rocketmq如何实现消息去重？">¶</a>RocketMQ如何实现消息去重？</h2>
+<p>RocketMQ本身没有实现消息的去重功能，因为RocketMQ是At-Least-Once的。<br>
+所以，很多时候我们需要自己通过Redis等来实现消息去重，但是要注意的是不要用错了msgId：</p>
+<ul>
+<li><code>MessageExt.msgId</code>：重试时这个msgId是会变的，因此不适合当作幂等key；</li>
+<li><code>MessageExt.properties[&quot;PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX&quot;]</code>：相对上面那个msgId来说，这个UNIQ_KEY就算重试多次值还是一样的，因此更适合当作幂等key。</li>
+</ul>
 <h2 id="消费失败怎么重发的？"><a class="header-anchor" href="#消费失败怎么重发的？">¶</a>消费失败怎么重发的？</h2>
 <h2 id="怎么判断消息堆积了？"><a class="header-anchor" href="#怎么判断消息堆积了？">¶</a>怎么判断消息堆积了？</h2>
 <h2 id="刷盘的原理？"><a class="header-anchor" href="#刷盘的原理？">¶</a>刷盘的原理？</h2>
@@ -1041,10 +1077,20 @@ Broker支持多主多从集群，即使其中某台Master挂掉了，其他Maste
 </ol>
 <h2 id="broker集群的master宕机-slave是怎么提供服务的？master是怎么切换回来的？"><a class="header-anchor" href="#broker集群的master宕机-slave是怎么提供服务的？master是怎么切换回来的？">¶</a>broker集群的master宕机，slave是怎么提供服务的？master是怎么切换回来的？</h2>
 <h2 id="为什么-rocketmq-使用-nameserver-而不是-zookeeper-作为服务注册表"><a class="header-anchor" href="#为什么-rocketmq-使用-nameserver-而不是-zookeeper-作为服务注册表">¶</a>为什么 RocketMQ 使用 NameServer 而不是 ZooKeeper 作为服务注册表</h2>
-<p>NameServer 具有高可用性，就算其中某台挂掉，其他服务器仍然能提供服务注册和查询功能。<br>
-ZooKeeper 的设计目标是高一致性，其中某台服务器挂掉，整个 ZooKeeper 集群就无法提供服务了。</p>
+<p>NameServer 具有<strong>高可用性</strong>，就算其中某台挂掉，其他服务器仍然能提供服务注册和查询功能。<br>
+ZooKeeper 的设计目标是<strong>高一致性</strong>，其中某台服务器挂掉，整个 ZooKeeper 集群就无法提供服务了——直到下一个Leader被选举出来为止。</p>
 <h2 id="nameserver是怎么感知broker的变化的？"><a class="header-anchor" href="#nameserver是怎么感知broker的变化的？">¶</a>NameServer是怎么感知Broker的变化的？</h2>
 <h2 id="rocketmq的事务消息是否完整实现了事务的acid特性？"><a class="header-anchor" href="#rocketmq的事务消息是否完整实现了事务的acid特性？">¶</a>RocketMQ的事务消息是否完整实现了事务的ACID特性？</h2>
+<h2 id="为什么要有half-message？"><a class="header-anchor" href="#为什么要有half-message？">¶</a>为什么要有Half Message？</h2>
+<ol>
+<li>可以先确认Broker服务器是否正常，如果半消息都发送失败了，就说明Broker挂了。</li>
+<li>可以通过半消息来回查事务状态，如果半消息发出后一直没有被二次确认，就会回查事务状态。</li>
+</ol>
+<blockquote>
+<p>事务回查有两种情况：1、由于网络等原因一直没有执行事务的commit和rollback；2、本地事务执行成功了，但是返回commit的时候服务挂了，Broker最终也没有收到消息，因此还是半消息状态，因此仍会进行重试。</p>
+</blockquote>
+<h2 id="为什么说rocketmq只能保证最终一致性？"><a class="header-anchor" href="#为什么说rocketmq只能保证最终一致性？">¶</a>为什么说RocketMQ只能保证最终一致性？</h2>
+<p>比如以一个转帐功能为例，A账户扣减、发MQ消息通知另一个服务增加B账户的余额，扣减和增加是在两个事务中执行的，MQ虽然能保证两个事务最终一定都能执行上，但是并不能保证中间状态不会出现，比如某个时刻A账户扣减了、但是B账户仍为原状。</p>
 <h2 id="rocketmq使用某个消息序号messageid消费某个队列的消息-时间复杂度是多少？-假设消息文件commitlog数量为m-每个消息文件中消息条数是k-索引文件consumerqueue的数量是n-队列中共有j条消息"><a class="header-anchor" href="#rocketmq使用某个消息序号messageid消费某个队列的消息-时间复杂度是多少？-假设消息文件commitlog数量为m-每个消息文件中消息条数是k-索引文件consumerqueue的数量是n-队列中共有j条消息">¶</a>RocketMQ使用某个消息序号messageID消费某个队列的消息，时间复杂度是多少？（假设消息文件commitLog数量为m，每个消息文件中消息条数是k，索引文件consumerQueue的数量是n，队列中共有j条消息）</h2>
 <p>复杂度是O(1)，因为消息序号中包含了消息在commitLog中的偏移量，因此可以直接通过偏移量来拿到消息。</p>
 <h1>参考</h1>
@@ -1053,8 +1099,9 @@ ZooKeeper 的设计目标是高一致性，其中某台服务器挂掉，整个 
 <li><a href="https://www.cnblogs.com/miaoying/p/10319840.html" target="_blank" rel="noopener">rocketmq 控制台搭建（rocketmq-console）</a></li>
 <li><a href="http://rocketmq.apache.org/docs/quick-start/" target="_blank" rel="noopener">Quick Start</a></li>
 <li><a href="http://www.iocoder.cn/RocketMQ/build-debugging-environment/" target="_blank" rel="noopener">RocketMQ 源码解析 —— 调试环境搭建</a></li>
+<li><a href="https://blog.csdn.net/zhu_tianwei/article/details/40951301" target="_blank" rel="noopener">RocketMQ管理命令说明</a></li>
 </ol>
-<h2 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h2>
+<h2 id="原理-v2"><a class="header-anchor" href="#原理-v2">¶</a>原理</h2>
 <ol>
 <li><a href="https://github.com/apache/rocketmq/blob/master/docs/cn/features.md" target="_blank" rel="noopener">特性(features)</a></li>
 <li><a href="https://github.com/apache/rocketmq/blob/master/docs/cn/design.md" target="_blank" rel="noopener">设计(design)</a></li>
@@ -1062,25 +1109,6 @@ ZooKeeper 的设计目标是高一致性，其中某台服务器挂掉，整个 
 <li><a href="https://help.aliyun.com/document_detail/43348.html?spm=5176.doc43490.6.566.Zd5Bl7" target="_blank" rel="noopener">事务消息</a></li>
 <li><a href="http://www.iocoder.cn/categories/RocketMQ/" target="_blank" rel="noopener">RocketMQ 源码分析</a></li>
 </ol>
-<p>name-server 和 zookeeper 的取舍，主机配置拉的还是推的（拉）<br>
-消费模式：根据 offset 消费 FROM_LAST_OFFSET、根据时间戳消费<br>
-push 只能一个一个消费，poll 可以多线程并发消费（？）<br>
-msgId 根据 queueNum 取模放到 broker 队列</p>
-<p>如何保证消息一定能被消费：<br>
-能发上去（默认 push 重试 3 次）<br>
-能消费到（push 默认超时重试无限次、默认异常重试 16 次，过期或重试不成功则进入死信队列、默认凌晨 3 点清死信队列，业务逻辑需要保证幂等幂等 key 使用业务 oid 或 uniqId，注意 msgId 不是消息标识 Producer 端每次重试都会重新生成一个，消息必须要有唯一标识且保证处理成功与去重表的日志同时出现）<br>
-挂掉不会丢（broker 两主两从，topic 需要给两台 master 都建上，producer 和 consumer 都访问 master，slave 作为 fallback 只在 master 挂掉时才访问，新版通过 nameserver 协调可以 slave 升主，slave 对 master30 秒探活，如果刷盘后挂掉消息不会丢，重启后可以同步到 slave）<br>
-事务：2PC、3PC、TCC、消息列表驱动（本地事件列表驱动存 MySQL 由一个 Task 重试、外部事件列表驱动只有 ACK 才成功）<br>
-无法保证百分之百的成功消费，因为 bug 总是可能出现的，这时必须要做对账（资金中的概念）<br>
-负载均衡：Producer 负载均衡是回执负载均衡，如果 producer1 接收 ask 失败可以由 producer2 接收，Consumer 是消费负载均衡，一个失败换另一个消费<br>
-广播：组内所有 Consumer 都会消费一次<br>
-总而言之：重试机制、复制（两主都能接收到）、主从、幂等</p>
-<p>instanceName 每个集群不一致，同一集群 groupName 不能重，两个 topic 的 groupName 不能一样<br>
-本地最大缓存<br>
-Consumer 序列化异常直接返回 SUCCESS，就不要重试了，<br>
-两种模式本质都是拉：push 是构建长连接，一次拉完，一个一个给 broker 回执 ask，多个 Consumer 平分（必须是 4 的倍数，不够再给余数，比如 9 个消息三个 Consumer 分别拉到 4、4、1），poll 模式批量，按设定拉取</p>
-<p>MySQL 页缓存：B+数，一个节点 4 个 key，每个 4k，4 个合一块 16k，符合 Linux 的 pageCache 大小，会一次性加载到 Linux 的 Buffer 里<br>
-零拷贝：减少从内核进程拷贝数据到用户进程空间的耗时</p>
 
       
     </div>
@@ -1111,8 +1139,8 @@ Consumer 序列化异常直接返回 SUCCESS，就不要重试了，<br>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/3648b215.html" rel="next" title="RocketMQ 的应用">
-                <i class="fa fa-chevron-left"></i> RocketMQ 的应用
+              <a href="/1e6a7cbc.html" rel="next" title="海量数据处理方法">
+                <i class="fa fa-chevron-left"></i> 海量数据处理方法
               </a>
             
           </div>
@@ -1121,8 +1149,8 @@ Consumer 序列化异常直接返回 SUCCESS，就不要重试了，<br>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/b5a259aa.html" rel="prev" title="QMQ 总结">
-                QMQ 总结 <i class="fa fa-chevron-right"></i>
+              <a href="/3648b215.html" rel="prev" title="RocketMQ 的应用">
+                RocketMQ 的应用 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -1205,7 +1233,7 @@ Consumer 序列化异常直接返回 SUCCESS，就不要重试了，<br>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">109</span>
+                  <span class="site-state-item-count">112</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1227,7 +1255,7 @@ Consumer 序列化异常直接返回 SUCCESS，就不要重试了，<br>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">55</span>
+                  <span class="site-state-item-count">56</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -1262,7 +1290,7 @@ Consumer 序列化异常直接返回 SUCCESS，就不要重试了，<br>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">架构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#概念"><span class="nav-number">1.1.</span> <span class="nav-text">¶概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选型"><span class="nav-number">1.2.</span> <span class="nav-text">¶选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部署结构"><span class="nav-number">1.3.</span> <span class="nav-text">¶部署结构</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">消息的存储和查询</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#页缓存与内存映射"><span class="nav-number">2.1.</span> <span class="nav-text">¶页缓存与内存映射</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息刷盘"><span class="nav-number">2.2.</span> <span class="nav-text">¶消息刷盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#commitlog的刷盘"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶CommitLog的刷盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumequeue的刷盘"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶ConsumeQueue的刷盘</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#topic-和-consumerqueue"><span class="nav-number">2.3.</span> <span class="nav-text">¶Topic 和 ConsumerQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-id-查询消息"><span class="nav-number">2.4.</span> <span class="nav-text">¶按 Message ID 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-key-查询消息"><span class="nav-number">2.5.</span> <span class="nav-text">¶按 Message Key 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-tag-过滤消息"><span class="nav-number">2.6.</span> <span class="nav-text">¶按 Tag 过滤消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#offset-的存储"><span class="nav-number">2.7.</span> <span class="nav-text">¶offset 的存储</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer更新offset到broker"><span class="nav-number">2.7.1.</span> <span class="nav-text">¶Consumer更新offset到Broker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#broker端offset的存储"><span class="nav-number">2.7.2.</span> <span class="nav-text">¶Broker端offset的存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer从broker拉取offset"><span class="nav-number">2.7.3.</span> <span class="nav-text">¶Consumer从Broker拉取offset</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息堆积-积压"><span class="nav-number">2.8.</span> <span class="nav-text">¶消息堆积（积压）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq怎么保证高效读消息"><span class="nav-number">2.9.</span> <span class="nav-text">¶RocketMQ怎么保证高效读消息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">通信机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#启动"><span class="nav-number">3.1.</span> <span class="nav-text">¶启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#服务发现"><span class="nav-number">3.2.</span> <span class="nav-text">¶服务发现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#broker"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶Broker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nameserver"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶NameServer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#producer"><span class="nav-number">3.2.3.</span> <span class="nav-text">¶Producer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer"><span class="nav-number">3.2.4.</span> <span class="nav-text">¶Consumer</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一个消息的发送轨迹"><span class="nav-number">3.3.</span> <span class="nav-text">¶一个消息的发送轨迹</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#producer-端发送"><span class="nav-number">3.3.1.</span> <span class="nav-text">¶Producer 端发送</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#server-端存储"><span class="nav-number">3.3.2.</span> <span class="nav-text">¶Server 端存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-端拉取"><span class="nav-number">3.3.3.</span> <span class="nav-text">¶Consumer 端拉取</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#负载均衡"><span class="nav-number">3.4.</span> <span class="nav-text">¶负载均衡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#producer-端负载均衡"><span class="nav-number">3.4.1.</span> <span class="nav-text">¶Producer 端负载均衡</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-端负载均衡"><span class="nav-number">3.4.2.</span> <span class="nav-text">¶Consumer 端负载均衡</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重试和幂等"><span class="nav-number">3.5.</span> <span class="nav-text">¶重试和幂等</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#producer端重试"><span class="nav-number">3.5.1.</span> <span class="nav-text">¶Producer端重试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer重试"><span class="nav-number">3.5.2.</span> <span class="nav-text">¶Consumer重试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消息幂等"><span class="nav-number">3.5.3.</span> <span class="nav-text">¶消息幂等</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息优先级"><span class="nav-number">3.6.</span> <span class="nav-text">¶消息优先级</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息有序性"><span class="nav-number">3.7.</span> <span class="nav-text">¶消息有序性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#有序消息的实现方式"><span class="nav-number">3.7.1.</span> <span class="nav-text">¶有序消息的实现方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq中有序消息的实现原理"><span class="nav-number">3.7.2.</span> <span class="nav-text">¶RocketMQ中有序消息的实现原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有序性与可用性间存在的矛盾"><span class="nav-number">3.7.3.</span> <span class="nav-text">¶有序性与可用性间存在的矛盾</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#延时消息"><span class="nav-number">3.8.</span> <span class="nav-text">¶延时消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息可靠性"><span class="nav-number">3.9.</span> <span class="nav-text">¶消息可靠性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何检测消息丢失？"><span class="nav-number">3.9.1.</span> <span class="nav-text">¶如何检测消息丢失？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq-如何保证消息不丢？"><span class="nav-number">3.9.2.</span> <span class="nav-text">¶RocketMQ 如何保证消息不丢？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#deldger的复制模式"><span class="nav-number">3.9.3.</span> <span class="nav-text">¶Deldger的复制模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq如何保证高可用"><span class="nav-number">3.9.4.</span> <span class="nav-text">¶RocketMQ如何保证高可用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果服务器宕机怎么办？"><span class="nav-number">3.9.5.</span> <span class="nav-text">¶如果服务器宕机怎么办？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#broker宕机"><span class="nav-number">3.9.6.</span> <span class="nav-text">¶Broker宕机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nameserver宕机"><span class="nav-number">3.9.7.</span> <span class="nav-text">¶NameServer宕机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-producer-宕机"><span class="nav-number">3.9.8.</span> <span class="nav-text">¶Consumer / Producer 宕机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息实时性"><span class="nav-number">3.10.</span> <span class="nav-text">¶消息实时性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务消息"><span class="nav-number">3.11.</span> <span class="nav-text">¶事务消息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#事务消息源码"><span class="nav-number">3.11.1.</span> <span class="nav-text">¶事务消息源码</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#消息队列可以做什么？"><span class="nav-number">4.1.</span> <span class="nav-text">¶消息队列可以做什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#哪些消息队列可以做到在消息生产-消费过程中不重-不丢-exactly-once-？"><span class="nav-number">4.2.</span> <span class="nav-text">¶哪些消息队列可以做到在消息生产、消费过程中不重、不丢（Exactly once）？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq中的consumer是推还是拉？"><span class="nav-number">4.3.</span> <span class="nav-text">¶RocketMQ中的Consumer是推还是拉？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq发送-存储-接收的流程？"><span class="nav-number">4.4.</span> <span class="nav-text">¶RocketMQ发送、存储、接收的流程？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#当发现消费者不消费时-如何诊断问题？"><span class="nav-number">4.5.</span> <span class="nav-text">¶当发现消费者不消费时，如何诊断问题？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么实现消息发送的严格顺序性？"><span class="nav-number">4.6.</span> <span class="nav-text">¶怎么实现消息发送的严格顺序性？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq能否做到单队列的并行消费？"><span class="nav-number">4.7.</span> <span class="nav-text">¶RocketMQ能否做到单队列的并行消费？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么实现负载均衡？"><span class="nav-number">4.8.</span> <span class="nav-text">¶怎么实现负载均衡？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq如何保证消息不丢？"><span class="nav-number">4.9.</span> <span class="nav-text">¶RocketMQ如何保证消息不丢？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消费失败怎么重发的？"><span class="nav-number">4.10.</span> <span class="nav-text">¶消费失败怎么重发的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么判断消息堆积了？"><span class="nav-number">4.11.</span> <span class="nav-text">¶怎么判断消息堆积了？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#刷盘的原理？"><span class="nav-number">4.12.</span> <span class="nav-text">¶刷盘的原理？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么实现消息复制-broker主从之间-？"><span class="nav-number">4.13.</span> <span class="nav-text">¶怎么实现消息复制（Broker主从之间）？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq-如何保证消息的高可用？"><span class="nav-number">4.14.</span> <span class="nav-text">¶RocketMQ 如何保证消息的高可用？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#broker集群的master宕机-slave是怎么提供服务的？master是怎么切换回来的？"><span class="nav-number">4.15.</span> <span class="nav-text">¶broker集群的master宕机，slave是怎么提供服务的？master是怎么切换回来的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么-rocketmq-使用-nameserver-而不是-zookeeper-作为服务注册表"><span class="nav-number">4.16.</span> <span class="nav-text">¶为什么 RocketMQ 使用 NameServer 而不是 ZooKeeper 作为服务注册表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#nameserver是怎么感知broker的变化的？"><span class="nav-number">4.17.</span> <span class="nav-text">¶NameServer是怎么感知Broker的变化的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq的事务消息是否完整实现了事务的acid特性？"><span class="nav-number">4.18.</span> <span class="nav-text">¶RocketMQ的事务消息是否完整实现了事务的ACID特性？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq使用某个消息序号messageid消费某个队列的消息-时间复杂度是多少？-假设消息文件commitlog数量为m-每个消息文件中消息条数是k-索引文件consumerqueue的数量是n-队列中共有j条消息"><span class="nav-number">4.19.</span> <span class="nav-text">¶RocketMQ使用某个消息序号messageID消费某个队列的消息，时间复杂度是多少？（假设消息文件commitLog数量为m，每个消息文件中消息条数是k，索引文件consumerQueue的数量是n，队列中共有j条消息）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#环境"><span class="nav-number">5.1.</span> <span class="nav-text">¶环境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#原理"><span class="nav-number">5.2.</span> <span class="nav-text">¶原理</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">架构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#选型"><span class="nav-number">1.1.</span> <span class="nav-text">¶选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部署结构"><span class="nav-number">1.2.</span> <span class="nav-text">¶部署结构</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">消息的存储和查询</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#页缓存与内存映射"><span class="nav-number">2.1.</span> <span class="nav-text">¶页缓存与内存映射</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息刷盘"><span class="nav-number">2.2.</span> <span class="nav-text">¶消息刷盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#commitlog的刷盘"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶CommitLog的刷盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumequeue的刷盘"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶ConsumeQueue的刷盘</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#topic-和-consumerqueue"><span class="nav-number">2.3.</span> <span class="nav-text">¶Topic 和 ConsumerQueue</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么rocketmq中都需要预先创建topic？"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶为什么RocketMQ中都需要预先创建Topic？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-id-查询消息"><span class="nav-number">2.4.</span> <span class="nav-text">¶按 Message ID 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-key-查询消息"><span class="nav-number">2.5.</span> <span class="nav-text">¶按 Message Key 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-tag-过滤消息"><span class="nav-number">2.6.</span> <span class="nav-text">¶按 Tag 过滤消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#offset-的存储"><span class="nav-number">2.7.</span> <span class="nav-text">¶offset 的存储</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer更新offset到broker"><span class="nav-number">2.7.1.</span> <span class="nav-text">¶Consumer更新offset到Broker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#broker端offset的存储"><span class="nav-number">2.7.2.</span> <span class="nav-text">¶Broker端offset的存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer从broker拉取offset"><span class="nav-number">2.7.3.</span> <span class="nav-text">¶Consumer从Broker拉取offset</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息堆积-积压"><span class="nav-number">2.8.</span> <span class="nav-text">¶消息堆积（积压）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq怎么保证高效读消息"><span class="nav-number">2.9.</span> <span class="nav-text">¶RocketMQ怎么保证高效读消息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">通信机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#启动"><span class="nav-number">3.1.</span> <span class="nav-text">¶启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#服务发现"><span class="nav-number">3.2.</span> <span class="nav-text">¶服务发现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#broker"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶Broker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nameserver"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶NameServer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#producer"><span class="nav-number">3.2.3.</span> <span class="nav-text">¶Producer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer"><span class="nav-number">3.2.4.</span> <span class="nav-text">¶Consumer</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一个消息的发送轨迹"><span class="nav-number">3.3.</span> <span class="nav-text">¶一个消息的发送轨迹</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#producer-端发送"><span class="nav-number">3.3.1.</span> <span class="nav-text">¶Producer 端发送</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#server-端存储"><span class="nav-number">3.3.2.</span> <span class="nav-text">¶Server 端存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-端拉取"><span class="nav-number">3.3.3.</span> <span class="nav-text">¶Consumer 端拉取</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#负载均衡"><span class="nav-number">3.4.</span> <span class="nav-text">¶负载均衡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#producer-端负载均衡"><span class="nav-number">3.4.1.</span> <span class="nav-text">¶Producer 端负载均衡</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-端负载均衡"><span class="nav-number">3.4.2.</span> <span class="nav-text">¶Consumer 端负载均衡</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重试和幂等"><span class="nav-number">3.5.</span> <span class="nav-text">¶重试和幂等</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#producer端重试"><span class="nav-number">3.5.1.</span> <span class="nav-text">¶Producer端重试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer重试"><span class="nav-number">3.5.2.</span> <span class="nav-text">¶Consumer重试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消息幂等"><span class="nav-number">3.5.3.</span> <span class="nav-text">¶消息幂等</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息优先级"><span class="nav-number">3.6.</span> <span class="nav-text">¶消息优先级</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息有序性"><span class="nav-number">3.7.</span> <span class="nav-text">¶消息有序性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#有序消息的实现方式"><span class="nav-number">3.7.1.</span> <span class="nav-text">¶有序消息的实现方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq中有序消息的实现原理"><span class="nav-number">3.7.2.</span> <span class="nav-text">¶RocketMQ中有序消息的实现原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有序性与可用性间存在的矛盾"><span class="nav-number">3.7.3.</span> <span class="nav-text">¶有序性与可用性间存在的矛盾</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#延时消息"><span class="nav-number">3.8.</span> <span class="nav-text">¶延时消息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#原理"><span class="nav-number">3.8.1.</span> <span class="nav-text">¶原理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息可靠性"><span class="nav-number">3.9.</span> <span class="nav-text">¶消息可靠性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何检测消息丢失？"><span class="nav-number">3.9.1.</span> <span class="nav-text">¶如何检测消息丢失？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq-如何保证消息不丢？"><span class="nav-number">3.9.2.</span> <span class="nav-text">¶RocketMQ 如何保证消息不丢？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#deldger的复制模式"><span class="nav-number">3.9.3.</span> <span class="nav-text">¶Deldger的复制模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq如何保证高可用"><span class="nav-number">3.9.4.</span> <span class="nav-text">¶RocketMQ如何保证高可用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果服务器宕机怎么办？"><span class="nav-number">3.9.5.</span> <span class="nav-text">¶如果服务器宕机怎么办？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#broker宕机"><span class="nav-number">3.9.6.</span> <span class="nav-text">¶Broker宕机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nameserver宕机"><span class="nav-number">3.9.7.</span> <span class="nav-text">¶NameServer宕机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-producer-宕机"><span class="nav-number">3.9.8.</span> <span class="nav-text">¶Consumer / Producer 宕机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息实时性"><span class="nav-number">3.10.</span> <span class="nav-text">¶消息实时性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务消息"><span class="nav-number">3.11.</span> <span class="nav-text">¶事务消息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq中的实现"><span class="nav-number">3.11.1.</span> <span class="nav-text">¶RocketMQ中的实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务消息源码"><span class="nav-number">3.11.2.</span> <span class="nav-text">¶事务消息源码</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#消息队列可以做什么？"><span class="nav-number">4.1.</span> <span class="nav-text">¶消息队列可以做什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#哪些消息队列可以做到在消息生产-消费过程中不重-不丢-exactly-once-？"><span class="nav-number">4.2.</span> <span class="nav-text">¶哪些消息队列可以做到在消息生产、消费过程中不重、不丢（Exactly once）？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq中的consumer是推还是拉？"><span class="nav-number">4.3.</span> <span class="nav-text">¶RocketMQ中的Consumer是推还是拉？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq发送-存储-接收的流程？"><span class="nav-number">4.4.</span> <span class="nav-text">¶RocketMQ发送、存储、接收的流程？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#当发现消费者不消费时-如何诊断问题？"><span class="nav-number">4.5.</span> <span class="nav-text">¶当发现消费者不消费时，如何诊断问题？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么实现消息发送的严格顺序性？"><span class="nav-number">4.6.</span> <span class="nav-text">¶怎么实现消息发送的严格顺序性？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq能否做到单队列的并行消费？"><span class="nav-number">4.7.</span> <span class="nav-text">¶RocketMQ能否做到单队列的并行消费？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么实现负载均衡？"><span class="nav-number">4.8.</span> <span class="nav-text">¶怎么实现负载均衡？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq如何保证消息不丢-消息一定能被消费-？"><span class="nav-number">4.9.</span> <span class="nav-text">¶RocketMQ如何保证消息不丢（消息一定能被消费）？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq如何实现消息去重？"><span class="nav-number">4.10.</span> <span class="nav-text">¶RocketMQ如何实现消息去重？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消费失败怎么重发的？"><span class="nav-number">4.11.</span> <span class="nav-text">¶消费失败怎么重发的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么判断消息堆积了？"><span class="nav-number">4.12.</span> <span class="nav-text">¶怎么判断消息堆积了？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#刷盘的原理？"><span class="nav-number">4.13.</span> <span class="nav-text">¶刷盘的原理？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#怎么实现消息复制-broker主从之间-？"><span class="nav-number">4.14.</span> <span class="nav-text">¶怎么实现消息复制（Broker主从之间）？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq-如何保证消息的高可用？"><span class="nav-number">4.15.</span> <span class="nav-text">¶RocketMQ 如何保证消息的高可用？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#broker集群的master宕机-slave是怎么提供服务的？master是怎么切换回来的？"><span class="nav-number">4.16.</span> <span class="nav-text">¶broker集群的master宕机，slave是怎么提供服务的？master是怎么切换回来的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么-rocketmq-使用-nameserver-而不是-zookeeper-作为服务注册表"><span class="nav-number">4.17.</span> <span class="nav-text">¶为什么 RocketMQ 使用 NameServer 而不是 ZooKeeper 作为服务注册表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#nameserver是怎么感知broker的变化的？"><span class="nav-number">4.18.</span> <span class="nav-text">¶NameServer是怎么感知Broker的变化的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq的事务消息是否完整实现了事务的acid特性？"><span class="nav-number">4.19.</span> <span class="nav-text">¶RocketMQ的事务消息是否完整实现了事务的ACID特性？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么要有half-message？"><span class="nav-number">4.20.</span> <span class="nav-text">¶为什么要有Half Message？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么说rocketmq只能保证最终一致性？"><span class="nav-number">4.21.</span> <span class="nav-text">¶为什么说RocketMQ只能保证最终一致性？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq使用某个消息序号messageid消费某个队列的消息-时间复杂度是多少？-假设消息文件commitlog数量为m-每个消息文件中消息条数是k-索引文件consumerqueue的数量是n-队列中共有j条消息"><span class="nav-number">4.22.</span> <span class="nav-text">¶RocketMQ使用某个消息序号messageID消费某个队列的消息，时间复杂度是多少？（假设消息文件commitLog数量为m，每个消息文件中消息条数是k，索引文件consumerQueue的数量是n，队列中共有j条消息）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#环境"><span class="nav-number">5.1.</span> <span class="nav-text">¶环境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#原理-v2"><span class="nav-number">5.2.</span> <span class="nav-text">¶原理</span></a></li></ol></li></ol></div>
             
 
           </div>

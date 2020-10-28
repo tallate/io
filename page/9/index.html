@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/59c58f8f.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/caf2d9ed.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/59c58f8f.html" itemprop="url">Linux 三剑客-cut、awk 使用总结</a></h1>
+                <a class="post-title-link" href="/caf2d9ed.html" itemprop="url">网络协议之 HTTP 总结</a></h1>
         
 
         <div class="post-meta">
@@ -297,8 +297,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
-                2019-07-20
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
+                2019-07-21
               </time>
             
 
@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3k 字
+                  3.7k 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  12 分钟
+                  13 分钟
                 </span>
               
             </div>
@@ -389,10 +389,864 @@
 
       
         
-          <p>在 awk、sed、cut 三个命令中，awk 是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。</p>
+          
+            <h2 id="http"><a class="header-anchor" href="#http">¶</a>HTTP</h2>
+<h3 id="http-请求消息格式"><a class="header-anchor" href="#http-请求消息格式">¶</a>HTTP 请求消息格式</h3>
+<h4 id="请求行"><a class="header-anchor" href="#请求行">¶</a>请求行</h4>
+<h4 id="请求头"><a class="header-anchor" href="#请求头">¶</a>请求头</h4>
+<h3 id="http-响应消息格式"><a class="header-anchor" href="#http-响应消息格式">¶</a>HTTP 响应消息格式</h3>
+<h4 id="响应头-response-header"><a class="header-anchor" href="#响应头-response-header">¶</a>响应头（response header）</h4>
+<ul>
+<li>
+<p>状态码<br>
+状态代码有三位数字组成，第一个数字定义了响应的类别，共分五种类别:<br>
+1xx：指示信息–表示请求已接收，继续处理。<br>
+2xx：成功–表示请求已被成功接收、理解、接受。<br>
+3xx：重定向–要完成请求必须进行更进一步的操作。<br>
+4xx：客户端错误–请求有语法错误或请求无法实现。<br>
+5xx：服务器端错误–服务器未能实现合法的请求。</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">200 OK                        //客户端请求成功</span><br><span class="line">400 Bad Request               //客户端请求有语法错误，不能被服务器所理解</span><br><span class="line">401 Unauthorized              //请求未经授权，这个状态代码必须和WWW-Authenticate报头域一起使用 </span><br><span class="line">403 Forbidden                 //服务器收到请求，但是拒绝提供服务</span><br><span class="line">404 Not Found                 //请求资源不存在，eg：输入了错误的URL</span><br><span class="line">500 Internal Server Error     //服务器发生不可预期的错误</span><br><span class="line">503 Server Unavailable        //服务器当前不能处理客户端的请求，一段时间后可能恢复正常</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>Content-length<br>
+在响应体(response-body)中表示 body 的长度，根据这个值就可以知道 body 的长度，客户端在接收 body 时，就可以根据这个长度来接收数据，而如果没有 Content-length，则客户端会一直接收数据，直到服务端主动断开连接，才表示 body 接收完了；如果是 HTTP1.1，响应头中可以用 Transfer-encoding 字段指定为 chunked 传输，则表示 body 是流式输出，body 会被分成多个块，每块的开始处会标识出当前块的长度，body 不需要通过长度来指定。</p>
+</li>
+<li>
+<p>Keep-Alive（持久连接）<br>
+HTTP/1.0 使用非持久连接，HTTP/1.1 默认使用持久连接，每个连接建立后可以持续用于传送多个对象。<br>
+适合设置 keepalive 连接的场景：客户端的一次请求需要访问同一 Server 多次，比如一个网页包含多个图片，需要访问图片服务器多次才能将这些图片下全。<br>
+持久连接的条件：<strong>HTTP1.0</strong>响应不带<strong>Content-length</strong>、<strong>HTTP1.1</strong>非 chunked 且不带<strong>Content-length</strong>，这两种情况下 body 长度是不可知的，当服务端在输出完 body 之后，可以考虑使用长连接。另外，还需要考虑客户端的请求头中的<strong>Connection</strong>字段：如果为 close，则表示客户端需要关掉长连接；如果为 Keep-Alive，那么网关（一般是 Nginx）在输出完响应体之后，会设置当前连接的 keepalive 属性，然后等待客户端的下一次请求；如果没有 Connection 这个头，则根据协议，如果是 HTTP1.0，则默认为 close，如果为 HTTP1.1，则默认为 Keep-Alive。<br>
+但是持久连接也不可能会一直等下去，如果客户端一直不发送数据，岂不是一直占用这个连接？所以一般网关会设置一个最大等待时间，这个值是通过<strong>keepalive_timeout</strong>属性来配置的，如果值为 0，则表示关闭 keepalive，此时不管 HTTP 版本、Connection 如何设置，都强制为 close。<br>
+如果最后决定打开 keepalive，那么在响应头里也会包含有 Connection 域，如果值为 Close，则网关在响应完数据后，会主动关掉连接。<br>
+总而言之：如果有办法知道服务器传来的长度，都是客户端首先断开，否则一直接收数据，直到服务端断开。<br>
+<strong>http1.0</strong><br>
+带 content-length，body 长度可知，客户端在接收 body 时，就可以依据这个长度来接受数据。接受完毕后，就表示这个请求完毕了。客户端主动调用 close 进入四次挥手。<br>
+不带 content-length，body 长度不可知，客户端一直接受数据，直到服务端主动断开。<br>
+<strong>http1.1</strong><br>
+带 content-length，body 长度可知，客户端主动断开。<br>
+带 Transfer-encoding: chunked，body 会被分成多个块，每块的开始会标识出当前块的长度，body 就不需要通过 content-length 来指定了。但依然可以知道 body 的长度 客户端主动断开。<br>
+不带 Transfer-encoding：chunked，且不带 content-length，客户端接收数据，直到服务端主动断开连接。</p>
+</li>
+</ul>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>为了减少网络请求次数，一般可以引入缓存机制，HTTP 服务器通过两种实体头（Entity-Header）来实现缓存的过期：Expires 和 Cache-Control 的 max-age 子项。<br>
+Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还是重新发请求到服务器取数据。只是 Cache-Control 比 Expires 可以控制的多一些，而且 Cache-Control 会重写 Expires 的规则。<br>
+相关 Header 如下所示：</p>
+<ul>
+<li>Cache-Control<br>
+常用的值有：<br>
+（1）max-age（单位为 s）指定设置缓存最大的有效时间，定义的是时间长短。当浏览器向服务器发送请求后，在 max-age 这段时间里浏览器就不会再向服务器发送请求了。 （2）s-maxage（单位为 s）同 max-age，只用于共享缓存（比如 CDN 缓存），也就是说 max-age 用于普通缓存，而 s-maxage 用于代理缓存。如果存在 s-maxage，则会覆盖掉 max-age 和 Expires header。 （3）public 指定响应会被缓存，并且在多用户间共享。如果没有指定 public 还是 private，则默认为 public。 （4）private 响应只作为私有的缓存，不能在用户间共享。如果要求 HTTP 认证，响应会自动设置为 private。 （5）no-cache 指定不缓存响应，表明资源不进行缓存，比如，设置了 no-cache 之后并不代表浏览器不缓存，而是在缓存前要向服务器确认资源是否被更改。因此有的时候只设置 no-cache 防止缓存还是不够保险，还可以加上 private 指令，将过期时间设为过去的时间。 （6）no-store 表示绝对禁止缓存。一看就知道，如果用了这个命令，当然就是不会进行缓存啦！每次请求资源都要从服务器重新获取。 （7）must-revalidate 指定如果页面是过期的，则去服务器进行获取。这个指令并不常用，就不做过多的讨论了。</li>
+<li>Expires<br>
+缓存过期时间，用来指定资源到期的时间，是服务器端的具体时间点。也就是说，Expires=max-age + 请求时间，需要和 Last-modified 结合使用。但在上面我们提到过 cache-control 的优先级更高。Expires 是 Web 服务器响应消息头字段，在响应 HTTP 请求时告诉浏览器在过期时间前浏览器可以直接从浏览器缓存取数据，而无需再次请求。</li>
+<li>Last-modified<br>
+服务器端文件的最后修改时间，需要和 cache-control 共同使用，是检查服务器端资源是否更新的一种方式。当浏览器再次进行请求时，会向服务器传送 If-Modified-Since 报头，询问 Last-Modified 时间点之后资源是否被修改过。如果没有修改，则返回码为 304，使用缓存；如果修改过，则再次去服务器请求资源，返回码和首次请求相同为 200，资源为服务器最新资源。</li>
+<li>Etag<br>
+根据实体内容生成一段 hash 字符串，标识资源的状态，由服务端产生。浏览器会将这串字符串传回服务器，验证资源是否已经修改。<br>
+为什么要使用 Etag 呢?Etag 主要为了解决 Last-Modified 无法解决的一些问题。<br>
+一些文件也许会周期性的更改，但是它的内容并不改变（仅仅改变的修改时间），这个时候我们并不希望客户端认为这个文件被修改了，而重新 Get。<br>
+某些文件修改非常频繁，比如在秒以下的时间内进行修改（比方说 1s 内修改了 N 次），If-Modified-Since 能检查到的粒度是 s 级的，这种修改无法判断（或者说 UNIX 记录 MTIME 只能精确到秒）。<br>
+某些服务器不能精确的得到文件的最后修改时间。<br>
+缓存过程如下图所示。<br>
+<img src="http://47.88.24.11/imgs/%E7%BD%91%E7%BB%9C/HTTP%E7%BC%93%E5%AD%98.jpg" alt="HTTP缓存" title="HTTP缓存"></li>
+</ul>
+<h2 id="http-1-1"><a class="header-anchor" href="#http-1-1">¶</a>HTTP/1.1</h2>
+<h3 id="新增方法"><a class="header-anchor" href="#新增方法">¶</a>新增方法</h3>
+<p>新增的 HTTP 方法有 PUT、PATCH、HEAD、OPTIONS、DELETE</p>
+<h3 id="主机名标识"><a class="header-anchor" href="#主机名标识">¶</a>主机名标识</h3>
+<p>在 HTTP/1.0 中 Host 头信息不是必须项，但 HTTP/1.1 中要求必须要有 Host 头信息。</p>
+<h3 id="持久性连接"><a class="header-anchor" href="#持久性连接">¶</a>持久性连接</h3>
+<p>正如前面所说，在 HTTP/1.0 中每个连接只有一个请求，且在这个请求完成后该连接就会被关闭，从而会导致严重的性能下降及延迟问题。HTTP/1.1 引入了对持久性连接的支持，例如：默认情况下连接不会被关闭，在多个连续的请求下它会保存连接的打开状态。想要关闭这些连接，需要将 Connection: close 加入到请求的头信息中。客户端通常会在最后一次请求中发送这个头信息用来安全的关闭连接。</p>
+<h3 id="管道机制"><a class="header-anchor" href="#管道机制">¶</a>管道机制</h3>
+<p>HTTP/1.1 也引入了对管道机制的支持，客户端可以向服务器发送多个请求，而无需等待来自同一连接上的服务器响应，并且当收到请求时服务器必须以相同的顺序来响应。但你可能会问客户端是怎么知道第一个响应下载完成和下一个响应内容开始的？要解决这个问题，必须要有 Content-Length 头信息，客户端可以用它来确定响应结束，然后开始等待下一个响应。</p>
+<h2 id="http-2"><a class="header-anchor" href="#http-2">¶</a>HTTP/2</h2>
+<p>HTTP/2 是专为低延迟传输的内容而设计，它与 HTTP/1.1 之间的差异如下所示：</p>
+<h3 id="二进制协议"><a class="header-anchor" href="#二进制协议">¶</a>二进制协议</h3>
+<p>HTTP/2 倾向于使用二进制协议来减少 HTTP/1.x 中的延迟。二进制协议更容易解析，但可读性相对较差。HTTP/2 中的数据块是帧和流。<br>
+帧和流：HTTP 消息是由一个或多个帧组成的。有一个叫做 HEADERS 的帧存放元数据，真正的数据是放在 DATA 帧中的，帧类型定义在 the HTTP/2 specs（HTTP/2 规范），如 HEADERS、DATA、RST_STREAM、SETTINGS、PRIORITY 等。每个 HTTP/2 请求和响应都被赋予一个唯一的流 ID 且放入了帧中。帧就是一块二进制数据。一系列帧的集合就称为流。每个帧都有一个流 id，用于标识它属于哪一个流，每一个帧都有相同的头。同时，除了流标识是唯一的，值得一提的是，客户端发起的任何请求都使用奇数和服务器的响应是偶数的流 id。除了 HEADERS 和 DATA， 另外一个值得说一说帧类型是 RST_STREAM，它是一个特殊的帧类型，用于中止流，如客户端发送这儿帧来告诉服务器我不再需要这个流了。在 HTTP/1.1 中只有一种方式来实现服务器停止发送响应给客户端，那就是关闭连接引起延迟增加，因为后续的请求就需要打开一个新的连接。 在 HTTP/2 中，客户端可以使用 RST_FRAME 来停止接收指定的流而不关闭连接且还可以在此连接中接收其它流。</p>
+<h3 id="多路复用"><a class="header-anchor" href="#多路复用">¶</a>多路复用</h3>
+<p>由于 HTTP/2 现在是一个二进制协议，且是使用帧和流来实现请求和响应，一旦 TCP 连接打开了，所有的流都通过这一连接来进行异步的发送而不需要打开额外的连接。反过来，服务器的响应也是异步的方式，如响应是无序的、客户端使用流 id 来标识属于流的包。这就解决了存在于 HTTP/1.x 中 head-of-line 阻塞问题，如客户端将不必耗时等待请求，而其他请求将被处理。如下图所示。<br>
+<img src="http://47.88.24.11/imgs/%E7%BD%91%E7%BB%9C/HTTP2.0%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.jpg" alt="HTTP2.0多路复用" title="HTTP2.0多路复用"></p>
+<h3 id="hpack-头部压缩"><a class="header-anchor" href="#hpack-头部压缩">¶</a>HPACK 头部压缩</h3>
+<p>它是一个单独的用于明确优化发送 Header RFC 的一部分。它的本质是，当我们同一个客户端不断的访问服务器时，在 header 中发送很多冗余的数据，有时 cookie 就增大 header，且消耗带宽和增加了延迟。为了解决这个问题， HTTP/2 引入了头部压缩。与请求和响应不同，header 不是使用 gzip 或 compress 等压缩格式，它有不同的机制，它使用了霍夫曼编码和在客户端和服务器维护的头部表来消除重复的 headers（如 User Agent)，在后续的请求中就只使用头部表中引用。它与 HTTP/1.1 中的一样，不过增加了伪 header，如 :method、:scheme、:host 和:path。</p>
+<h3 id="服务器推送"><a class="header-anchor" href="#服务器推送">¶</a>服务器推送</h3>
+<p>在服务器端，Server Push 是 HTTTP/2 的另外一个重要功能，我们知道，客户端是通过请求来获取资源的，它可以通过推送资源给客户端而不需客户端主动请求。例如，浏览器载入了一个页面，浏览器解析页面时发现了需要从服务器端载入的内容，接着它就发送一个请求来获取这些内容。Server Push 允许服务器推送数据来减少客户端请求。它是如何实现的呢，服务器在一个新的流中发送一个特殊的帧 PUSH_PROMISE，来通知客户端：“嘿，我要把这个资源发给你!你就不要请求了。”</p>
+<h3 id="请求优先级"><a class="header-anchor" href="#请求优先级">¶</a>请求优先级</h3>
+<p>客户端可以在一个打开的流中在流的 HEADERS 帧中放入优先级信息。在任何时间，客户端都可以发送一个 PRIORITY 的帧来改变流的优先级。如果没有优先级信息，服务器就会异步的处理请求，比如无序处理。如果流被赋予了优先级，它就会基于这个优先级来处理，由服务器决定需要多少资源来处理该请求。<br>
+安全。大家对 HTTP/2 是否强制使用安全连接（通过 TLS）进行了充分的讨论。最后的决定是不强制使用。然而，大多数厂商表示，他们将只支持基于 TLS 的 HTTP/2。所以，尽管 HTTP/2 规范不需要加密，但它已经成为默认的强制执行的。在这种情况下，基于 TLS 实现的 HTTP/2 需要的 TLS 版本最低要求是 1.2。 因此必须有最低限度的密钥长度、临时密钥等。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b791cedc.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/b791cedc.html" itemprop="url">微服务核心技术总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
+                2019-07-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  7.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  31 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>微服务是一种架构风格，需要注意的是它并不能与 Docker、Spring Cloud 划等号，只是这些技术栈能更好地实现微服务，这篇文档中我希望总结一下实现微服务最常用的技术。</p>
+<h2 id="微服务基本概念"><a class="header-anchor" href="#微服务基本概念">¶</a>微服务基本概念</h2>
+<h3 id="定义"><a class="header-anchor" href="#定义">¶</a>定义</h3>
+<h3 id="为什么要使用微服务"><a class="header-anchor" href="#为什么要使用微服务">¶</a>为什么要使用微服务</h3>
+<h3 id="架构与组织"><a class="header-anchor" href="#架构与组织">¶</a>架构与组织</h3>
+<h3 id="中台战略与微服务"><a class="header-anchor" href="#中台战略与微服务">¶</a>中台战略与微服务</h3>
+<h3 id="微服务架构风格"><a class="header-anchor" href="#微服务架构风格">¶</a>微服务架构风格</h3>
+<h3 id="微服务架构"><a class="header-anchor" href="#微服务架构">¶</a>微服务架构</h3>
+<h2 id="服务发现-eureka"><a class="header-anchor" href="#服务发现-eureka">¶</a>服务发现 - Eureka</h2>
+<h3 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h3>
+<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
+现在：Eureka 在中间层提供一种负载均衡的可能。</p>
+<h3 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h3>
+<ul>
+<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
+<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
+<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
+</ul>
+<h3 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
+<ul>
+<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
+<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
+<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
+<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
+<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
+</ul>
+<h3 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
+<ul>
+<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
+<li>UP：可以正常进行通信；</li>
+<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
+<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
+<li>UNKNOWN：WTF？</li>
+</ul>
+<h3 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h3>
+<h4 id="register"><a class="header-anchor" href="#register">¶</a>Register</h4>
+<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
+<h4 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h4>
+<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
+<h4 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h4>
+<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
+<h4 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h4>
+<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
+<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
+<h4 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h4>
+<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
+<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
+DiscoveryManager.getInstance().shutdownComponent()</p>
+<h4 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h4>
+<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
+<h4 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h4>
+<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
+<h4 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h4>
+<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
+<h3 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h3>
+<p>Eureka Client 的高可用设计：</p>
+<ul>
+<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
+<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
+</ul>
+<p>Eureka Server 的高可用设计：</p>
+<ul>
+<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
+Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
+获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
+<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
+在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
+<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
+<ol>
+<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
+<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
+</ol>
+</li>
+<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
+当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
+</ul>
+<h3 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h3>
+<p>比如在测试环境中出现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<ul>
+<li>在生产上可以开自注册，部署两个 server</li>
+<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
+<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
+</ul>
+<h3 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h3>
+<p>配置：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
+Eureka Server 开放的 REST 接口提供动态配置功能：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
+<h4 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h4>
+<p>静态设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
+<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
+动态设置：<br>
+需要提供一个自定义的</p>
+<p>获取：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
+<h3 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h3>
+<h4 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h4>
+<p>EurekaClient</p>
+<h4 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h4>
+<p>ExampleEurekaGovernatedService</p>
+<h4 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h4>
+<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
+EurekaServerConfig extends DefaultEurekaServerConfig<br>
+CloudInstanceConfig extends PropertiesInstanceConfig<br>
+MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
+<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
+<h2 id="网关-zuul"><a class="header-anchor" href="#网关-zuul">¶</a>网关 - Zuul</h2>
+<h3 id="filter"><a class="header-anchor" href="#filter">¶</a>Filter</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Zuul%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Zuul组件结构" title="Zuul组件结构"><br>
+Zuul 基于 Netty 开发，使用 filters 包含了核心业务逻辑，Filter 是使用 Groovy 写的，主要是为了提供动态编译加载的能力，filters 主要包含了三类：</p>
+<ul>
+<li>Inbound Filters execute before routing to the origin and can be used for things like authentication, dynamic routing, rate limiting, DDoS protection, metrics and decorating the request.</li>
+<li>Endpoint Filters can be used to return static responses, otherwise the built-in <code>ProxyEndpoint</code> filter will route the request to the origin.</li>
+<li>Outbound Filters execute after getting the response from the origin and can be used for metrics, decorating the response to the user or adding custom headers.</li>
+<li>Async<br>
+Filter 可以被同步执行或异步执行。<br>
+如果 Filter 没有做太重的工作，可以通过继承<code>HttpInboundSyncFilter</code>或<code>HttpOutboundSyncFilter</code>来实现一种同步 Filter，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>Routes.groovy</code>；<br>
+反之，如果需要从其他服务、缓存获取数据，或做一些复杂的计算工作，则最好继承<code>HttpInboundFilter</code>或<code>HttpOutboundFilter</code>，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>SampleServiceFilter.groovy</code>。</li>
+</ul>
+<h4 id="filter属性"><a class="header-anchor" href="#filter属性">¶</a>Filter属性</h4>
+<p>Type: most often defines the stage during the routing flow when the Filter will be applied (although it can be any custom string)<br>
+Async: define if the filter is sync or async, generally meaning do you need to make an external call or just doing work on-box<br>
+Execution Order: applied within the Type, defines the order of execution across multiple Filters<br>
+Criteria: the conditions required in order for the Filter to be executed<br>
+Action: the action to be executed if the Criteria is met</p>
+<h4 id="其他的一些例子"><a class="header-anchor" href="#其他的一些例子">¶</a>其他的一些例子</h4>
+<p>这些例子是<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">zuul-sample</a>中的代码。</p>
+<ul>
+<li>DebugRequest - look for a query param to add extra debug logging for a request</li>
+<li>Healthcheck - simple static endpoint filter that returns 200, if everything is bootstrapped correctly</li>
+<li>ZuulResponseFilter - add informational headers to provide extra details on routing, request execution, status and error cause</li>
+<li>GZipResponseFilter - can be enabled to gzip outbound responses</li>
+<li>SurgicalDebugFilter - can be enabled to route specific requests to different hosts for debugging</li>
+</ul>
+<h3 id="缓存请求体"><a class="header-anchor" href="#缓存请求体">¶</a>缓存请求体</h3>
+<p>默认情况下 Zuul 不会缓存请求体，因为 Filter 一般用到请求头就够了，但是如果需要在 inbound 中用到请求头或在 outbound 中用到响应头，则需要明确指定 Zuul 缓存，可以重写 Filter 的<code>needsBodyBuffered()</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">boolean needsBodyBuffered(HttpResponseMessage input) &#123;</span><br><span class="line">    return true</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="网络协议"><a class="header-anchor" href="#网络协议">¶</a>网络协议</h3>
+<p>Zuul 支持修改暴露服务时使用的协议，使用方法见 sample 项目中的<code>SampleServerStartup</code>。</p>
+<h3 id="其他功能"><a class="header-anchor" href="#其他功能">¶</a>其他功能</h3>
+<p><a href="https://github.com/Netflix/zuul/wiki/Core-Features" target="_blank" rel="noopener">Core Features</a></p>
+<h3 id="push-messaging"><a class="header-anchor" href="#push-messaging">¶</a>Push Messaging</h3>
+<p>Push Messaging 机制可以支持从 Server 端推送消息到 Client 端，支持两种协议：<code>WebSockets</code> 和 <code>Server Sent Events (SSE)</code>。<br>
+<a href="https://github.com/Netflix/zuul/wiki/Push-Messaging" target="_blank" rel="noopener">Push Messaging</a><br>
+TODO</p>
+<h2 id="负载均衡-ribbon"><a class="header-anchor" href="#负载均衡-ribbon">¶</a>负载均衡 - Ribbon</h2>
+<h3 id="使用"><a class="header-anchor" href="#使用">¶</a>使用</h3>
+<p>原生 API 如何使用见：<a href="https://github.com/Netflix/ribbon/wiki/Getting-Started" target="_blank" rel="noopener">Netflix / ribbon - Getting Started</a><br>
+如果是搭配 Spring Boot，可以参考 Spring Could 文档。</p>
+<h3 id="组件结构及实现"><a class="header-anchor" href="#组件结构及实现">¶</a>组件结构及实现</h3>
+<h4 id="rule"><a class="header-anchor" href="#rule">¶</a>Rule</h4>
+<p>a logic component to determine which server to return from a list</p>
+<ul>
+<li>RoundRobinRule<br>
+简单的轮询策略</li>
+<li>AvailabilityFilteringRule<br>
+这个 Rule 会跳过那些疑似“电路跳闸”或并发连接数已经很高的服务器。<br>
+比如客户端的最后 3 次连接失败，客户端会认为该服务实例已经出现了类似“电路跳闸”的问题而导致无法提供服务，于是在接下来的 30 秒内均保持这种状态，如果之后还是连接失败，这个等待时间会指数增长（1min、2min、4min…）。</li>
+<li>WeightedResponseTimeRule<br>
+每个 Server 会根据其平均响应时间计算出一个权重，响应时间越长、比重越小，该 Rule 选择 Server 时会根据该权重来计算概率。</li>
+</ul>
+<h4 id="ping"><a class="header-anchor" href="#ping">¶</a>Ping</h4>
+<p>a component running in background to ensure liveness of servers</p>
+<h4 id="serverlist"><a class="header-anchor" href="#serverlist">¶</a>ServerList</h4>
+<p>this can be static or dynamic. If it is dynamic (as used by <code>DynamicServerListLoadBalancer</code>), a background thread will refresh and filter the list at certain interval</p>
+<ul>
+<li>静态的 Server 列表<br>
+可以在程序里写一个静态列表，将该列表设置到<code>BaseLoadBalancer.setServerList()</code>中。</li>
+<li>ConfigurationBasedServerList<br>
+默认的 ServerList 实现，可以通过 <code>Archaius ConfigurationManager</code>来设置 Server 列表。</li>
+<li>DiscoveryEnabledNIWSServerList<br>
+可以通过 Eureka Client 获取服务器列表，服务器集群必须通过 VipAddress 来定义：  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h4 id="serverlistfilter"><a class="header-anchor" href="#serverlistfilter">¶</a>ServerListFilter</h4>
+<p>ServerListFilter 是<code>DynamicServerListLoadBalancer</code>的组件，用于过滤从<code>ServerList</code>返回的服务器列表，现在有两种实现：</p>
+<ul>
+<li>
+<p>ZoneAffinityServerListFilter<br>
+过滤掉不在同一个 zone 内的服务器，除非 zone 内没有可用的服务器，这个 Filter 可以通过设置如下属性来启用（假设客户端名为 myclient、客户端的属性空间为 ribbon）：</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">myclient.ribbon.EnableZoneAffinity=true</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>ServerListSubsetFilter<br>
+可以保证客户端只能看到<code>ServerList</code>返回的全体服务器的一个固定子集，如果有服务器可用性较弱，则可以定期用新服务器替换老服务器。可以通过设置以下属性启用该Filter：</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br><span class="line">myClient.ribbon.NIWSServerListFilterClassName=com.netflix.loadbalancer.ServerListSubsetFilter</span><br><span class="line"># only show client 5 servers. default is 20.</span><br><span class="line">myClient.ribbon.ServerListSubsetFilter.size=5</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="源码-v2"><a class="header-anchor" href="#源码-v2">¶</a>源码</h3>
+<p>com.netflix.loadbalancer.DynamicServerListLoadBalancer#updateListOfServers<br>
+com.netflix.loadbalancer.ServerList#getUpdatedListOfServers<br>
+com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList#obtainServersViaDiscovery<br>
+TODO</p>
+<h2 id="hystrix"><a class="header-anchor" href="#hystrix">¶</a>Hystrix</h2>
+<p><a href="https://github.com/Netflix/Hystrix/wiki" target="_blank" rel="noopener">wiki</a></p>
+<h2 id="turbine"><a class="header-anchor" href="#turbine">¶</a>Turbine</h2>
+<p><a href="https://github.com/Netflix/Turbine/wiki" target="_blank" rel="noopener">wiki</a></p>
+<h2 id="微服务基础设施-配置中心"><a class="header-anchor" href="#微服务基础设施-配置中心">¶</a>微服务基础设施 - 配置中心</h2>
+<p>在设计微服务架构的时候常会提到一个<strong>无状态</strong>的概念，我们要求每个服务都是无状态的，因此可以做到一次编译到处运行，这也是<strong>云原生</strong>的基本要求——云环境下服务的实例集群可以弹性伸缩，</p>
+<h3 id="配置分类"><a class="header-anchor" href="#配置分类">¶</a>配置分类</h3>
+<p>应用服务中的配置主要分为静态配置和动态配置两类：<strong>静态配置</strong>主要和应用所处的环境有关，另外与其他服务器连接所需的用户名、密码等也需要在应用运行伊始便准备好，</p>
+<ul>
+<li>
+<p>静态配置-环境相关：</p>
+</li>
+<li>
+<p>静态配置-安全配置：</p>
+</li>
+<li>
+<p>动态配置-应用配置：</p>
+</li>
+<li>
+<p>动态配置-</p>
+</li>
+</ul>
+<h3 id="apollo"><a class="header-anchor" href="#apollo">¶</a>Apollo</h3>
+<h2 id="微服务基础设施-rpc"><a class="header-anchor" href="#微服务基础设施-rpc">¶</a>微服务基础设施 - RPC</h2>
+<h2 id="微服务基础设施-后台框架"><a class="header-anchor" href="#微服务基础设施-后台框架">¶</a>微服务基础设施 - 后台框架</h2>
+<h2 id="微服务基础设施-监控"><a class="header-anchor" href="#微服务基础设施-监控">¶</a>微服务基础设施 - 监控</h2>
+<h2 id="微服务基础设施-服务-sla-service-level-agreement"><a class="header-anchor" href="#微服务基础设施-服务-sla-service-level-agreement">¶</a>微服务基础设施 - 服务 SLA（Service Level Agreement）</h2>
+<p>熔断、限流、降级</p>
+<h2 id="微服务基础设施-持续交付-continuous-delivery-简称-cd"><a class="header-anchor" href="#微服务基础设施-持续交付-continuous-delivery-简称-cd">¶</a>微服务基础设施 - 持续交付（Continuous delivery，简称 CD）</h2>
+<h2 id="虚拟化"><a class="header-anchor" href="#虚拟化">¶</a>虚拟化</h2>
+<p>虚拟化技术将一台服务器虚拟出多个虚拟机来提供服务。<br>
+虚拟化技术包括计算虚拟化（服务器虚拟化）、存储虚拟化、网络虚拟化等。<br>
+在实际讲解虚拟化之前，我们需要先解释一下隔离技术，在隔离的基础上我们才能任意粒度、自由地分配资源。</p>
+<h3 id="隔离的作用"><a class="header-anchor" href="#隔离的作用">¶</a>隔离的作用</h3>
+<ul>
+<li>实现更细粒度的资源管理，比如将一个物理 CPU 的计算能力分给多台云主机，再将这台云主机卖给多个人。</li>
+<li>控制故障的影响范围，一个 Tomcat 中可以运行多个 Web 服务器，一台 Web 服务器崩溃并不会令其他服务器一并崩溃。</li>
+</ul>
+<h3 id="隔离的分类"><a class="header-anchor" href="#隔离的分类">¶</a>隔离的分类</h3>
+<p>广义的隔离技术包括如下几类</p>
+<ul>
+<li>硬件：虚拟机，如 KVM、Xen</li>
+<li>操作系统：容器，如 LXC、Docker</li>
+<li>Web 服务器：如 Servlet 容器</li>
+<li>依赖版本：虚拟环境</li>
+<li>运行环境：语言虚拟机，如JVM</li>
+<li>语言：DSL</li>
+</ul>
+<p>前两种隔离是<strong>虚拟化技术</strong>的基础，主要用于物理资源的池化，进而弹性地分配给用户。<br>
+作为一个例子，下面是一个运行时服务器中各抽象层次所采取的隔离技术的示意图：<br>
+<img src="http://47.88.24.11/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/%E9%9A%94%E7%A6%BB%E5%B1%82%E6%AC%A1.png" alt="隔离层次" title="隔离层次"></p>
+<p>上述隔离技术探讨的是单机环境下的资源分配，在微服务中聚焦的是如何提供更好的服务，因此可以在以下几个方向实施<strong>数据隔离</strong>：</p>
+<ul>
+<li>应用数据隔离<br>
+多个业务服务器使用不同的数据库服务器，虽然有隔离故障、提高数据安全等好处，但是也引入了分布式事务的问题。</li>
+<li>租户隔离<br>
+提供统一的云服务，但是对不同的用户分组单独使用一些服务实例来提供服务，这样这些服务实例挂掉了也只会影响对应分组的用户，这样的用户分组称为<strong>租户</strong>。<br>
+对于单独的一个租户，有独立服务独立数据库、共享服务独立数据库和共享服务共享数据库三种方式，可以根据成本和安全性来考虑选择哪种方案。</li>
+</ul>
+<p>对于业务服务器来说，更重要的是业务层面上的隔离：</p>
+<ul>
+<li>业务层<br>
+平台与业务，业务与业务。</li>
+<li>Provider，即服务提供者<br>
+如订单服务和库存服务，使用上面提到的虚拟化来实现隔离，如果；</li>
+<li>Consumer，即服务消费者<br>
+下游服务调用多个上游服务（upstream）的时候，如果不对上游服务做服务隔离，一个服务出现问题，就会导致下游服务不可用，这种情况下，可选的隔离方案可以是给每个上游服务都准备一个线程池，称为<strong>线程池隔离</strong>：<br>
+<img src="http://47.88.24.11/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/%E6%9C%8D%E5%8A%A1%E6%B6%88%E8%B4%B9%E8%80%85%E7%AB%AF%E9%9A%94%E7%A6%BB.png" alt="服务消费者端隔离" title="服务消费者端隔离"><br>
+这种情况下，就算其中一个服务不可用导致线程池被迅速占满，下游服务仍可以根据预定义的降级方案来忽略这个服务。<br>
+另一种可行的隔离方式是<strong>信号量隔离</strong>，常见的框架包括 Hytrix、Sentinel、以及 Resilience4j。</li>
+</ul>
+<h3 id="网络虚拟化"><a class="header-anchor" href="#网络虚拟化">¶</a>网络虚拟化</h3>
+<p>我们暴露服务时使用的 IP 一般不是业务服务器网卡的真实 IP，而是另外配置的一个虚拟 IP，请求先被打到该 IP，然后由 LVS 等负载均衡技术来找到一个真实 IP。</p>
+<p><strong>虚拟网卡</strong>通过实现一个字符设备来支持物理层，从而使应用层和物理层就通过这个字符设备联系起来，从这个字符设备读出来的就是虚拟网卡发往物理层的字节流，写入字符设备的数据作为字节流被虚拟网卡接收。<br>
+虚拟网卡可以像网卡一样进行配置，常见的虚拟网卡有<strong>TUN/TAP</strong>和<strong>VEth</strong>。<br>
+**虚拟网桥（Bridge）**也是一种虚拟设备，用于将多块网卡（包括虚拟网卡）连接起来。<br>
+值得注意的是， Linux 中虚拟网桥是通用网络设备抽象的一种，能够绑定 IP 地址。因此在把网卡接入到网桥上后，网卡原来绑定的 IP 会失效，如果还要像原来那样收发数据，需要把该 IP 绑定到网桥上。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 添加网桥br0</span><br><span class="line">ip link add br0 type bridge</span><br><span class="line"># 把网卡接入网桥，在把eth0和eth1接入到br0后，两个网卡就可以进行通信了。</span><br><span class="line">ip link set eth0 master br0</span><br><span class="line">ip link set eth1 master br0</span><br><span class="line"># 为网桥绑定ip</span><br><span class="line">ip addr add xx.xx.xx.xx/xx dev br0</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">docker0: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt; mtu 1500</span><br><span class="line">        inet 172.17.0.1 netmask 255.255.0.0 broadcast 172.17.255.255</span><br><span class="line">        inet6 fe80::42:17ff:fe6b:bb81 prefixlen 64 scopeid 0x20&lt;link&gt;</span><br><span class="line">        ether 02:42:17:6b:bb:81 txqueuelen 0 (Ethernet)</span><br><span class="line">        RX packets 0 bytes 0 (0.0 B)</span><br><span class="line">        RX errors 0 dropped 0 overruns 0 frame 0</span><br><span class="line">        TX packets 151 bytes 16620 (16.6 KB)</span><br><span class="line">        TX errors 0 dropped 0 overruns 0 carrier 0 collisions 0</span><br><span class="line"></span><br><span class="line">veth780318a: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt; mtu 1500</span><br><span class="line">        inet6 fe80::2c08:2dff:fea1:b996 prefixlen 64 scopeid 0x20&lt;link&gt;</span><br><span class="line">        ether 2e:08:2d:a1:b9:96 txqueuelen 0 (Ethernet)</span><br><span class="line">        RX packets 0 bytes 0 (0.0 B)</span><br><span class="line">        RX errors 0 dropped 0 overruns 0 frame 0</span><br><span class="line">        TX packets 227 bytes 24338 (24.3 KB)</span><br><span class="line">        TX errors 0 dropped 0 overruns 0 carrier 0 collisions 0</span><br></pre></td></tr></table></figure>
+<p>由 Docker Daemon 创建的虚拟网卡 docker0 其实就是一个网桥，可以使用 ethtool 查看设备类型。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ ethtool -i docker0</span><br><span class="line"># 输出</span><br><span class="line">driver: bridge</span><br><span class="line">version: 2.3</span><br><span class="line">firmware-version: N/A</span><br><span class="line">expansion-rom-version: </span><br><span class="line">bus-info: N/A</span><br><span class="line">supports-statistics: no</span><br><span class="line">supports-test: no</span><br><span class="line">supports-eeprom-access: no</span><br><span class="line">supports-register-dump: no</span><br><span class="line">supports-priv-flags: no</span><br></pre></td></tr></table></figure>
+<p>根据官方文档，Docker 通过 docker0 网桥在内核层连通了其他的物理或虚拟网卡，从而将所有容器和宿主都放到同一个物理网络下。<br>
+veth780318a 是一个 VEth 设备，在容器启动后动态创建。每次启动一个容器的时候，Docker 会新建一对 VETH 设备，其中一个插在 docker0 上，另一个插在该容器里，然后从可用的地址段中选择一个空闲的 IP 地址分配给容器的 VEth，使用 docker0 的 IP 作为默认网关，从而实现宿主机和容器的双向数据通讯。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ ethtool -S veth780318a</span><br><span class="line"># 输出</span><br><span class="line">NIC statistics:</span><br><span class="line">     peer_ifindex: 8</span><br><span class="line"></span><br><span class="line">$ ip link</span><br><span class="line"># 输出</span><br><span class="line">9: veth780318a@if8: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default </span><br><span class="line">    link/ether 2e:08:2d:a1:b9:96 brd ff:ff:ff:ff:ff:ff link-netnsid 0</span><br></pre></td></tr></table></figure>
+<p>上边的 veth780318a@if8 的 peer_ifindex 为 9，和其对应的 VEth 设备的 peer_ifindex 为 8。</p>
+<p>接下来可以进入容器查看是否存在对应的 peer_ifindex 为 9 的虚拟网卡（下面的是教程中的执行效果，我并没有执行成功，因为普通的容器镜像里面一般没有安装常用的网络工具）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">root@4c04df175784:/# ip route show</span><br><span class="line">default via 172.17.42.1 dev eth0</span><br><span class="line">172.17.0.0/16 dev eth0 proto kernel scope link src 172.17.0.1</span><br><span class="line"></span><br><span class="line"># 从这里可以看出veth741a889的“伙伴”确实是在容器中，被重命名为eth0作为容器的网卡，并绑定了ip172.17.0.5，网关为网桥的ip172.17.42.1。</span><br><span class="line">root@4c04df175784:/# ifconfig</span><br><span class="line">eth0 Link encap:Ethernet HWaddr 02:42:ac:11:00:05</span><br><span class="line">          inet addr:172.17.0.5 Bcast:0.0.0.0 Mask:255.255.0.0</span><br><span class="line">          inet6 addr: fe80::42:acff:fe11:5/64 Scope:Link</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST MTU:1500 Metric:1</span><br><span class="line">          RX packets:8 errors:0 dropped:0 overruns:0 frame:0</span><br><span class="line">          TX packets:8 errors:0 dropped:0 overruns:0 carrier:0</span><br><span class="line">          collisions:0 txqueuelen:0</span><br><span class="line">          RX bytes:648 (648.0 B) TX bytes:648 (648.0 B)</span><br><span class="line"></span><br><span class="line">root@4c04df175784:/# ethtool -S eth0</span><br><span class="line">NIC statistics:</span><br><span class="line">     peer_ifindex: 24</span><br><span class="line"></span><br><span class="line">root@4c04df175784:/# ethtool -i eth0</span><br><span class="line">driver: veth</span><br><span class="line">version: 1.0</span><br><span class="line">firmware-version:</span><br><span class="line">bus-info:</span><br><span class="line">supports-statistics: yes</span><br><span class="line">supports-test: no</span><br><span class="line">supports-eeprom-access: no</span><br><span class="line">supports-register-dump: no</span><br><span class="line">supports-priv-flags: no</span><br></pre></td></tr></table></figure>
+<h4 id="tun-tap-tunnel"><a class="header-anchor" href="#tun-tap-tunnel">¶</a>TUN/TAP(Tunnel)</h4>
+<p>TUN 工作在 OSI 第三层(network)，实现了 IP 包的转发，相当于路由。<br>
+TAP 工作在 OSI 第二层(data link)，实现了 Ethernet 帧的转发，相当于网桥。<br>
+操作系统通过 TUN/TAP 设备向绑定该设备的用户空间的程序发送数据，反之，用户空间的程序也可以像操作硬件网络设备那样通过 TUN/TAP 设备发送数据，然后 TUN/TAP 设备会向操作系统的网络栈 push（或 inject）数据包，从而模拟从外部接受数据的过程。<br>
+TUN 常用于 VPN，通过使用 TUN，VPN 能够在 IP 包被发出去之前将其进行加密。<br>
+TAP 常用于虚拟机，为虚拟机提供网卡。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip tuntap add mode tap # 创建tap</span><br><span class="line">ip tuntap add mode tun # 创建tun</span><br></pre></td></tr></table></figure>
+<h4 id="veth-virtual-ethernet"><a class="header-anchor" href="#veth-virtual-ethernet">¶</a>VEth（Virtual Ethernet）</h4>
+<p>VEth 是成对出现的，它的作用是反转通讯数据的方向，当数据从网络栈发送到 VEth 的一端时，数据被传送到 VEth 的另外一端流出，然后放回网络栈，相当于把需要接受的数据转换成需要发送的数据，<br>
+常用于虚拟化中穿透 network namespace，把从一个 network namespace 发出的数据包转发到另一个 namespace。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip link add veth1 type veth peer name veth2 # 创建一对VEth，名为veth1和veth2</span><br></pre></td></tr></table></figure>
+<h3 id="服务器虚拟化"><a class="header-anchor" href="#服务器虚拟化">¶</a>服务器虚拟化</h3>
+<h4 id="插槽-内核和内核线程"><a class="header-anchor" href="#插槽-内核和内核线程">¶</a>插槽、内核和内核线程</h4>
+<p>虚拟机如何分配 CPU 数：<a href="https://www.it610.com/article/3322954.htm" target="_blank" rel="noopener">vSphere 中 CPU 资源如何分配</a></p>
+<h4 id="xen-kvm-与-lxc"><a class="header-anchor" href="#xen-kvm-与-lxc">¶</a>Xen、KVM 与 LXC</h4>
+<p>TODO<br>
+服务器虚拟化的三种比较常见的技术。<br>
+Xen：<br>
+KVM：<br>
+LXC：</p>
+<h4 id="lxc-的使用方法"><a class="header-anchor" href="#lxc-的使用方法">¶</a>LXC 的使用方法</h4>
+<ol>
+<li>安装</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">apt-get install lxc</span><br><span class="line">lxc-checkconfig # 安装完成后, 用这个命令检查系统是否可以使用 lxc</span><br><span class="line"># 我执行后没有发现missing的情况，如果没有挂载cgroup可能会出现“Cgroup namespace: CONFIG_CGROUP_NSmissing”的错误，可以挂载一个cgroup</span><br><span class="line">mount -t cgroup cgroup /mnt/cgroup</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>创建容器</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo lxc-create -n test -t debian # # 创建一个 debian 系统</span><br></pre></td></tr></table></figure>
+<p>这样创建的容器默认在 /var/lib/lxc/test 中, 为了将容器创建在我们指定的位置, 可以写个简单的配置文件 lxc.conf, 里面只需要一句：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lxc.rootfs = /home/lxc/test</span><br></pre></td></tr></table></figure>
+<p>然后重新创建容器：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo lxc-create -n test -t debian -f /path/to/lxc.conf</span><br></pre></td></tr></table></figure>
+<p>这样, 就把容器创建在了 /home/lxc/test 中了, /var/lib/lxc/test 中只有一个 config 文件(这个 config 文件可以作为 lxc-create 命令 -f 参数对应配置文件的参考)</p>
+<ol start="3">
+<li>启动容器<br>
+启动后就进行入了虚拟机的控制台了. (果然像传说一样, 几秒就启动完成了 <sup>_</sup>)</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lxc-start -n test</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>停止容器<br>
+在主机中输入停止的命令.</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lxc-stop -n test</span><br></pre></td></tr></table></figure>
+<ol start="5">
+<li>销毁容器<br>
+销毁之前, 可以通过 lxc-ls 来查看有几个容器</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">lxc-ls</span><br><span class="line">  test</span><br><span class="line">lxc-destroy -n test</span><br><span class="line">lxc-ls</span><br></pre></td></tr></table></figure>
+<h4 id="使用示例-配置-python-uliweb-开发环境"><a class="header-anchor" href="#使用示例-配置-python-uliweb-开发环境">¶</a>使用示例（配置 python uliweb 开发环境）</h4>
+<p>尝试在容器配置一次开发环境, 然后通过复制容器, 形成多个虚拟机.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># 主机中</span><br><span class="line">root@debian-113:~# uliweb # 主机中没有安装uliweb 软件包</span><br><span class="line">-bash: uliweb: command not found</span><br><span class="line">root@debian-113:~# lxc-start -n test</span><br><span class="line"># 虚拟机登录界面, 输入用户名和密码</span><br><span class="line"># 虚拟机中</span><br><span class="line">root@test:~# apt-get install python</span><br><span class="line">root@test:~# apt-get install python-pip</span><br><span class="line">root@test:~# pip install Uliweb</span><br><span class="line">root@test:~# uliweb --version</span><br><span class="line">Uliweb version is 0.3.1</span><br></pre></td></tr></table></figure>
+<p>主机中设置网桥, 虚拟机用桥接方式上网, 确保每个虚拟机有独立的 IP</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"># 主机中</span><br><span class="line">root@debian-113:~# lxc-stop -n test</span><br><span class="line">root@debian-113:~# apt-cache search bridge-utils</span><br><span class="line">root@debian-113:~# brctl addbr br0</span><br><span class="line"># 配置主机的网桥</span><br><span class="line">root@debian-113:/var/lib/lxc/test# cat /etc/network/interfaces </span><br><span class="line"># This file describes the network interfaces available on your system</span><br><span class="line"># and how to activate them. For more information, see interfaces(5).</span><br><span class="line"></span><br><span class="line"># The loopback network interface</span><br><span class="line">auto lo</span><br><span class="line">#auto eth0</span><br><span class="line">iface lo inet loopback</span><br><span class="line"></span><br><span class="line"># 追加的网桥配置    </span><br><span class="line">auto br0</span><br><span class="line">iface br0 inet static</span><br><span class="line">address 192.168.1.113</span><br><span class="line">netmask 255.255.255.0</span><br><span class="line">gateway 192.168.1.1</span><br><span class="line">   bridge_ports eth0</span><br><span class="line">   bridge_stp on</span><br><span class="line">   bridge_fd 0</span><br><span class="line"></span><br><span class="line">root@debian-113:/var/lib/lxc/test# /etc/init.d/networking restart</span><br></pre></td></tr></table></figure>
+<p>配置容器的网络(也是在主机中修改容器的配置文件)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">root@debian-113:/var/lib/lxc/test# cat /var/lib/lxc/test/config</span><br><span class="line">... ... (很多默认生成的配置)</span><br><span class="line"># network &lt;-- 这个 network 相关的是要追加的</span><br><span class="line">lxc.network.type = veth</span><br><span class="line">lxc.network.flags = up</span><br><span class="line">lxc.network.link = br0</span><br><span class="line">lxc.network.name = eth0</span><br></pre></td></tr></table></figure>
+<p>启动 Linux 容器, 进入虚拟机</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">root@debian-113:/var/lib/lxc/test# lxc-start -n test</span><br><span class="line"># 登录进入虚拟机, 确认虚拟机的IP</span><br><span class="line">root@test:~# cat /etc/network/interfaces &lt;-- 默认是自动获取IP</span><br><span class="line">auto lo</span><br><span class="line">iface lo inet loopback</span><br><span class="line"></span><br><span class="line">auto eth0</span><br><span class="line">iface eth0 inet dhcp</span><br><span class="line">root@test:~# ifconfig &lt;-- 我的机器自动分配的 192.168.1.167</span><br><span class="line"># 创建一个简单的uliweb工程</span><br><span class="line">root@test:~# cd /home/</span><br><span class="line">root@test:/home# mkdir CM-web</span><br><span class="line">root@test:/home# cd CM-web/</span><br><span class="line">root@test:/home/CM-web# uliweb makeproject test</span><br><span class="line">root@test:/home/CM-web# cd test/</span><br><span class="line">root@test:/home/CM-web/test# uliweb makeapp first_app</span><br><span class="line">root@test:/home/CM-web/test# uliweb runserver -h 0.0.0.0</span><br></pre></td></tr></table></figure>
+<p>启动 Web 服务后, 就可以在主机的浏览器中 通过 <a href="http://192.168.1.167:8000/" target="_blank" rel="noopener">http://192.168.1.167:8000/</a> 来访问虚拟机中的 web 服务了.<br>
+最后, 复制一个新的容器, 也就是再重新生成一个上面的 python uliweb 开发环境</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># 在主机中</span><br><span class="line">root@debian-113:~# cd /var/lib/lxc</span><br><span class="line">root@debian-113:/var/lib/lxc# cp -r test test2</span><br><span class="line"># 修改 test2/config 如下</span><br><span class="line">lxc.utsname = test2 &lt;-- 修改名称</span><br><span class="line">xc.rootfs = /home/lxc/test2 &lt;-- 修改 rootfs位置</span><br><span class="line">... ... &lt;-- 其它部分不用修改, 和 test 一样就行</span><br><span class="line">root@debian-113:/var/lib/lxc# cd /home/lxc/</span><br><span class="line">root@debian-113:/home/lxc# cp -r test test2 &lt;-- 重新复制一份 rootfs</span><br><span class="line">root@debian-113:/home/lxc# lxc-start -n test2 &lt;-- 启动 test2 虚拟机, 其中环境和 test一样, IP会不一样, 自动获取的</span><br><span class="line"># 进入 test2 虚拟机中, 可以直接启动之前的 uliweb 测试工程, 也可以从主机中访问其web服务.</span><br></pre></td></tr></table></figure>
+<h3 id="lxc"><a class="header-anchor" href="#lxc">¶</a>LXC</h3>
+<h4 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h4>
+<p>通过 namespace 进行资源的隔离,Gust1 下的进程与 Guset2 下的进程是独立的，可以看作运行在两台物理机上一样。Contaniner 管理工具就是对 Guest 进行管理的(创建、销毁)。<br>
+下图是对 LXC 架构的介绍。</p>
+<h3 id="虚拟化管理平台"><a class="header-anchor" href="#虚拟化管理平台">¶</a>虚拟化管理平台</h3>
+<p>虚拟化虽然可以用于自由分配资源，但是在生产环境内如果要一台一台机器安装及配置并不现实，一般来说都会尝试使用一个管理平台来自动化、批量化虚拟机的管理，或者从零开始使用 Libvirt 这样的库来实现自己需要的功能。<br>
+如 <strong>Libvirt</strong> 库提供了一套用于管理虚拟机和其他虚拟化功能的 Linux API，它支持各种虚拟机监控程序，包括 Xen 和 KVM，以及 QEMU 和用于其他操作系统的一些虚拟产品。</p>
+<h3 id="容器管理平台"><a class="header-anchor" href="#容器管理平台">¶</a>容器管理平台</h3>
+<p>容器管理平台与其他虚拟化平台有所不同，因为和微服务关系密切，所以更关注高可用、弹性扩展等特性，如Docker Swam、Kubernetes。</p>
+<h2 id="集群-分布式系统与云服务"><a class="header-anchor" href="#集群-分布式系统与云服务">¶</a>集群、分布式系统与云服务</h2>
+<h3 id="集群与分布式系统"><a class="header-anchor" href="#集群与分布式系统">¶</a>集群与分布式系统</h3>
+<p>集群与分布式系统是容易混淆的概念，很多时候会被混用，具体来说：</p>
+<ul>
+<li>集群是一个业务部署在多个服务器上，目标是高可用；</li>
+<li>分布式系统是一个业务被拆分成多个子业务部署在不同的服务器上，目标是高性能。</li>
+</ul>
+<h3 id="数据层-分库分表"><a class="header-anchor" href="#数据层-分库分表">¶</a>数据层 - 分库分表</h3>
+<h3 id="业务层-负载均衡"><a class="header-anchor" href="#业务层-负载均衡">¶</a>业务层 - 负载均衡</h3>
+<p>二层：通过一个虚拟 MAC 地址接收请求，然后再分配到真实的 MAC 地址；<br>
+三层：通过一个 VIP 地址接收请求，然后再分配到真实的 IP 地址；<br>
+四层：传输层（一般是 TCP），通过 VIP+端口接收请求，然后再分配到真实的服务器，如 F5、LVS、seesaw；<br>
+七层：应用层，通过虚拟的 URL 或主机名接收请求，然后再分配到真实的服务器，如 Nginx（同样支持在四层工作）、HAProxy。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="常见实现"><a class="header-anchor" href="#常见实现">¶</a>常见实现</h3>
+<ol>
+<li><a href="https://cloud.spring.io/spring-cloud-netflix/reference/html/" target="_blank" rel="noopener">Document - Spring Cloud Netflix</a></li>
+<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
+<li><a href="https://github.com/Netflix/zuul/blob/master/zuul-sample/src/main/java/com/netflix/zuul/sample/SampleServerStartup.java" target="_blank" rel="noopener">Netflix/zuul</a></li>
+<li><a href="https://github.com/Netflix/ribbon" target="_blank" rel="noopener">Netflix/ribbon</a></li>
+<li><a href="https://github.com/Netflix/Hystrix" target="_blank" rel="noopener">Netflix / Hystrix</a></li>
+<li><a href="https://github.com/Netflix/Turbine" target="_blank" rel="noopener">Netflix / Turbine</a></li>
+</ol>
+<h3 id="例子"><a class="header-anchor" href="#例子">¶</a>例子</h3>
+<ol>
+<li><a href="https://github.com/cfregly/fluxcapacitor" target="_blank" rel="noopener">Flux Capacitor</a></li>
+<li><a href="https://github.com/Netflix/recipes-rss" target="_blank" rel="noopener">Netflix Recipes-RSS Reader</a></li>
+</ol>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<ol>
+<li><a href="https://blog.csdn.net/ceshi986745/article/details/51787424" target="_blank" rel="noopener">猿学~程序员必知的六种隔离技术</a></li>
+<li><a href="https://mp.weixin.qq.com/s/M1AePRMGWh49mXcN9MyXGw" target="_blank" rel="noopener">谈谈怎么做【服务隔离】</a></li>
+</ol>
+<h3 id="虚拟化-v2"><a class="header-anchor" href="#虚拟化-v2">¶</a>虚拟化</h3>
+<ol>
+<li>网络设备虚拟化<br>
+<a href="http://blog.sina.com.cn/s/blog_b5e965e80102wos3.html" target="_blank" rel="noopener">网络设备设备虚拟化</a><br>
+<a href="http://mp.weixin.qq.com/s/SC_j1cCm-kgOkCPKPjL5SQ" target="_blank" rel="noopener">一文搞懂网络虚拟化</a><br>
+<a href="http://mp.weixin.qq.com/s/2KaHYOxyvZw1B6PhmjN_vw" target="_blank" rel="noopener">从 Bridge 到 OVS，探索虚拟交换机</a><br>
+<a href="https://feisky.gitbooks.io/sdn/linux/virtual-device.html" target="_blank" rel="noopener">虚拟网络设备</a><br>
+<a href="https://www.ibm.com/developerworks/cn/linux/1310_xiawc_networkdevice/index.html" target="_blank" rel="noopener">Linux 上的基础网络设备详解</a><br>
+<a href="https://blog.csdn.net/sld880311/article/details/77840343" target="_blank" rel="noopener">Linux-虚拟网络设备-LinuxBridge</a><br>
+<a href="https://blog.csdn.net/sld880311/article/details/77854651" target="_blank" rel="noopener">Linux-虚拟网络设备-tun/tap</a><br>
+<a href="https://blog.csdn.net/sld880311/article/details/77650937" target="_blank" rel="noopener">Linux-虚拟网络设备-veth pair</a><br>
+<a href="https://blog.csdn.net/sld880311/article/details/78021303" target="_blank" rel="noopener">Linux-虚拟网络设备-OpenvSwitch(持续更新)</a></li>
+<li>硬件虚拟化<br>
+<a href="http://www.360doc.com/content/12/0213/14/7982302_186299987.shtml" target="_blank" rel="noopener">硬件虚拟化技术浅析</a><br>
+<a href="http://veck.logdown.com/posts/200566-compare-of-kvm-and-lxc" target="_blank" rel="noopener">Compare of Xen, KVM, LXC and Traditional VM</a></li>
+<li>Libvirt<br>
+<a href="https://libvirt.org/" target="_blank" rel="noopener">Libvirt</a></li>
+<li>Xen<br>
+<a href="https://www.xenproject.org/" target="_blank" rel="noopener">Xen</a></li>
+<li>KVM<br>
+<a href="http://www.linux-kvm.org/page/Main_Page" target="_blank" rel="noopener">Kernel Virtual Machine（KVM）</a><br>
+<a href="http://oenhan.com/kvm-src-1" target="_blank" rel="noopener">KVM 源代码分析 1:基本工作原理</a><br>
+<a href="https://mp.weixin.qq.com/s/WzpH653x1hS9_PBVrIJFuw" target="_blank" rel="noopener">在 Centos6.5 上部署 kvm 虚拟化技术</a></li>
+<li>LXC<br>
+<a href="https://www.cnblogs.com/xidongyu/p/5767020.html" target="_blank" rel="noopener">LXC 的介绍</a><br>
+<a href="https://linuxcontainers.org/" target="_blank" rel="noopener">LinuX Container（LXC）</a><br>
+<a href="http://www.cnblogs.com/wang_yb/p/3923040.html" target="_blank" rel="noopener">Linux 容器的使用</a></li>
+<li>Docker<br>
+<a href="http://dockone.io/article/2050" target="_blank" rel="noopener">使用 NGINX 和 NGINX Plus 进行 Docker Swarm 负载均衡</a><br>
+DockerSwarm 提供的负载均衡运行于每个节点上（应该是 DockerService 中的某个 Job），提供有限的负载均衡服务（TCP 层负载均衡），因此引入 Nginx 是有道理的。<br>
+据说 Nginx Plus 可以实现<strong>服务弹性伸缩</strong>的功能，但还没试过。</li>
+</ol>
+<h3 id="集群-分布式系统与云服务-v2"><a class="header-anchor" href="#集群-分布式系统与云服务-v2">¶</a>集群、分布式系统与云服务</h3>
+<ol>
+<li>负载均衡<br>
+<a href="https://github.com/google/seesaw" target="_blank" rel="noopener">google/seesaw</a></li>
+<li>云原生<br>
+<a href="https://mp.weixin.qq.com/s/gwXNBZzvygKV5xW1dfiQTA" target="_blank" rel="noopener">关于云原生，这是最详细的技术知识</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/10511d14.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/10511d14.html" itemprop="url">Linux 脚本基础</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T10:18:28+08:00">
+                2019-07-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  14 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>记录一些平时看到或用过的 shell 脚本技巧和代码片段。</p>
           <!--noindex-->
           <div class="post-button text-center">
-            <a class="btn" href="/59c58f8f.html#more" rel="contents">
+            <a class="btn" href="/10511d14.html#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -715,6 +1569,183 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
 </ol>
 
           
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/59c58f8f.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/59c58f8f.html" itemprop="url">Linux 三剑客-cut、awk 使用总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
+                2019-07-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  12 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>在 awk、sed、cut 三个命令中，awk 是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/59c58f8f.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -1919,1383 +2950,11 @@ Nginx 解决方法：同一个时刻只能有唯一一个 worker 子进程监听
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/7d1f0594.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/7d1f0594.html" itemprop="url">Java 基础总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-05-03T17:23:14+08:00">
-                2019-05-03
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  4.8k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  21 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="java5"><a class="header-anchor" href="#java5">¶</a>Java5</h2>
-<h3 id="语法-集合框架等"><a class="header-anchor" href="#语法-集合框架等">¶</a>语法、集合框架等</h3>
-<ul>
-<li>泛型</li>
-<li>枚举</li>
-<li>装箱拆箱</li>
-<li>变长参数</li>
-<li>注解</li>
-<li>foreach 循环</li>
-<li>静态导入</li>
-<li>格式化</li>
-<li>线程框架/数据结构</li>
-<li>Arrays 工具类/StringBuilder/instrument</li>
-</ul>
-<h4 id="泛型"><a class="header-anchor" href="#泛型">¶</a>泛型</h4>
-<p>不同于 C++中的泛型，Java 的泛型会在编译后被清除，这种机制被称为泛型擦除。</p>
-<blockquote>
-<p>java 的类型推断基本都在编译期完成</p>
-</blockquote>
-<p><strong>优点</strong>：可以免去大量的显式类型转换；<br>
-<strong>缺点</strong>：由于泛型擦除的存在，在很多场合下容易引起误会：</p>
-<ul>
-<li>比如向 List<integer>类型的表里添加一个 String 类型对象就不会通过，因为在编译期间还需要进行类型检查。</integer></li>
-<li>在继承重写方法时，若父类中被重写的方法中含有泛型，因为泛型擦除理应变成重载，但是 Java 编译器会在编译后的字节码中添加桥方法（已经被类型擦除）、桥方法再调用重写的方法来解决；</li>
-<li>泛型类型参数不能使用基本类型，因为基本类型不是 Object 的子类；</li>
-<li>其他一些注意事项…</li>
-</ul>
-<h4 id="枚举"><a class="header-anchor" href="#枚举">¶</a>枚举</h4>
-<p>枚举可以使用 enum 声明，在 switch 中可以作为 case 后的标签。可以使用 EnumMap 来保存枚举到其他类型的映射或使用 EnumSet 保存枚举值的集合。<br>
-<strong>优点</strong>：</p>
-<ul>
-<li>相对使用 int 或 String 当作枚举对象来说，Java 编译器本身提供了对 enum 的类型检查，可以更安全地使用；</li>
-<li>可以用于声明单例对象。</li>
-</ul>
-<h4 id="装箱拆箱"><a class="header-anchor" href="#装箱拆箱">¶</a>装箱拆箱</h4>
-<p>基本类型可以自动转换成对应的包装类型，比如 boolean 会被包装为 Boolean。<br>
-<strong>优点</strong>：</p>
-<ul>
-<li>方便。</li>
-</ul>
-<p><strong>缺点</strong>：</p>
-<ul>
-<li>注意拆箱时不能对 null 拆箱，不然会报空指针。</li>
-</ul>
-<h4 id="变长参数"><a class="header-anchor" href="#变长参数">¶</a>变长参数</h4>
-<p>可以传入任意多个相同类型的参数。<br>
-<strong>优点</strong>：</p>
-<ul>
-<li>提供了更多灵活性，比如编写输出方法时可以格式化多个参数。</li>
-</ul>
-<p><strong>缺点</strong>：</p>
-<ul>
-<li>需要注意 null 值的传入。</li>
-</ul>
-<h4 id="注解"><a class="header-anchor" href="#注解">¶</a>注解</h4>
-<p>注解需要和反射配合使用，JDK 提供了一些具有特定语义的注解：<br>
-@Inherited：是否对类的子类继承的方法等起作用；<br>
-@Target：作用目标；<br>
-@Rentation：表示 annotation 是否保留在编译过的 class 文件中还是在运行时可读。</p>
-<h4 id="for-in-循环"><a class="header-anchor" href="#for-in-循环">¶</a>for/in 循环</h4>
-<p><strong>优点</strong>：</p>
-<ul>
-<li>方便</li>
-</ul>
-<p><strong>缺点</strong>：</p>
-<ul>
-<li>获取不到元素所在 index；</li>
-<li>无法在遍历的时候删除元素；</li>
-</ul>
-<h4 id="静态-import"><a class="header-anchor" href="#静态-import">¶</a>静态 import</h4>
-<p>可以直接使用一个类中的静态方法。<br>
-<strong>缺点</strong>：</p>
-<ul>
-<li>如果有同名的容易引起混淆；</li>
-</ul>
-<h4 id="formatter"><a class="header-anchor" href="#formatter">¶</a>Formatter</h4>
-<p>提供对日期、数字等的格式化支持</p>
-<h4 id="线程框架-数据结构"><a class="header-anchor" href="#线程框架-数据结构">¶</a>线程框架/数据结构</h4>
-<ol>
-<li>
-<p>在线程中可以设置 UncaughtExceptionHandler，当抛出异常后可以执行指定的逻辑；</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">public class ThreadingTest extends Thread &#123;</span><br><span class="line">  private int[] numbers;</span><br><span class="line">  public ThreadingTest(int[] numbers) &#123;</span><br><span class="line">    setName(&quot;Simple Thread&quot;);</span><br><span class="line">    setUncaughtExceptionHandler(</span><br><span class="line">        new SimpleThreadExceptionHandler());</span><br><span class="line">    this.numbers = numbers;</span><br><span class="line">  &#125;</span><br><span class="line">  public void run() &#123;</span><br><span class="line">    int index = numbers.length;</span><br><span class="line">    boolean finished = false;</span><br><span class="line">    while (!finished) &#123;</span><br><span class="line">      index--;</span><br><span class="line">      finished = true;</span><br><span class="line">      for (int i = 0; i &lt; index; i++) &#123;</span><br><span class="line">        // Create error condition</span><br><span class="line">        if (numbers[i + 1] &lt; 0) &#123;</span><br><span class="line">          throw new IllegalArgumentException(</span><br><span class="line">              &quot;Cannot pass negative numbers into this thread!&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        if (numbers[i] &gt; numbers[i + 1]) &#123;</span><br><span class="line">          // swap</span><br><span class="line">          int temp = numbers[i];</span><br><span class="line">          numbers[i] = numbers[i + 1];</span><br><span class="line">          numbers[i + 1] = temp;</span><br><span class="line">          finished = false;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  public static void main(String[] args) &#123;</span><br><span class="line">    int[] numbers = new int[]&#123;2, -1, 56, 4, 7&#125;;</span><br><span class="line">    ThreadingTest threadingTest = new ThreadingTest(numbers);</span><br><span class="line">    threadingTest.start();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">class SimpleThreadExceptionHandler implements</span><br><span class="line">    Thread.UncaughtExceptionHandler &#123;</span><br><span class="line">  public void uncaughtException(Thread t, Throwable e) &#123;</span><br><span class="line">    System.err.printf(&quot;%s: %s at line %d of %s%n&quot;,</span><br><span class="line">        t.getName(),</span><br><span class="line">        e.toString(),</span><br><span class="line">        e.getStackTrace()[0].getLineNumber(),</span><br><span class="line">        e.getStackTrace()[0].getFileName());</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>引入 Queue、BlockingQueue、ConcurrentMap 数据结构；</p>
-</li>
-<li>
-<p>引入 JUC 线程池；</p>
-<ul>
-<li>每次提交任务时，如果线程数还没达到 coreSize 就创建新线程并绑定该任务。 所以第 coreSize 次提交任务后线程总数必达到 coreSize，不会重用之前的空闲线程。</li>
-<li>线程数达到 coreSize 后，新增的任务就放到工作队列里，而线程池里的线程则努力的使用 take()从工作队列里拉活来干。</li>
-<li>如果队列是个有界队列，又如果线程池里的线程不能及时将任务取走，工作队列可能会满掉，插入任务就会失败，此时线程池就会紧急的再创建新的临时线程来补救。</li>
-<li>临时线程使用 poll(keepAliveTime，timeUnit)来从工作队列拉活，如果时候到了仍然两手空空没拉到活，表明它太闲了，就会被解雇掉。</li>
-<li>如果 core 线程数＋临时线程数 &gt;maxSize，则不能再创建新的临时线程了，转头执行 RejectExecutionHanlder。默认的 AbortPolicy 抛 RejectedExecutionException 异常，其他选择包括静默放弃当前任务(Discard)，放弃工作队列里最老的任务(DisacardOldest)，或由主线程来直接执行(CallerRuns)，或你自己发挥想象力写的一个。</li>
-</ul>
-</li>
-<li>
-<p>Arrays<br>
-提供数组相关的一些工具类。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Arrays.sort(myArray);</span><br><span class="line">Arrays.toString(myArray)</span><br><span class="line">Arrays.binarySearch(myArray, 98)</span><br><span class="line">Arrays.deepToString(ticTacToe)</span><br><span class="line">Arrays.deepEquals(ticTacToe, ticTacToe3)</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h4 id="override-支持协变"><a class="header-anchor" href="#override-支持协变">¶</a>Override 支持协变</h4>
-<p>返回类型可以是父类中相应类型或其子类。</p>
-<h3 id="jvm"><a class="header-anchor" href="#jvm">¶</a>JVM</h3>
-<h4 id="cds-class-data-sharing"><a class="header-anchor" href="#cds-class-data-sharing">¶</a><a href="https://docs.oracle.com/javase/8/docs/technotes/guides/vm/class-data-sharing.html" target="_blank" rel="noopener">CDS（Class Data Sharing）</a></h4>
-<p>JRE installer 能将一些系统 jar 文件加载到一种私有内部表示方式，然后转储到一个文件内，称为“shared archive”，下次启动应用的时候可以直接使用这个包内的类数据，这样可以减少部分启动时间。</p>
-<h4 id="自动检测服务器级机器"><a class="header-anchor" href="#自动检测服务器级机器">¶</a><a href="https://docs.oracle.com/javase/8/docs/technotes/guides/vm/server-class.html" target="_blank" rel="noopener">自动检测服务器级机器</a></h4>
-<p>如果机器至少有 2 CPUs 和至少 2GB 物理内存，use the Java HotSpot Server Virtual Machine (server VM) instead of the Java HotSpot Client Virtual Machine (client VM).，The aim is to improve performance even if no one configures the VM to reflect the application it’s running. In general, the server VM starts up more slowly than the client VM, but over time runs more quickly.</p>
-<h4 id="垃圾收集器自适应"><a class="header-anchor" href="#垃圾收集器自适应">¶</a><a href="https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gc-ergonomics.html" target="_blank" rel="noopener">垃圾收集器自适应</a></h4>
-<p>服务器类机器默认垃圾回收器改为并行垃圾回收器。<br>
-可以指定性能目标，并行收集器可以自动调整堆的大小，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-XX:GCTimeLimit=time-limit ：花费在GC上的时间上限，默认是98，当超过上限时，会抛出OutOfMemory(HeapSpace)的异常</span><br><span class="line">-XX:GCHeapFreeLimit=space-limit ：Heap空闲空间的最低比例下限，默认是2，当超过下限时，会抛出OutOfMemory(HeapSpace)的异常</span><br><span class="line">-XX:MaxGCPauseMillis=nnn ：最长的GC暂停时间，如果时间过长，会相应调整空间的大小（单位是毫秒）</span><br><span class="line">-XX:GCTimeRatio=nnn ：最大的GC占总可用时间的比例，如果时间过长，会相应调整空间的大小（花费在GC上的时间比例不超过1 / (1 + nnn)）</span><br></pre></td></tr></table></figure>
-<h4 id="线程优先级"><a class="header-anchor" href="#线程优先级">¶</a><a href="https://docs.oracle.com/javase/8/docs/technotes/guides/vm/thread-priorities.html" target="_blank" rel="noopener">线程优先级</a></h4>
-<p>Thread 类中给出了三个线程优先级常量：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">java.lang.Thread.MIN_PRIORITY = 1</span><br><span class="line">java.lang.Thread.NORM_PRIORITY = 5</span><br><span class="line">java.lang.Thread.MAX_PRIORITY = 10</span><br></pre></td></tr></table></figure>
-<p>默认情况下线程优先级为 java.lang.Thread.NORM_PRIORITY，我们可以自定义设置在[1…10]内。<br>
-JVM（Java HotSpot）将 Java 线程关联到唯一的一个 native thread。</p>
-<h2 id="网络编程-socket"><a class="header-anchor" href="#网络编程-socket">¶</a>网络编程（Socket）</h2>
-<h3 id="inetaddress"><a class="header-anchor" href="#inetaddress">¶</a>InetAddress</h3>
-<p>IP 地址是在网络层封装上的，确定 Internet 上的一个唯一的地址，端口号是由传输层封装上的，标志主机上的一个服务。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">public class InetAddressTest &#123;</span><br><span class="line">    public static void main(String args[])&#123;</span><br><span class="line">        InetAddressTest.printAddress();</span><br><span class="line">    &#125;</span><br><span class="line">    static void printAddress()&#123;</span><br><span class="line">        try&#123;</span><br><span class="line">            InetAddress address = InetAddress.getLocalHost();</span><br><span class="line">            System.out.println(address);//输出：机器名/IP地址</span><br><span class="line">            address = InetAddress.getByName(&quot;www.baidu.com&quot;);</span><br><span class="line">            System.out.println(address);//输出：域名/IP地址</span><br><span class="line">            InetAddress[] addresses = InetAddress.getAllByName(&quot;www.baidu.com&quot;);</span><br><span class="line">            for(InetAddress a : addresses)&#123;</span><br><span class="line">                System.out.println(a);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        catch(UnknownHostException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="url-和-urlconnection"><a class="header-anchor" href="#url-和-urlconnection">¶</a>URL 和 UrlConnection</h3>
-<p>UrlConnection 可以从一个 URL 中打开流，可以方便地进行 Http 数据的收发。<br>
-内部是使用 Socket 进行连接的。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">// 获取链接属性</span><br><span class="line">URL url = new URL(&quot;http://java.sun.com:80/docs/books/tutorial/index.html#DOWN&quot;);//#后面的DOWN是位置标识符，在获得网页后，浏览器将直接跳到网页的DOWN处读取</span><br><span class="line">String protocal = url.getProtocol();</span><br><span class="line">String host = url.getHost();</span><br><span class="line">String file = url.getFile();</span><br><span class="line">int port = url.getPort();</span><br><span class="line">String ref = url.getRef();//获得#后面的</span><br><span class="line">System.out.println(protocal + &quot;, &quot; + host + &quot;, &quot; + file + &quot;, &quot;</span><br><span class="line">        + port + &quot;, &quot; + ref);</span><br></pre></td></tr></table></figure>
-<p>访问链接</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">// 访问链接读取数据</span><br><span class="line">URL url = new URL(&quot;http://www.cnblogs.com/mengdd/archive/2013/03/09/2951877.html&quot;);</span><br><span class="line">BufferedReader reader = new BufferedReader(</span><br><span class="line">        new InputStreamReader(url.openStream()));</span><br><span class="line"></span><br><span class="line">String line;</span><br><span class="line">while((line = reader.readLine()) != null)&#123;</span><br><span class="line">    System.out.println(line);</span><br><span class="line">&#125;</span><br><span class="line">reader.close();</span><br></pre></td></tr></table></figure>
-<p>下面是对 URLConnection 的测试：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line">public class URLTest &#123;</span><br><span class="line">    public static void main(String args[])&#123;</span><br><span class="line">        URLTest c = new URLTest();</span><br><span class="line">        c.createURL();</span><br><span class="line">        c.printURLParam();</span><br><span class="line">        c.readURL();</span><br><span class="line">        c.printURL();</span><br><span class="line">    &#125;</span><br><span class="line">    void createURL()&#123;</span><br><span class="line">        try&#123;</span><br><span class="line">            URL url = new URL(&quot;http://localhost:8080/&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        catch(MalformedURLException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    void printURLParam()&#123;</span><br><span class="line">        try&#123;</span><br><span class="line">            URL url = new URL(&quot;http://java.sun.com:80/docs/books/tutorial/index.html#DOWN&quot;);//#后面的DOWN是位置标识符，在获得网页后，浏览器将直接跳到网页的DOWN处读取</span><br><span class="line">            String protocal = url.getProtocol();</span><br><span class="line">            String host = url.getHost();</span><br><span class="line">            String file = url.getFile();</span><br><span class="line">            int port = url.getPort();</span><br><span class="line">            String ref = url.getRef();//获得#后面的</span><br><span class="line">            System.out.println(protocal + &quot;, &quot; + host + &quot;, &quot; + file + &quot;, &quot;</span><br><span class="line">                    + port + &quot;, &quot; + ref);</span><br><span class="line">        &#125;</span><br><span class="line">        catch(MalformedURLException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    void readURL()&#123;//将网页内容拷贝到本地</span><br><span class="line">        try&#123;</span><br><span class="line">            URL url = new URL(&quot;http://www.baidu.com&quot;);</span><br><span class="line">            URLConnection conn = url.openConnection();</span><br><span class="line">            InputStream is = conn.getInputStream();</span><br><span class="line">            //或者直接is = url.openStream();</span><br><span class="line">            OutputStream os = new FileOutputStream(&quot;e:\\baidu.txt&quot;);</span><br><span class="line">            byte[] buffer = new byte[2048];</span><br><span class="line">            int length = 0;</span><br><span class="line">            while((length = is.read(buffer, 0, buffer.length)) != -1)&#123;</span><br><span class="line">                os.write(buffer, 0, length);</span><br><span class="line">            &#125;</span><br><span class="line">            is.close();</span><br><span class="line">            os.close();</span><br><span class="line">        &#125;</span><br><span class="line">        catch(MalformedURLException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        catch(IOException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    void printURL()&#123;//读取网页内容到控制台</span><br><span class="line">        try&#123;</span><br><span class="line">            URL url = new URL(&quot;http://www.baidu.com&quot;);</span><br><span class="line">            BufferedReader reader = new BufferedReader(</span><br><span class="line">                    new InputStreamReader(url.openStream()));</span><br><span class="line">            String line;</span><br><span class="line">            while((line = reader.readLine()) != null)&#123;</span><br><span class="line">                System.out.println(line);</span><br><span class="line">            &#125;</span><br><span class="line">            reader.close();</span><br><span class="line">        &#125;</span><br><span class="line">        catch(MalformedURLException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        catch(IOException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="tcp-和-udp"><a class="header-anchor" href="#tcp-和-udp">¶</a>TCP 和 UDP</h3>
-<p>它们都是位于传输层的协议，为应用进程提供服务，根据不同的应用场景，会使用不同的协议。<br>
-TCP 是基于连接的、面向流的协议，提供可靠通信，因此每次通信必须先建立连接，建立连接后可以分多次进行传输任务，并且保证数据的正确性。<br>
-UDP 是基于无连接的、面向数据报的协议，提供不可靠通信，每次通信只需要发送一次数据报，可以分多次发送，但不保证能否到达、到达的顺序。</p>
-<p>Socket 是 TCP 的应用编程接口，DatagramSocket 是 UDP 的应用编程接口，他们之间没有继承关系（都实现 Closeable 接口）。<br>
-Socket 使用时需要先指定目标主机地址和端口号，然后打开 io 流进行操作<br>
-1.服务端</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 监听8080端口</span><br><span class="line">ServerSocket server = new ServerSocket(8080);</span><br><span class="line">// 等待请求</span><br><span class="line">Socket socket = server.accept();</span><br><span class="line">// 进行通信</span><br><span class="line">BufferedReader reader = new BufferedReader(</span><br><span class="line">        new InputStreamReader(socket.getInputStream()));</span><br><span class="line">String line = reader.readLine();</span><br><span class="line">System.out.println(line);</span><br><span class="line">PrintWriter writer = new PrintWriter(socket.getOutputStream());</span><br><span class="line">writer.println(line);</span><br><span class="line">writer.flush(); // 不要忘了这个</span><br><span class="line">// 关闭资源</span><br><span class="line">writer.close();</span><br><span class="line">reader.close();</span><br><span class="line">socket.close();</span><br><span class="line">server.close();</span><br></pre></td></tr></table></figure>
-<p>2.客户端</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 监听8080端口</span><br><span class="line">Socket socket = new Socket(&quot;127.0.0.1&quot;, 8080);</span><br><span class="line">// 开始通信</span><br><span class="line">PrintWriter writer = new PrintWriter(socket.getOutputStream());</span><br><span class="line">writer.println(&quot;hello&quot;);</span><br><span class="line">writer.flush();</span><br><span class="line">BufferedReader reader = new BufferedReader(</span><br><span class="line">        new InputStreamReader(socket.getInputStream()));</span><br><span class="line">String line = reader.readLine();</span><br><span class="line">System.out.println(line);</span><br><span class="line">// 关闭资源</span><br><span class="line">writer.close();</span><br><span class="line">reader.close();</span><br><span class="line">socket.close();</span><br></pre></td></tr></table></figure>
-<h3 id="socketchannel-和-serversocketchannel"><a class="header-anchor" href="#socketchannel-和-serversocketchannel">¶</a>SocketChannel 和 ServerSocketChannel</h3>
-<p>缓冲（Buffer）：相当于货物<br>
-管道（Channel）：相当于配货车，支持同时装多件货物。<br>
-选择器（Selector）：是 SelectableChannel 的多路复用器。用于监控 SelectableChannel 的 IO 状况。相当于中转站的分拣员。</p>
-<h3 id="使用-datagramsocket-进行-udp-通信"><a class="header-anchor" href="#使用-datagramsocket-进行-udp-通信">¶</a>使用 DatagramSocket 进行 UDP 通信</h3>
-<h4 id="下面的代码使用-datagramsocket-实现-udp-通信"><a class="header-anchor" href="#下面的代码使用-datagramsocket-实现-udp-通信">¶</a>下面的代码使用 DatagramSocket 实现 UDP 通信</h4>
-<p>服务端：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 创建服务器socket，指定端口</span><br><span class="line">DatagramSocket socket = new DatagramSocket(7000);</span><br><span class="line">// 接收信息保存到一个缓冲区，DatagramPacket(bytes, len)</span><br><span class="line">byte[] buffer = new byte[1024];</span><br><span class="line">DatagramPacket packet = new DatagramPacket(buffer, 1024);</span><br><span class="line">socket.receive(packet);</span><br><span class="line">System.out.println(new String(buffer, 0, packet.getLength()));</span><br><span class="line">// 响应信息，接收时需要指定地址和端口</span><br><span class="line">String str = &quot;Welcome!&quot;;</span><br><span class="line">DatagramPacket packet1 = new DatagramPacket(str.getBytes(),</span><br><span class="line">        str.length(), packet.getAddress(), packet.getPort());</span><br><span class="line">socket.send(packet1);</span><br><span class="line">// 关闭资源</span><br><span class="line">socket.close();</span><br></pre></td></tr></table></figure>
-<p>客户端：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">DatagramSocket socket = new DatagramSocket();</span><br><span class="line">// 发送数据包</span><br><span class="line">String str = &quot;Hello World&quot;;</span><br><span class="line">DatagramPacket packet = new DatagramPacket(str.getBytes(),</span><br><span class="line">        str.length(), InetAddress.getByName(&quot;localhost&quot;), 7000);</span><br><span class="line">socket.send(packet);</span><br><span class="line">// 接收响应</span><br><span class="line">byte[] buffer = new byte[1024];</span><br><span class="line">DatagramPacket packet1 = new DatagramPacket(buffer, 100);</span><br><span class="line">socket.receive(packet1);</span><br><span class="line">System.out.println(new String(buffer, 0, packet1.getLength()));</span><br><span class="line">// 关闭资源</span><br><span class="line">socket.close();</span><br></pre></td></tr></table></figure>
-<h4 id="下面的代码使用-nio-实现数据报协议"><a class="header-anchor" href="#下面的代码使用-nio-实现数据报协议">¶</a>下面的代码使用 NIO 实现数据报协议</h4>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">// 发送</span><br><span class="line">public void send() throws IOException&#123;</span><br><span class="line">    // 打开数据报通道</span><br><span class="line">    DatagramChannel dc = DatagramChannel.open();</span><br><span class="line">    dc.configureBlocking(false);</span><br><span class="line">    ByteBuffer buf = ByteBuffer.allocate(1024);</span><br><span class="line">    Scanner scan = new Scanner(System.in);</span><br><span class="line">    while(scan.hasNext())&#123;</span><br><span class="line">        String str = scan.next();</span><br><span class="line">        buf.put((new Date().toString() + &quot;:\n&quot; + str).getBytes());</span><br><span class="line">        buf.flip();</span><br><span class="line">        dc.send(buf, new InetSocketAddress(&quot;127.0.0.1&quot;, 9898));</span><br><span class="line">        buf.clear();</span><br><span class="line">    &#125;</span><br><span class="line">    dc.close();</span><br><span class="line">&#125;</span><br><span class="line">// 接收</span><br><span class="line">public void receive() throws IOException&#123;</span><br><span class="line">    // 传送数据报通道</span><br><span class="line">    DatagramChannel dc = DatagramChannel.open();</span><br><span class="line">    dc.configureBlocking(false);</span><br><span class="line">    dc.bind(new InetSocketAddress(9898));</span><br><span class="line">    Selector selector = Selector.open();</span><br><span class="line">    dc.register(selector, SelectionKey.OP_READ);</span><br><span class="line">    while(selector.select() &gt; 0)&#123;</span><br><span class="line">        Iterator&lt;SelectionKey&gt; it = selector.selectedKeys().iterator();</span><br><span class="line">        while(it.hasNext())&#123;</span><br><span class="line">            SelectionKey sk = it.next();</span><br><span class="line">            if(sk.isReadable())&#123;</span><br><span class="line">                ByteBuffer buf = ByteBuffer.allocate(1024);</span><br><span class="line">                dc.receive(buf);</span><br><span class="line">                buf.flip();</span><br><span class="line">                System.out.println(new String(buf.array(), 0, buf.limit()));</span><br><span class="line">                buf.clear();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        it.remove();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="使用-nio-实现简易-httpserver"><a class="header-anchor" href="#使用-nio-实现简易-httpserver">¶</a>使用 NIO 实现简易 HttpServer</h3>
-<p>主要思路很简单：<br>
-(1) 服务器打开后首先为 Selector 注册一个 OP_ACCEPT 的 key，这样 select 时就能接收客户端请求了；<br>
-(2) 每接收一个请求后即为该 key 创建一个线程，处理该 key 的操作，操作包括 accept 和 read，对于前者，只需为该 key 的 selector 再注册一个 OP_READ 用于准备接下来的读请求；<br>
-(3) 读取时先读入一个 Buffer，首先解析请求头部分，直到遇到一个空行结束，因为这里只考虑 GET 请求，所以不必继续解析请求体了；<br>
-(4) 返回时，首先构建响应头，同样使用一个空行结束，然后构建响应体，写回客户端，结束。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line">public class HttpServer &#123;</span><br><span class="line">    public static void main(String[] args) throws IOException &#123;</span><br><span class="line">        // 监听8080端口</span><br><span class="line">        ServerSocketChannel server = ServerSocketChannel.open();</span><br><span class="line">        server.socket().bind(new InetSocketAddress(8080));</span><br><span class="line">        // 设置为非阻塞模式</span><br><span class="line">        server.configureBlocking(false);</span><br><span class="line">        // 为server注册选择器</span><br><span class="line">        Selector selector = Selector.open();</span><br><span class="line">        server.register(selector, SelectionKey.OP_ACCEPT);</span><br><span class="line">        // 创建处理器</span><br><span class="line">        while(true) &#123;</span><br><span class="line">            // 等待请求，每次阻塞3s，若超过3s线程继续运行，</span><br><span class="line">            // select(0)或select()表示一直阻塞</span><br><span class="line">            if(selector.select(3000) == 0) &#123;</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line">            // 获取所有待处理的选择键</span><br><span class="line">            Iterator&lt;SelectionKey&gt; keyIter = selector.selectedKeys().iterator();</span><br><span class="line">            while(keyIter.hasNext()) &#123;</span><br><span class="line">                SelectionKey key = keyIter.next();</span><br><span class="line">                // 启动新线程以处理SelectionKey</span><br><span class="line">                new Thread(new HttpHandler(key)).run();</span><br><span class="line">                // 处理完毕后，移除当前key</span><br><span class="line">                keyIter.remove();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private static class HttpHandler implements Runnable &#123;</span><br><span class="line">        private int bufferSize = 1024;</span><br><span class="line">        private String localCharset = &quot;UTF-8&quot;;</span><br><span class="line">        private SelectionKey key;</span><br><span class="line"></span><br><span class="line">        public HttpHandler(SelectionKey key) &#123;</span><br><span class="line">            this.key = key;</span><br><span class="line">        &#125;</span><br><span class="line">        // 定义操作</span><br><span class="line">        private void handleAccept() throws IOException &#123;</span><br><span class="line">            // 接受请求后，注册OP_READ选择键以等待下一次请求</span><br><span class="line">            SocketChannel clientChannel = ((ServerSocketChannel)key.channel()).accept();</span><br><span class="line">            clientChannel.configureBlocking(false);</span><br><span class="line">            // !!!请求报文被限制在1024个字节内</span><br><span class="line">            clientChannel.register(key.selector(),</span><br><span class="line">                    SelectionKey.OP_READ, ByteBuffer.allocate(bufferSize));</span><br><span class="line">        &#125;</span><br><span class="line">        private void handleRead() throws IOException &#123;</span><br><span class="line">            // 获取</span><br><span class="line">            SocketChannel sc = (SocketChannel) key.channel();</span><br><span class="line">            // 获取Buffer并重置</span><br><span class="line">            ByteBuffer buffer = (ByteBuffer) key.attachment();</span><br><span class="line">            buffer.clear();</span><br><span class="line">            // 读取，并判断内容是否为空，若是则关闭并退出</span><br><span class="line">            if(sc.read(buffer) == -1) &#123;</span><br><span class="line">               sc.close();</span><br><span class="line">               return;</span><br><span class="line">            &#125;</span><br><span class="line">            // 接收请求数据</span><br><span class="line">            buffer.flip();</span><br><span class="line">            String receivedString = Charset.forName(localCharset).newDecoder().</span><br><span class="line">                    decode(buffer).toString();</span><br><span class="line"></span><br><span class="line">            // 打印请求报文头</span><br><span class="line">            String[] requestMessage = receivedString.split(&quot;\r\n&quot;);</span><br><span class="line">            for(String s: requestMessage) &#123;</span><br><span class="line">                System.out.println(s);</span><br><span class="line">                // 遇到空行说明报文头已经打印完</span><br><span class="line">                if(s.isEmpty()) &#123;</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            // 控制台打印首行信息</span><br><span class="line">            String[] firstLine = requestMessage[0].split(&quot; &quot;);</span><br><span class="line">            System.out.println();</span><br><span class="line">            System.out.println(&quot;Method:\t&quot; + firstLine[0]);</span><br><span class="line">            System.out.println(&quot;url:\t&quot; + firstLine[1]);</span><br><span class="line">            System.out.println(&quot;HTTP Version:\t&quot; + firstLine[2]);</span><br><span class="line">            System.out.println();</span><br><span class="line">            // 返回客户端（!!!考虑对不同的Url和不同的请求方法进行不同的处理和响应）</span><br><span class="line">            StringBuilder sendString = new StringBuilder();</span><br><span class="line">            sendString.append(&quot;HTTP/1.1 200 OK\r\n&quot;); // 响应报文首行</span><br><span class="line">            sendString.append(&quot;Content-Type:text/html;charset=&quot; + // !!!如果要传输流数据必须修改Content-Type</span><br><span class="line">                    localCharset + &quot;\r\n&quot;);</span><br><span class="line">            sendString.append(&quot;\r\n&quot;); // 报文结束后加一空行</span><br><span class="line">            // 响应体</span><br><span class="line">            sendString.append(&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;显示报文&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&quot;);</span><br><span class="line">            sendString.append(&quot;接收到请求报文是: &lt;br/&gt;&quot;);</span><br><span class="line">            for(String s: requestMessage) &#123;</span><br><span class="line">                sendString.append(s + &quot;&lt;br/&gt;&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">            sendString.append(&quot;&lt;/body&gt;&lt;/html&gt;&quot;);</span><br><span class="line">            // 使用缓冲区写入channel</span><br><span class="line">            buffer = ByteBuffer.wrap(sendString.toString().getBytes(localCharset));</span><br><span class="line">            sc.write(buffer);</span><br><span class="line">            // 关闭资源</span><br><span class="line">            sc.close();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        public void run() &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                // 根据请求类型进行转发</span><br><span class="line">                if(key.isAcceptable()) &#123;</span><br><span class="line">                    handleAccept();</span><br><span class="line">                &#125;</span><br><span class="line">                if(key.isReadable()) &#123;</span><br><span class="line">                    handleRead();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; catch (IOException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="使用-nio-selector-实现简易聊天室"><a class="header-anchor" href="#使用-nio-selector-实现简易聊天室">¶</a>使用 NIO-Selector 实现简易聊天室</h3>
-<h4 id="客户端"><a class="header-anchor" href="#客户端">¶</a>客户端</h4>
-<p>声明数据结构</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 管道、选择器、字符集</span><br><span class="line">private SocketChannel sc = null;</span><br><span class="line">private Selector selector = null;</span><br><span class="line">private Charset charset = Charset.forName(&quot;UTF-8&quot;);</span><br></pre></td></tr></table></figure>
-<p>创建线程类用于从服务端获取数据</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">private class ClientThread extends Thread &#123;</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            // 遍历所有选择键</span><br><span class="line">            while(selector.select() &gt; 0) &#123;</span><br><span class="line">                for(SelectionKey sk : selector.selectedKeys()) &#123;</span><br><span class="line">                    // 删除正在处理的</span><br><span class="line">                    selector.selectedKeys().remove(sk);</span><br><span class="line">                    // 如果该键对应的通道中有可读的数据</span><br><span class="line">                    if(sk.isReadable()) &#123;</span><br><span class="line">                        // 使用缓冲区读取管道内的数据</span><br><span class="line">                        SocketChannel sc = (SocketChannel) sk.channel();</span><br><span class="line">                        ByteBuffer buff = ByteBuffer.allocate(1024);</span><br><span class="line">                        String content = &quot;&quot;;</span><br><span class="line">                        while(sc.read(buff) &gt; 0) &#123;</span><br><span class="line">                            buff.flip();</span><br><span class="line">                            content += charset.decode(buff);</span><br><span class="line">                        &#125;</span><br><span class="line">                        // 打印</span><br><span class="line">                        System.out.println(&quot;聊天信息&quot; + content);</span><br><span class="line">                        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch(IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>初始化</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// 初始化SocketChannel</span><br><span class="line">InetSocketAddress isa = new InetSocketAddress(&quot;127.0.0.1&quot;, 9999);</span><br><span class="line">sc = SocketChannel.open(isa);</span><br><span class="line">sc.configureBlocking(false);</span><br><span class="line">// 注册选择器</span><br><span class="line">selector = Selector.open();</span><br><span class="line">sc.register(selector, SelectionKey.OP_READ);</span><br></pre></td></tr></table></figure>
-<p>创建线程从服务端拉取数据，及不断从键盘读入发送到服务端</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// 启动线程不断从服务端拉取</span><br><span class="line">new ClientThread().start();</span><br><span class="line">// 读取键盘输入到通道</span><br><span class="line">Scanner reader = new Scanner(System.in);</span><br><span class="line">while(reader.hasNextLine()) &#123;</span><br><span class="line">    String line = reader.nextLine();</span><br><span class="line">    sc.write(charset.encode(line));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="服务端"><a class="header-anchor" href="#服务端">¶</a>服务端</h4>
-<p>声明</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">// 选择器、字符集</span><br><span class="line">private Selector selector = null;</span><br><span class="line">private Charset charset = Charset.forName(&quot;UTF-8&quot;);</span><br></pre></td></tr></table></figure>
-<p>初始化</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// 打开管道</span><br><span class="line">ServerSocketChannel server = ServerSocketChannel.open();</span><br><span class="line">InetSocketAddress isa = new InetSocketAddress(&quot;127.0.0.1&quot;, 9999);</span><br><span class="line">server.socket().bind(isa);</span><br><span class="line">server.configureBlocking(false);</span><br><span class="line">// 打开选择器</span><br><span class="line">selector = Selector.open();</span><br><span class="line">server.register(selector, SelectionKey.OP_ACCEPT);</span><br></pre></td></tr></table></figure>
-<p>接受连接，读取及发送数据</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">// 依次处理选择器上的选择键</span><br><span class="line">while(selector.select() &gt; 0) &#123;</span><br><span class="line">    for(SelectionKey sk : selector.selectedKeys()) &#123;</span><br><span class="line">        selector.selectedKeys().remove(sk);</span><br><span class="line">        // 连接请求</span><br><span class="line">        if(sk.isAcceptable()) &#123;</span><br><span class="line">            SocketChannel sc = server.accept();</span><br><span class="line">            sc.configureBlocking(false);</span><br><span class="line">            sc.register(selector, SelectionKey.OP_READ);</span><br><span class="line">            sk.interestOps(SelectionKey.OP_ACCEPT);</span><br><span class="line">        &#125;</span><br><span class="line">        // 存在可读取数据</span><br><span class="line">        if(sk.isReadable()) &#123;</span><br><span class="line">            // 使用缓冲区读取</span><br><span class="line">            SocketChannel sc = (SocketChannel) sk.channel();</span><br><span class="line">            ByteBuffer buff = ByteBuffer.allocate(1024);</span><br><span class="line">            String content = &quot;&quot;;</span><br><span class="line">            try &#123;</span><br><span class="line">                while(sc.read(buff) &gt; 0) &#123;</span><br><span class="line">                    buff.flip();</span><br><span class="line">                    content += charset.decode(buff);</span><br><span class="line">                &#125;</span><br><span class="line">                System.out.println(&quot;=======&quot; + content);</span><br><span class="line">                // 将管道设置为准备下一次读取</span><br><span class="line">                sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">            &#125; catch(IOException e) &#123;</span><br><span class="line">                // 如果该sk对应的管道出现异常，表明管道的客户端出现异常，</span><br><span class="line">                // 所以从选择器中取消sk</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">                sk.cancel();</span><br><span class="line">                if(sk.channel() != null) &#123;</span><br><span class="line">                    sk.channel().close();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            // 说明聊天信息不为空</span><br><span class="line">            if(content.length() &gt; 0) &#123;</span><br><span class="line">                // 将聊天信息输入每个选择键对应的管道中</span><br><span class="line">                for(SelectionKey key : selector.keys()) &#123;</span><br><span class="line">                    Channel targetChannel = key.channel();</span><br><span class="line">                    if(targetChannel instanceof SocketChannel) &#123;</span><br><span class="line">                        SocketChannel dest = (SocketChannel) targetChannel;</span><br><span class="line">                        dest.write(charset.encode(content));</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h3>
-<ol>
-<li>为什么 Socket 可以通过流来“持续地”读写，而 DatagramSocket 却只能一个一个数据报发哩？<br>
-这是由 TCP 和 UDP 的协议决定的，TCP 是面向流的协议，而 UDP 是面向数据报的协议。</li>
-<li>可以用 TCP 客户端连接 UDP 服务器吗（或者反过来）？<br>
-不能，实验过确实不行，但是我还是心存疑惑，我猜测是因为接收方可以判断数据包的协议类型来确定是否接收。</li>
-<li>socket 是怎么实现&quot;全双工&quot;的？</li>
-</ol>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://www.programcreek.com/java-api-examples/index.php" target="_blank" rel="noopener">Java Code Examples</a></li>
-<li><a href="https://blog.csdn.net/x5fnncxzq4/article/details/83110446" target="_blank" rel="noopener">Java 应用中的日志</a></li>
-<li><a href="https://juejin.im/pin/5cc56f7b6fb9a02f00fc869e" target="_blank" rel="noopener">错误处理的推荐实践</a></li>
-<li><a href="http://tech.it168.com/a2013/0829/1527/000001527360.shtml" target="_blank" rel="noopener">Java 开发中 10 个最为微妙的最佳编程实践</a></li>
-<li>《Effective Java》</li>
-<li><a href="https://edu.aliyun.com/course/417?spm=5176.10731542.0.0.akyXwK" target="_blank" rel="noopener">阿里巴巴编码规范（Java）</a></li>
-<li><a href="https://blog.csdn.net/xx326664162/article/details/52175283" target="_blank" rel="noopener">Java 泛型中的 PECS 原则</a></li>
-</ol>
-<h3 id="jni"><a class="header-anchor" href="#jni">¶</a>JNI</h3>
-<ol>
-<li><a href="http://tldp.org/HOWTO/Program-Library-HOWTO/index.html" target="_blank" rel="noopener">Program Library HOWTO (how to create and use program libraries on Linux)</a></li>
-<li><a href="https://devarea.com/java-and-cc-jni-guide/" target="_blank" rel="noopener">Java and C/C++: JNI Guide</a></li>
-</ol>
-<h3 id="java5-v2"><a class="header-anchor" href="#java5-v2">¶</a>Java5</h3>
-<ol>
-<li><a href="https://segmentfault.com/a/1190000004417288" target="_blank" rel="noopener">Java5 的新特性</a></li>
-<li><a href="https://docs.oracle.com/javase/1.5.0/docs/relnotes/features.html" target="_blank" rel="noopener">New Features and Enhancements J2SE 5.0</a></li>
-<li><a href="https://www.cnblogs.com/xll1025/p/6489088.html" target="_blank" rel="noopener">java 泛型（二）、泛型的内部原理：类型擦除以及类型擦除带来的问题</a></li>
-</ol>
-<h3 id="网络"><a class="header-anchor" href="#网络">¶</a>网络</h3>
-<ol>
-<li><a href="http://blog.csdn.net/wangpeng047/article/details/19624529" target="_blank" rel="noopener">HttpClient 使用详解</a></li>
-<li><a href="http://blog.csdn.net/xietansheng/article/details/51673073" target="_blank" rel="noopener">基于 JavaMail 的 Java 邮件发送：简单邮件发送</a></li>
-<li><a href="http://kf.qq.com/faq/120322fu63YV130422nqIrqu.html" target="_blank" rel="noopener">qq 邮箱服务器地址</a></li>
-</ol>
-<h3 id="工程"><a class="header-anchor" href="#工程">¶</a>工程</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/9c65b7613c30" target="_blank" rel="noopener">IntelliJ IDEA 使用教程(2019 图文版) – 从入门到上瘾</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/8ada3a78.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/8ada3a78.html" itemprop="url">JMM 应用总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-05-02T17:22:14+08:00">
-                2019-05-02
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.3k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  12 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>公司内接手的老项目近段时间遇到了内存瓶颈，新发版 GC 日志刷个不停，且集中在 YGC，显然有不自然的内存分配，看来内存优化是绕不过了。<br>
-在 Java 技术栈内，对内存的分析优化主要集中在堆中，往往需要先使用一些内存分析工具导出堆的一份快照，然后查看是哪些对象在浪费空间，它们可能是非常大的、非常短命的。<br>
-除了 JMM，对宿主机的内存管理原理也是有必要掌握的，这样能从底层的角度来进行解释 JMM 的原理，在针对 JMM 进行调参的时候也能更有把握（和运维撕的时候也更不容易被忽悠），鉴于现在的生产环境绝大多数都是 Linux，因此我也会对 Linux 的虚拟内存管理机制作一个简单分析。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/8ada3a78.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5ac9459.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/5ac9459.html" itemprop="url">多级缓存原理</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-04-10T23:13:20+08:00">
-                2019-04-10
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/设计/" itemprop="url" rel="index">
-                    <span itemprop="name">设计</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  10.6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  38 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="本地缓存"><a class="header-anchor" href="#本地缓存">¶</a>本地缓存</h2>
-<h3 id="由线上缓存-bug-引起的对本地缓存的思考"><a class="header-anchor" href="#由线上缓存-bug-引起的对本地缓存的思考">¶</a>由线上缓存 bug 引起的对本地缓存的思考</h3>
-<p>LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache 的坑，首先给出最简单的缓存配置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .expireAfterAccess(60 * 1000, MILLISECONDS) // 1</span><br><span class="line">        .maximumSize(500)</span><br><span class="line">        .build(new CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public Object load(String id) throws Exception &#123;</span><br><span class="line">                return query(id); // 2</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-<ol>
-<li>在构建 LoadingCache 的时候可以配置缓存的过期策略，LoadingCache 其实有三种常用的过期策略：
-<ul>
-<li>expireAfterAccess：在最后一次访问后空闲一段时间才过期；</li>
-<li>expireAfterWrite：在最后一次写后空闲一段时间才过期；</li>
-<li>refreshAfterWrite：同样是写后空闲一段时间过期，和上一个的区别是不会阻塞过期时到达的请求，因为刷新一般需要请求远程服务来获取数据，会有比较长的延迟，refreshAfterWrite 会先返回旧数据，而 expireAfterWrite 会先阻塞这些请求。<br>
-如果是为了吞吐量起见，一般使用 refreshAfterWrite 更多，如果是为了保证同步性，则是使用 expireAfterWrite 更多。<br>
-因为我们使用缓存的场景是“读多写少的场景”，读端是提供给用户的，而写端由甲方客户控制，当它们更新了某个 id 的数据后，希望能够马上展示到用户眼前，换句话说，缓存应当能够被马上刷新，但是前面的配置中使用的是 expireAfterAccess，因为用户的访问非常频繁，所以缓存一直不能过期，上线的数据不能及时地生效，导致甲方爸爸非常生气。</li>
-</ul>
-</li>
-<li>缓存更新的时候一般会从远程服务或数据库查询数据，这里没有考虑返回值为空的情况，为了保险起见，一般都是需要进行空值校验的，而且如果这里返回了空值，LoadingCache 会直接抛出异常。</li>
-</ol>
-<p>所以更合理的配置方式应该是下面这样的：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, Object&gt; cache = CacheBuilder.newBuilder()</span><br><span class="line">        .refreshAfterWrite(60 * 1000, MILLISECONDS) // 1</span><br><span class="line">        .maximumSize(500)</span><br><span class="line">        .build(new CacheLoader&lt;String, Object&gt;() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public Object load(String id) throws Exception &#123;</span><br><span class="line">                Object res = query(id); // 2</span><br><span class="line">                return res == null ? DEFAULT_OBJ : res;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-<p>所以，当我们在使用缓存时，一般是事先考虑：</p>
-<ul>
-<li>dataSource：当没有命中时，从哪里获取数据？一般请求下会调用其他服务的远程接口，也可以直接从数据库、缓存中间件查询，但是要注意数据隔离性，比如权限服务就不适合直接到缓存或数据库中查询订单数据，因为这样不利于后期扩容，而且入口越多越不安全；</li>
-<li>expire：定义淘汰策略，比如有一段时间没有访问就淘汰，比如容量限制，当超出容量的时候如何淘汰一般有 LRU（Least Recently Used）、LFU（Least Frequently Used），可以使用 weigher 设置每个 key 的权重；</li>
-</ul>
-<p>如果是一些要求不高的内部信息管理系统，这些属性不需要太关注，但是如果是对并发量有一定要求的系统，对自己所使用的工具知根知底是最低的要求。</p>
-<h3 id="本地缓存是什么"><a class="header-anchor" href="#本地缓存是什么">¶</a>本地缓存是什么</h3>
-<p>本地缓存的英文是 Local Cache，Cache、Buffer、Pool 是经常出现但又容易混淆的一组概念，它们都能存取数据，但是有本质上的区别：</p>
-<ul>
-<li>Cache 的主要功能是“将东西放到更容易拿到的地方”、从而加快速度，具有随机存取的功能，一般为了不导致内存溢出会设置数据的过期回收策略，比如计算机体系结构中的 L1、L2、L3 缓存；</li>
-<li>Buffer 是为了缓冲、减少对脆弱系统的冲击，具有顺序访问的特点，比如每个 TCP Socket 都有的接收发送缓存区；</li>
-<li>Pool 是为了缓存资源，它和 Cache 的主要区别是 Pool 中缓存的对象往往是同构而没有特殊价值的数据，比如连接池中存储的数据库连接，所以 Pool 不需要随机存取功能、随取随用即可。</li>
-</ul>
-<h3 id="本地缓存的优点"><a class="header-anchor" href="#本地缓存的优点">¶</a>本地缓存的优点</h3>
-<ul>
-<li>节省了了内⽹带宽。</li>
-<li>响应时延会更低。</li>
-</ul>
-<h3 id="本地缓存的缺点"><a class="header-anchor" href="#本地缓存的缺点">¶</a>本地缓存的缺点</h3>
-<p>⽆法保证⼀致性，解决办法是：</p>
-<ol>
-<li>单节点通知其他节点，但是会导致同⼀服务的多个节点相互耦合；</li>
-<li>利用 mq 通知其他节点，但系统会变得更复杂；</li>
-<li>使用 timer 定时从后端拉取更新内存缓存，但在更新数据后、访问其他节点会得到脏数据，直到其他节点 timer 拉取数据。</li>
-</ol>
-<h3 id="什么时候需要本地缓存"><a class="header-anchor" href="#什么时候需要本地缓存">¶</a>什么时候需要本地缓存</h3>
-<p>分层架构设计，有⼀条准则：站点层、服务层要做到<strong>⽆数据</strong>、<strong>⽆状态</strong>，这样才能任意的加节点⽔平扩展，数据和状态尽量存储到后端的数据存储服务，例如数据库服务或者缓存服务。<br>
-可以看到，站点与服务的进程内缓存，实际上违背了分层架构设计的⽆状态准则，故<strong>一般情况下并不推荐使用</strong>。<br>
-在分布式缓存存在的情况下，一般本地缓存都是不必要的，一方面本地缓存会占用大量的堆空间，容易引起频繁的 GC；另一方面，因为是在局域网内，所以访问分布式缓存的网络开销不会太大。</p>
-<p>那么，什么时候可以使⽤进程内缓存？以下情况，可以考虑使用进程内缓存，并且应该注意对过期策略、并发安全等的定义。</p>
-<ol>
-<li>只读数据，可以考虑在进程启动时加载到内存。</li>
-</ol>
-<blockquote>
-<p>当然此时也可以把数据加载到 redis / memcache 等缓存中间件，进程外缓存同样能解决这个问题。</p>
-</blockquote>
-<ol>
-<li>性能敏感、极其⾼并发的、如果透传对后端压力极大的场景，可以考虑使用进程内缓存。例如，首页列表、秒杀业务，并发量极高，需要站点层挡住流量，可以使⽤内存缓存。</li>
-<li>一定程度上允许数据不一致的业务。<br>
-例如，有一些计数场景，运营场景，⻚面对数据⼀致性要求较低，可以考虑使⽤进程内⻚面缓存。</li>
-</ol>
-<h3 id="避免过早优化"><a class="header-anchor" href="#避免过早优化">¶</a>避免过早优化</h3>
-<p>后端开发基本都是完美主义者（粗心导致留下 Bug 可是会被产品、测试鄙视的），但是完美主义也有一个缺点——容易过早优化。<br>
-比如，项目早期使用者不多、订单只有 10W～100W 的量级，但是开发刚上来在对行业知识、产品使用场景都没有深刻理解的情况下，直接决定对 id 散列来进行分表，这个对我们来说当然是无可厚非的，但是随着业务扩大、订单量增加到 100W～1000W，发现线上数据库中近期的订单被使用得更多（即热数据）、而老订单一般不被问津，所以原来那种新老混杂的分表就不合适了，但是现在再重构成按时间分表的方式就费事了。因此，更好的方式是刚开始仅用单表存就足够了，之后时刻关注线上使用的反馈，即时地进行优化。</p>
-<h3 id="java-引用"><a class="header-anchor" href="#java-引用">¶</a>Java 引用</h3>
-<p>Java 中除了基本类型外所有对象都是通过引用来使用的，引用分为强引用、软引用、弱引用和虚引用。<br>
-对于一般的缓存场景来说，软引用是更好的选择，因为软引用可以避免内存用完而 GC 又回收不了内存进而导致的服务宕机，又不会像弱引用那样每次 GC 都会被回收掉、连带导致缓存被击穿。</p>
-<h3 id="应用-失败次数统计"><a class="header-anchor" href="#应用-失败次数统计">¶</a>应用 - 失败次数统计</h3>
-<p>一般调用 RPC 接口都会有重试逻辑，最简单的重试可以用一个局部变量记录失败次数：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">int failedCount = 0;</span><br><span class="line">while(failedCount &lt; 3) &#123;</span><br><span class="line">    try &#123;</span><br><span class="line">        rpcService.hello();</span><br><span class="line">        break;</span><br><span class="line">    &#125; catch (Exception e) &#123;</span><br><span class="line">        logger.warn(&quot;调用失败 &quot; + failedCount + &quot; 次&quot;, e);</span><br><span class="line">        failedCount++;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>如果不是需要实时响应的功能，可以用一个队列缓存请求，然后用一个线程轮询，因为失败后需要重新丢进队列中等待，这时就不能单纯使用局部变量来保存失败次数了，可以使用一个 Cache&lt;string, AtomicInteger&gt;<strong>软引用</strong>缓存失败调用记录，成功后再使其失效。这种方式能控制失败重试次数，而且当内存不足时，缓存数据可以被 GC 回收以腾出一些空间。<br>
-以 Guava 中的 LoadingCache 为例：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">private LoadingCache&lt;String, AtomicInteger&gt; failedCache = </span><br><span class="line">    CacheBuilder.newBuilder()</span><br><span class="line">        .softValues()</span><br><span class="line">        .maximumSize(10000)</span><br><span class="line">        .build(new CacheLoader&lt;String, AtomicInteger&gt;() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public AtomicInteger load(String id) throws Exception &#123;</span><br><span class="line">                return new AtomicInteger(0);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-<ul>
-<li>当失败时，调用 failedCache.getUnchecked(id).incrementAndGet()增加失败次数。</li>
-<li>当成功时，调用 failedCache.invalidate(id)使缓存失效。</li>
-</ul>
-<h3 id="gc-友好的缓存"><a class="header-anchor" href="#gc-友好的缓存">¶</a>GC 友好的缓存</h3>
-<p>diff（在不等的情况下才 put 或直接修改已有对象，提高内存利用率，不然每次刷新缓存都要放到年轻代。不能用分离链接法实现，因为老的会引用年轻的(每次 put 到头部不就可以了？)，导致年轻代不能转移到老年代）</p>
-<p>如何避免 OOM（弱引用）</p>
-<p>缓存淘汰机制<br>
-过期策略</p>
-<h3 id="如何实现一个本地缓存-concurrenthashmap"><a class="header-anchor" href="#如何实现一个本地缓存-concurrenthashmap">¶</a>如何实现一个本地缓存 - ConcurrentHashMap</h3>
-<ol>
-<li>线程安全的 Map</li>
-<li>回收机制<br>
-如 LRU</li>
-<li>软引用</li>
-</ol>
-<h2 id="分布式缓存"><a class="header-anchor" href="#分布式缓存">¶</a>分布式缓存</h2>
-<h3 id="本地缓存和分布式缓存"><a class="header-anchor" href="#本地缓存和分布式缓存">¶</a>本地缓存和分布式缓存</h3>
-<p>缓存一般分为本地缓存和分布式缓存两种。本地缓存指的是将数据存储在本机内存中，操作缓存数据的速度很快，但是缺点也很明显：第一，缓存数据的数量与大小受限于本地内存；第二，如果有多台应用服务器，可能所有应用服务器都要维护一份缓存，这样就占用了很多的内存。<br>
-分布式缓存正好解决了这两个问题。首先，数据存储在了另外的机器上，理论上由于可以不断添加缓存机器，所以缓存的数据的数量是无限的；其次，缓存集中设置在远程的缓存服务器上，应用服务器不需要耗费空间来维护缓存。但是，分布式缓存也是有缺点的，比如由于是远程操作，所以操作缓存数据的速度相较于本地缓存慢很多。<br>
-当前用得最多的本地缓存是 GoogleGuavache，用得最多的分布式缓存是 Memcached 和 Redis</p>
-<h3 id="编码和压缩"><a class="header-anchor" href="#编码和压缩">¶</a>编码和压缩</h3>
-<p>Redis 属于数据库家族中最简单的一类分支 - KV 数据库，它基本不能维护任何复杂的数据结构，也不能对值构建索引以供查询。为了提高操作效率，自然而然会想到对值进行压缩，额外的编码其实是为了调试时方便，能直接查看保存的数据的内容。除了这些之外，还和 Redis 本身对各对象类型的编码规则有关：</p>
-<p>但是对数据进行压缩并不是银弹，对特别大的数据执行压缩需要占用不菲的 CPU 时间，所以需要作一个权衡。<br>
-特别小、特别大的数据直接发，中间数据压缩再保存可以触发数据库使用更有效的结构来保存。</p>
-<p>压缩算法：</p>
-<ol>
-<li>ZIP</li>
-<li>GZIP（最常用）</li>
-<li>LZF</li>
-<li>zstd（Arch Linux）</li>
-<li>…</li>
-</ol>
-<p>TODO:</p>
-<h3 id="使用-watcher-实现-cas"><a class="header-anchor" href="#使用-watcher-实现-cas">¶</a>使用 Watcher 实现 CAS</h3>
-<p>TODO:</p>
-<h3 id="基于缓存的事务"><a class="header-anchor" href="#基于缓存的事务">¶</a>基于缓存的事务</h3>
-<p>TODO:</p>
-<h3 id="缓存穿透"><a class="header-anchor" href="#缓存穿透">¶</a>缓存穿透</h3>
-<p>概念及场景：缓存穿透是指查询一个一定不存在的数据，由于缓存是不命中时被动写的，并且出于容错考虑，如果从存储层查不到数据则不写入缓存，这将导致这个不存在的数据每次请求都要到存储层去查询，失去了缓存的意义。在流量大时，可能 DB 就挂掉了，要是有人利用不存在的 key 频繁攻击我们的应用，这就是漏洞。<br>
-解决方案：有很多种方法可以有效地解决缓存穿透问题，最常见的则是采用<strong>布隆过滤器</strong>，将所有可能存在的数据哈希到一个足够大的<strong>bitmap</strong>中，一个一定不存在的数据会被这个 bitmap 拦截掉，从而避免了对底层存储系统的查询压力。另外也有一个更为简单粗暴的方法，如果一个查询返回的数据为空（不管是数据不存在，还是系统故障），我们仍然把这个空结果进行缓存，但它的过期时间会很短，最长不超过五分钟。<br>
-总而言之，当通过一个 key 去数据库查询出来的数据结果为 null,缓存系统就不会缓存该数据,每次该 key 查询都会经过数据库层,造成没有必要的 DB 开销。这种情况下，我们可以将该 key 缓存至缓存系统中,value 为一个特殊值(^^,&amp;&amp;…)。</p>
-<h3 id="缓存雪崩"><a class="header-anchor" href="#缓存雪崩">¶</a>缓存雪崩</h3>
-<h4 id="概念及场景"><a class="header-anchor" href="#概念及场景">¶</a>概念及场景</h4>
-<p>缓存雪崩是指在我们设置缓存时采用了相同的过期时间，导致缓存在某一时刻同时失效，请求全部转发到 DB，DB 瞬时压力过重雪崩。<br>
-key 缓存过期失效而新缓存未到期间,该 key 的查询所有请求都会去查询数据，造成 DB 压力上升，产生不必要的 DB 开销</p>
-<h4 id="解决方案"><a class="header-anchor" href="#解决方案">¶</a>解决方案</h4>
-<p>缓存失效时的雪崩效应对底层系统的冲击非常可怕。大多数系统设计者考虑用加锁或者队列的方式保证缓存的单线程（进程）写，从而避免失效时大量的并发请求落到底层存储系统上。这里分享一个简单方案就是将缓存失效时间分散开，比如我们可以在原有的失效时间基础上增加一个随机值，比如 1-5 分钟随机，这样每一个缓存的过期时间的重复率就会降低，就很难引发集体失效的事件。<br>
-解决方案总结：</p>
-<ol>
-<li>加锁排队重建,使请求可以串行化,而不用全部的请求都去查询数据库</li>
-<li>假设 key 的过期时间是 A,创建一个 key_sign,它的过期时间比 A 小,查询 key 的时候检查 key_sign 是否已经过期,如果过期则加锁后台起一个线程异步去更新 key 的值,而实际的缓存没有过期(如果实际缓存已经过期,需要加锁排队重建),但是会浪费双份缓存</li>
-<li>在原有的 value 中存一个过期值 B,B 比 A 小,取值的时候根据 B 判断 value 是否过期,如果过期,解决方案同上</li>
-<li>牺牲用户体验,当发现缓存中没有对应的数据直接返回失败,并且把需要的数据放入一个分布式队列,后台通过异步线程更新队列中需要更新的缓存</li>
-</ol>
-<h3 id="缓存污染"><a class="header-anchor" href="#缓存污染">¶</a>缓存污染</h3>
-<h4 id="概念和场景"><a class="header-anchor" href="#概念和场景">¶</a>概念和场景</h4>
-<p>一些非正常操作（比如导出 excel 文件、运营偶发性访问）而导致内存中出现很多冷数据</p>
-<h4 id="解决方案-v2"><a class="header-anchor" href="#解决方案-v2">¶</a>解决方案</h4>
-<p>选取合适的缓存算法(LUR-N 算法)。</p>
-<h3 id="缓存首次上线"><a class="header-anchor" href="#缓存首次上线">¶</a>缓存首次上线</h3>
-<h4 id="概念及场景-v2"><a class="header-anchor" href="#概念及场景-v2">¶</a>概念及场景</h4>
-<p>缓存首次上线,如果网站的访问量很大,所有的请求都经过数据库(如果访问量比较少,可以由用户访问自行缓存)</p>
-<h4 id="解决方案-v3"><a class="header-anchor" href="#解决方案-v3">¶</a>解决方案</h4>
-<p>缓存预热,在系统上线之前,所有的缓存都预先加载完毕(增加一个刷新缓存程序,上线后手动刷新或发布时自动调用刷用)</p>
-<h3 id="缓存击穿"><a class="header-anchor" href="#缓存击穿">¶</a>缓存击穿</h3>
-<p>概念及场景：对于一些设置了过期时间的 key，如果这些 key 可能会在某些时间点被超高并发地访问，是一种非常“热点”的数据。这个时候，需要考虑一个问题：缓存被“击穿”的问题，这个和缓存雪崩的区别在于这里针对某一 key 缓存，前者则是很多 key。缓存在某个时间点过期的时候，恰好在这个时间点对这个 Key 有大量的并发请求过来，这些请求发现缓存过期一般都会从后端 DB 加载数据并回设到缓存，这个时候大并发的请求可能会瞬间把后端 DB 压垮。</p>
-<h4 id="解决方案-v4"><a class="header-anchor" href="#解决方案-v4">¶</a>解决方案</h4>
-<p>1.使用互斥锁(mutex key)<br>
-业界比较常用的做法，是使用 mutex。简单地来说，就是在缓存失效的时候（判断拿出来的值为空），不是立即去 load db，而是先使用缓存工具的某些带成功操作返回值的操作（比如 Redis 的 SETNX 或者 Memcache 的 ADD）去 set 一个 mutex key，当操作返回成功时，再进行 load db 的操作并回设缓存；否则，就重试整个 get 缓存的方法。<br>
-SETNX，是「SET if Not eXists」的缩写，也就是只有不存在的时候才设置，可以利用它来实现锁的效果。在 redis2.6.1 之前版本未实现 setnx 的过期时间，所以这里给出两种版本代码参考：<br>
-<a href="//2.6.1">//2.6.1</a> 前单机版本锁<br>
-String get(String key) {<br>
-String value = redis.get(key);<br>
-if (value == null) {<br>
-if (redis.setnx(key_mutex, “1”)) {<br>
-// 3 min timeout to avoid mutex holder crash<br>
-redis.expire(key_mutex, 3 * 60)<br>
-value = db.get(key);<br>
-redis.set(key, value);<br>
-redis.delete(key_mutex);<br>
-} else {<br>
-//其他线程休息 50 毫秒后重试<br>
-Thread.sleep(50);<br>
-get(key);<br>
-}<br>
-}<br>
-}<br>
-最新版本代码：<br>
-public String get(key) {<br>
-String value = redis.get(key);<br>
-if (value == null) { //代表缓存值过期<br>
-//设置 3min 的超时，防止 del 操作失败的时候，下次缓存过期一直不能 load db<br>
-if (redis.setnx(key_mutex, 1, 3 * 60) == 1) { //代表设置成功<br>
-value = db.get(key);<br>
-redis.set(key, value, expire_secs);<br>
-redis.del(key_mutex);<br>
-} else { //这个时候代表同时候的其他线程已经 load db 并回设到缓存了，这时候重试获取缓存值即可<br>
-sleep(50);<br>
-get(key); //重试<br>
-}<br>
-} else {<br>
-return value;<br>
-}<br>
-}<br>
-memcache 代码：<br>
-if (memcache.get(key) == null) {<br>
-// 3 min timeout to avoid mutex holder crash<br>
-if (memcache.add(key_mutex, 3 * 60 * 1000) == true) {<br>
-value = db.get(key);<br>
-memcache.set(key, value);<br>
-memcache.delete(key_mutex);<br>
-} else {<br>
-sleep(50);<br>
-retry();<br>
-}<br>
-}</p>
-<p>2.&quot;提前&quot;使用互斥锁(mutex key)：<br>
-在 value 内部设置 1 个超时值(timeout1), timeout1 比实际的 memcache timeout(timeout2)小。当从 cache 读取到 timeout1 发现它已经过期时候，马上延长 timeout1 并重新设置到 cache。然后再从数据库加载数据并设置到 cache 中。伪代码如下：<br>
-v = memcache.get(key);<br>
-if (v == null) {<br>
-if (memcache.add(key_mutex, 3 * 60 * 1000) == true) {<br>
-value = db.get(key);<br>
-memcache.set(key, value);<br>
-memcache.delete(key_mutex);<br>
-} else {<br>
-sleep(50);<br>
-retry();<br>
-}<br>
-} else {<br>
-if (v.timeout &lt;= now()) {<br>
-if (memcache.add(key_mutex, 3 * 60 * 1000) == true) {<br>
-// extend the timeout for other threads<br>
-v.timeout += 3 * 60 * 1000;<br>
-memcache.set(key, v, KEY_TIMEOUT * 2);</p>
-<pre><code>        // load the latest value from dbplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplain
-        v = db.get(key);    
-        v.timeout = KEY_TIMEOUT;    
-        memcache.set(key, value, KEY_TIMEOUT * 2);    
-        memcache.delete(key_mutex);    
-    } else {    
-        sleep(50);    
-        retry();    
-    }    
-}    
-</code></pre>
-<p>}</p>
-<p>3.“永远不过期”：<br>
-这里的“永远不过期”包含两层意思：<br>
-(1) 从 redis 上看，确实没有设置过期时间，这就保证了，不会出现热点 key 过期问题，也就是“物理”不过期。<br>
-(2) 从功能上看，如果不过期，那不就成静态的了吗？所以我们把过期时间存在 key 对应的 value 里，如果发现要过期了，通过一个后台的异步线程进行缓存的构建，也就是“逻辑”过期<br>
-从实战看，这种方法对于性能非常友好，唯一不足的就是构建缓存时候，其余线程(非构建缓存的线程)可能访问的是老数据，但是对于一般的互联网功能来说这个还是可以忍受。<br>
-String get(final String key) {<br>
-V v = redis.get(key);<br>
-String value = v.getValue();<br>
-long timeout = v.getTimeout();<br>
-if (v.timeout &lt;= System.currentTimeMillis()) {<br>
-// 异步更新后台异常执行<br>
-threadPool.execute(new Runnable() {<br>
-public void run() {<br>
-String keyMutex = “mutex:” + key;<br>
-if (redis.setnx(keyMutex, “1”)) {<br>
-// 3 min timeout to avoid mutex holder crash<br>
-redis.expire(keyMutex, 3 * 60);<br>
-String dbValue = db.get(key);<br>
-redis.set(key, dbValue);<br>
-redis.delete(keyMutex);<br>
-}<br>
-}<br>
-});<br>
-}<br>
-return value;<br>
-}</p>
-<ol start="4">
-<li>资源保护：<br>
-采用 netflix 的 hystrix，可以做资源的隔离保护主线程池，如果把这个应用到缓存的构建也未尝不可。</li>
-</ol>
-<table>
-<thead>
-<tr>
-<th>解决方案</th>
-<th>优点</th>
-<th>缺点</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>简单分布式互斥锁（mutex key）</td>
-<td>1. 思路简单；2. 保证一致性</td>
-<td>1. 代码复杂度增大；2. 存在死锁的风险；3. 存在线程池阻塞的风险</td>
-</tr>
-<tr>
-<td>“提前”使用互斥锁</td>
-<td>1. 保证一致性</td>
-<td>同上</td>
-</tr>
-<tr>
-<td>不过期(本文)</td>
-<td>1. 异步构建缓存，不会阻塞线程池</td>
-<td>1. 不保证一致性；2. 代码复杂度增大(每个 value 都要维护一个 timekey)；3. 占用一定的内存空间(每个 value 都要维护一个 timekey)。</td>
-</tr>
-<tr>
-<td>资源隔离组件 hystrix(本文)</td>
-<td>1. hystrix 技术成熟，有效保证后端；2. hystrix 监控强大。</td>
-<td>1. 部分访问存在降级策略。</td>
-</tr>
-</tbody>
-</table>
-<h3 id="缓存失效"><a class="header-anchor" href="#缓存失效">¶</a>缓存失效</h3>
-<p>一个经典问题：由于初始化的时候某些缓存过期时间设置的都一样,一段时间以后缓存全部失效,在这一瞬间的会增大 DB 的压力<br>
-解决：在过期时间上加一个随机值;分析用户行为,尽量让失效时间均匀分布</p>
-<p>下面是其他的一些策略：</p>
-<h4 id="先失效缓存-后更新数据库数据"><a class="header-anchor" href="#先失效缓存-后更新数据库数据">¶</a>先失效缓存 -&gt; 后更新数据库数据</h4>
-<ol>
-<li>缺点<br>
-如果缓存失效失败,根据策略可能会影响后续的正常的数据更新操作<br>
-直接失效缓存会增加后续的一次缓存查询的 Miss</li>
-<li>优点<br>
-避免数据库更新成功,缓存失效失败,导致缓存中是旧数据</li>
-<li>场景<br>
-对缓存准确率要求比较高的业务</li>
-<li>异常情况<br>
-线程 A 需要更新数据库数据，失效缓存；<br>
-线程 B 发现缓存没有命中，查询数据库中取出旧的值；<br>
-线程 A 更新数据库数据，提交事务，线程 A 将数据放入缓存。</li>
-</ol>
-<h4 id="延时双删"><a class="header-anchor" href="#延时双删">¶</a>延时双删</h4>
-<p>在《先失效缓存 -&gt; 后更新数据库数据》这种方案的基础上，增加了一个延时过期的步骤。<br>
-即：过期Redis -&gt; 更新数据库 -&gt; 延迟一会再过期一次Redis<br>
-这样就可以缓解上边提到的脏读问题了。<br>
-但是缺点是过期两次，会占用更多的数据库资源。</p>
-<h4 id="先更新数据库数据-后失效缓存"><a class="header-anchor" href="#先更新数据库数据-后失效缓存">¶</a>先更新数据库数据 -&gt; 后失效缓存</h4>
-<ol>
-<li>缺点<br>
-如果数据更新成功,但是缓存失效失败,缓存中存放的是旧数据<br>
-直接失效缓存会增加一次缓存查询的 Miss</li>
-<li>优点<br>
-更新数据不会强依赖缓存,就算失效缓存失败,也不会影响数据库的更新</li>
-<li>场景<br>
-对缓存和数据库的一致性要求不是很高的场景</li>
-<li>异常情况<br>
-在更新数据库数据和失效缓存之前的所有查询,查询到的都是旧数据</li>
-</ol>
-<h4 id="更新数据库数据-更新缓存"><a class="header-anchor" href="#更新数据库数据-更新缓存">¶</a>更新数据库数据 -&gt; 更新缓存</h4>
-<ol>
-<li>优点<br>
-避免了一次额外的缓存查询 Miss<br>
-实时性比较高</li>
-<li>缺点<br>
-数据库更新成功，但是更新缓存失败，缓存中存储的是旧数据<br>
-选择同步还是异步来更新缓存呢？如果是同步更新，更新磁盘成功了，但是更新缓存失败了，你是不是要反复重试来保证更新成功？如果多次重试都失败，那这次更新是算成功还是失败呢？如果是异步更新缓存，怎么保证更新的时序？<br>
-比如，我先把一个文件中的某个数据设置成 0，然后又设为 1，这个时候文件中的数据肯定是 1，但是缓存中的数据可不一定就是 1 了。因为把缓存中的数据更新为 0，和更新为 1 是两个并发的异步操作，不一定谁会先执行。<br>
-这些问题都会导致缓存的数据和磁盘中的数据不一致，而且，在下次更新这条数据之前，这个不一致的问题它是一直存在的。当然，这些问题也不是不能解决的，比如，你可以使用分布式事务来解决，只是付出的性能、实现复杂度等代价比较大。</li>
-<li>场景<br>
-缓存粒度比较小,缓存的数据不需要经过计算(更新商品数据,但是缓存还需要用户数据)</li>
-<li>异常情况<br>
-A 线程查询缓存发现缓存中没有数据,查询数据库；<br>
-B 线程更新数据库并且更新了缓存；<br>
-A 再把查询的数据放入缓存,缓存中将会是旧数据</li>
-</ol>
-<h4 id="更新缓存-更新数据库数据"><a class="header-anchor" href="#更新缓存-更新数据库数据">¶</a>更新缓存 -&gt; 更新数据库数据</h4>
-<ol>
-<li>优点<br>
-避免了一次额外的缓存查询 Miss</li>
-<li>缺点<br>
-缓存更新成功,但是数据库更新失败,导致缓存数据是旧数据;<br>
-并且更新缓存失败,根据策略可能导致更新数据库失败。</li>
-<li>场景<br>
-缓存粒度比较小,缓存的数据不需要经过计算(更新商品数据,但是缓存还需要用户数据)</li>
-<li>异常情况<br>
-在更新缓存成功和更新数据库数据之前拿到的缓存是和数据库不一致的(不过这种情况造成的负面影响很小)</li>
-</ol>
-<h4 id="更新数据库数据-定时同步到缓存"><a class="header-anchor" href="#更新数据库数据-定时同步到缓存">¶</a>更新数据库数据 -&gt; 定时同步到缓存</h4>
-<ol>
-<li>优点<br>
-实现简单、鲁棒性高<br>
-就算某次同步过程中发生了错误，等到下一个同步周期也会自动把数据纠正过来。</li>
-<li>缺点<br>
-缓存更新不实时。<br>
-如果缓存的数据太大，更新速度慢到无法接受，可以选择增量更新，每次只更新从上次缓存同步至今这段时间内变化的数据，代价是实现起来会稍微有些复杂。</li>
-</ol>
-<h3 id="设计总结"><a class="header-anchor" href="#设计总结">¶</a>设计总结</h3>
-<p>针对业务系统，永远都是具体情况具体分析，没有最好，只有最合适。<br>
-最后，对于缓存系统常见的缓存满了和数据丢失问题，需要根据具体业务分析，通常我们采用 LRU 策略处理溢出，Redis 的 RDB 和 AOF 持久化策略来保证一定情况下的数据安全。</p>
-<ol>
-<li>缓存失效策略<br>
-添加 key 的时候要设置一个过期时间,采用惰性删除和定时删除相结合的策略删除过期键</li>
-<li>多级缓存<br>
-线程级-&gt;内存级-&gt;进程级-&gt;文件(静态资源)-&gt;分布式(redis)-&gt;Db 结果.</li>
-<li>二级缓存<br>
-二级缓存更多的解决是,缓存穿透与程序的健壮性,当集中式缓存出现问题的时候,我们的应用能够继续运行;一些热点数据做成内存缓存,这些数据是在上线之前是已知的(比如说秒杀,大促商品),通过配置定时任务定时刷新内存缓存,完成和分布式缓存的数据置换;更加自动化的方案,可以根据上游自动发现热点数据,广播消息替换现在集群中内存缓存的数据(但在整个集群中广播,成本比较高,并且二级缓存的管理的成本也很大);</li>
-</ol>
-<h2 id="实现一个简单的多级缓存"><a class="header-anchor" href="#实现一个简单的多级缓存">¶</a>实现一个简单的多级缓存</h2>
-<p><img src="http://47.88.24.11/imgs/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98/%E5%A4%9A%E7%BA%A7%E6%95%B0%E6%8D%AE%E6%9D%A5%E6%BA%90.png" alt="多级数据来源" title="多级数据来源示意图"></p>
-<ul>
-<li>本地缓存<br>
-在并发量不大的系统内，本地缓存的意义不大，反而增加维护的困难。但在高并发系统中，本地缓存可以大大节约带宽。但是要注意本地缓存不是银弹，它会引起多个副本间数据的不一致，还会占据大量的内存，所以不适合保存特别大的数据，而且需要严格考虑刷新机制。</li>
-<li>缓存 / 搜索服务器<br>
-TODO:</li>
-<li>数据库服务器<br>
-TODO：</li>
-<li>同机房的其他业务服务器<br>
-TODO：</li>
-<li>不同机房的其他业务服务器<br>
-TODO：</li>
-</ul>
-<p><img src="http://47.88.24.11/imgs/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98/cache-drawer-core.png" alt="多级缓存组件的主要执行流程" title="cache-drawer-core 的主要执行流程"><br>
-详细描述 TODO：</p>
-<h3 id="缓存时机"><a class="header-anchor" href="#缓存时机">¶</a>缓存时机</h3>
-<ul>
-<li>5 分钟法则<br>
-5 分钟法则即：如果一个数据的访问周期在 5 分钟以内则存放在内存中，否则应该存放在硬盘中。<br>
-引申到缓存中，可以表述为：如果一个数据访问吞吐率大于 1 次 / 5 分钟，就可以考虑放到缓存中。</li>
-<li>局部性原理<br>
-局部性原理原指 CPU 访问存储器时，无论是存取指令还是存取数据，所访问的存储单元都趋于聚集在一个较小的连续区域中。<br>
-反过来说，如果访问存在热点，就完全可以把这些热点数据放到缓存里。</li>
-</ul>
-<h3 id="算法-fifo"><a class="header-anchor" href="#算法-fifo">¶</a>算法 - FIFO</h3>
-<h3 id="算法-lru"><a class="header-anchor" href="#算法-lru">¶</a>算法 - LRU</h3>
-<h3 id="算法-lfu"><a class="header-anchor" href="#算法-lfu">¶</a>算法 - LFU</h3>
-<h3 id="回收策略"><a class="header-anchor" href="#回收策略">¶</a>回收策略</h3>
-<ul>
-<li>空间</li>
-<li>容量<br>
-条⽬数</li>
-<li>时间<br>
-存活期活太久淘汰<br>
-空闲期太久没访问淘汰</li>
-</ul>
-<h3 id="缓存监控"><a class="header-anchor" href="#缓存监控">¶</a>缓存监控</h3>
-<p>命中率 = 缓存读取次数 / (缓存读取次数 + 慢速设备读取次数)</p>
-<h3 id="过期时间"><a class="header-anchor" href="#过期时间">¶</a>过期时间</h3>
-<p>本地缓存过期时间比分布式缓存小至少一半，以防止本地缓存太久造成多实例数据不一致。</p>
-<ul>
-<li>不过期缓存<br>
-场景：长尾访问的数据、访问频率⾼、缓存空间⾜够<br>
-使⽤Cache-Aside 模式<br>
-不要放事务⾥，因为⽹络抖动可能导致写缓存响应时间慢，阻塞数据库事务。但是同样存在事务成功但缓存失败⽆法回滚的情况。解决办法是使用 canal 实现缓存同步。<br>
-若对⼀致性要求不高且数据量不⼤可改成定期全量同步</li>
-<li>过期缓存<br>
-场景：热点数据、来⾃自其他系统的数据、空间有限、访问频率低</li>
-</ul>
-<h3 id="sor-source-of-resource"><a class="header-anchor" href="#sor-source-of-resource">¶</a>SoR（Source-of-Resource）</h3>
-<p>数据的来源，一般称为记录系统或<strong>数据源</strong>。<br>
-<strong>回源</strong>即回到源头获取数据，Cache 没有命中时，需要从 SoR 获取数据，即回源。</p>
-<h3 id="大-value"><a class="header-anchor" href="#大-value">¶</a>大 Value</h3>
-<p>如果有⼤Value 最好切换到多线程实现的缓存如 MC，或者拆成多个小 Value 由客户端聚合。</p>
-<h3 id="热点缓存"><a class="header-anchor" href="#热点缓存">¶</a>热点缓存</h3>
-<p>频繁访问的热点数据，如果每次都要从缓存服务器获取，可能导致缓存服务器负载过高、或者带宽过⾼。<br>
-解决办法是加缓存服务器，或者加本地缓存。</p>
-<h3 id="缓存更新"><a class="header-anchor" href="#缓存更新">¶</a>缓存更新</h3>
-<p>原⼦更新：</p>
-<ul>
-<li>版本号</li>
-<li>如果是 redis，因为单线程机制本身就是⽀持原⼦更新的</li>
-<li>使用 canal 订阅数据库 binlog 将更新请求按规则路由到多个队列，每个队列进⾏单线程的更新</li>
-<li>加分布式锁</li>
-</ul>
-<h3 id="异步写"><a class="header-anchor" href="#异步写">¶</a>异步写</h3>
-<p>写本地缓存后异步更新分布式缓存，尽快返回用户请求，最好不要同步写分布式缓存。</p>
-<h3 id="维度化与增量缓存"><a class="header-anchor" href="#维度化与增量缓存">¶</a>维度化与增量缓存</h3>
-<p>场景：一个商品包含多个属性，其中部分属性如上下架这种可能频繁更新的，最好做维度化并增量更新。</p>
-<h3 id="缓存策略-分区读"><a class="header-anchor" href="#缓存策略-分区读">¶</a>缓存策略 - 分区读</h3>
-<p>读缓存时划分分区异步批量读：</p>
-<ul>
-<li>分区可以防⽌出现慢查询；</li>
-<li>异步可以把各批 key 并⾏化。</li>
-</ul>
-<h3 id="缓存策略-nullobj-防缓存击穿"><a class="header-anchor" href="#缓存策略-nullobj-防缓存击穿">¶</a>缓存策略 - nullobj 防缓存击穿</h3>
-<p>当 db 中本身就没有该数据时，会产生每次请求都击穿的现象，解决办法是引入一个 <strong>nullobj</strong>。<br>
-db 不不存在时写一个 <strong>nullobj</strong> 到缓存，下次读到 null 对象 就不去 db 读了。</p>
-<h3 id="缓存策略-cache-aside-模式"><a class="header-anchor" href="#缓存策略-cache-aside-模式">¶</a>缓存策略 - Cache-aside 模式</h3>
-<p>Cache-Aside 即业务代码围绕着 Cache 写，是由业务代码直接维护缓存。</p>
-<h4 id="什么时候使用"><a class="header-anchor" href="#什么时候使用">¶</a>什么时候使用</h4>
-<ul>
-<li>当 Cache不提供原⽣的 Read-Through 和 Write-Through 操作的时候</li>
-<li>资源的需求是不可预测的时候。Cache-Aside 模式令应用可以根据需求来加载数据，对于应⽤需求什么数据，不需要提前做出假设。</li>
-</ul>
-<h3 id="read-模式"><a class="header-anchor" href="#read-模式">¶</a>Read 模式</h3>
-<p>先从缓存获取数据，如果没有命中，则回源到 SoR 并将源数据放入缓存供下次读取使用。</p>
-<h3 id="write-模式"><a class="header-anchor" href="#write-模式">¶</a>Write 模式</h3>
-<p>类似 Write-Through 策略。</p>
-<ol>
-<li>先将数据写入 SoR，写入成功后立即将数据同步写入缓存；</li>
-<li>或先将数据写入 SoR，写入成功后将缓存数据过期，下次读取时再加载缓存。</li>
-</ol>
-<h4 id="读优化-一致性哈希"><a class="header-anchor" href="#读优化-一致性哈希">¶</a>读优化 - 一致性哈希</h4>
-<p>读可以⽤⼀致性哈希减少并发。</p>
-<h4 id="写优化-使用-canal-订阅更新"><a class="header-anchor" href="#写优化-使用-canal-订阅更新">¶</a>写优化 - 使用 Canal 订阅更新</h4>
-<p>更新可以⽤Canal 订阅 binlog。</p>
-<h4 id="缓存数据的-存时间"><a class="header-anchor" href="#缓存数据的-存时间">¶</a>缓存数据的⽣存时间</h4>
-<p>很多 Cache 实现了过期的策略的，这些过期的策略可以实现数据的更新，将旧数据失效化，同时也令⼀定时间没有访问的数据失效。<br>
-为了让 Cache-Aside 模式能够⽣效，开发者必须确保过期策略能够正确匹配应用所访问的数据。同时，注意不能让过期时间太短，因为太短的过期时间会令应⽤频繁地从数据仓库中获取数据来添加到 Cache 之中。当然，也不要配置超时的时间太⻓，过⻓的超时时间会让缓存的数据冗余。Cache 的性能是跟其相关的数据的读取周期等信息⾼度相关的。</p>
-<h4 id="去除数据"><a class="header-anchor" href="#去除数据">¶</a>去除数据</h4>
-<p>绝⼤多数的缓存跟数据仓库⽐起来，容量是很有限的，所以，如果可以的话，Cache 会移除数据。<br>
-多数的 Cache 会采用 LRU 的策略来移除缓存中的数据，当然，移除的策略也是可以⾃定义的。配置全局的过期属性和缓存的其他属性，可以确保 Cache 消耗的内存资源是高效的。当然，通常不会只配置⼀个全局的过期策略。比如，某些特别昂贵、访问特别频繁而又不常更新的数据，完全可以延长其过期时间。</p>
-<h4 id="一致性"><a class="header-anchor" href="#一致性">¶</a>一致性</h4>
-<p>实现 Cache-Aside 模式并不能保证 Cache 和数据仓库之间的数据⼀致性。因为数据仓库中的数据可能在任何时候被其他程序所修改，⽽这个修改不会及时的反映到 Cache 上，直到下一次 Cache 被刷新为止。如果数据仓库中数据频繁由⾮Cahce 程序更新的话，这种一致性问题会变得更加明显。</p>
-<h4 id="本地-内存-缓存"><a class="header-anchor" href="#本地-内存-缓存">¶</a>本地（内存）缓存</h4>
-<p>Cache 也是可以做到应⽤本身里⾯的。Cache-Aside 模式在⼀些应⽤频繁访问相同的数据的时候尤其有效。然⽽，本地 Cache 都是应⽤私有 的，是属于每个应用中独有的额外的拷⻉。所以这个数据可能很快在不同的应⽤中就不一致了，所以刷新的频率最好更快些以保证⼀致性。在 有些情况下可以使⽤共享的缓存，有的时候也可以使⽤本地 Cache，具体使⽤哪⼀种就需要根据实际的场景来判断了。</p>
-<h3 id="缓存策略-cache-as-sor-模式"><a class="header-anchor" href="#缓存策略-cache-as-sor-模式">¶</a>缓存策略 - Cache-as-SoR 模式</h3>
-<p>由 Cache 委托给 SoR 进⾏真实的读写</p>
-<h3 id="缓存策略-read-through"><a class="header-anchor" href="#缓存策略-read-through">¶</a>缓存策略 - Read-Through</h3>
-<p>读 miss 则由 cache 回源到 SoR(需要防⽌dog-pile effect 即 miss 时只允许⼀个请求回源而不是所有请求都回源)。</p>
-<h3 id="缓存策略-write-through"><a class="header-anchor" href="#缓存策略-write-through">¶</a>缓存策略 - Write-Through</h3>
-<p>由 cache 组件负责写缓存和 SoR(一般是先 SoR 再缓存)</p>
-<h3 id="缓存策略-write-behind"><a class="header-anchor" href="#缓存策略-write-behind">¶</a>缓存策略 - Write-Behind</h3>
-<p>异步(队列+线程池)写 SoR</p>
-<h3 id="缓存策略-copy-pattern"><a class="header-anchor" href="#缓存策略-copy-pattern">¶</a>缓存策略 - Copy-Pattern</h3>
-<p>Copy-On-Read<br>
-Copy-On-Write<br>
-本地缓存的是引⽤，被擅⾃修改可能引起不可预测的问题</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<p>所有参考文献的归档，集中管理，方便随时查阅。</p>
-<h3 id="多级缓存架构"><a class="header-anchor" href="#多级缓存架构">¶</a>多级缓存架构</h3>
-<ol>
-<li><a href="https://juejin.im/post/5d86cf7f6fb9a06b211724e7" target="_blank" rel="noopener">一篇文章让你明白你多级缓存的分层架构</a></li>
-<li><a href="https://blog.csdn.net/zlc3323/article/details/89984961" target="_blank" rel="noopener">一个牛逼的多级缓存实现方案</a></li>
-<li><a href="https://www.sohu.com/a/250055167_673711" target="_blank" rel="noopener">日访问量百亿级的微博如何做缓存架构设计</a></li>
-<li><a href="https://www.jianshu.com/p/eeaa62dfaf72" target="_blank" rel="noopener">分布式内存缓存系统设计</a></li>
-<li><a href="https://www.cnblogs.com/mushroom/p/4199701.html#wechat_redirect" target="_blank" rel="noopener">那些年我们一起追过的缓存写法(一)</a></li>
-</ol>
-<h3 id="内存池"><a class="header-anchor" href="#内存池">¶</a>内存池</h3>
-<ol>
-<li><a href="https://blog.csdn.net/weixin_45583158/article/details/102618077" target="_blank" rel="noopener">设计模式之争：新分配内存还是内存池？（含评测）</a></li>
-</ol>
-<h3 id="本地缓存-v2"><a class="header-anchor" href="#本地缓存-v2">¶</a>本地缓存</h3>
-<p>不得不承认本地缓存不比分布式缓存更简单，当我们讨论分布式缓存时，更多的是在讨论如何节省带宽、如何平滑扩容，但在本地缓存的范畴内，我们更多的需要关注所使用语言的内存管理机制、甚至需要向下探索到硬件层面（其实分布式缓存的基础一般也是本地缓存）。</p>
-<ol>
-<li><a href="https://leetcode.com/problems/lru-cache/" target="_blank" rel="noopener">146. LRU Cache</a><br>
-<a href="https://leetcode.com/problems/lfu-cache/" target="_blank" rel="noopener">460. LFU Cache</a><br>
-LeetCode 上有几道缓存相关的问题，可以拿来作热身。</li>
-<li>Java 内存模型<br>
-Java 中的垃圾回收技术已经比较完善了，开发人员能做的除了给出合理的配置外，就是要做到对自己使用的垃圾回收技术知根知底、能写出 GC 友好的代码。<br>
-<a href="http://www.cs.umd.edu/~pugh/java/memoryModel/" target="_blank" rel="noopener">The Java Memory Model - William Pugh</a><br>
-<a href="http://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html" target="_blank" rel="noopener">JSR 133 (Java Memory Model) FAQ</a><br>
-<a href="http://ifeve.com/jmm-faq/" target="_blank" rel="noopener">Java 内存模型 FAQ</a><br>
-上面这篇的中文翻译，适合我这种英语渣对照阅读。<br>
-<a href="https://blog.csdn.net/youyou1543724847/article/details/52728301" target="_blank" rel="noopener">GC(GC 友好编程)</a><br>
-<a href="http://gee.cs.oswego.edu/" target="_blank" rel="noopener">Doug Lea’s Home Page</a><br>
-<a href="http://ifeve.com/doug-lea/" target="_blank" rel="noopener">Doug Lea 并发编程文章全部译文</a></li>
-<li>NonBlocking HashTable<br>
-HashTable 是实现缓存的常用数据结构，而在操作时进行普通的加锁又非常影响性能，所以一般会做一些 NonBlocking 的优化。除了 JUC 的 ConcurrentHashMap，还有其他的一些相似实现。<br>
-<a href="https://github.com/stephenc/high-scale-lib" target="_blank" rel="noopener">stephenc/high-scale-lib</a><br>
-<a href="https://github.com/JCTools/JCTools" target="_blank" rel="noopener">JCTools/JCTools</a></li>
-<li>guava - cache<br>
-<a href="https://github.com/google/guava/wiki/CachesExplained" target="_blank" rel="noopener">github - google/guava - Caches</a></li>
-<li>ehcache<br>
-<a href="https://github.com/ehcache" target="_blank" rel="noopener">github - ehcache3</a><br>
-<a href="https://www.jianshu.com/p/5a0669d6305e" target="_blank" rel="noopener">玩转 EhCache 之最简单的缓存框架</a></li>
-<li>J2Cache<br>
-J2Cache 是一个国产的本地缓存框架，同时也提供了二级缓存、多机同步等特性。<br>
-<a href="https://gitee.com/ld/J2Cache" target="_blank" rel="noopener">红薯 / J2Cache</a></li>
-<li>Netty 中的对象池<br>
-<a href="https://github.com/netty/netty/wiki/Reference-counted-objects" target="_blank" rel="noopener">netty/netty - Reference counted objects</a><br>
-<a href="https://blog.csdn.net/levena/article/details/78144924" target="_blank" rel="noopener">Netty 源码 Recycler 对象池全面解析</a><br>
-<a href="https://www.jianshu.com/p/854b855bd198" target="_blank" rel="noopener">netty 源码分析 4 - Recycler 对象池的设计</a><br>
-Netty 为了提高性能，IO 时直接使用非堆内存来缓存收发的内容（Buf 对象），在非堆内存中 GC 效率会比 JVM 的堆内存效率低（只能通过 FullGC 回收或 CMS GC），所以 Netty 内部维护了一个对象池（Recycler），使用引用计数法来回收不用的对象到对象池中，而不是直接回收，减少了 GC 的频率。</li>
-<li>C / C++ 内存模型<br>
-C / C++ 只保证最基本的内存管理（malloc / free），因为其贴近操作系统的特性，很多框架都会封装一套自己的内存管理库（包括 memcached、MySQL、Cocos2d-x 等），甚至是 GC。<br>
-《C 语言接口与实现》 - 第 2、4、5、6 章<br>
-<a href="ftp://g.oswego.edu/pub/misc/malloc.c" target="_blank" rel="noopener">dlmalloc - Doug Lea</a><br>
-<a href="https://blog.csdn.net/xushiweizh/article/category/265099" target="_blank" rel="noopener">内存管理（Memory） - 许式伟</a><br>
-<a href="http://xushiwei.com/gc-allocator" target="_blank" rel="noopener">C++ Memory Management Innovation: GC Allocator</a><br>
-《STL 源码剖析》 - 第 2 章<br>
-《深入探索 C++对象模型》</li>
-<li><a href="https://github.com/bangerlee/mempool" target="_blank" rel="noopener">bangerlee/mempool</a></li>
-<li>应用层内存管理<br>
-<a href="https://www.memorymanagement.org/index.html" target="_blank" rel="noopener">Memory Management Reference</a><br>
-一个神奇的网站，内存管理相关的概念、综述、深入参考文献基本都能在这里找到，而且偏应用层，讲解方式友好、适合扫盲。</li>
-<li>操作系统层内存管理<br>
-<a href="http://en.tldp.org/HOWTO/Unix-and-Internet-Fundamentals-HOWTO/" target="_blank" rel="noopener">The Unix and Internet Fundamentals HOWTO</a><br>
-非常精炼地解释了 Unix 系统和网络的基本原理。</li>
-<li>硬件层内存管理</li>
-</ol>
-<h3 id="分布式缓存-v2"><a class="header-anchor" href="#分布式缓存-v2">¶</a>分布式缓存</h3>
-<ol>
-<li>分布式缓存设计及解决方案（后端）<br>
-<a href="http://www.cnblogs.com/itfly8/category/756114.html" target="_blank" rel="noopener">大型分布式网站架构</a><br>
-<a href="https://segmentfault.com/a/1190000006007338" target="_blank" rel="noopener">浅谈缓存(一)</a><br>
-<a href="http://www.cnblogs.com/mushroom/p/4199701.html" target="_blank" rel="noopener">那些年我们一起追过的缓存写法(一)</a><br>
-<a href="https://mp.weixin.qq.com/s?__biz=MzIwMzg1ODcwMw==&amp;mid=2247486493&amp;idx=1&amp;sn=2d159e329b3e579d6b844754df0dd265&amp;source=41#wechat_redirect" target="_blank" rel="noopener">缓存穿透、并发和失效，来自一线架构师的解决方案</a></li>
-<li>《分布式缓存——原理、架构及 Go 语言实现》</li>
-<li><a href="https://blog.csdn.net/F8qG7f9YD02Pe/article/details/78937081" target="_blank" rel="noopener">荐书：《深入分布式缓存》</a></li>
-<li>Redis 教程及手册<br>
-《Redis 设计与实现》<br>
-《Redis 深度历险：核心原理与应用实践》<br>
-<a href="http://redisdoc.com/index.html" target="_blank" rel="noopener">Redis 命令参考</a><br>
-<a href="https://redis.io/commands" target="_blank" rel="noopener">Redis Command Reference</a><br>
-<a href="https://redis.io/documentation" target="_blank" rel="noopener">Redis Documentation</a></li>
-<li>Redis 及客户端源码<br>
-<a href="https://github.com/antirez/redis" target="_blank" rel="noopener">github - antirez/redis</a><br>
-<a href="https://github.com/redisson/redisson/wiki/Redisson%E9%A1%B9%E7%9B%AE%E4%BB%8B%E7%BB%8D" target="_blank" rel="noopener">github - redisson/redisson</a><br>
-<a href="https://github.com/xetorthio/jedis/wiki" target="_blank" rel="noopener">github - xetorthio/jedis</a><br>
-<a href="https://github.com/lettuce-io/lettuce-core/wiki/Redis-Command-Interfaces" target="_blank" rel="noopener">github - lettuce-io/lettuce-core</a></li>
-<li>Redis - 数据结构<br>
-<a href="https://mp.weixin.qq.com/s?__biz=MzI0MDQ4MTM5NQ==&amp;mid=2247488450&amp;idx=1&amp;sn=88239e7fa2b80a9922db5fbc9629c770&amp;chksm=e91b76dede6cffc8b8820e7730349fe83cef1cdf0ac73b7a5e13569e596c77264b92edacf4f2&amp;token=649184257&amp;lang=zh_CN#rd" target="_blank" rel="noopener">Redis 为何这么快</a><br>
-<a href="https://stackoverflow.com/questions/16375188/redis-strings-vs-redis-hashes-to-represent-json-efficiency" target="_blank" rel="noopener">Redis strings vs Redis hashes to represent JSON: efficiency?</a><br>
-如果业务里需要使用到对象的单个域则使用 hash 类型保存 JSON，否则使用 string。</li>
-<li>Redis - Sentinel<br>
-Sentinel 是 Redis 提供的一种高可用集群方案，它能实现自动的故障转移。<br>
-<a href="https://redis.io/topics/sentinel" target="_blank" rel="noopener">Redis Sentinel Documentation</a><br>
-<a href="https://redis.io/topics/sentinel-clients" target="_blank" rel="noopener">Sentinel Clients</a><br>
-<a href="https://aphyr.com/posts/283-call-me-maybe-redis" target="_blank" rel="noopener">Jepsen: Redis</a><br>
-<a href="http://antirez.com/news/55" target="_blank" rel="noopener"><antirez> Reply to Aphyr attack to Sentinel</antirez></a><br>
-<a href="https://aphyr.com/posts/287-asynchronous-replication-with-failover" target="_blank" rel="noopener">Asynchronous replication with failover</a></li>
-<li>Redis - Cluster<br>
-Redis Cluster 不是使用<strong>一致性 hash</strong>、而是利用<strong>哈希槽</strong>的模式来分配数据，相对来说更简单，但是数据迁移的时候成本也会更大。<br>
-<a href="https://redis.io/topics/cluster-tutorial" target="_blank" rel="noopener">Redis cluster tutorial</a><br>
-<a href="https://redis.io/topics/cluster-spec" target="_blank" rel="noopener">Redis Cluster Specification</a></li>
-<li>在 Spring 架构后台中使用 Redis<br>
-<a href="https://docs.spring.io/spring/docs/5.0.3.RELEASE/spring-framework-reference/integration.html#cache" target="_blank" rel="noopener">spring-framework-reference - 8. Cache Abstraction</a><br>
-<a href="https://docs.spring.io/spring-data/redis/docs/2.0.3.RELEASE/reference/html/" target="_blank" rel="noopener">Spring Data Redis</a><br>
-<a href="https://docs.spring.io/spring-boot/docs/2.1.3.RELEASE/reference/htmlsingle/" target="_blank" rel="noopener">Spring Boot Reference Guide</a></li>
-<li>Redis 最佳实践<br>
-<a href="https://yq.aliyun.com/articles/531067" target="_blank" rel="noopener">阿里云 Redis 开发规范</a><br>
-<a href="https://juejin.im/post/5cee39a26fb9a07ed36e8c4c" target="_blank" rel="noopener">你所不知道的 Redis 热点问题以及如何发现热点</a><br>
-<a href="https://blog.csdn.net/javaMerea/article/details/89317071" target="_blank" rel="noopener">史上最全 50 道 Redis 面试题（含答案），以后面试再也不怕问 Redis 了</a></li>
-<li>Redis 应用<br>
-<a href="https://mp.weixin.qq.com/s/y2HPj2ji2KLS_eTR5nBnDA" target="_blank" rel="noopener">一文看透 Redis 分布式锁进化史（解读 + 缺陷分析）</a><br>
-<a href="http://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">How to do distributed locking</a><br>
-刷新 Redis 缓存时需要加分布式锁，保证只有一个线程能够写入缓存。<br>
-<a href="https://redis.io/commands/incr#pattern-rate-limiter" target="_blank" rel="noopener">INCR key (分布式限流器的例子)</a><br>
-<a href="https://mp.weixin.qq.com/s/q-y10hMPjApWgnQacu-nsA" target="_blank" rel="noopener">布隆过滤器实战【防止缓存击穿】</a><br>
-<a href="https://coolshell.cn/articles/7270.html" target="_blank" rel="noopener">NOSQL 数据建模技术</a></li>
-<li><a href="https://github.com/memcached/memcached" target="_blank" rel="noopener">github - memcached</a><br>
-memcached 是经常和 Redis 一并提起的一个分布式缓存中间件，了解其原理能对分布式缓存的实现模式有更好的认识。</li>
-</ol>
-<h3 id="web-缓存"><a class="header-anchor" href="#web-缓存">¶</a>Web 缓存</h3>
-<p>Web 缓存指的是在服务器和客户端之间的缓存，不同于我们上边提到的都是服务器（本地缓存）及服务器之后的缓存（分布式缓存）。<br>
-Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送请求到服务器接收为止的一系列链路之后，可以发现 Web 缓存主要包括浏览器缓存、代理服务器缓存、网关缓存。</p>
-<ol>
-<li><a href="https://www.cnblogs.com/rubylouvre/p/3139620.html" target="_blank" rel="noopener">Web 开发人员需知的 Web 缓存知识</a></li>
-</ol>
-<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
-<p>测试是发现问题的手段，最好的解决问题方式是避免问题。</p>
-<ol>
-<li>《Java 并发编程实战》 - 第三部分（并发安全及性能）</li>
-<li><a href="http://www.redis.cn/topics/benchmarks.html" target="_blank" rel="noopener">Redis 有多快?</a></li>
-<li>《构建高性能 Web 站点》 - 第 3 章</li>
-<li>《Java 程序性能优化》</li>
-<li>《Web 性能权威指南》</li>
-<li>《OptimizingLinux®PerformanceAHands-OnGuidetoLinux®PerformanceTools》</li>
-<li>《性能之巅》</li>
-</ol>
-<h3 id="运维"><a class="header-anchor" href="#运维">¶</a>运维</h3>
-<ol>
-<li>《The Art of Capacity Planning》</li>
-<li><a href="http://stor.51cto.com/art/201808/580165.htm" target="_blank" rel="noopener">探寻 Redis 内存诡异增长的元凶</a></li>
-</ol>
-<h3 id="其他"><a class="header-anchor" href="#其他">¶</a>其他</h3>
-<ol>
-<li><a href="http://www.catb.org/~esr/faqs/smart-questions.html" target="_blank" rel="noopener">How To Ask Questions The Smart Way</a></li>
-<li><a href="http://en.tldp.org/HOWTO/Software-Release-Practice-HOWTO/index.html" target="_blank" rel="noopener">Software Release Practice HOWTO</a></li>
-<li><a href="https://github.com/hyperoslo/Cache" target="_blank" rel="noopener">github - hyperoslo/Cache</a><br>
-这个项目同样在缓存上做文章，不过是用 swift 写的。</li>
-<li><a href="https://learnxinyminutes.com/docs/lua/" target="_blank" rel="noopener">Learn X in Y minutes - Where X=Lua</a></li>
-<li>《设计模式》 - Factory, Builder, Proxy, Chain of Responsibility, Command, Iterator, template method</li>
-<li>《Spring 源码深度解析》 - 第 5、6、7 章</li>
-<li><a href="https://app.brandmark.io/v2/" target="_blank" rel="noopener">使用 AI 生成图标</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/8/"><i class="fa fa-angle-left"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/8/">8</a><span class="page-number current">9</span><a class="page-number" href="/page/10/">10</a><a class="page-number" href="/page/11/">11</a><a class="extend next" rel="next" href="/page/10/"><i class="fa fa-angle-right"></i></a>
+    <a class="extend prev" rel="prev" href="/page/8/"><i class="fa fa-angle-left"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/8/">8</a><span class="page-number current">9</span><a class="page-number" href="/page/10/">10</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/10/"><i class="fa fa-angle-right"></i></a>
   </nav>
 
 
@@ -3341,7 +3000,7 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">109</span>
+                  <span class="site-state-item-count">112</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -3363,7 +3022,7 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">55</span>
+                  <span class="site-state-item-count">56</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

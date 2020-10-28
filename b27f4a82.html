@@ -105,7 +105,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%86%85%E5%AD%98%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/JVM/%E5%90%84%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB.png">
-<meta property="og:updated_time" content="2020-10-08T04:52:30.714Z">
+<meta property="og:updated_time" content="2020-10-12T04:58:46.289Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="JVM与垃圾收集器">
 <meta name="twitter:description" content="¶垃圾收集（GC） ¶垃圾检测 在实际回收垃圾对象前，我们必须标识出哪些对象该被回收，即垃圾检测。 ¶对象引用类型  强引用(StrongReference) Object obj = new Object()的 obj 就是一个强引用。 当内存不足，JVM 宁愿抛出 OutOfMemoryError 错误，使程序异常终止，也不会回收强引用对象来释放内存，除非已经没有引用关联这些对象了。 除了强">
@@ -771,6 +771,8 @@ GC 占用总时间的最大比率。</li>
 <h3 id="使用-v4"><a class="header-anchor" href="#使用-v4">¶</a>使用</h3>
 <ul>
 <li>-XX:+UseConcMarkSweepGC，使用 CMS 收集器；</li>
+<li>-XX:CMSInitiatingOccupancyFraction=80<br>
+当老年代的使用率达到80%时，就会触发一次 CMS GC</li>
 <li>-XX:+UseCMSCompactAtFullCollection<br>
 Full GC 后，进行一次碎片整理，整理过程是独占的，会引起停顿时间变长。</li>
 <li>-XX:+CMSFullGCsBeforeCompaction<br>
@@ -781,7 +783,7 @@ Full GC 后，进行一次碎片整理，整理过程是独占的，会引起停
 <p>CMS 收集器运行过程中各步骤所涉及的并发和所需的停顿时间如下图所示：<br>
 <img src="http://47.88.24.11/imgs/JVM/CMS%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="CMS收集器工作过程" title="CMS收集器工作过程"><br>
 CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时间为目标的收集器。<br>
-顾名思义，CMS 采用标记清除算法，它的工作流程分为以下 4 个步骤：</p>
+顾名思义，CMS 采用标记清除算法，它的工作流程分为以下 6 个步骤：</p>
 <ol>
 <li>初始标记（CMS initial mark）：仅仅只是标记一下 GC Roots 能直接关联到的对象，速度很快，需要<strong>Stop The World（stw）</strong>。<br>
 <img src="http://47.88.24.11/imgs/JVM/CMS-InitialMark.png" alt="CMS-InitialMark" title="CMS-InitialMark"></li>
@@ -868,8 +870,6 @@ CMS 是一款基于“标记-清除”算法实现的收集器，这意味着收
 </ul>
 <p>作用于老年代的配置：</p>
 <ul>
-<li>-XX:CMSInitiatingOccupancyFraction=80<br>
-当老年代的使用率达到80%时，就会触发一次 CMS GC</li>
 <li>-XX:InitiatingHeapOccupancyPercent<br>
 当老年代大小占整个堆大小百分比达到该阈值时，会触发一次 <strong>Mixed GC</strong>。</li>
 <li>-XX:+UseCMSInitiatingOccupancyOnly</li>
@@ -889,7 +889,7 @@ CMS 是一款基于“标记-清除”算法实现的收集器，这意味着收
 由上图可见：</p>
 <ul>
 <li>新生代与老年代并不是连续的，而是一些 Region 的集合；</li>
-<li>为了避免全堆扫描，对其他 Region 对象的引用会被记录到一个<strong>Remembered Set</strong>中，每个 Region 都对应一个 Remembered Set，虚拟机发现程序在对 Reference 类型的数据进行写操作时，会插入一个 Write Barrier 暂时中断写操作，检查 Reference 引用的对象是否位于其他 Region 中，如果是则将其引用信息记录到该 Region 对应的 Remembered Set 中，当进行内存回收时，在 GC 根节点的枚举范围中加入 Remembered Set 即可保证及时不对全堆扫描也不会产生遗漏。</li>
+<li>为了避免全堆扫描，对其他 Region 对象的引用会被记录到一个<strong>Remembered Set</strong>中，每个 Region 都对应一个 Remembered Set，虚拟机发现程序在对 Reference 类型的数据进行写操作时，会插入一个 Write Barrier 暂时中断写操作，检查 Reference 引用的对象是否位于其他 Region 中，如果是则将其引用信息记录到该 Region 对应的 Remembered Set 中，当进行内存回收时，在 GC 根节点的枚举范围中加入 Remembered Set 即可保证即使不对全堆扫描也不会产生遗漏。</li>
 <li>一些Regine被标明了H，代表<strong>Humongous</strong>，这表示这些Region存储的是巨大对象（Humongous object，H-obj），即大小大于等于Region一半的对象，对这些大对象有一些特殊的规则。</li>
 </ul>
 <p>堆内存中一个 Region 的大小可以通过 <code>-XX:G1HeapRegionSize</code> 参数指定，大小区间只能是 1M、2M、4M、8M、16M 和 32M，总之是 2 的幂次方，如果 <code>G1HeapRegionSize</code> 为默认值，则在堆初始化时计算 Region 的实践大小。<br>
@@ -1077,8 +1077,8 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/92a28d62.html" rel="next" title="SpringCloud 配置总结">
-                <i class="fa fa-chevron-left"></i> SpringCloud 配置总结
+              <a href="/e913f4bd.html" rel="next" title="JVM 与动态内存管理">
+                <i class="fa fa-chevron-left"></i> JVM 与动态内存管理
               </a>
             
           </div>
@@ -1087,8 +1087,8 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/e913f4bd.html" rel="prev" title="JVM 与动态内存管理">
-                JVM 与动态内存管理 <i class="fa fa-chevron-right"></i>
+              <a href="/bcd62ed6.html" rel="prev" title="并发和常见并发问题">
+                并发和常见并发问题 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -1171,7 +1171,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">109</span>
+                  <span class="site-state-item-count">112</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1193,7 +1193,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">55</span>
+                  <span class="site-state-item-count">56</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
