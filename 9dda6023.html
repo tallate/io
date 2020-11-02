@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Redis,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶为什么 Redis 这么快 Redis 采用的是一种单线程工作模型，它能这么快主要归功于下面几个策略：  完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)； 数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的； 采用单线程，避免了不必要的上下文切换和竞争条件，也不存在">
+<meta name="keywords" content="Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 进程和 IO 模型">
+<meta property="og:url" content="https://tallate.github.io/9dda6023.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶为什么 Redis 这么快 Redis 采用的是一种单线程工作模型，它能这么快主要归功于下面几个策略：  完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)； 数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的； 采用单线程，避免了不必要的上下文切换和竞争条件，也不存在">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:updated_time" content="2020-11-02T02:23:21.741Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis 进程和 IO 模型">
+<meta name="twitter:description" content="¶为什么 Redis 这么快 Redis 采用的是一种单线程工作模型，它能这么快主要归功于下面几个策略：  完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)； 数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的； 采用单线程，避免了不必要的上下文切换和竞争条件，也不存在">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/9dda6023.html">
+
+
+
+
+
+
+
+  <title>Redis 进程和 IO 模型 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9dda6023.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis 进程和 IO 模型</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
+                2019-09-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  14 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="为什么-redis-这么快"><a class="header-anchor" href="#为什么-redis-这么快">¶</a>为什么 Redis 这么快</h2>
+<p>Redis 采用的是一种<strong>单线程工作模型</strong>，它能这么快主要归功于下面几个策略：</p>
+<ol>
+<li>完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)；</li>
+<li>数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的；</li>
+<li>采用单线程，避免了不必要的上下文切换和竞争条件，也不存在多进程或者多线程导致的切换而消耗 CPU，不用去考虑各种锁的问题，不存在加锁释放锁操作，没有因为可能出现死锁而导致的性能消耗；</li>
+<li>使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；</li>
+<li>使用<strong>多路 I/O 复用</strong>模型，非阻塞 IO；<br>
+多路 I/O 复用模型是利用 select、poll、epoll 可以同时监察多个流的 I/O 事件的能力，在空闲的时候，会把当前线程阻塞掉，当有一个或多个流有 I/O 事件时，就从阻塞态中唤醒，于是程序就会轮询一遍所有的流（epoll 是只轮询那些真正发出了事件的流），并且只依次顺序的处理就绪的流，这种做法就避免了大量的无用操作。<br>
+Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，在服务端，有一段 I/O 多路复用程序，将其置入队列之中，然后，文件事件分派器依次去队列中取，转发到不同的事件处理器中（对这个 I/O 多路复用机制，Redis 还提供了 select、epoll、evport、kqueue 等多路复用函数库）。<br>
+这里“多路”指的是多个网络连接，“复用”指的是复用同一个线程。采用多路 I/O 复用技术可以让单个线程高效的处理多个连接请求（尽量减少网络 IO 的时间消耗），且 Redis 在内存中操作数据的速度非常快，也就是说内存内的操作不会成为影响 Redis 性能的瓶颈，主要由以上几点造就了 Redis 具有很高的吞吐量。<br>
+<img src="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg" alt="多路IO复用模型" title="多路IO复用模型"></li>
+</ol>
+<h2 id="一些常见的进程模型"><a class="header-anchor" href="#一些常见的进程模型">¶</a>一些常见的进程模型</h2>
+<ol>
+<li>单进程多线程模型：MySQL、Memcached、Oracle（Windows 版本）；</li>
+<li>多进程模型：Oracle（Linux 版本）；</li>
+<li>Nginx 有两类进程，一类称为 Master 进程(相当于管理进程)，另一类称为 Worker 进程（实际工作进程）。启动方式有两种：
+<ol>
+<li>单进程启动：此时系统中仅有一个进程，该进程既充当 Master 进程的角色，也充当 Worker 进程的角色。</li>
+<li>多进程启动：此时系统有且仅有一个 Master 进程，至少有一个 Worker 进程工作。</li>
+<li>Master 进程主要进行一些全局性的初始化工作和管理 Worker 的工作；事件处理是在 Worker 中进行的。</li>
+</ol>
+</li>
+</ol>
+<h2 id="为什么是-nio"><a class="header-anchor" href="#为什么是-nio">¶</a>为什么是 NIO</h2>
+<p>对于优化单个 server 节点的网络层，多使用 NIO 方式，server 端与 client 端在多次通讯的情况下使用 TCP 长连接维持会话，比如 Redis epoll 模型，RocketMq 的 netty 模型<br>
+对于高性能 Server 节点，在处理好网络请求同时，还要保证 server 端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型。<br>
+在 Redis 中，采用的是 Reactor 模式实现文件事件处理器：<br>
+<img src="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png" alt="Redis-事件处理模型" title="Redis-事件处理模型"></p>
+<ol>
+<li>IO 多路复用<br>
+根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
+<li>封装不同 IO 模型，为事件处理器提供统一接口</li>
+</ol>
+<h2 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 Key 问题</h2>
+<blockquote>
+<p>也可以叫大 Value 问题。</p>
+</blockquote>
+<p>大 Key 有两种状况：</p>
+<ol>
+<li>Redis 中单个简单的 Key 存储的 value 很大</li>
+<li>hash、set、zset、list 中存储的元素过多（以万为单位）。</li>
+</ol>
+<p>由于 Redis 的单线程模型，读写大 Key 时服务器的耗时可能会比较长、甚至阻塞。</p>
+<p>解决方案一般是能拆则拆，对于单个大 Key 的情况：<br>
+1.1 将大 Key 进行分割，拆成几个小的 key-value，使用 multiGet 获取值。<br>
+这样分拆的意义是将单次操作的压力分摊到多个 Redis 实例上，降低对单个 Redis 的 IO 影响，而且大 Key 拆分之后每次只查询一部分，减小了 IO 阻塞的风险。<br>
+为了均匀分割，可以对 field 进行 hash 并通过质数 N 取余，将余数加到 key 上面。<br>
+1.2 将大 Key 拆分成多个 key-value，并将这些存储在一个 hash 中，每个 field 代表一个具体的属性，使用 hget、hmget 来获取部分的 value，使用 hset、hmset 来更新部分属性</p>
+<p>对于 hash、set、zset、list 中存储的元素过多的情况，可以控制将 field 分散到多个集合内。<br>
+比如以下代码将属于一个大 hash 内的 field 分散到 10000 个拆分后的小 hash 内：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure>
+<p>对于一些需要考虑顺序的场景，比如 lpop、zrange，需要在 hash 函数上做些文章，比如按照时间来拆分。</p>
+<h2 id="redis单线程多路复用io模型实现-事件注册"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件注册">¶</a>Redis单线程多路复用IO模型实现 - 事件注册</h2>
+<p>Redis服务器的初始化过程中包括了对事件处理器的初始化。<br>
+1、服务器启动期间初始化事件处理器<br>
+服务器初始化代码：<code>redis.c/initServer</code><br>
+初始化事件处理器代码：<code>ae.c/aeCreateEventLoop</code><br>
+2、根据系统的不同，选择不同的底层IO事件处理实现<br>
+比如linux的话，会选择epoll作为实现：<code>epoll.c/aeApiCreate</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 创建一个新的 epoll 实例，并将它赋值给 eventLoop</span><br><span class="line"> */</span><br><span class="line">static int aeApiCreate(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    aeApiState *state = zmalloc(sizeof(aeApiState));</span><br><span class="line"></span><br><span class="line">    if (!state) return -1;</span><br><span class="line"></span><br><span class="line">    // 初始化事件槽空间</span><br><span class="line">    state-&gt;events = zmalloc(sizeof(struct epoll_event)*eventLoop-&gt;setsize);</span><br><span class="line">    if (!state-&gt;events) &#123;</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 创建 epoll 实例</span><br><span class="line">    state-&gt;epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */</span><br><span class="line">    if (state-&gt;epfd == -1) &#123;</span><br><span class="line">        zfree(state-&gt;events);</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 赋值给 eventLoop</span><br><span class="line">    eventLoop-&gt;apidata = state;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当服务器需要监听某些事件时，会注册对这些事件的监听器，下面是注册监听器的函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 根据 mask 参数的值，监听 fd 文件的状态，</span><br><span class="line"> * 当 fd 可用时，执行 proc 函数</span><br><span class="line"> */</span><br><span class="line">int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,</span><br><span class="line">        aeFileProc *proc, void *clientData)</span><br><span class="line">&#123;</span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) &#123;</span><br><span class="line">        errno = ERANGE;</span><br><span class="line">        return AE_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 取出文件事件结构</span><br><span class="line">    aeFileEvent *fe = &amp;eventLoop-&gt;events[fd];</span><br><span class="line"></span><br><span class="line">    // 监听指定 fd 的指定事件</span><br><span class="line">    if (aeApiAddEvent(eventLoop, fd, mask) == -1)</span><br><span class="line">        return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 设置文件事件类型，以及事件的处理器</span><br><span class="line">    fe-&gt;mask |= mask;</span><br><span class="line">    if (mask &amp; AE_READABLE) fe-&gt;rfileProc = proc;</span><br><span class="line">    if (mask &amp; AE_WRITABLE) fe-&gt;wfileProc = proc;</span><br><span class="line"></span><br><span class="line">    // 私有数据</span><br><span class="line">    fe-&gt;clientData = clientData;</span><br><span class="line"></span><br><span class="line">    // 如果有需要，更新事件处理器的最大 fd</span><br><span class="line">    if (fd &gt; eventLoop-&gt;maxfd)</span><br><span class="line">        eventLoop-&gt;maxfd = fd;</span><br><span class="line"></span><br><span class="line">    return AE_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以Slave同步Master的RDB文件为例，在Slave启动后，会调用上面的函数注册一个监听器，读取Master传来的RDB文件数据：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">// 以非阻塞方式连接主服务器</span><br><span class="line">int connectWithMaster(void) &#123;</span><br><span class="line">    int fd;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    // 监听主服务器 fd 的读和写事件，并绑定文件事件处理器</span><br><span class="line">    if (aeCreateFileEvent(server.el,fd,AE_READABLE|AE_WRITABLE,syncWithMaster,NULL) ==</span><br><span class="line">            AE_ERR)</span><br><span class="line">    &#123;</span><br><span class="line">        close(fd);</span><br><span class="line">        redisLog(REDIS_WARNING,&quot;Can&apos;t create readable event for SYNC&quot;);</span><br><span class="line">        return REDIS_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    return REDIS_OK;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 从服务器用于同步主服务器的回调函数</span><br><span class="line">void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Setup the non blocking download of the bulk file. */</span><br><span class="line">    // 设置一个读事件处理器，来读取主服务器的 RDB 文件</span><br><span class="line">    if (aeCreateFileEvent(server.el,fd, AE_READABLE,readSyncBulkPayload,NULL)</span><br><span class="line">            == AE_ERR)</span><br><span class="line">    &#123;</span><br><span class="line">        redisLog(REDIS_WARNING,</span><br><span class="line">            &quot;Can&apos;t create readable event for SYNC: %s (fd=%d)&quot;,</span><br><span class="line">            strerror(errno),fd);</span><br><span class="line">        goto error;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="redis单线程多路复用io模型实现-事件循环-处理"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件循环-处理">¶</a>Redis单线程多路复用IO模型实现 - 事件循环（处理）</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 事件处理器的主循环</span><br><span class="line"> */</span><br><span class="line">void aeMain(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    eventLoop-&gt;stop = 0;</span><br><span class="line"></span><br><span class="line">    while (!eventLoop-&gt;stop) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果有需要在事件处理前执行的函数，那么运行它</span><br><span class="line">        if (eventLoop-&gt;beforesleep != NULL)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        // 开始处理事件</span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 1、看是否有事件到达了执行时间</span><br><span class="line">// 2、如果有，则执行这些事件</span><br><span class="line">/* Process every pending time event, then every pending file event</span><br><span class="line"> * (that may be registered by time event callbacks just processed).</span><br><span class="line"> *</span><br><span class="line"> * 处理所有已到达的时间事件，以及所有已就绪的文件事件。</span><br><span class="line"> *</span><br><span class="line"> * Without special flags the function sleeps until some file event</span><br><span class="line"> * fires, or when the next time event occurs (if any).</span><br><span class="line"> *</span><br><span class="line"> * 如果不传入特殊 flags 的话，那么函数睡眠直到文件事件就绪，</span><br><span class="line"> * 或者下个时间事件到达（如果有的话）。</span><br><span class="line"> *</span><br><span class="line"> * If flags is 0, the function does nothing and returns.</span><br><span class="line"> * 如果 flags 为 0 ，那么函数不作动作，直接返回。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_ALL_EVENTS set, all the kind of events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_ALL_EVENTS ，所有类型的事件都会被处理。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_FILE_EVENTS set, file events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_FILE_EVENTS ，那么处理文件事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_TIME_EVENTS set, time events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_TIME_EVENTS ，那么处理时间事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_DONT_WAIT set the function returns ASAP until all</span><br><span class="line"> * the events that&apos;s possible to process without to wait are processed.</span><br><span class="line"> * 如果 flags 包含 AE_DONT_WAIT ，</span><br><span class="line"> * 那么函数在处理完所有不许阻塞的事件之后，即刻返回。</span><br><span class="line"> *</span><br><span class="line"> * The function returns the number of events processed. </span><br><span class="line"> * 函数的返回值为已处理事件的数量</span><br><span class="line"> */</span><br><span class="line">int aeProcessEvents(aeEventLoop *eventLoop, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    int processed = 0, numevents;</span><br><span class="line"></span><br><span class="line">    /* Nothing to do? return ASAP */</span><br><span class="line">    if (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) return 0;</span><br><span class="line"></span><br><span class="line">    /* Note that we want call select() even if there are no</span><br><span class="line">     * file events to process as long as we want to process time</span><br><span class="line">     * events, in order to sleep until the next time event is ready</span><br><span class="line">     * to fire.</span><br><span class="line">     */</span><br><span class="line">    if (eventLoop-&gt;maxfd != -1 ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        int j;</span><br><span class="line">        aeTimeEvent *shortest = NULL;</span><br><span class="line">        struct timeval tv, *tvp;</span><br><span class="line"></span><br><span class="line">        // 获取最近的时间事件</span><br><span class="line">        if (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            shortest = aeSearchNearestTimer(eventLoop);</span><br><span class="line">        if (shortest) &#123;</span><br><span class="line">            // 如果时间事件存在的话</span><br><span class="line">            // 那么根据最近可执行时间事件和现在时间的时间差来决定文件事件的阻塞时间</span><br><span class="line">            long now_sec, now_ms;</span><br><span class="line"></span><br><span class="line">            /* Calculate the time missing for the nearest</span><br><span class="line">             * timer to fire. */</span><br><span class="line">            // 计算距今最近的时间事件还要多久才能达到</span><br><span class="line">            // 并将该时间距保存在 tv 结构中</span><br><span class="line">            aeGetTime(&amp;now_sec, &amp;now_ms);</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">            tvp-&gt;tv_sec = shortest-&gt;when_sec - now_sec;</span><br><span class="line">            if (shortest-&gt;when_ms &lt; now_ms) &#123;</span><br><span class="line">                tvp-&gt;tv_usec = ((shortest-&gt;when_ms+1000) - now_ms)*1000;</span><br><span class="line">                tvp-&gt;tv_sec --;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                tvp-&gt;tv_usec = (shortest-&gt;when_ms - now_ms)*1000;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            // 时间差小于 0 ，说明事件已经可以执行了，将秒和毫秒设为 0 （不阻塞）</span><br><span class="line">            if (tvp-&gt;tv_sec &lt; 0) tvp-&gt;tv_sec = 0;</span><br><span class="line">            if (tvp-&gt;tv_usec &lt; 0) tvp-&gt;tv_usec = 0;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            </span><br><span class="line">            // 执行到这一步，说明没有时间事件</span><br><span class="line">            // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span><br><span class="line"></span><br><span class="line">            /* If we have to check for events but need to return</span><br><span class="line">             * ASAP because of AE_DONT_WAIT we need to set the timeout</span><br><span class="line">             * to zero */</span><br><span class="line">            if (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                // 设置文件事件不阻塞</span><br><span class="line">                tv.tv_sec = tv.tv_usec = 0;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                /* Otherwise we can block */</span><br><span class="line">                // 文件事件可以阻塞直到有事件到达为止</span><br><span class="line">                tvp = NULL; /* wait forever */</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 处理文件事件，阻塞时间由 tvp 决定</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line">        for (j = 0; j &lt; numevents; j++) &#123;</span><br><span class="line">            // 从已就绪数组中获取事件</span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line"></span><br><span class="line">            int mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            int fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            int rfired = 0;</span><br><span class="line"></span><br><span class="line">           /* note the fe-&gt;mask &amp; mask &amp; ... code: maybe an already processed</span><br><span class="line">             * event removed an element that fired and we still didn&apos;t</span><br><span class="line">             * processed, so we check if the event is still valid. */</span><br><span class="line">            // 读事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                // rfired 确保读/写事件只能执行其中一个</span><br><span class="line">                rfired = 1;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line">            // 写事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                if (!rfired || fe-&gt;wfileProc != fe-&gt;rfileProc)</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Check time events */</span><br><span class="line">    // 执行时间事件</span><br><span class="line">    if (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line"></span><br><span class="line">    return processed; /* return the number of processed file/time events */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
+<h3 id="如果redis变慢-可能是什么导致的？"><a class="header-anchor" href="#如果redis变慢-可能是什么导致的？">¶</a>如果Redis变慢，可能是什么导致的？</h3>
+<ol>
+<li>Redis是单线程模型，如果前面有请求执行比较慢，后面的都要排队等着；<br>
+耗时的操作包括：
+<ul>
+<li>操作bigkey：写入一个bigkey在分配内存时需要消耗更多的时间，同样，删除bigkey释放内存同样会产生耗时；</li>
+<li>使用复杂度过高的命令：例如SORT/SUNION/ZUNIONSTORE，或者O(N)命令，但是N很大，例如lrange key 0 -1一次查询全量数据；</li>
+<li>大量key集中过期：Redis的过期机制也是在主线程中执行的，大量key集中过期会导致处理一个请求时，耗时都在删除过期key，耗时变长；</li>
+<li>淘汰策略：淘汰策略也是在主线程执行的，当内存超过Redis内存上限后，每次写入都需要淘汰一些key，也会造成耗时变长；</li>
+<li>AOF刷盘开启always机制：每次写入都需要把这个操作刷到磁盘，写磁盘的速度远比写内存慢，会拖慢Redis的性能；</li>
+<li>主从全量同步生成RDB：虽然采用fork子进程生成数据快照，但fork这一瞬间也是会阻塞整个线程的，实例越大，阻塞时间越久；<br>
+对此，需要业务人员主动规避上述可能导致超时的情况；</li>
+</ul>
+</li>
+<li>并发非常大，单线程读写客户端IO数据存在性能瓶颈，虽然采用IO多路复用机制，但是读写客户端数据依旧是同步IO，只能单线程依次读取客户端的数据，无法利用到CPU多核。<br>
+对此，Redis6.0推出了多线程，可以在高并发场景下利用CPU多核多线程读写客户端数据。</li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Redis/" rel="tag"># Redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/d368c702.html" rel="next" title="Redis高可用方案Sentinel">
+                <i class="fa fa-chevron-left"></i> Redis高可用方案Sentinel
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/edd4cfac.html" rel="prev" title="Redis 复制">
+                Redis 复制 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">117</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">56</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么-redis-这么快"><span class="nav-number">1.</span> <span class="nav-text">¶为什么 Redis 这么快</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一些常见的进程模型"><span class="nav-number">2.</span> <span class="nav-text">¶一些常见的进程模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么是-nio"><span class="nav-number">3.</span> <span class="nav-text">¶为什么是 NIO</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#大-key-问题"><span class="nav-number">4.</span> <span class="nav-text">¶大 Key 问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis单线程多路复用io模型实现-事件注册"><span class="nav-number">5.</span> <span class="nav-text">¶Redis单线程多路复用IO模型实现 - 事件注册</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis单线程多路复用io模型实现-事件循环-处理"><span class="nav-number">6.</span> <span class="nav-text">¶Redis单线程多路复用IO模型实现 - 事件循环（处理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">7.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如果redis变慢-可能是什么导致的？"><span class="nav-number">7.1.</span> <span class="nav-text">¶如果Redis变慢，可能是什么导致的？</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

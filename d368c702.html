@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Redis,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶操作   Master TODO   Slave   Sentinel   获取集群信息  1redis-cli -p 26379 info Sentinel   获取 master 节点地址  1redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster   ¶客户端如何连接Sentinel集群  在 Sentinel 模式下，客户">
+<meta name="keywords" content="Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis高可用方案Sentinel">
+<meta property="og:url" content="https://tallate.github.io/d368c702.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶操作   Master TODO   Slave   Sentinel   获取集群信息  1redis-cli -p 26379 info Sentinel   获取 master 节点地址  1redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster   ¶客户端如何连接Sentinel集群  在 Sentinel 模式下，客户">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Sentinel.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg">
+<meta property="og:updated_time" content="2020-11-02T02:25:45.813Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis高可用方案Sentinel">
+<meta name="twitter:description" content="¶操作   Master TODO   Slave   Sentinel   获取集群信息  1redis-cli -p 26379 info Sentinel   获取 master 节点地址  1redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster   ¶客户端如何连接Sentinel集群  在 Sentinel 模式下，客户">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Redis/Sentinel.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/d368c702.html">
+
+
+
+
+
+
+
+  <title>Redis高可用方案Sentinel | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d368c702.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis高可用方案Sentinel</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
+                2019-09-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.2k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  11 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="操作"><a class="header-anchor" href="#操作">¶</a>操作</h2>
+<ol>
+<li>
+<p>Master<br>
+TODO</p>
+</li>
+<li>
+<p>Slave</p>
+</li>
+<li>
+<p>Sentinel</p>
+</li>
+<li>
+<p>获取集群信息</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 info Sentinel</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>获取 master 节点地址</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="客户端如何连接sentinel集群"><a class="header-anchor" href="#客户端如何连接sentinel集群">¶</a>客户端如何连接Sentinel集群</h2>
+<p><img src="http://47.88.24.11/imgs/Redis/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
+在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
+<ul>
+<li>Master 和 Slave 的配置和之前并无区别；</li>
+<li>Sentinel 相当于对 Master 的代理，Sentinel 可以通过发布订阅功能获取到 Slave 和其他 Sentinel 的信息。</li>
+</ul>
+<blockquote>
+<p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
+</blockquote>
+<h2 id="sentinel-执行原理"><a class="header-anchor" href="#sentinel-执行原理">¶</a>Sentinel 执行原理</h2>
+<p><img src="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg" alt="Sentinel的主要任务" title="Sentinel的主要任务"></p>
+<ul>
+<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。<br>
+如果一个实例（instance）距离最后一次有效回复 <code>PING</code> 命令的时间超过 <code>down-after-milliseconds</code> 选项所指定的值， 那么这个实例会被 Sentinel 标记为<strong>主观下线</strong>。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN 。</li>
+<li>如果一个主服务器被标记为<strong>主观下线</strong>， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。<br>
+如果有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为<strong>客观下线</strong>。</li>
+<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
+<li>当没有足够数量的 Sentinel 同意主服务器已经下线， 主服务器的客观下线状态就会被移除。 当主服务器重新向 Sentinel 的 PING 命令返回有效回复时， 主服务器的主观下线状态就会被移除。</li>
+</ul>
+<h2 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h2>
+<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
+哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
+<ul>
+<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
+<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
+</ul>
+<h2 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h2>
+<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
+每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
+<blockquote>
+<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
+</blockquote>
+<h2 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h2>
+<ul>
+<li>主观下线（Subjectively Down， 简称 SDOWN）<br>
+主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
+如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
+</ul>
+<blockquote>
+<p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
+</blockquote>
+<ul>
+<li>客观下线（Objectively Down， 简称 ODOWN）<br>
+客观下线指的是多个 Sentinel 实例在对同一个 Master 做出 SDOWN 判断， 并且通过 SENTINEL <code>is-master-down-by-addr</code> 命令互相交流之后，得出的服务器下线判断。 （一个 Sentinel 可以通过向另一个 Sentinel 发送 SENTINEL is-master-down-by-addr 命令来询问对方是否认为给定的服务器已下线。）<br>
+从主观下线切换到客观下线并不是通过较严格的投票算法，而是采用了<code>流言协议（gossip protocol）</code>：只要 Sentinel 在给定时间内从其他 Sentinel 接收到足够数量的 Master 下线通知，那么 Sentinel 就会执行状态的切换；如果之后其他 Sentinel 不再报告 Master 已下线，则客观下线状态就会被移除。<br>
+只要一个 Sentinel 发现某个 Master 进入客观下线状态，之后就会进入<strong>故障迁移</strong>阶段，选举出一个 Sentinel 对失效的 Master 执行自动故障迁移操作。</li>
+</ul>
+<blockquote>
+<p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
+</blockquote>
+<h2 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h2>
+<p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
+<ul>
+<li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
+<li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
+</ul>
+<p>故障转移主要分为Sentinel选主和Slave选主两个步骤，Sentinel选主流程如下：</p>
+<ul>
+<li>Sentinel发现主服务器已经进入客观下线状态。</li>
+<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
+<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
+</ul>
+<p>Slave选举的规则如下：</p>
+<ul>
+<li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
+<li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
+<li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
+</ul>
+<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
+<p>提升新的Master的流程如下：</p>
+<ul>
+<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
+<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
+<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
+<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
+</ul>
+<p>客户端感知新master流程如下：<br>
+哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
+另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
+一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
+<h2 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h2>
+<p>配置安全性：</p>
+<ul>
+<li>每当一个 Redis 实例被重新配置（reconfigured） —— 无论是被设置成主服务器、从服务器、又或者被设置成其他主服务器的从服务器 —— Sentinel 都会向被重新配置的实例发送一个 CONFIG REWRITE 命令， 从而确保这些配置会持久化在硬盘里。完成重新配置之后，从服务器会去复制正确的主服务器。</li>
+<li>Sentinel 的状态会被持久化到 Sentinel 配置文件里，当 Sentinel 接收到新配置或 Leader Sentinel 为 Master 创建一个新配置时，这些配置都会与<code>epoch</code>一起被保存到磁盘；</li>
+</ul>
+<p>故障自动迁移的一致性：</p>
+<ul>
+<li>Raft 算法保证在一个 epoch 里只有一个 Leader Sentinel 产生，减少了脑裂的风险；</li>
+<li>Sentinel 集群总是以更高的 epoch 为准，因为发生<code>网络分区（network partition）</code>时可能会有 Sentinel 包含老的配置，而当这个 Sentinel 服务器接收到其他 Sentinel 的版本更新配置时就会进行更新。</li>
+<li>发生网络分区并且某些 Sentinel 仍在采用老的配置时，如果有客户端连接到这些 Sentinel 上，最终可能就会将请求转发到非 Master 服务器上，造成数据不一致。因此，应该使用 <code>min-slaves-to-write</code> 选项， 让主服务器在连接的从实例少于给定数量时停止执行写操作， 与此同时， 应该在每个运行 Redis 主服务器或从服务器的机器上运行 Redis Sentinel 进程。</li>
+</ul>
+<h2 id="tilt-模式"><a class="header-anchor" href="#tilt-模式">¶</a>TILT 模式</h2>
+<p>TILT 模式是一种特殊的保护模式，Sentinel 每隔 100ms 会向实例发一次<code>PING</code>命令，并将上一次 PING 成功的时间和当前时间比对，从而知道与该实例有多长时间没有进行任何成功通讯：</p>
+<ul>
+<li>如果两次调用时间之间的差距为负值， 或者非常大（超过 2 秒钟）， 那么 Sentinel 进入 TILT 模式。</li>
+<li>如果 Sentinel 已经进入 TILT 模式， 那么 Sentinel 延迟退出 TILT 模式的时间。</li>
+</ul>
+<blockquote>
+<p>Sentinel严重依赖计算机的时间功能，一旦计算机的时间功能出现故障， 或者计算机非常忙碌， 又或者进程因为某些原因而被阻塞时， Sentinel 可能也会跟着出现故障。</p>
+</blockquote>
+<p>进入 TILT 模式后，Sentinel 仍然会继续监视所有目标，但是：</p>
+<ul>
+<li>它不再执行任何操作，比如故障转移。</li>
+<li>当有实例向这个 Sentinel 发送 SENTINEL <code>is-master-down-by-addr</code> 命令时， Sentinel 返回负值： 因为这个 Sentinel 所进行的下线判断已经不再准确。</li>
+</ul>
+<p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
+<h2 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h2>
+<p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Redis/" rel="tag"># Redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/fb6b62e.html" rel="next" title="Redis高可用方案Cluster">
+                <i class="fa fa-chevron-left"></i> Redis高可用方案Cluster
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/9dda6023.html" rel="prev" title="Redis 进程和 IO 模型">
+                Redis 进程和 IO 模型 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">117</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">56</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端如何连接sentinel集群"><span class="nav-number">2.</span> <span class="nav-text">¶客户端如何连接Sentinel集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-执行原理"><span class="nav-number">3.</span> <span class="nav-text">¶Sentinel 执行原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态感知-info"><span class="nav-number">4.</span> <span class="nav-text">¶状态感知（info）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#心跳检测-ping"><span class="nav-number">5.</span> <span class="nav-text">¶心跳检测（ping）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主观下线和客观下线"><span class="nav-number">6.</span> <span class="nav-text">¶主观下线和客观下线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障迁移-master-挂掉-sentinel选举新master"><span class="nav-number">7.</span> <span class="nav-text">¶故障迁移（Master 挂掉，Sentinel选举新Master）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-选举的安全性"><span class="nav-number">8.</span> <span class="nav-text">¶Sentinel 选举的安全性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tilt-模式"><span class="nav-number">9.</span> <span class="nav-text">¶TILT 模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#busy-状态"><span class="nav-number">10.</span> <span class="nav-text">¶BUSY 状态</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>

@@ -79,36 +79,22 @@
 
 
 
-<meta name="description" content="图片来自极客时间的《Redis核心技术与实战》。  ¶为什么使用 Redis ¶Redis 的缺点 &amp;amp; 优点 特性及优势：  内存数据库，吞吐率不受磁盘影响； 每秒可以处理超过 10 万次读写操作； 多数据结构支持，包括 string、hash、list、set、zset、Bitmaps、Hyperloglog、Geo、Pub/Sub、Redis Module、BloomFilte">
+<meta name="description" content="Redis-Lua应用总结 Redis-Redis数据结构 Redis进程和IO模型 Redis持久化 Redis高可用方案Sentinel Redis高可用方案Cluster Redis客户端 Redis应用     图片来自极客时间的《Redis核心技术与实战》。  下面对原理的分析都是基于Redis3.0版本的代码。 ¶为什么使用 Redis ¶Redis 的缺点 &amp;amp; 优点 特性">
 <meta name="keywords" content="Redis">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Redis 原理总结">
 <meta property="og:url" content="https://tallate.github.io/df2941e1.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="图片来自极客时间的《Redis核心技术与实战》。  ¶为什么使用 Redis ¶Redis 的缺点 &amp;amp; 优点 特性及优势：  内存数据库，吞吐率不受磁盘影响； 每秒可以处理超过 10 万次读写操作； 多数据结构支持，包括 string、hash、list、set、zset、Bitmaps、Hyperloglog、Geo、Pub/Sub、Redis Module、BloomFilte">
+<meta property="og:description" content="Redis-Lua应用总结 Redis-Redis数据结构 Redis进程和IO模型 Redis持久化 Redis高可用方案Sentinel Redis高可用方案Cluster Redis客户端 Redis应用     图片来自极客时间的《Redis核心技术与实战》。  下面对原理的分析都是基于Redis3.0版本的代码。 ¶为什么使用 Redis ¶Redis 的缺点 &amp;amp; 优点 特性">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis%E7%9F%A5%E8%AF%86%E6%A1%86%E6%9E%B6.jpeg">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis%E9%97%AE%E9%A2%98%E7%94%BB%E5%83%8F.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%8F%8A%E5%85%B6%E5%AE%9E%E7%8E%B0.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-dict%E6%89%A9%E5%AE%B9rehash.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-ziplist%E7%BB%93%E6%9E%84.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-quicklist%E7%BB%93%E6%9E%84.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-skiplist%E7%BB%93%E6%9E%84.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/Sentinel.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Cluster.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/ConsistentHashLoadBalance.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E7%BD%91%E7%BB%9C%E5%88%86%E5%8C%BA.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%BC%82%E6%AD%A5%E5%86%99%E5%A4%B1%E8%B4%A5%E7%9A%84%E6%83%85%E5%86%B5.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%B9%B6%E5%8F%91%E5%8F%8C%E5%86%99%E4%B9%B1%E5%BA%8F.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4%E5%89%8D%E6%A3%80%E6%9F%A5%E7%BC%93%E5%AD%98%E6%98%AF%E5%90%A6%E6%BA%A2%E5%87%BA.jpeg">
-<meta property="og:updated_time" content="2020-10-27T17:05:03.341Z">
+<meta property="og:updated_time" content="2020-11-02T02:26:15.837Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis 原理总结">
-<meta name="twitter:description" content="图片来自极客时间的《Redis核心技术与实战》。  ¶为什么使用 Redis ¶Redis 的缺点 &amp;amp; 优点 特性及优势：  内存数据库，吞吐率不受磁盘影响； 每秒可以处理超过 10 万次读写操作； 多数据结构支持，包括 string、hash、list、set、zset、Bitmaps、Hyperloglog、Geo、Pub/Sub、Redis Module、BloomFilte">
+<meta name="twitter:description" content="Redis-Lua应用总结 Redis-Redis数据结构 Redis进程和IO模型 Redis持久化 Redis高可用方案Sentinel Redis高可用方案Cluster Redis客户端 Redis应用     图片来自极客时间的《Redis核心技术与实战》。  下面对原理的分析都是基于Redis3.0版本的代码。 ¶为什么使用 Redis ¶Redis 的缺点 &amp;amp; 优点 特性">
 <meta name="twitter:image" content="http://47.88.24.11/imgs/Redis/Redis%E7%9F%A5%E8%AF%86%E6%A1%86%E6%9E%B6.jpeg">
 
 
@@ -377,7 +363,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  31.2k 字
+                  12.9k 字
                 </span>
               
 
@@ -393,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  113 分钟
+                  46 分钟
                 </span>
               
             </div>
@@ -415,11 +401,22 @@
 
       
         <a id="more"></a>
+<ul>
+<li><a href="https://tallate.github.io/d9054d7.html">Redis-Lua应用总结</a></li>
+<li><a href="https://tallate.github.io/f1a5dd67.html">Redis-Redis数据结构</a></li>
+<li><a href="https://tallate.github.io/9dda6023.html">Redis进程和IO模型</a></li>
+<li><a href="https://tallate.github.io/a2b16944.html">Redis持久化</a></li>
+<li><a href="https://tallate.github.io/d368c702.html">Redis高可用方案Sentinel</a></li>
+<li><a href="https://tallate.github.io/fb6b62e.html">Redis高可用方案Cluster</a></li>
+<li><a href="https://tallate.github.io/d3d5fdbf.html">Redis客户端</a></li>
+<li><a href="https://tallate.github.io/e94a0a.html">Redis应用</a></li>
+</ul>
 <p><img src="http://47.88.24.11/imgs/Redis/Redis%E7%9F%A5%E8%AF%86%E6%A1%86%E6%9E%B6.jpeg" alt="Redis知识框架" title="Redis知识框架"><br>
 <img src="http://47.88.24.11/imgs/Redis/Redis%E9%97%AE%E9%A2%98%E7%94%BB%E5%83%8F.jpg" alt="Redis问题画像" title="Redis问题画像"></p>
 <blockquote>
 <p>图片来自极客时间的《Redis核心技术与实战》。</p>
 </blockquote>
+<p>下面对原理的分析都是基于Redis3.0版本的代码。</p>
 <h2 id="为什么使用-redis"><a class="header-anchor" href="#为什么使用-redis">¶</a>为什么使用 Redis</h2>
 <h3 id="redis-的缺点-优点"><a class="header-anchor" href="#redis-的缺点-优点">¶</a>Redis 的缺点 &amp; 优点</h3>
 <p>特性及优势：</p>
@@ -486,243 +483,6 @@ Redis 提供的所有特性中，我感觉这个是喜欢的人最少的一个�
 如果 Redis 中有 1 亿多个 key，其中有 10W+个 key 有固定的前缀（这种场景非常常见），如何将它们全部找出来？<br>
 由于 Redis 的单线程特性，使用 keys 可能会阻塞 Redis 进程，最好换成 scan 命令，不过可能提取出的部分 key 是重复的，需要客户端做去重。</li>
 </ol>
-<h2 id="redis环境搭建及基本用法"><a class="header-anchor" href="#redis环境搭建及基本用法">¶</a>Redis环境搭建及基本用法</h2>
-<h3 id="搭建环境"><a class="header-anchor" href="#搭建环境">¶</a>搭建环境</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker run --name myredis -d -p6379:6379 redis</span><br><span class="line">docker exec -it myredis redis-cli</span><br></pre></td></tr></table></figure>
-<h3 id="使用"><a class="header-anchor" href="#使用">¶</a>使用</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"># exists 查看某个key是否存在</span><br><span class="line">exists aa</span><br><span class="line">SET 创建一个key；</span><br><span class="line">GET 获取一个key的值；</span><br><span class="line">DEL ***一个key；</span><br><span class="line">TYPE 获取一个key的类型；</span><br><span class="line">EXISTS 判断一个key是否存在，0：存在，1，不存在；</span><br><span class="line"># KEYS 获取给定模糊匹配的key，但要谨慎使用，因为线上的key一般非常多</span><br><span class="line">keys *</span><br><span class="line">keys a?</span><br><span class="line">EXPIRE 设置一个key过期的秒数；</span><br><span class="line">PERSTST ***一个key过期的秒数；</span><br><span class="line">PEXPIRE 设置一个key过期的毫秒数；</span><br><span class="line">RENAME 将一个key重命名；</span><br><span class="line">RENAMENX 将一个key重命名，且新的key必须是不存在的可以；</span><br><span class="line">TTL 获取key的有效时间，以秒为单位，-1表示永不过期，-2表示已过期、已转移</span><br><span class="line"># dbsize 查看当前库中key数量</span><br><span class="line">dbsize</span><br><span class="line"># flushdb 清除数据库（内存）</span><br><span class="line">flushdb</span><br><span class="line"># move 移动key到另一个库</span><br><span class="line">move aa 2</span><br></pre></td></tr></table></figure>
-<h3 id="容量预估"><a class="header-anchor" href="#容量预估">¶</a>容量预估</h3>
-<p>在实际部署前一般都会先对所需容量进行一个评估，这样可以尽量避免在上线后容量不够还要扩容、或者容量过大造成浪费。<br>
-官方提供了一个<a href="http://www.redis.cn/redis_memory/" target="_blank" rel="noopener">容量预估工具</a>，一些博客比如<a href="https://gameinstitute.qq.com/community/detail/114987" target="_blank" rel="noopener">Redis 容量评估模型</a>贴近 Redis 底层数据结构给出了容量的评估分析，可以作为一个参考，但是业务架构一直在变，实际的容量监控还是必须的，我们下面还会谈到这方面的工具。</p>
-<h2 id="基本数据结构"><a class="header-anchor" href="#基本数据结构">¶</a>基本数据结构</h2>
-<h3 id="string"><a class="header-anchor" href="#string">¶</a>String</h3>
-<h4 id="特点"><a class="header-anchor" href="#特点">¶</a>特点</h4>
-<ol>
-<li>最大能存储 512MB == 536870912 B(byte) ；</li>
-<li>二进制安全，在传输数据的时候，能保证二进制数据的信息安全，也就是不会被篡改、破译；如果被攻击，能够及时检测出来</li>
-<li>能存储各种类型的数据，字符串、数字，以至对象（通过json序列化）、位图等。</li>
-</ol>
-<h4 id="基本使用"><a class="header-anchor" href="#基本使用">¶</a>基本使用</h4>
-<p>容量：512M</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">set aa &apos;str&apos;</span><br><span class="line">get aa</span><br></pre></td></tr></table></figure>
-<p>操作总结</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">set/get/del/append/strlen key</span><br><span class="line">incr/decr/incrby/decrby key</span><br><span class="line">getrange key start end/setrange key offset value（从offset处开始读取/覆盖）</span><br><span class="line">setex key seconds value(set with expire插入key的同时设置过期时间)/setnx key value(set if not exists如果已存在则直接返回0)</span><br><span class="line">mset/mget/msetnx key value &#123;key value&#125;（设置/读取多个key的值，msetnx比较特殊，要么都成功，要么一个都不执行，可以用来设置一个对象的多个不同字段）</span><br><span class="line">getset key(设置并返回key对应的旧值，可以用于计数器的重置)</span><br></pre></td></tr></table></figure>
-<h4 id="常见应用"><a class="header-anchor" href="#常见应用">¶</a>常见应用</h4>
-<p>字符串、jpg图片、序列化对象、一些复杂的计数功能的缓存</p>
-<h3 id="hash"><a class="header-anchor" href="#hash">¶</a>Hash</h3>
-<p>存储 String 类型键值对的映射表、对象</p>
-<h4 id="基本使用方法"><a class="header-anchor" href="#基本使用方法">¶</a>基本使用方法</h4>
-<p>容量：每个 Hash 可存 2^32 - 1（约 40 亿）个键值对</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hmset user username &apos;name&apos; password &apos;123456&apos; # 定义一个有两个元素的Hash表</span><br><span class="line">hgetall user # 获取user中所有key和value</span><br><span class="line">hget user username # 获取user中key为username的value</span><br></pre></td></tr></table></figure>
-<h4 id="常见应用-v2"><a class="header-anchor" href="#常见应用-v2">¶</a>常见应用</h4>
-<p>单点登录（存&lt;CookieId, 用户信息&gt;，设置 30 分钟为缓存过期时间，能很好地模拟出类似 Session 的效果）。</p>
-<h3 id="list"><a class="header-anchor" href="#list">¶</a>List</h3>
-<p>String列表</p>
-<h4 id="基本使用方法-v2"><a class="header-anchor" href="#基本使用方法-v2">¶</a>基本使用方法</h4>
-<p>容量：每个 List 可存 2^32 - 1 个元素</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">lpush ball basketball soccer # 按顺序从左侧压入，如果ball列表不存在则创建</span><br><span class="line">rpush ball volleyball</span><br><span class="line">lrange 0 1 # 获取索引从0到1的值</span><br></pre></td></tr></table></figure>
-<p>操作总结</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">lpush/rpush/lrange</span><br><span class="line">lpop/rpop</span><br><span class="line">lindex</span><br><span class="line">llen</span><br><span class="line">lrem key</span><br><span class="line">ltrim key</span><br><span class="line">rpoplpush</span><br><span class="line">lset key index value</span><br><span class="line">linsert key before/after val1 val2</span><br></pre></td></tr></table></figure>
-<h4 id="常见应用-v3"><a class="header-anchor" href="#常见应用-v3">¶</a>常见应用</h4>
-<p>简单的消息队列<br>
-基于 Redis 的分页功能（利用 lrang 命令，性能极佳，用户体验好）</p>
-<h3 id="set"><a class="header-anchor" href="#set">¶</a>Set</h3>
-<p>字符串的无序集合，使用 Hash 实现（key 和 value 相同的 Hash）</p>
-<h4 id="基本使用方法-v3"><a class="header-anchor" href="#基本使用方法-v3">¶</a>基本使用方法</h4>
-<p>容量：2^32 - 1 个成员</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sadd myset li1 # 向集合myset中添加一个元素li1，若不存在则创建</span><br><span class="line">smembers myset</span><br></pre></td></tr></table></figure>
-<h4 id="常见应用-v4"><a class="header-anchor" href="#常见应用-v4">¶</a>常见应用</h4>
-<p>全局去重（为什么不用 JDK 自带的 Set 去重？因为我们的系统一般都是集群部署）<br>
-计算共同喜好、全部喜好、自己独有的喜好等功能（交集、并集、差集）</p>
-<h3 id="zset"><a class="header-anchor" href="#zset">¶</a>ZSet</h3>
-<p>字符串的有序集合，每个元素都关联一个 double 类型的权重参数 score，集合中的元素能够按 score 进行排列。</p>
-<h4 id="基本使用方法-v4"><a class="header-anchor" href="#基本使用方法-v4">¶</a>基本使用方法</h4>
-<p>容量：2^32 - 1 个成员</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">zadd myzset 0 abc</span><br><span class="line">zrangebyscore myzset 0 10</span><br></pre></td></tr></table></figure>
-<h4 id="常见应用-v5"><a class="header-anchor" href="#常见应用-v5">¶</a>常见应用</h4>
-<p>排行榜<br>
-取 Top N 操作<br>
-延时任务（<a href="https://www.cnblogs.com/rjzheng/p/8972725.html%EF%BC%89" target="_blank" rel="noopener">https://www.cnblogs.com/rjzheng/p/8972725.html）</a><br>
-范围查找</p>
-<h4 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h4>
-<p>实现上类似于 Java 的 SortedSet 和 HashMap 的结合体，value 唯一（Set 结构的特点），每个 value 一个 score 代表该 value 的排序权重。<br>
-zset 内部是使用一种叫做跳跃列表的结构实现的。</p>
-<h2 id="redis-数据结构的实现"><a class="header-anchor" href="#redis-数据结构的实现">¶</a>Redis 数据结构的实现</h2>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%8F%8A%E5%85%B6%E5%AE%9E%E7%8E%B0.png" alt="Redis数据结构及其实现" title="Redis数据结构及其实现"><br>
-Redis 中的 set、zset 等结构在 Redis 中并不是由一个单独的数据结构实现的，而是会根据情况有所变化。</p>
-<h3 id="sds-simple-dynamic-string"><a class="header-anchor" href="#sds-simple-dynamic-string">¶</a>SDS(Simple Dynamic String)</h3>
-<p>Redis 中的动态数组有以下特点：</p>
-<ul>
-<li>可动态扩展内存。sds 表示的字符串其内容可以修改，也可以追加。在很多语言中字符串会分为 mutable 和 immutable 两种，显然 sds 属于 mutable 类型的。</li>
-<li>减少修改字符串的内存重新分配次数<br>
-C语言由于不记录字符串的长度，所以如果要修改字符串，必须要重新分配内存（先释放再申请），因为如果没有重新分配，字符串长度增大时会造成内存缓冲区溢出，字符串长度减小时会造成内存泄露。<br>
-而对于SDS，由于<code>len</code>属性和<code>free</code>属性的存在，对于修改字符串SDS实现了空间预分配和惰性空间释放两种策略：<br>
-1、空间预分配：对字符串进行空间扩展的时候，扩展的内存比实际需要的多，这样可以减少连续执行字符串增长操作所需的内存重分配次数。<br>
-2、惰性空间释放：对字符串进行缩短操作时，程序不立即使用内存重新分配来回收缩短后多余的字节，而是使用 free 属性将这些字节的数量记录下来，等待后续使用。（当然SDS也提供了相应的API，当我们有需要时，也可以手动释放这些未使用的空间。）</li>
-<li>二进制安全（Binary Safe）。sds 能存储任意二进制数据，而不仅仅是可打印字符。</li>
-<li>与传统的 C 语言字符串类型兼容。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct SDS&lt;T&gt; &#123;</span><br><span class="line">  T capacity; // 数组容量</span><br><span class="line">  T len; // 数组当前长度</span><br><span class="line">  byte flags; // 特殊标识位，不理睬它</span><br><span class="line">  byte[] content; // 数组内容</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>下面的函数将 t 数组拷贝到 s 中，如果长度不够则需要进行扩容：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">/* Append the specified binary-safe string pointed by &apos;t&apos; of &apos;len&apos; bytes to the</span><br><span class="line"> * end of the specified sds string &apos;s&apos;.</span><br><span class="line"> *</span><br><span class="line"> * After the call, the passed sds string is no longer valid and all the</span><br><span class="line"> * references must be substituted with the new pointer returned by the call. */</span><br><span class="line">sds sdscatlen(sds s, const void *t, size_t len) &#123;</span><br><span class="line">    size_t curlen = sdslen(s);  // 原字符串长度</span><br><span class="line"></span><br><span class="line">    // 按需调整空间，如果 capacity 不够容纳追加的内容，就会重新分配字节数组并复制原字符串的内容到新数组中</span><br><span class="line">    s = sdsMakeRoomFor(s,len);</span><br><span class="line">    if (s == NULL) return NULL; // 内存不足</span><br><span class="line">    memcpy(s+curlen, t, len);  // 追加目标字符串的内容到字节数组中</span><br><span class="line">    sdssetlen(s, curlen+len); // 设置追加后的长度值</span><br><span class="line">    s[curlen+len] = &apos;\0&apos;; // 让字符串以\0 结尾，便于调试打印，还可以直接使用 glibc 的字符串函数进行操作</span><br><span class="line">    return s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>SDS 有 embstr 和 raw 两种存储结构，它们的区别是：</p>
-<ol>
-<li>内存分配上：<br>
-embstr 调用 1 次 malloc, 因此 redisObject 和 SDS 内存是连续分配的；<br>
-raw 需要调用 2 次 malloc, 因此 redisObject 和 SDS 内存不连续分配</li>
-<li>使用上:<br>
-embstr 整体 64 byte, 正好和<strong>cpu cache line</strong> 64byte 一样, 可以更好的使用缓存, 效率更高</li>
-</ol>
-<h3 id="dict-字典"><a class="header-anchor" href="#dict-字典">¶</a>dict（字典）</h3>
-<p>dict 是 Redis 中使用最广泛的数据结构：</p>
-<ol>
-<li>hash 结构的数据会用到字典；</li>
-<li>整个 Redis 数据库的所有 key 和 value 也组成了一个全局字典；</li>
-<li>带过期时间的 key 集合也是一个字典；</li>
-<li>set 结构的底层实现也是字典，只是所有 value 都是 NULL；</li>
-<li>zset 集合中存储 value 和 score 值的映射关系也是通过 dict 结构实现的。</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">struct RedisDb &#123;</span><br><span class="line">    dict* dict; // all keys  key=&gt;value</span><br><span class="line">    dict* expires; // all expired keys key=&gt;long(timestamp)</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct dict &#123;</span><br><span class="line">    ...</span><br><span class="line">    dictht ht[2];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">struct zset &#123;</span><br><span class="line">    dict *dict; // all values  value=&gt;score</span><br><span class="line">    zskiplist *zsl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="hashtable"><a class="header-anchor" href="#hashtable">¶</a>hashtable</h4>
-<p>dict 中的 hashtable 结构和 Java 中的 HashMap 类似，使用一个数组来保存所有的哈希桶，通过<strong>siphash</strong>函数来将 key 散列到数组中的某个桶上，每个哈希桶都是一个链表，也就是说如果发生哈希冲突，则将新元素直接插入到桶的头部。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">struct dictEntry &#123;</span><br><span class="line">    void* key;</span><br><span class="line">    void* val;</span><br><span class="line">    dictEntry* next; // 链接下一个 entry</span><br><span class="line">&#125;</span><br><span class="line">struct dictht &#123;</span><br><span class="line">    dictEntry** table; // 二维</span><br><span class="line">    long size; // 第一维数组的长度</span><br><span class="line">    long used; // hash 表中的元素个数</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="扩容：渐进式-rehash"><a class="header-anchor" href="#扩容：渐进式-rehash">¶</a>扩容：渐进式 rehash</h4>
-<p>正常情况下，当 hashtable 中元素的个数等于第一维数组的长度时、来了一个新增/修改/删除操作，就会触发扩容，扩容的新数组是原数组大小的 2 倍。</p>
-<blockquote>
-<p>存在一个特殊情况：如果 Redis 正在做 bgsave，为了减少内存页的过多分离 (Copy On Write)，Redis 尽量不去扩容 (<code>dict_can_resize</code>)，但是如果 hash 表已经非常满了，元素的个数已经达到了第一维数组长度的 5 倍 (<code>dict_force_resize_ratio</code>)，说明 hash 表已经过于拥挤了，这个时候就会强制扩容。</p>
-</blockquote>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-dict%E6%89%A9%E5%AE%B9rehash.png" alt="Redis-dict扩容rehash" title="Redis-dict扩容rehash"><br>
-一般情况下 dict 中只有一个 hashtable 有值，但是在扩容时会分配另一个新的 hashtable，然后执行<strong>渐进式</strong>的数据迁移，避免一次性对所有 key 执行 rehash，而是将 rehash 操作分散到了对 dict 的各个增删改查操作中去了。</p>
-<ol>
-<li>在扩容过程中，如果有新增元素，则该元素会被同时添加到新 hashtable 中；</li>
-<li>查询、删除、修改操作中，会先查询旧 hashtable，若存在则迁移这个 key 所在的桶并返回元素，若不存在则到新 hashtable 中查找元素。</li>
-<li>有一个异步线程执行定时任务对字典主动迁移。</li>
-</ol>
-<p>dict 之所以这样设计，是为了避免 rehash 期间单个请求的响应时间剧烈增加。<br>
-当旧 hashtable 中无元素时，即代表迁移完毕，这时会将新旧 hashtable 的指针交换，旧的会被删除，而新的则取而代之。</p>
-<h4 id="缩容"><a class="header-anchor" href="#缩容">¶</a>缩容</h4>
-<p>当 hash 表因为元素的逐渐删除变得越来越稀疏时，Redis 会对 hash 表进行缩容来减少 hash 表的第一维数组空间占用。缩容的条件是元素个数低于数组长度的 10%。<br>
-缩容不会考虑 Redis 是否正在做 bgsave，因为 COW 的特性是当内存页上的数据被修改时会复制一页做修改，如果删除操作并不会触发删除内存页的数据，操作系统回收内存机制导致的。</p>
-<h3 id="ziplist"><a class="header-anchor" href="#ziplist">¶</a>ziplist</h3>
-<p>ziplist 是一种压缩存储的数组结构，当 Redis 中的集合数据结构很小，则它会使用这种紧凑的存储形式存储，元素之间紧挨着存储，查找就是对数组进行遍历找到目标对象。</p>
-<ul>
-<li>zset 和 hash 容器在元素个数较少时会采用 ziplist 存储。当存储的对象数量小于 512 且所有 entry 的 value 值长度小于 64，采用 ziplist 存储，否则转为采用 hashtable 存储。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">import redis</span><br><span class="line">client = redis.StrictRedis()</span><br><span class="line">client.delete(&quot;hello&quot;)</span><br><span class="line">for i in range(512):</span><br><span class="line">    client.hset(&quot;hello&quot;, str(i), str(i))</span><br><span class="line">print client.object(&quot;encoding&quot;, &quot;hello&quot;)</span><br><span class="line">client.hset(&quot;hello&quot;, &quot;512&quot;, &quot;512&quot;)</span><br><span class="line"># 或者插入一个长度为65的值也能起到转化的作用</span><br><span class="line">print client.object(&quot;encoding&quot;, &quot;hello&quot;)</span><br></pre></td></tr></table></figure>
-<p>可以上服务器上使用<code>debug object</code>命令验证数据结构的类型：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; zadd hgc_test 1.0 go 2.0 python 2.0 java</span><br><span class="line">...</span><br><span class="line">&gt; debug object hgc_test</span><br><span class="line">Value at:0x7f73c6d673a0 refcount:1 encoding:ziplist serializedlength:36 lru:1381596 lru_seconds_idle:77</span><br></pre></td></tr></table></figure>
-<h4 id="结构"><a class="header-anchor" href="#结构">¶</a>结构</h4>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-ziplist%E7%BB%93%E6%9E%84.png" alt="Redis-ziplist结构" title="Redis-ziplist结构"></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">struct ziplist&lt;T&gt; &#123;</span><br><span class="line">    int32 zlbytes; // 整个压缩列表占用字节数</span><br><span class="line">    int32 zltail_offset; // 最后一个元素距离压缩列表起始位置的偏移量，用于快速定位到最后一个节点</span><br><span class="line">    int16 zllength; // 元素个数</span><br><span class="line">    T[] entries; // 元素内容列表，挨个挨个紧凑存储</span><br><span class="line">    int8 zlend; // 标志压缩列表的结束，值恒为 0xFF</span><br><span class="line">&#125;</span><br><span class="line">struct entry &#123;</span><br><span class="line">    int&lt;var&gt; prevlen; // 前一个 entry 的字节长度</span><br><span class="line">    int&lt;var&gt; encoding; // 元素类型编码</span><br><span class="line">    optional byte[] content; // 元素内容</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>zltail_offset 字段可以快速定位到 ziplist 中的最后一个节点，可以用于倒序遍历，entry 中的 prevlen 表示前一个 entry 的字节长度，可以用于倒序遍历时找到下一个元素的位置；</li>
-<li>encoding 记录编码类型，ziplist 利用该字段决定后面的 content 内容的形式，比如用<code>00xxxxxx</code>表示最大长度为 63 的短字符串，<code>01xxxxxx xxxxxxxx</code>表示中等长度的字符串；</li>
-</ul>
-<h4 id="插入"><a class="header-anchor" href="#插入">¶</a>插入</h4>
-<p>ziplist 是紧凑存储的，没有冗余空间，因此插入一个新元素就需要调用 realloc 重新分配内存空间，并将之前的内容一次性拷贝到新的内存空间中。<br>
-重新分配空间是比较耗时的，因此 ziplist 不适合存储大量数据。</p>
-<h4 id="更新-删除"><a class="header-anchor" href="#更新-删除">¶</a>更新/删除</h4>
-<p>修改或删除一个元素后其后一个位置的元素中的 prevlen 也需要级联更新，prevlen 字段又是变长的，所以可能会导致连锁反应。</p>
-<h4 id="ziplist-vs-dict"><a class="header-anchor" href="#ziplist-vs-dict">¶</a>ziplist vs dict</h4>
-<p>为什么 hash 结构中会采用 ziplist 而不是 dict，主要原因如下：</p>
-<ol>
-<li>数据量小时，ziplist 的速度也很快；</li>
-<li>数据量大时，ziplist 在每次插入或修改时引发的 realloc 操作会有更大的概率造成内存拷贝，从而降低性能，而且数据项过多的时候，在 ziplist 上查找指定数据项的性能会变得很低，因为在 ziplist 上的查找需要进行遍历。</li>
-</ol>
-<h3 id="quicklist"><a class="header-anchor" href="#quicklist">¶</a>quicklist</h3>
-<p>Redis 早期版本存储 list 数据结构采用元素少时 ziplist+多时 linkedlist 的方案，但是：</p>
-<ol>
-<li>链表的附加空间太高，prev 和 next 指针就要占去 16 个字节（64 位系统）；</li>
-<li>链表每个节点都是单独分配，会加剧内存的碎片化。</li>
-</ol>
-<p>因此在之后的版本中转换为了 quicklist 存储。<br>
-quicklist 是 ziplist 和 linkedlist 的混合体，它将 linkedlist 按段切分，每一段使用 ziplist 来紧凑存储，多个 ziplist 之间使用双向指针串接起来。<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis-quicklist%E7%BB%93%E6%9E%84.png" alt="Redis-quicklist结构" title="Redis-quicklist结构"></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">struct ziplist &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">struct ziplist_compressed &#123;</span><br><span class="line">    int32 size;</span><br><span class="line">    byte[] compressed_data;</span><br><span class="line">&#125;</span><br><span class="line">struct quicklistNode &#123;</span><br><span class="line">    quicklistNode* prev;</span><br><span class="line">    quicklistNode* next;</span><br><span class="line">    ziplist* zl; // 指向压缩列表</span><br><span class="line">    int32 size; // ziplist 的字节总数</span><br><span class="line">    int16 count; // ziplist 中的元素数量</span><br><span class="line">    int2 encoding; // 存储形式 2bit，原生字节数组还是 LZF 压缩存储</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">struct quicklist &#123;</span><br><span class="line">    quicklistNode* head;</span><br><span class="line">    quicklistNode* tail;</span><br><span class="line">    long count; // 元素总数</span><br><span class="line">    int nodes; // ziplist 节点的个数</span><br><span class="line">    int compressDepth; // LZF 算法压缩深度</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="skiplist"><a class="header-anchor" href="#skiplist">¶</a>skiplist</h3>
-<p>zset 中除了 dict（字典）外，还会用一个 skiplist 来提供按 score 排序的要求，以实现指定 score 的范围来获取 value 列表的功能。</p>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-skiplist%E7%BB%93%E6%9E%84.png" alt="Redis-skiplist结构" title="Redis-skiplist结构"></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">struct zslnode &#123;</span><br><span class="line">  string value;</span><br><span class="line">  double score;</span><br><span class="line">  zslnode*[] forwards;  // 多层连接指针</span><br><span class="line">  zslnode* backward;  // 回溯指针</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct zsl &#123;</span><br><span class="line">  zslnode* header; // 跳跃列表头指针</span><br><span class="line">  int maxLevel; // 跳跃列表当前的最高层</span><br><span class="line">  map&lt;string, zslnode*&gt; ht; // hash 结构的所有键值对</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>各层均为一个有序的链表结构；</li>
-<li>层数越大，节点越少；</li>
-<li>有一个 header 节点作为哨兵，value=null，score=Double.MIN_VALUE。</li>
-</ul>
-<h4 id="插入-v2"><a class="header-anchor" href="#插入-v2">¶</a>插入</h4>
-<p>插入时会先自顶向下找到新节点在跳表中底层的插入位置，插入每一层时都有概率晋升到更高一层，在 Redis 中是 25%。</p>
-<h4 id="删除"><a class="header-anchor" href="#删除">¶</a>删除</h4>
-<p>删除每一层上的对应节点。</p>
-<h4 id="更新"><a class="header-anchor" href="#更新">¶</a>更新</h4>
-<p>如果不影响排序则直接更新，否则会先删除再重新插入。</p>
-<h3 id="布隆过滤器"><a class="header-anchor" href="#布隆过滤器">¶</a>布隆过滤器</h3>
-<h3 id="hyperloglog"><a class="header-anchor" href="#hyperloglog">¶</a>HyperLogLog</h3>
-<p>布隆过滤器用于实现<code>contains</code>的需求，而 HyperLogLog 主要用于实现<code>count</code>。<br>
-同样是一个特别大的位数组，HyperLogLog 将位数组拆分为桶，每个桶是连续的 6 个位，计数时并非单独对某个桶计数，而是：</p>
-<ul>
-<li>set 操作：计算 key 的散列值，为一个 64 位的数字，前 14 位是捅的位置，桶记录后 50 位中第一个 1 的位置 count，并且<code>count = max(count, oldCount)</code>，即每次记录最大的计数。</li>
-<li>count 操作：因为是概率算法，每个桶的计数值并不精确，但是所有桶的调和均值非常接近真实的计数值。</li>
-</ul>
-<h3 id="pubsub"><a class="header-anchor" href="#pubsub">¶</a>pubsub</h3>
-<p>用于实现轻量级的发布订阅功能。</p>
-<h3 id="geohash"><a class="header-anchor" href="#geohash">¶</a>geohash</h3>
-<h2 id="redis-的进程和-io-模型"><a class="header-anchor" href="#redis-的进程和-io-模型">¶</a>Redis 的进程和 IO 模型</h2>
-<h3 id="为什么-redis-这么快"><a class="header-anchor" href="#为什么-redis-这么快">¶</a>为什么 Redis 这么快</h3>
-<p>Redis 采用的是一种<strong>单线程工作模型</strong>，它能这么快主要归功于下面几个策略：</p>
-<ol>
-<li>完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)；</li>
-<li>数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的；</li>
-<li>采用单线程，避免了不必要的上下文切换和竞争条件，也不存在多进程或者多线程导致的切换而消耗 CPU，不用去考虑各种锁的问题，不存在加锁释放锁操作，没有因为可能出现死锁而导致的性能消耗；</li>
-<li>使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；</li>
-<li>使用<strong>多路 I/O 复用</strong>模型，非阻塞 IO；<br>
-多路 I/O 复用模型是利用 select、poll、epoll 可以同时监察多个流的 I/O 事件的能力，在空闲的时候，会把当前线程阻塞掉，当有一个或多个流有 I/O 事件时，就从阻塞态中唤醒，于是程序就会轮询一遍所有的流（epoll 是只轮询那些真正发出了事件的流），并且只依次顺序的处理就绪的流，这种做法就避免了大量的无用操作。<br>
-Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，在服务端，有一段 I/O 多路复用程序，将其置入队列之中，然后，文件事件分派器依次去队列中取，转发到不同的事件处理器中（对这个 I/O 多路复用机制，Redis 还提供了 select、epoll、evport、kqueue 等多路复用函数库）。<br>
-这里“多路”指的是多个网络连接，“复用”指的是复用同一个线程。采用多路 I/O 复用技术可以让单个线程高效的处理多个连接请求（尽量减少网络 IO 的时间消耗），且 Redis 在内存中操作数据的速度非常快，也就是说内存内的操作不会成为影响 Redis 性能的瓶颈，主要由以上几点造就了 Redis 具有很高的吞吐量。<br>
-<img src="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg" alt="多路IO复用模型" title="多路IO复用模型"></li>
-</ol>
-<h3 id="一些常见的进程模型"><a class="header-anchor" href="#一些常见的进程模型">¶</a>一些常见的进程模型</h3>
-<ol>
-<li>单进程多线程模型：MySQL、Memcached、Oracle（Windows 版本）；</li>
-<li>多进程模型：Oracle（Linux 版本）；</li>
-<li>Nginx 有两类进程，一类称为 Master 进程(相当于管理进程)，另一类称为 Worker 进程（实际工作进程）。启动方式有两种：
-<ol>
-<li>单进程启动：此时系统中仅有一个进程，该进程既充当 Master 进程的角色，也充当 Worker 进程的角色。</li>
-<li>多进程启动：此时系统有且仅有一个 Master 进程，至少有一个 Worker 进程工作。</li>
-<li>Master 进程主要进行一些全局性的初始化工作和管理 Worker 的工作；事件处理是在 Worker 中进行的。</li>
-</ol>
-</li>
-</ol>
-<h3 id="为什么是-nio"><a class="header-anchor" href="#为什么是-nio">¶</a>为什么是 NIO</h3>
-<p>对于优化单个 server 节点的网络层，多使用 NIO 方式，server 端与 client 端在多次通讯的情况下使用 TCP 长连接维持会话，比如 Redis epoll 模型，RocketMq 的 netty 模型<br>
-对于高性能 Server 节点，在处理好网络请求同时，还要保证 server 端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型。<br>
-在 Redis 中，采用的是 Reactor 模式实现文件事件处理器：<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png" alt="Redis-事件处理模型" title="Redis-事件处理模型"></p>
-<ol>
-<li>IO 多路复用<br>
-根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
-<li>封装不同 IO 模型，为事件处理器提供统一接口</li>
-</ol>
-<h3 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 Key 问题</h3>
-<blockquote>
-<p>也可以叫大 Value 问题。</p>
-</blockquote>
-<p>大 Key 有两种状况：</p>
-<ol>
-<li>Redis 中单个简单的 Key 存储的 value 很大</li>
-<li>hash、set、zset、list 中存储的元素过多（以万为单位）。</li>
-</ol>
-<p>由于 Redis 的单线程模型，读写大 Key 时服务器的耗时可能会比较长、甚至阻塞。</p>
-<p>解决方案一般是能拆则拆，对于单个大 Key 的情况：<br>
-1.1 将大 Key 进行分割，拆成几个小的 key-value，使用 multiGet 获取值。<br>
-这样分拆的意义是将单次操作的压力分摊到多个 Redis 实例上，降低对单个 Redis 的 IO 影响，而且大 Key 拆分之后每次只查询一部分，减小了 IO 阻塞的风险。<br>
-为了均匀分割，可以对 field 进行 hash 并通过质数 N 取余，将余数加到 key 上面。<br>
-1.2 将大 Key 拆分成多个 key-value，并将这些存储在一个 hash 中，每个 field 代表一个具体的属性，使用 hget、hmget 来获取部分的 value，使用 hset、hmset 来更新部分属性</p>
-<p>对于 hash、set、zset、list 中存储的元素过多的情况，可以控制将 field 分散到多个集合内。<br>
-比如以下代码将属于一个大 hash 内的 field 分散到 10000 个拆分后的小 hash 内：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure>
-<p>对于一些需要考虑顺序的场景，比如 lpop、zrange，需要在 hash 函数上做些文章，比如按照时间来拆分。</p>
-<h3 id="pipeline"><a class="header-anchor" href="#pipeline">¶</a>pipeline</h3>
-<p>将多次 IO 往返的网络请求时间缩减为 1 次。</p>
 <h2 id="事务"><a class="header-anchor" href="#事务">¶</a>事务</h2>
 <h3 id="redis-事务的特征"><a class="header-anchor" href="#redis-事务的特征">¶</a>Redis 事务的特征</h3>
 <p>和众多其它数据库一样，Redis 作为 NoSQL 数据库也同样提供了事务机制。在 Redis 中，MULTI/EXEC/DISCARD/WATCH 这四个命令是我们实现事务的基石。相信对有关系型数据库开发经验的开发者而言这一概念并不陌生，即便如此，我们还是会简要的列出<br>
@@ -741,69 +501,6 @@ Redis 中事务的实现特征：</p>
 <p>以上代码只有在单连接的情况下才可以保证执行结果是正确的，因为如果在同一时刻有多个客户端在同时执行该段代码，那么就会出现多线程程序中经常出现的一种错误场景–竞态争用(race condition)。比如，客户端 A 和 B 都在同一时刻读取了 mykey 的原有值，假设该值为 10，此后两个客户端又均将该值加一后 set 回 Redis 服务器，这样就会导致 mykey 的结果为 11，而不是我们认为的 12。为了解决类似的问题，我们需要借助 WATCH 命令的帮助，见如下代码：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">WATCH mykey</span><br><span class="line">val = GET mykey</span><br><span class="line">val = val + 1</span><br><span class="line">MULTI</span><br><span class="line">SET mykey $val</span><br><span class="line">EXEC</span><br></pre></td></tr></table></figure>
 <p>和此前代码不同的是，新代码在获取 mykey 的值之前先通过 WATCH 命令监控了该键，此后又将 set 命令包围在事务中，这样就可以有效的保证每个连接在执行 EXEC 之前，如果当前连接获取的 mykey 的值被其它连接的客户端修改，那么当前连接的 EXEC 命令将执行失败。这样调用者在判断返回值后就可以获悉 val 是否被重新设置成功。</p>
-<h2 id="持久化"><a class="header-anchor" href="#持久化">¶</a>持久化</h2>
-<p>Redis 为了达到最快的读写速度将数据都读到内存中，并通过异步的方式将数据写入磁盘。所以 redis 具有快速和数据持久化的特征。如果不将数据放在内存中，磁盘 I/O 速度为严重影响 redis 的性能。在内存越来越便宜的今天，redis 将会越来越受欢迎。<br>
-如果设置了最大使用的内存，则数据已有记录数达到内存限值后不能继续插入新值。<br>
-不过 Redis 也提供了持久化的选项。</p>
-<h3 id="file-snap-shotting-半持久化模式-rdb"><a class="header-anchor" href="#file-snap-shotting-半持久化模式-rdb">¶</a>file snap shotting（半持久化模式 / rdb）</h3>
-<h4 id="特点-v2"><a class="header-anchor" href="#特点-v2">¶</a>特点</h4>
-<p>以快照的方式将内存数据写入到一个二进制文件中（默认为 dump.rdb），异步保存到磁盘上。</p>
-<h4 id="开启"><a class="header-anchor" href="#开启">¶</a>开启</h4>
-<p>快照是 redis 的默认持久化方式。修改配置文件的 save 属性可以配置自动快照方式。</p>
-<h4 id="命令"><a class="header-anchor" href="#命令">¶</a>命令</h4>
-<p>可以使用 save 或 bgsave 命令直接通知 redis 做一个快照，save 操作是在主线程中保存快照的，由于 redis 是用一个主线程来处理所有 client 的请求，这种方式会阻塞所有 client 请求。但是<strong>bgsave</strong>就没有这个问题。</p>
-<h4 id="bgsave-过程"><a class="header-anchor" href="#bgsave-过程">¶</a>bgsave 过程</h4>
-<ol>
-<li>当 redis 需要做持久化时，redis 会 <strong>fork</strong> 一个子进程；</li>
-<li>父进程继续处理客户端请求，子进程根据配置文件中的 save 策略将内存数据写到磁盘上一个临时 RDB 文件中；</li>
-<li>当子进程完成写临时文件后，将原来的 RDB 文件替换掉，然后子进程退出。这样的好处就是可以 <strong>COW</strong>。<br>
-Redis并不是在同步时就直接将内存都拷贝一份，而是<strong>写时复制（COW）</strong>，也就是说当没有发生写入操作时，子进程和父进程共享内存空间，父进程对内存的某页有写入时，子进程会复制一份该页，之后都是基于该复制出的页面进行写盘。</li>
-</ol>
-<h4 id="问题"><a class="header-anchor" href="#问题">¶</a>问题</h4>
-<p>filesnapshotting 在 redis 异常死掉时，最近的数据会丢失（因为最近没有持久化的数据还在内存中）。每次做快照都是将内存数据完整写入到磁盘，如果程序 io 频繁可能会严重影响性能。</p>
-<h3 id="virtual-memory-虚拟内存-vm"><a class="header-anchor" href="#virtual-memory-虚拟内存-vm">¶</a>Virtual-Memory（虚拟内存 / VM）</h3>
-<p>当 key 很小而 value 很大时，使用 VM 更能节约内存。<br>
-当 key 并不小时，可以通过将 key 和 value 拼接作为新的 value 来减小 key 的大小。<br>
-vm-max-threads 这个参数可以设置访问 swap 文件的线程数,设置最好不要超过机器的核数,如果设置为 0，那么所有对 swap 文件的操作都是串行的。可能会造成比较长时间的延迟，但是对数据完整性有很好的保证。</p>
-<h3 id="append-only-file-全持久化模式-aof"><a class="header-anchor" href="#append-only-file-全持久化模式-aof">¶</a>Append-only file（全持久化模式 / AOF）</h3>
-<h4 id="特点-v3"><a class="header-anchor" href="#特点-v3">¶</a>特点</h4>
-<p>把每一次数据变化都写入到一个 append only file(默认是 appendonly.aof)里，所以可以做到全部数据都不丢失，但性能要劣于 filesnapshotting 模式。当 redis 重启时会通过重新执行文件中保存的写命令来在内存中重建整个数据库的内容。</p>
-<h4 id="开启-v2"><a class="header-anchor" href="#开启-v2">¶</a>开启</h4>
-<p>在配置文件中设置 appendonly 为 yes 可开启 AOF 模式。AOF 文件的刷新方式有三种，可以根据需要修改 appendfsync。</p>
-<h4 id="过程"><a class="header-anchor" href="#过程">¶</a>过程</h4>
-<p>同样用到了 COW，首先 redis 会 fork 一个子进程；<br>
-子进程将最新的 AOF 写入一个临时文件；<br>
-父进程<strong>增量</strong>的把内存中的最新执行的修改写入（这时仍写入旧的 AOF，rewrite 如果失败也是安全的）；<br>
-当子进程完成 rewrite 临时文件后，父进程会收到一个信号，并把之前内存中增量的修改写入临时文件末尾；<br>
-这时 redis 将旧 AOF 文件重命名，临时文件重命名，开始向新的 AOF 中写入。</p>
-<h4 id="问题-v2"><a class="header-anchor" href="#问题-v2">¶</a>问题</h4>
-<ol>
-<li>AOF 文件损坏，redis 无法加载的情况，照下面步骤解决，(1) 备份当前 AOF 文件；(2) 修复执行 redis-check-aof -fix；(3) 重启 redis 服务。</li>
-<li>Master AOF 持久化，如果不重写 AOF 文件，这个持久化方式对性能的影响是最小的，但是 AOF 文件会不断增大，AOF 文件过大会影响 Master 重启的恢复速度。<strong>Master 最好不要做任何持久化工作</strong>，包括内存快照和 AOF 日志文件，特别是不要启用内存快照做持久化,如果数据比较关键，某个 Slave 开启 AOF 备份数据，策略为每秒同步一次。</li>
-<li>Master 调用 BGREWRITEAOF 重写 AOF 文件，AOF 在重写的时候会占大量的 CPU 和内存资源，导致服务 load 过高，出现短暂服务暂停现象。</li>
-</ol>
-<h4 id="命令-v2"><a class="header-anchor" href="#命令-v2">¶</a>命令</h4>
-<p>调用 bgrewriteaof 可以使用与快照类似的方式将内存中的数据以<strong>命令的形式</strong>保存到临时文件，最后替换原来的文件，具体的</p>
-<ol>
-<li>Redis 调用 fork ，现在有父子两个进程；</li>
-<li>子进程根据内存中的数据库快照，往临时文件中写入重建数据库状态的命令（<strong>是命令而不是内存数据</strong>）；</li>
-<li>父进程继续处理 client 请求，除了把写命令写入到原来的 aof 文件中。同时把收到的写命令缓存起来。这样就能保证如果子进程重写失败的话并不会出问题；</li>
-<li>当子进程把快照内容写入已命令方式写到临时文件中后，子进程发信号通知父进程。然后父进程把缓存的写命令也写入到临时文件；</li>
-<li>现在父进程可以使用临时文件替换老的 aof 文件，并重命名，后面收到的写命令也开始往新的 aof 文件中追加。</li>
-</ol>
-<h3 id="宕机恢复"><a class="header-anchor" href="#宕机恢复">¶</a>宕机恢复</h3>
-<p>如果突然机器掉电会怎样？取决于 aof 日志 sync 属性的配置，如果不要求性能，在每条写指令时都 sync 一下磁盘，就不会丢失数据。但是在高性能的要求下每次都 sync 是不现实的，一般都使用定时 sync，比如 1s1 次，这个时候最多就会丢失 1s 的数据。<br>
-最后，为以防万一（机器坏掉或磁盘坏掉），记得定期把使用 filesnapshotting 或 Append-only 生成的*rdb *.aof 文件备份到远程机器上。比如用 crontab 每半小时 scp 一次。<br>
-或者一种常见替代方案是主从，虽然会浪费一些机器资源。</p>
-<h3 id="文件压缩"><a class="header-anchor" href="#文件压缩">¶</a>文件压缩</h3>
-<p>如果 aof 文件过大可能会导致恢复时间过长，Redis 提供了两个特性来减小这个影响：</p>
-<ol>
-<li>Redis 会定期做 aof 重写，压缩 aof 文件日志大小。</li>
-<li>Redis4.0 之后有了混合持久化的功能，将 bgsave 的全量和 aof 的增量做了融合处理，AOF 只记录最后一次 bgsave 之后的增量 AOF 日志，这样既保证了恢复的效率又兼顾了数据的安全性。</li>
-</ol>
-<h3 id="生产中如何设计持久化方案"><a class="header-anchor" href="#生产中如何设计持久化方案">¶</a>生产中如何设计持久化方案</h3>
-<p>bgsave 做镜像全量持久化，aof 做增量持久化。<br>
-因为 bgsave 会耗费较长时间，不够实时，在停机的时候会导致大量丢失数据，所以需要 aof 来配合使用。在 redis 实例重启时，优先使用 aof 来恢复内存的状态，如果没有 aof 日志，就会使用 rdb 文件来恢复。</p>
 <h2 id="优化"><a class="header-anchor" href="#优化">¶</a>优化</h2>
 <ul>
 <li>单进程单线程，无法充分发挥服务器多核 cpu 的性能；大流量下造成 IO 阻塞，同样是由于单进程单线程, cpu 在处理业务逻辑的时候,网络 IO 被阻塞住, 造成无法处理更多的请求.<br>
@@ -996,402 +693,6 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
 <li>错误：比如可用率低于 90%，或者数据库连接池被打爆了，或者访问量突然猛增到系统能承受的最大阀值，此时可以根据情况自动降级或者人工降级；</li>
 <li>严重错误：比如因为特殊原因数据错误了，此时需要紧急人工降级。</li>
 </ol>
-<h2 id="主从复制-master-slave-m-s"><a class="header-anchor" href="#主从复制-master-slave-m-s">¶</a>主从复制（master-slave、m-s）</h2>
-<h3 id="操作"><a class="header-anchor" href="#操作">¶</a>操作</h3>
-<ol>
-<li>
-<p>运行 Master<br>
-调整 Master 内存中保存的缓冲积压部分（replication backlog），以便执行部分重同步。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 缓冲区越大，可断开连接再重连执行部分重同步的时间越长，缓冲区会在每次连接时分配。</span><br><span class="line">repl-backlog-size 1mb</span><br><span class="line">repl-backlog-ttl 3600</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>运行 Slave<br>
-先在配置文件中设置 Master 和 logfile 路径再运行</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">slaveof 172.16.205.141 6379</span><br><span class="line">logfile &quot;/usr/redis/log/slave.log&quot;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>级联复制（从从复制）<br>
-之前是所有 Slave 连到一个 Master 上，这是一种中心化的办法，对 Master 的负担较大，事实上我们完全可以不全部连到 Master 上，而是 Master-&gt;Slave1-&gt;Slave2 这样传递。<br>
-实现级联复制也较简单，只用修改 Slave2 配置文件的<code>slaveof</code>属性即可。</p>
-</li>
-<li>
-<p>Master write，Slave read<br>
-通过程序（客户端）实现数据的读写分离，即在程序中判断请求是读是写，让 Master 负责处理写请求，Slave 负责处理读请求；通过扩展 Slave 处理更多的并发请求，减轻 Master 端的负载。</p>
-</li>
-</ol>
-<h3 id="同步复制和异步复制"><a class="header-anchor" href="#同步复制和异步复制">¶</a>同步复制和异步复制</h3>
-<p>Redis 使用默认的<strong>异步复制</strong>，其特点是低延迟和高性能，不会影响 Redis 主线程的响应效率。</p>
-<ul>
-<li>Redis 复制在 master 侧是非阻塞的。这意味着 master 在一个或多个 slave 进行初次同步或者是部分重同步时，可以继续处理查询请求。</li>
-<li>复制在 slave 侧大部分也是非阻塞的。当 slave 进行初次同步时，它可以使用旧数据集处理查询请求，假设你在 redis.conf 中配置了让 Redis 这样做的话。否则，你可以配置如果复制流断开， Redis slave 会返回一个 error 给客户端。但是，在初次同步之后，旧数据集必须被删除，同时加载新的数据集。 slave 在这个短暂的时间窗口内（如果数据集很大，会持续较长时间），会阻塞到来的连接请求。自 Redis 4.0 开始，可以配置 Redis 使删除旧数据集的操作在另一个不同的线程中进行，但是，加载新数据集的操作依然需要在主线程中进行并且会阻塞 slave 。</li>
-</ul>
-<blockquote>
-<p>Redis 虽然声称是单线程模型，但是很多功能仍然是采用多线程实现的。</p>
-</blockquote>
-<h3 id="什么时候触发复制"><a class="header-anchor" href="#什么时候触发复制">¶</a>什么时候触发复制</h3>
-<ul>
-<li>当一个 Master 和一个 Slave 实例连接正常时，Master 通过向 Slave 发送命令流来<strong>增量同步</strong>自身数据集的改变情况，包括客户端的写入、key 的过期等；</li>
-<li>Master 与 Slave 之间因为网络问题或宕机，之后 Slave 重新连上 Master 时会尝试进行<strong>部分重同步</strong>，即只获取在断开连接期间内丢失的命令流；<br>
-为此，slave 会记住旧 master 的旧 replication ID 和复制偏移量，因此即使询问旧的 replication ID，其也可以将部分复制缓冲提供给连接的 slave 。</li>
-<li>当无法进行部分重同步时，Slave 会请求进行全量重同步。Master 需要创建所有数据的快照，将之发送给 Slave，之后在数据集发生更改时持续发送命令流到 Slave。</li>
-</ul>
-<h3 id="主从复制原理"><a class="header-anchor" href="#主从复制原理">¶</a>主从复制原理</h3>
-<p>当用户往 Master 端写入数据时，通过<code>Redis Sync</code>机制将数据文件发送至 Slave，Slave 也会执行相同的操作确保数据一致。</p>
-<ol>
-<li>同一个 Master 可以拥有多个 Slaves。Master 下的 Slave 还可以接受同一架构中其它 Slave 的链接与同步请求，实现数据的<strong>级联复制</strong>，即 Master-&gt;Slave-&gt;Slave 模式；<br>
-<code>repl-diskless-sync-delay</code>参数可以延迟启动数据传输，目的可以在第一个 slave 就绪后，等待更多的 slave 就绪。<br>
-主从复制最好配置成级联复制，因为这样更容易解决单点问题。</li>
-<li>Master 以<strong>非阻塞</strong>的方式同步数据至 slave，这将意味着 Master 会继续处理一个或多个 slave 的读写请求；</li>
-<li>Slave 端同步数据也可以修改为非阻塞的方式，当 slave 在执行新的同步时，它仍可以用旧的数据信息来提供查询；否则，当 slave 与 master 失去联系时，slave 会返回一个错误给客户端；</li>
-<li>主从复制可以做到<strong>读写分离</strong>，保证了可扩展性，即多个 slave 专门提供只读查询与数据的冗余，Master 端专门提供写操作；</li>
-<li>通过配置禁用 Master 数据持久化机制，将其数据持久化操作交给 Slaves 完成，避免在 Master 中要有独立的进程来完成此操作。</li>
-<li>Redis 主从复制的性能问题，为了主从复制的速度和连接的稳定性，Slave 和 Master 最好在同一个局域网内。</li>
-</ol>
-<p>标识同步进程：</p>
-<ol>
-<li>每个 Master 都有一个<code>Replication ID</code>：这是一个较大的伪随机字符串，标记了一个给定的数据集。</li>
-<li>每个 Master 持有一个偏移量<code>offset</code>，Master 将自己产生的复制流发送给 slave 时，发送多少个字节的数据，自身的偏移量就会增加多少，目的是当有新的操作修改自己的数据集时，它可以以此更新 Slave 的状态。即使没有 Slave 连接到 Master，offset 也会自增，所以基本上每一对 <code>&lt;Replication ID, offset&gt;</code> 都会标识一个 Master 数据集的确切版本。</li>
-<li>Slave 也维护了一个复制偏移量<code>offset</code>，代表从库同步的字节数，从库每收到主节点传来的 N 个字节数据时，从库的 offset 增加 N。<br>
-Master 和 Slave 的<code>offset</code>总是不断增大，这也是判断主从数据是否同步的标志，若主从的 offset 相同则表示数据同步量，不通则表示数据不同步。</li>
-</ol>
-<p>复制积压缓冲区<br>
-主节点(master)响应写命令时，不但会把命名发送给从节点，还会写入复制积压缓冲区，用于复制命令丢失的数据补救。<br>
-Slave 连接中断时主节点仍然可以响应命令，但因复制连接中断命令无法发送给 Slave。之后，当 Slave 重启并触发部分复制时，Master 可以将复制积压缓冲区的内容同步给 Slave，从而提高复制效率；</p>
-<p>部分重同步过程：</p>
-<ol>
-<li>当 Slave 连接到 Master，发送一个<code>PSYNC</code>命令表明自己记录的旧的 Master <code>Replication ID</code>和它们至今为止处理的偏移量<code>offset</code>；</li>
-<li>Master 仅发送 Slave 所需的增量部分的命令流，即上次同步偏移量<code>offset</code>之后执行的写命令；</li>
-<li>但是如果 master 的缓冲区中没有足够的命令积压缓冲记录，或者如果 slave 引用了不再知道的历史记录（replication ID），则会转而进行一个全量重同步：在这种情况下， slave 会得到一个完整的数据集副本，从头开始。</li>
-</ol>
-<p>全量同步（完整重同步）：</p>
-<ol>
-<li>Slave 向 Master 发送<code>PSYNC</code>命令；</li>
-<li>Master 执行<code>BGSAVE</code>命令，开启一个后台进程用于生成一个 RDB 文件；</li>
-<li>同时它开始缓冲所有从客户端接收到的新的写入命令；</li>
-<li>当后台保存完成时， master 将数据集文件传输给 slave， slave 将之保存在磁盘上，然后加载文件到内存；</li>
-<li>再然后 master 会将所有缓冲的写命令发给 slave，这个过程以指令流的形式完成并且和 Redis 协议本身的格式相同。</li>
-</ol>
-<blockquote>
-<p>可以通过<code>telnet</code>连接到 Redis 服务器上然后发送<code>SYNC</code>命令来模拟这个过程，但是因为<code>SYNC</code>功能有限（比如不支持部分重同步），现在的版本用<code>PSYNC</code>作为代替。<br>
-正常情况下，全量同步会先在磁盘上创建一个 RDB 文件，传输时将其加载进内存，然后 Slave 对此进行数据的同步，如果磁盘性能很低，这个过程压力会比较大，<code>Redis 2.8.18</code>之后支持直接传输 RDB 文件，可以使用<code>repl-diskless-sync</code>配置参数配置。</p>
-</blockquote>
-<p>全量同步完成以后，在此后的时间里主从维护着心跳检查来确认对方是否在线，每隔一段时间（默认 10 秒，通过<code>repl-ping-slave-period</code>参数指定）主节点向从节点发送 PING 命令判断从节点是否在线，而从节点每秒 1 次向主节点发送 REPLCONF ACK 命令，命令格式为：<code>REPLCONF ACK {offset}</code>，其中 offset 指的是从节点保存的复制偏移量，作用是：</p>
-<ol>
-<li>向主节点报告自己复制进度，主节点会对比复制偏移量向从节点发送未同步的命令；</li>
-<li>判断主节点是否在线。</li>
-</ol>
-<h3 id="主从复制执行过程"><a class="header-anchor" href="#主从复制执行过程">¶</a>主从复制执行过程</h3>
-<p><img src="http://47.88.24.11/imgs/Redis/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6.png" alt="主从复制" title="主从复制"></p>
-<ol>
-<li>启动 Slave，向 Master 发送一个 SYNC Command，请求同步连接；</li>
-<li>无论是第一次连接还是重新连接，Master 都会启动一个后台进程，将<strong>数据快照</strong>保存到数据文件中，同时 Master 会记录<strong>所有修改数据的命令</strong>并缓存在数据文件中（持久化）；</li>
-<li>Master 的后台进程缓存完毕后，将数据文件传回给 Slave；</li>
-<li>Slave 将数据文件保存到磁盘上，然后再加载到内存中；</li>
-<li>Master 将保存所有修改数据命令的文件发送给 Slave；</li>
-</ol>
-<h3 id="宕机恢复-v2"><a class="header-anchor" href="#宕机恢复-v2">¶</a>宕机恢复</h3>
-<p>因为 slave 顶多只负责处理读请求，slave 挂掉不会造成数据丢失的问题。<br>
-slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能力，并且能在重启后快速恢复：</p>
-<ol>
-<li>恢复正常后重新连接；</li>
-<li>Master 收到 Slave 的连接后，第一次同步时，主节点做一次 bgsave，并同时将后续修改操作记录到内存 buffer；</li>
-<li>Master 将其完整的 rdb 数据文件全量发送给 Slave；</li>
-<li>Slave 接收完成后将 rdb 镜像文件加载到内存，加载完成后，再通知 Master 将期间修改的操作记录同步到 Slave 节点进行重放就完成了同步过程；</li>
-<li>如果 Master 同时收到多个 Slave 发来的同步请求，Master 只会在后台启动一个进程保存数据文件，然后将其发送给所有的 Slave，确保 Slave 正常。</li>
-</ol>
-<p>主从复制无法应对 Master 挂掉的情况，实际上这种方案只能尽量保证数据不会丢失，不能保证服务的高可用性，为此，需要引入 Redis 的 Sentinel 机制。</p>
-<p>客户端可以使用 <code>WAIT</code> 命令来请求同步复制某些特定的数据。但是，WAIT 命令只能确保在其他 Redis 实例中有指定数量的已确认的副本：在故障转移期间，由于不同原因的故障转移或是由于 Redis 持久性的实际配置，故障转移期间确认的写入操作可能仍然会丢失。</p>
-<h3 id="是否可以关闭持久化"><a class="header-anchor" href="#是否可以关闭持久化">¶</a>是否可以关闭持久化</h3>
-<p>作为复制方案中的一环，可以考虑关闭 Master 或 Slave 的持久化功能，但是并不建议关掉它们，因为：</p>
-<ul>
-<li>如果关闭 Master 的持久化：重启（重启功能可以由一些只能运维工具来保证，比如 K8S）的 Master 将从一个空数据集开始，如果一个 Slave 试图与它同步，那么这个 Slave 也会被清空。</li>
-<li>如果关闭 Slave 的持久化：重启的 Slave 需要从 Master 全量同步数据。</li>
-</ul>
-<p>正如前所述，关闭了持久化并配置了自动重启的 Master 是危险的——会导致整个集群的数据全部被清空。<br>
-如果 Sentinel 集群用于需要高可用的场景、且 Master 被关闭掉了持久化功能，也是非常危险的：</p>
-<ul>
-<li>如果重启比较慢，Sentinel 的故障迁移机制重新选主，一个 Slave 会上升为 Master；</li>
-<li>如果重启得足够快，Sentinel 没有探测到故障，此时 Master 数据被清空了，而 Slave 仍从 Master 同步数据，这将引起上边提到的故障模式——数据将丢失。</li>
-</ul>
-<p>因此，如果考虑磁盘性能过慢会导致延迟、关掉了持久化，那么自动重启进程这项应该被禁用。</p>
-<h3 id="只读-slave"><a class="header-anchor" href="#只读-slave">¶</a>只读 Slave</h3>
-<p>Redis2.6 之后，Redis 支持只读模式，可以使用<code>slave-read-only</code>配置来控制这个行为。<br>
-只读模式下的 slave 将会拒绝所有写入命令，因此实践中不可能由于某种出错而将数据写入 slave 。但这并不意味着该特性旨在将一个 slave 实例暴露到 Internet ，或者更广泛地说，将之暴露在存在不可信客户端的网络，因为像 DEBUG 或者 CONFIG 这样的管理员命令仍在启用。但是，在 redis.conf 文件中使用 rename-command 指令可以禁用上述管理员命令以提高只读实例的安全性。</p>
-<h3 id="数据丢失窗口"><a class="header-anchor" href="#数据丢失窗口">¶</a>数据丢失窗口</h3>
-<p>由于 Redis 使用异步复制，无法保证 Slave 是否实际接收到给定的写命令，因此总会有一个<strong>数据丢失窗口</strong>。既然无法避免，那么只能退一步、控制影响范围了，Redis 可以保证：</p>
-<ol>
-<li>Redis slave 每秒钟都会 ping master，确认已处理的复制流的数量。</li>
-<li>Redis master 会记得上一次从每个 slave 都收到 ping 的时间。</li>
-<li>用户可以配置一个最小的 slave 数量，使得它滞后 &lt;= 最大秒数。</li>
-<li>如果至少有 N 个 slave ，并且滞后小于 M 秒，则写入将被接受。如果条件不满足，master 将会回复一个 error 并且写入将不被接受。</li>
-</ol>
-<p>对于给定的写入来说，不能保证一致性，但至少数据丢失的时间窗限制在给定的秒数内。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">min-slaves-to-write &lt;slave 数量&gt;</span><br><span class="line">min-slaves-max-lag &lt;秒数&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="过期的-key"><a class="header-anchor" href="#过期的-key">¶</a>过期的 key</h3>
-<p>由于复制的异步特性，对 key 设置过期时间和写入操作很容易导致 race condition 及导致数据集不一致，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(1) sadd x 1</span><br><span class="line">(2) expire x 100</span><br><span class="line">(3) sadd x 2</span><br></pre></td></tr></table></figure>
-<p>在 Master 上，命令(3)是在过期前执行的，而 Slave 上可能因为延后导致命令(3)执行前 x 就已经过期了，此时 x 是没有过期时间的（ttl x 得到-1 表示不过期），这就导致了数据的不一致。</p>
-<blockquote>
-<p>set 命令不会出现这个问题，因为 set 会将过期时间给覆盖成-1。当然情况比较复杂，也有可能是我没有想到。</p>
-</blockquote>
-<p>为了保证针对过期的 key 的复制能够正确工作，Redis 提供如下保证：</p>
-<ol>
-<li>slave 不会让 key 过期，而是等待 master 让 key 过期。当一个 master 让一个 key 到期（或由于 LRU 算法将之驱逐）时，它会合成一个 DEL 命令并传输到所有的 slave。一旦一个 slave 被提升为一个 master ，它将开始独立地过期 key，而不需要任何旧 master 的帮助。</li>
-<li>但是，由于这是 master 驱动的 key 过期行为，master 无法及时提供 DEL 命令，所以有时候 slave 的内存中仍然可能存在在逻辑上已经过期的 key 。为了处理这个问题，slave 使用它的逻辑时钟以报告只有在不违反数据集的一致性的读取操作（从主机的新命令到达）中才存在 key。用这种方法，slave 避免报告逻辑过期的 key 仍然存在。在实际应用中，使用 slave 程序进行缩放的 HTML 碎片缓存，将避免返回已经比期望的时间更早的数据项。</li>
-<li>在 Lua 脚本执行期间，不执行任何 key 过期操作。当一个 Lua 脚本运行时，从概念上讲，master 中的时间是被冻结的，这样脚本运行的时候，一个给定的键要么存在要么不存在。这可以防止 key 在脚本中间过期，保证将相同的脚本发送到 slave ，从而在二者的数据集中产生相同的效果。</li>
-</ol>
-<h2 id="sentinel-ha-集群"><a class="header-anchor" href="#sentinel-ha-集群">¶</a>Sentinel（ha 集群）</h2>
-<h3 id="操作-v2"><a class="header-anchor" href="#操作-v2">¶</a>操作</h3>
-<ol>
-<li>
-<p>Master<br>
-TODO</p>
-</li>
-<li>
-<p>Slave</p>
-</li>
-<li>
-<p>Sentinel</p>
-</li>
-<li>
-<p>获取集群信息</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 info Sentinel</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>获取 master 节点地址</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h3 id="sentinel执行流程"><a class="header-anchor" href="#sentinel执行流程">¶</a>Sentinel执行流程</h3>
-<p><img src="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
-在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
-<ul>
-<li>Master 和 Slave 的配置和之前并无区别；</li>
-<li>Sentinel 相当于对 Master 的代理，Sentinel 可以通过发布订阅功能获取到 Slave 和其他 Sentinel 的信息。</li>
-</ul>
-<blockquote>
-<p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
-</blockquote>
-<h3 id="sentinel-需要定期执行的任务"><a class="header-anchor" href="#sentinel-需要定期执行的任务">¶</a>Sentinel 需要定期执行的任务</h3>
-<ul>
-<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。</li>
-<li>如果一个实例（instance）距离最后一次有效回复 PING 命令的时间超过 down-after-milliseconds 选项所指定的值， 那么这个实例会被 Sentinel 标记为主观下线。 一l个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN 。</li>
-<li>如果一个主服务器被标记为主观下线， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
-<li>如果一个主服务器被标记为主观下线， 并且有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为客观下线。</li>
-<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
-<li>当没有足够数量的 Sentinel 同意主服务器已经下线， 主服务器的客观下线状态就会被移除。 当主服务器重新向 Sentinel 的 PING 命令返回有效回复时， 主服务器的主观下线状态就会被移除。</li>
-</ul>
-<h3 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h3>
-<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
-哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
-<ul>
-<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
-<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
-</ul>
-<h3 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h3>
-<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
-每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
-<blockquote>
-<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
-</blockquote>
-<h3 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h3>
-<ul>
-<li>主观下线（Subjectively Down， 简称 SDOWN）<br>
-主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
-如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
-</ul>
-<blockquote>
-<p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
-</blockquote>
-<ul>
-<li>客观下线（Objectively Down， 简称 ODOWN）<br>
-客观下线指的是多个 Sentinel 实例在对同一个 Master 做出 SDOWN 判断， 并且通过 SENTINEL <code>is-master-down-by-addr</code> 命令互相交流之后，得出的服务器下线判断。 （一个 Sentinel 可以通过向另一个 Sentinel 发送 SENTINEL is-master-down-by-addr 命令来询问对方是否认为给定的服务器已下线。）<br>
-从主观下线切换到客观下线并不是通过较严格的投票算法，而是采用了<code>流言协议（gossip protocol）</code>：只要 Sentinel 在给定时间内从其他 Sentinel 接收到足够数量的 Master 下线通知，那么 Sentinel 就会执行状态的切换；如果之后其他 Sentinel 不再报告 Master 已下线，则客观下线状态就会被移除。<br>
-只要一个 Sentinel 发现某个 Master 进入客观下线状态，之后就会进入<strong>故障迁移</strong>阶段，选举出一个 Sentinel 对失效的 Master 执行自动故障迁移操作。</li>
-</ul>
-<blockquote>
-<p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
-</blockquote>
-<h3 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h3>
-<p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
-<ul>
-<li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
-<li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
-</ul>
-<p>故障转移主要分为Sentinel选主和Slave选主两个步骤，Sentinel选主流程如下：</p>
-<ul>
-<li>Sentinel发现主服务器已经进入客观下线状态。</li>
-<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
-<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
-</ul>
-<p>Slave选举的规则如下：</p>
-<ul>
-<li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
-<li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
-<li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
-</ul>
-<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
-<p>提升新的Master的流程如下：</p>
-<ul>
-<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
-<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
-<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
-<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
-</ul>
-<p>客户端感知新master流程如下：<br>
-哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
-另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
-一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
-<h3 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h3>
-<p>配置安全性：</p>
-<ul>
-<li>每当一个 Redis 实例被重新配置（reconfigured） —— 无论是被设置成主服务器、从服务器、又或者被设置成其他主服务器的从服务器 —— Sentinel 都会向被重新配置的实例发送一个 CONFIG REWRITE 命令， 从而确保这些配置会持久化在硬盘里。完成重新配置之后，从服务器会去复制正确的主服务器。</li>
-<li>Sentinel 的状态会被持久化到 Sentinel 配置文件里，当 Sentinel 接收到新配置或 Leader Sentinel 为 Master 创建一个新配置时，这些配置都会与<code>epoch</code>一起被保存到磁盘；</li>
-</ul>
-<p>故障自动迁移的一致性：</p>
-<ul>
-<li>Raft 算法保证在一个 epoch 里只有一个 Leader Sentinel 产生，减少了脑裂的风险；</li>
-<li>Sentinel 集群总是以更高的 epoch 为准，因为发生<code>网络分区（network partition）</code>时可能会有 Sentinel 包含老的配置，而当这个 Sentinel 服务器接收到其他 Sentinel 的版本更新配置时就会进行更新。</li>
-<li>发生网络分区并且某些 Sentinel 仍在采用老的配置时，如果有客户端连接到这些 Sentinel 上，最终可能就会将请求转发到非 Master 服务器上，造成数据不一致。因此，应该使用 <code>min-slaves-to-write</code> 选项， 让主服务器在连接的从实例少于给定数量时停止执行写操作， 与此同时， 应该在每个运行 Redis 主服务器或从服务器的机器上运行 Redis Sentinel 进程。</li>
-</ul>
-<h3 id="tilt-模式"><a class="header-anchor" href="#tilt-模式">¶</a>TILT 模式</h3>
-<p>TILT 模式是一种特殊的保护模式，Sentinel 每隔 100ms 会向实例发一次<code>PING</code>命令，并将上一次 PING 成功的时间和当前时间比对，从而知道与该实例有多长时间没有进行任何成功通讯：</p>
-<ul>
-<li>如果两次调用时间之间的差距为负值， 或者非常大（超过 2 秒钟）， 那么 Sentinel 进入 TILT 模式。</li>
-<li>如果 Sentinel 已经进入 TILT 模式， 那么 Sentinel 延迟退出 TILT 模式的时间。</li>
-</ul>
-<blockquote>
-<p>Sentinel严重依赖计算机的时间功能，一旦计算机的时间功能出现故障， 或者计算机非常忙碌， 又或者进程因为某些原因而被阻塞时， Sentinel 可能也会跟着出现故障。</p>
-</blockquote>
-<p>进入 TILT 模式后，Sentinel 仍然会继续监视所有目标，但是：</p>
-<ul>
-<li>它不再执行任何操作，比如故障转移。</li>
-<li>当有实例向这个 Sentinel 发送 SENTINEL <code>is-master-down-by-addr</code> 命令时， Sentinel 返回负值： 因为这个 Sentinel 所进行的下线判断已经不再准确。</li>
-</ul>
-<p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
-<h3 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h3>
-<p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
-<h2 id="cluster"><a class="header-anchor" href="#cluster">¶</a>Cluster</h2>
-<h3 id="cluster-优势"><a class="header-anchor" href="#cluster-优势">¶</a>Cluster 优势</h3>
-<ol>
-<li>线性的可扩展性：扩容即迁移槽，已有很多迁移案例；</li>
-<li>没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈；</li>
-<li>写入安全（Write Safety）：只有在非常少见的 Master 宕机的情况下，写入才会失败，并且这个失败的时间窗口不大（由一个 Slave 顶替上来）；</li>
-<li>可用性（Availability）：就算有部分 Master 不可用了，它们的 Slave 仍然可以通过选举提升为 Master。</li>
-</ol>
-<h3 id="cluster-缺点"><a class="header-anchor" href="#cluster-缺点">¶</a>Cluster 缺点</h3>
-<ol>
-<li>Redis 集群并不支持处理多个 keys 的命令，因为这需要在不同的节点间移动数据，从而达不到像 Redis 那样的性能，在高负载的情况下可能会导致不可预料的错误。</li>
-<li>Redis 集群不像单机版本的 Redis 那样支持多个数据库，集群只有数据库 0，而且也不支持 SELECT 命令。</li>
-</ol>
-<h3 id="去中心化架构"><a class="header-anchor" href="#去中心化架构">¶</a>去中心化架构</h3>
-<p><img src="http://47.88.24.11/imgs/Redis/Cluster.png" alt="Cluster" title="Cluster"><br>
-redis cluster在设计的时候，就考虑到了<strong>去中心化</strong>，去中间件，也就是说，集群中的每个节点都是平等的关系，都是对等的，每个节点都保存各自的数据和整个集群的状态。<strong>所有的 redis 节点彼此互联(PING-PONG 机制)</strong>，内部使用<strong>二进制协议</strong>优化传输速度和带宽，而且这些连接保持活跃，这样就保证了我们只需要连接集群中的任意一个节点，就可以获取到其他节点的数据。客户端与 redis 节点直连，不需要中间 proxy 层，客户端不需要连接集群所有节点，连接集群中任何一个可用节点即可。</p>
-<h3 id="分区-存储结构"><a class="header-anchor" href="#分区-存储结构">¶</a>分区（存储结构）</h3>
-<p>分区将原来比较大的数据集分离存储到多个存储媒介上，分区后Redis可以管理更大的内存空间和计算能力，但同时多主机又会面临很多分布式集群的可用性、一致性等问题。<br>
-分区策略：</p>
-<ol>
-<li>范围分区<br>
-将不同范围的对象映射到不同的Redis实例，比如用户ID为0到10000的存储到R0,10001到20000的存储到R1，以此类推。<br>
-缺点是需要建立一张映射表，谨小甚微地维护ID和Redis实例之间的映射关系，而且由于需要维护表，导致效率不如其他方案。</li>
-<li>散列分区<br>
-使用散列函数（如CRC32）将key转换为一个数字，取模得到一个0到3的数字（假设Redis服务器有4台），这个数字即对应服务器的序号。</li>
-<li>一致性哈希</li>
-<li>哈希槽<br>
-Redis 集群没有并使用传统的<strong>一致性哈希</strong>来分配数据，而是采用另外一种叫做<strong>哈希槽 (hash slot)<strong>的方式来分配的。redis cluster 默认分配了 16384 个 slot，当我们 set 一个 key 时，会用</strong>CRC16</strong>算法来取模得到所属的 slot，然后将这个 key 分到哈希槽区间的节点上，具体算法就是：<code>CRC16(key) % 16384</code>。所以我们在测试的时候看到 set 和 get 的时候，直接跳转到了 7000 端口的节点。<br>
-客户端在接收到重定向错误（redirections errors） -MOVED 和 -ASK 的时候， 将命令重定向到其他节点。客户端不需要存储集群信息（槽所在位置），但是如何客户端可以缓存键值和节点之间的映射关系，就可以明显提高命令执行的效率了（Redisson 中就是这么做的）。<br>
-在 Cluster 架构中，slave 节点不分配槽，只拥有读权限，但是在代码中 cluster 执行读写操作的都是 master 节点，并不是读就是从节点、写就是主节点。</li>
-</ol>
-<p>一致性哈希的示例实现可以参考Dubbo中的实现：<code>com.alibaba.dubbo.rpc.cluster.loadbalance.ConsistentHashLoadBalance</code><br>
-关键代码如下：<br>
-<img src="http://47.88.24.11/imgs/Redis/ConsistentHashLoadBalance.png" alt="ConsistentHashLoadBalance" title="ConsistentHashLoadBalance"></p>
-<p>分区可以在程序的不同层次实现。</p>
-<ul>
-<li><strong>客户端分区</strong><br>
-就是在客户端就已经决定数据会被存储到哪个redis节点或者从哪个redis节点读取。大多数客户端已经实现了客户端分区。</li>
-<li><strong>代理分区</strong><br>
-意味着客户端将请求发送给代理，然后代理决定去哪个节点写数据或者读数据。代理根据分区规则决定请求哪些Redis实例，然后根据Redis的响应结果返回给客户端。redis和memcached的一种代理实现就是Twemproxy</li>
-<li><strong>查询路由(Query routing)</strong><br>
-意思是客户端随机地请求任意一个redis实例，然后由Redis将请求转发给正确的Redis节点。Redis Cluster实现了一种混合形式的查询路由，但并不是直接将请求从一个redis节点转发到另一个redis节点，而是在客户端的帮助下直接redirected到正确的redis节点。</li>
-</ul>
-<p>分区的缺点<br>
-有些特性在分区的情况下会受到限制：</p>
-<ul>
-<li>涉及多个key的操作通常不会被支持。例如你不能对两个集合求交集，因为他们可能被存储到不同的Redis实例（实际上这种情况也有办法，但是不能直接使用交集指令）。<br>
-同时操作多个key,则不能使用Redis事务.</li>
-<li>分区使用的粒度是key，不能使用一个非常长的排序key存储一个数据集（The partitioning granularity is the key, so it is not possible to shard a dataset with a single huge key like a very big sorted set）.</li>
-<li>当使用分区的时候，数据处理会非常复杂，例如为了备份你必须从不同的Redis实例和主机同时收集RDB / AOF文件。</li>
-<li>分区时动态扩容或缩容可能非常复杂。Redis集群在运行时增加或者删除Redis节点，能做到最大程度对用户透明地数据再平衡，但其他一些客户端分区或者代理分区方法则不支持这种特性。然而，有一种预分片的技术也可以较好的解决这个问题。</li>
-</ul>
-<p>当要把Redis当作持久化存储时，需要注意分区的性质</p>
-<ul>
-<li>如果Redis被当做缓存使用，使用一致性哈希实现动态扩容缩容。</li>
-<li>如果Redis被当做一个持久化存储使用，必须使用固定的keys-to-nodes映射关系，节点的数量一旦确定不能变化。否则的话(即Redis节点需要动态变化的情况），必须使用可以在运行时进行数据再平衡的一套系统，现在Redis Cluster已经支持这种再平衡。</li>
-</ul>
-<h3 id="容错"><a class="header-anchor" href="#容错">¶</a>容错</h3>
-<p>Redis 集群会把数据存在一个 master 节点，然后在这个 master 和其对应的 salve 之间进行数据同步。当读取数据时，也根据 hash 函数找到对应哈希槽所在的 master 节点获取数据。只有当一个 master 挂掉之后，才会启动一个对应的 salve 节点，充当 master 。</p>
-<h4 id="判断一个节点是否宕机"><a class="header-anchor" href="#判断一个节点是否宕机">¶</a>判断一个节点是否宕机</h4>
-<p>一些 CP 特性且中心化的集群来说，当出现节点宕机时经常需要选举新的 Leader 节点，但是 Redis-Cluster 是<strong>去中心化</strong>的，某个 Master 的宕机并不会影响其他节点的工作。但是，当节点失联时，需要考虑网络的抖动情况，毕竟不能因为某几个请求意外超时就推断集群失败了，所以这里引入了投票机制。<br>
-投票过程是集群中所有 master 参与的，每个节点都存有整个集群所有主节点及从节点的信息，它们之间通过互相 ping-pong 来判断节点是否可以连上，如果半数以上 master 节点与当前 master 节点通信超时（cluster-node-timeout），则认为当前 master 节点挂掉。</p>
-<h4 id="判断集群是否-fail"><a class="header-anchor" href="#判断集群是否-fail">¶</a>判断集群是否 fail</h4>
-<p>当 master 挂掉时，并不意味着集群已无法再提供服务了，集群要进入<code>fail（不可用）</code>状态需要满足以下条件之一：</p>
-<ol>
-<li>集群的任意 master 挂掉，且该 master 没有 slave 或 slave 全挂掉了，则集群进入 fail 状态。这是因为，Cluster中所有slot是平均分配到每个Master的，如果有一个Master的slot不能用了、而且这个Master还没有Slave，那么集群就不能提供服务了。</li>
-<li>集群超过半数以上 master 挂掉，无论有无 slave 都进入 fail 状态。</li>
-</ol>
-<p>当集群不可用时，任何操作都将返回<code>((error) CLUSTERDOWN The cluster is down)</code>错误。需要注意的是，必须要 3 个或以上的主节点，否则在创建集群时会失败。</p>
-<h3 id="一致性"><a class="header-anchor" href="#一致性">¶</a>一致性</h3>
-<p>Redis 不能保证强一致性，因为：</p>
-<ol>
-<li>异步复制：写操作会被异步复制到 slave 节点，但可能由于出现网络分区、脑裂而导致数据丢失。<br>
-<img src="http://47.88.24.11/imgs/Redis/%E7%BD%91%E7%BB%9C%E5%88%86%E5%8C%BA.png" alt="网络分区" title="网络分区"><br>
-如上图所示，客户端 Z1 向 Master-B 写入数据后，集群出现了网络分区，且分区持续的时间足够长导致此时 B1 被选举为新的 Master，则在此期间 Z1 向 B 写入的数据就都丢失了。</li>
-</ol>
-<blockquote>
-<p>网络分区出现期间，客户端 Z1 可以向主节点 B 发送写命令的最大时间是有限制的， 这一时间限制称为节点超时时间（node timeout）， 是 Redis 集群的一个重要的配置选项。</p>
-</blockquote>
-<h3 id="集群迁移-单点-cluster"><a class="header-anchor" href="#集群迁移-单点-cluster">¶</a>集群迁移 单点 -&gt; Cluster</h3>
-<p>在企业发展早期，因为业务规模小，一般会采用更方便、更节省资源的 1 主多从（一般是 1 主 2 从 3Sentinel）的架构，简称为 m-s 架构，而随着业务规模的扩展，这种架构的弊端就会显现出来，比如无法扩展、存在单点等。这时一般会考虑往 Cluster 架构迁移，但是，就像所有迁移规范那样，平滑地将数据和流量从老集群迁移到新集群、且过渡过程中不影响服务、随时能够切换回来，是所有迁移工作的前提，毕竟不能为了架构升级就把所有业务都停了。<br>
-因为公司的 Redis 集群之前是直接使用 Lettuce 访问的，并没有 Twemproxy、Codis 这样的中间件，因此迁移只能一个一个集群地推进，而且难做的是，一个集群可能会被好几个服务同时使用，而每个服务又会有多个实例同时访问。</p>
-<h4 id="迁移步骤"><a class="header-anchor" href="#迁移步骤">¶</a>迁移步骤</h4>
-<ol>
-<li>异步双写<br>
-第一步需要打开双写开关，此时对 m-s 的写入会被异步写入到新 Cluster。<br>
-此时 m-s 正常提供读写服务，异步双写并不会影响原来的功能（除非整出 Bug 来了），就像 Cluster 不存在一样，但是此时往 Cluster 写入的数据基本是错误的，因为其中并没有包含之前的数据，可以认为 Cluster 中都是脏数据。</li>
-<li>复制<br>
-这一步如果有时间有能力有需要可以自研一个迁移工具，但是实际上 Github 上已经有一些同步工具了，比如唯品会的<a href="https://github.com/vipshop/redis-migrate-tool" target="_blank" rel="noopener">redis-migrate-tool</a>、豌豆荚的<a href="https://github.com/CodisLabs/redis-port" target="_blank" rel="noopener">redis-port</a>、网易的<a href="https://github.com/helifu/redis-migration" target="_blank" rel="noopener">redis-migration</a>。<br>
-像 redis-migrate-tool 提供了 m-s 向 Cluster 直接迁移的支持，但是更稳妥的方式可能还是先导出 m-s 的一份快照（从库即可），这样可以减小同步过程对线上业务的影响，且方便留作备份。</li>
-<li>灰度<br>
-为了减少出问题时对线上业务的影响，需要灰度开关的支持，实现 Redis QPS 流量逐渐地由单点向集群过渡，多次调大灰度开关值，使得 redis 集群系统逐渐承担起 redis 流量的主体，也避免了新部署的集群系统不可用或者我们的迁移出现失误导致的服务不可用现象。<br>
-具体地讲，灰度过程应当含有以下几个步骤：
-<ol>
-<li>将 10%写流量同步写入 Cluster（其余的异步写入），观察一段时间；</li>
-<li>同步写入 Cluster，观察一段时间；</li>
-<li>异步读取 Cluster 中的数据，与 m-s 中的结果进行对比校验，确保新老数据是否同步，观察一段时间；</li>
-<li>将所有读操作完全切到 Cluster，但仍保持对 m-s 的写入，观察一段时间；</li>
-<li>停掉对 m-s 的写入，此时迁移完毕。</li>
-</ol>
-</li>
-</ol>
-<blockquote>
-<p>注意每一步都采用配置进行控制，如果出现了不可预知的情况，可以快速的回退到初始状态。</p>
-</blockquote>
-<h4 id="迁移过程中可能发生的情况"><a class="header-anchor" href="#迁移过程中可能发生的情况">¶</a>迁移过程中可能发生的情况</h4>
-<p>迁移过程中可能会出现以下几种情况：</p>
-<ol>
-<li>key 被复制后（注意复制过去是直接覆盖掉），m-s 更新了这个 key。这个更新之后会被双写到 Cluster，因此 m-s 和 Cluster 可以保持一致；</li>
-<li>复制流程过后，key 新增了。同样会被双写同步到 Cluster；</li>
-<li>复制前，双写 Cluster 失败了。由于复制过程中会将所有 key 都覆盖一次，所以这些失败的 key 不会造成影响；</li>
-<li>双写失败问题：复制后、且写流量未迁移，双写失败了。这种情况下贸然打开开关会造成 m-s 和 Cluster 之间数据的不一致，可能会引起未知的问题；<br>
-<img src="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%BC%82%E6%AD%A5%E5%86%99%E5%A4%B1%E8%B4%A5%E7%9A%84%E6%83%85%E5%86%B5.png" alt="迁移-异步写失败的情况" title="迁移-异步写失败的情况"></li>
-<li>并发双写乱序：如下图所示，由于乱序问题，老 Redis Server 最终保存下来的值是第二次请求触发的，而新 Redis Cluster 保存的是第一次的。<br>
-<img src="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%B9%B6%E5%8F%91%E5%8F%8C%E5%86%99%E4%B9%B1%E5%BA%8F.png" alt="迁移-并发双写乱序" title="迁移-并发双写乱序"></li>
-<li>双写与复制乱序：类似上面这种情况，只不过要把应用服务器 B 换成专门负责在 Redis 服务器之间复制数据的服务器。</li>
-<li>写流量迁移后，写 Cluster 失败了。如果非常倒霉发生了这种事，还是赶紧切回到原来的 m-s 吧。</li>
-</ol>
-<p>由于这些问题的存在，数据迁移基本做不到百分之百的可靠安全，比较适合一些缓存数据并不太重要的场景，或者至少在灰度步骤小心一些。<br>
-退一步讲，其实可以在夜间的业务低谷期把服务停了做迁移，这种方案最简单、可讨论的空间也最小。<br>
-另外，一些 Redis 的 Cluster 解决方案已经提供了迁移功能，比如<a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">Codis</a>。</p>
 <h2 id="redis-监控"><a class="header-anchor" href="#redis-监控">¶</a>Redis 监控</h2>
 <p>这里把一些常见的监控命令总结一下，时不时都会用到。</p>
 <h3 id="redis-cli"><a class="header-anchor" href="#redis-cli">¶</a>redis-cli</h3>
@@ -1638,6 +939,10 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
 <ol>
 <li><a href="https://github.com/redisson/redisson" target="_blank" rel="noopener">Redisson</a></li>
 </ol>
+<h3 id="系统优化"><a class="header-anchor" href="#系统优化">¶</a>系统优化</h3>
+<ol>
+<li><a href="https://www.oschina.net/translate/redis-latency-problems-troubleshooting?lang=chs&amp;p=1" target="_blank" rel="noopener">Redis 响应延迟问题排查</a></li>
+</ol>
 
       
     </div>
@@ -1668,8 +973,8 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/bcd62ed6.html" rel="next" title="并发和常见并发问题">
-                <i class="fa fa-chevron-left"></i> 并发和常见并发问题
+              <a href="/f1a5dd67.html" rel="next" title="Redis 数据结构">
+                <i class="fa fa-chevron-left"></i> Redis 数据结构
               </a>
             
           </div>
@@ -1678,8 +983,8 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/a894e74e.html" rel="prev" title="Disruptor 原理">
-                Disruptor 原理 <i class="fa fa-chevron-right"></i>
+              <a href="/a2b16944.html" rel="prev" title="Redis 持久化">
+                Redis 持久化 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -1762,7 +1067,7 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">112</span>
+                  <span class="site-state-item-count">117</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1819,7 +1124,7 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么使用-redis"><span class="nav-number">1.</span> <span class="nav-text">¶为什么使用 Redis</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-的缺点-优点"><span class="nav-number">1.1.</span> <span class="nav-text">¶Redis 的缺点 &amp; 优点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-memcached"><span class="nav-number">1.2.</span> <span class="nav-text">¶Redis &amp; Memcached</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用场景"><span class="nav-number">1.3.</span> <span class="nav-text">¶应用场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis环境搭建及基本用法"><span class="nav-number">2.</span> <span class="nav-text">¶Redis环境搭建及基本用法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#搭建环境"><span class="nav-number">2.1.</span> <span class="nav-text">¶搭建环境</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用"><span class="nav-number">2.2.</span> <span class="nav-text">¶使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容量预估"><span class="nav-number">2.3.</span> <span class="nav-text">¶容量预估</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基本数据结构"><span class="nav-number">3.</span> <span class="nav-text">¶基本数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#string"><span class="nav-number">3.1.</span> <span class="nav-text">¶String</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#特点"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基本使用"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶基本使用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见应用"><span class="nav-number">3.1.3.</span> <span class="nav-text">¶常见应用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hash"><span class="nav-number">3.2.</span> <span class="nav-text">¶Hash</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本使用方法"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶基本使用方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见应用-v2"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶常见应用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#list"><span class="nav-number">3.3.</span> <span class="nav-text">¶List</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本使用方法-v2"><span class="nav-number">3.3.1.</span> <span class="nav-text">¶基本使用方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见应用-v3"><span class="nav-number">3.3.2.</span> <span class="nav-text">¶常见应用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#set"><span class="nav-number">3.4.</span> <span class="nav-text">¶Set</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本使用方法-v3"><span class="nav-number">3.4.1.</span> <span class="nav-text">¶基本使用方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见应用-v4"><span class="nav-number">3.4.2.</span> <span class="nav-text">¶常见应用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zset"><span class="nav-number">3.5.</span> <span class="nav-text">¶ZSet</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本使用方法-v4"><span class="nav-number">3.5.1.</span> <span class="nav-text">¶基本使用方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见应用-v5"><span class="nav-number">3.5.2.</span> <span class="nav-text">¶常见应用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#原理"><span class="nav-number">3.5.3.</span> <span class="nav-text">¶原理</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-数据结构的实现"><span class="nav-number">4.</span> <span class="nav-text">¶Redis 数据结构的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#sds-simple-dynamic-string"><span class="nav-number">4.1.</span> <span class="nav-text">¶SDS(Simple Dynamic String)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dict-字典"><span class="nav-number">4.2.</span> <span class="nav-text">¶dict（字典）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#hashtable"><span class="nav-number">4.2.1.</span> <span class="nav-text">¶hashtable</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#扩容：渐进式-rehash"><span class="nav-number">4.2.2.</span> <span class="nav-text">¶扩容：渐进式 rehash</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缩容"><span class="nav-number">4.2.3.</span> <span class="nav-text">¶缩容</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ziplist"><span class="nav-number">4.3.</span> <span class="nav-text">¶ziplist</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#结构"><span class="nav-number">4.3.1.</span> <span class="nav-text">¶结构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#插入"><span class="nav-number">4.3.2.</span> <span class="nav-text">¶插入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新-删除"><span class="nav-number">4.3.3.</span> <span class="nav-text">¶更新/删除</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ziplist-vs-dict"><span class="nav-number">4.3.4.</span> <span class="nav-text">¶ziplist vs dict</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#quicklist"><span class="nav-number">4.4.</span> <span class="nav-text">¶quicklist</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#skiplist"><span class="nav-number">4.5.</span> <span class="nav-text">¶skiplist</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#插入-v2"><span class="nav-number">4.5.1.</span> <span class="nav-text">¶插入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除"><span class="nav-number">4.5.2.</span> <span class="nav-text">¶删除</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新"><span class="nav-number">4.5.3.</span> <span class="nav-text">¶更新</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#布隆过滤器"><span class="nav-number">4.6.</span> <span class="nav-text">¶布隆过滤器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hyperloglog"><span class="nav-number">4.7.</span> <span class="nav-text">¶HyperLogLog</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pubsub"><span class="nav-number">4.8.</span> <span class="nav-text">¶pubsub</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#geohash"><span class="nav-number">4.9.</span> <span class="nav-text">¶geohash</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-的进程和-io-模型"><span class="nav-number">5.</span> <span class="nav-text">¶Redis 的进程和 IO 模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么-redis-这么快"><span class="nav-number">5.1.</span> <span class="nav-text">¶为什么 Redis 这么快</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些常见的进程模型"><span class="nav-number">5.2.</span> <span class="nav-text">¶一些常见的进程模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么是-nio"><span class="nav-number">5.3.</span> <span class="nav-text">¶为什么是 NIO</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大-key-问题"><span class="nav-number">5.4.</span> <span class="nav-text">¶大 Key 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pipeline"><span class="nav-number">5.5.</span> <span class="nav-text">¶pipeline</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务"><span class="nav-number">6.</span> <span class="nav-text">¶事务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-事务的特征"><span class="nav-number">6.1.</span> <span class="nav-text">¶Redis 事务的特征</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#watch-命令和基于-cas-check-and-set-的乐观锁"><span class="nav-number">6.2.</span> <span class="nav-text">¶WATCH 命令和基于 CAS（Check-And-Set）的乐观锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#持久化"><span class="nav-number">7.</span> <span class="nav-text">¶持久化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#file-snap-shotting-半持久化模式-rdb"><span class="nav-number">7.1.</span> <span class="nav-text">¶file snap shotting（半持久化模式 / rdb）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#特点-v2"><span class="nav-number">7.1.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#开启"><span class="nav-number">7.1.2.</span> <span class="nav-text">¶开启</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#命令"><span class="nav-number">7.1.3.</span> <span class="nav-text">¶命令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#bgsave-过程"><span class="nav-number">7.1.4.</span> <span class="nav-text">¶bgsave 过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#问题"><span class="nav-number">7.1.5.</span> <span class="nav-text">¶问题</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#virtual-memory-虚拟内存-vm"><span class="nav-number">7.2.</span> <span class="nav-text">¶Virtual-Memory（虚拟内存 / VM）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#append-only-file-全持久化模式-aof"><span class="nav-number">7.3.</span> <span class="nav-text">¶Append-only file（全持久化模式 / AOF）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#特点-v3"><span class="nav-number">7.3.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#开启-v2"><span class="nav-number">7.3.2.</span> <span class="nav-text">¶开启</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#过程"><span class="nav-number">7.3.3.</span> <span class="nav-text">¶过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#问题-v2"><span class="nav-number">7.3.4.</span> <span class="nav-text">¶问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#命令-v2"><span class="nav-number">7.3.5.</span> <span class="nav-text">¶命令</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#宕机恢复"><span class="nav-number">7.4.</span> <span class="nav-text">¶宕机恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件压缩"><span class="nav-number">7.5.</span> <span class="nav-text">¶文件压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#生产中如何设计持久化方案"><span class="nav-number">7.6.</span> <span class="nav-text">¶生产中如何设计持久化方案</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#优化"><span class="nav-number">8.</span> <span class="nav-text">¶优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内存"><span class="nav-number">8.1.</span> <span class="nav-text">¶内存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修改数据库配置"><span class="nav-number">8.2.</span> <span class="nav-text">¶修改数据库配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过期时间的设置"><span class="nav-number">8.3.</span> <span class="nav-text">¶过期时间的设置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">8.4.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">8.5.</span> <span class="nav-text">¶缓存雪崩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存预热"><span class="nav-number">8.6.</span> <span class="nav-text">¶缓存预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存淘汰-缓存失效策略和主键失效机制"><span class="nav-number">8.7.</span> <span class="nav-text">¶缓存淘汰（缓存失效策略和主键失效机制）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的过期时间控制"><span class="nav-number">8.7.1.</span> <span class="nav-text">¶key 的过期时间控制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的删除策略"><span class="nav-number">8.7.2.</span> <span class="nav-text">¶key 的删除策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#redis-的数据淘汰策略"><span class="nav-number">8.7.3.</span> <span class="nav-text">¶Redis 的数据淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#自定义缓存淘汰策略"><span class="nav-number">8.7.4.</span> <span class="nav-text">¶自定义缓存淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存淘汰的实现"><span class="nav-number">8.7.5.</span> <span class="nav-text">¶缓存淘汰的实现</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-和数据库双写一致性问题"><span class="nav-number">8.8.</span> <span class="nav-text">¶Redis 和数据库双写一致性问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决-redis-的并发竞争-key-问题"><span class="nav-number">8.9.</span> <span class="nav-text">¶如何解决 redis 的并发竞争 key 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存降级"><span class="nav-number">8.10.</span> <span class="nav-text">¶缓存降级</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制-master-slave-m-s"><span class="nav-number">9.</span> <span class="nav-text">¶主从复制（master-slave、m-s）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#操作"><span class="nav-number">9.1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#同步复制和异步复制"><span class="nav-number">9.2.</span> <span class="nav-text">¶同步复制和异步复制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么时候触发复制"><span class="nav-number">9.3.</span> <span class="nav-text">¶什么时候触发复制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制原理"><span class="nav-number">9.4.</span> <span class="nav-text">¶主从复制原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制执行过程"><span class="nav-number">9.5.</span> <span class="nav-text">¶主从复制执行过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#宕机恢复-v2"><span class="nav-number">9.6.</span> <span class="nav-text">¶宕机恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#是否可以关闭持久化"><span class="nav-number">9.7.</span> <span class="nav-text">¶是否可以关闭持久化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#只读-slave"><span class="nav-number">9.8.</span> <span class="nav-text">¶只读 Slave</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据丢失窗口"><span class="nav-number">9.9.</span> <span class="nav-text">¶数据丢失窗口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过期的-key"><span class="nav-number">9.10.</span> <span class="nav-text">¶过期的 key</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-ha-集群"><span class="nav-number">10.</span> <span class="nav-text">¶Sentinel（ha 集群）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#操作-v2"><span class="nav-number">10.1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel执行流程"><span class="nav-number">10.2.</span> <span class="nav-text">¶Sentinel执行流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-需要定期执行的任务"><span class="nav-number">10.3.</span> <span class="nav-text">¶Sentinel 需要定期执行的任务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#状态感知-info"><span class="nav-number">10.4.</span> <span class="nav-text">¶状态感知（info）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#心跳检测-ping"><span class="nav-number">10.5.</span> <span class="nav-text">¶心跳检测（ping）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主观下线和客观下线"><span class="nav-number">10.6.</span> <span class="nav-text">¶主观下线和客观下线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障迁移-master-挂掉-sentinel选举新master"><span class="nav-number">10.7.</span> <span class="nav-text">¶故障迁移（Master 挂掉，Sentinel选举新Master）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-选举的安全性"><span class="nav-number">10.8.</span> <span class="nav-text">¶Sentinel 选举的安全性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tilt-模式"><span class="nav-number">10.9.</span> <span class="nav-text">¶TILT 模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#busy-状态"><span class="nav-number">10.10.</span> <span class="nav-text">¶BUSY 状态</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cluster"><span class="nav-number">11.</span> <span class="nav-text">¶Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-优势"><span class="nav-number">11.1.</span> <span class="nav-text">¶Cluster 优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-缺点"><span class="nav-number">11.2.</span> <span class="nav-text">¶Cluster 缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#去中心化架构"><span class="nav-number">11.3.</span> <span class="nav-text">¶去中心化架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区-存储结构"><span class="nav-number">11.4.</span> <span class="nav-text">¶分区（存储结构）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容错"><span class="nav-number">11.5.</span> <span class="nav-text">¶容错</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#判断一个节点是否宕机"><span class="nav-number">11.5.1.</span> <span class="nav-text">¶判断一个节点是否宕机</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#判断集群是否-fail"><span class="nav-number">11.5.2.</span> <span class="nav-text">¶判断集群是否 fail</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一致性"><span class="nav-number">11.6.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群迁移-单点-cluster"><span class="nav-number">11.7.</span> <span class="nav-text">¶集群迁移 单点 -&gt; Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#迁移步骤"><span class="nav-number">11.7.1.</span> <span class="nav-text">¶迁移步骤</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#迁移过程中可能发生的情况"><span class="nav-number">11.7.2.</span> <span class="nav-text">¶迁移过程中可能发生的情况</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-监控"><span class="nav-number">12.</span> <span class="nav-text">¶Redis 监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-cli"><span class="nav-number">12.1.</span> <span class="nav-text">¶redis-cli</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-stat"><span class="nav-number">12.2.</span> <span class="nav-text">¶redis-stat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#slowlog"><span class="nav-number">12.3.</span> <span class="nav-text">¶slowlog</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-benchmark"><span class="nav-number">12.4.</span> <span class="nav-text">¶redis-benchmark</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rdb-文件分析"><span class="nav-number">12.5.</span> <span class="nav-text">¶RDB 文件分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#优化-v2"><span class="nav-number">13.</span> <span class="nav-text">¶优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内存优化"><span class="nav-number">13.1.</span> <span class="nav-text">¶内存优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#批量请求优化"><span class="nav-number">13.2.</span> <span class="nav-text">¶批量请求优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大量数据插入"><span class="nav-number">13.3.</span> <span class="nav-text">¶大量数据插入</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">14.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis与其他kv存储有何不同？"><span class="nav-number">14.1.</span> <span class="nav-text">¶Redis与其他KV存储有何不同？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？"><span class="nav-number">14.2.</span> <span class="nav-text">¶有人说 Redis 只适合用来做缓存，当数据库来用并不合适，为什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis会占用多少内存空间？"><span class="nav-number">14.3.</span> <span class="nav-text">¶Redis会占用多少内存空间？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-的底层数据结构有哪些"><span class="nav-number">14.4.</span> <span class="nav-text">¶Redis 的底层数据结构有哪些</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#存储数据选择-string-还是-hash？"><span class="nav-number">14.5.</span> <span class="nav-text">¶存储数据选择 string 还是 hash？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前"><span class="nav-number">14.6.</span> <span class="nav-text">¶设计 redis 排序，数据结构是金额+花钱的时间，金额越大，时间越早越靠前</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hash-中哈希冲突怎么解决的"><span class="nav-number">14.7.</span> <span class="nav-text">¶hash 中哈希冲突怎么解决的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-淘汰时-如果读取-会不会数据不完整"><span class="nav-number">14.8.</span> <span class="nav-text">¶Redis 淘汰时，如果读取，会不会数据不完整</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-的持久化原理是什么"><span class="nav-number">14.9.</span> <span class="nav-text">¶Redis 的持久化原理是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rdb-和-aof-之间的区别"><span class="nav-number">14.10.</span> <span class="nav-text">¶RDB 和 AOF 之间的区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis的复制原理是什么？"><span class="nav-number">14.11.</span> <span class="nav-text">¶Redis的复制原理是什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-持久化期间-主进程还能对外提供服务吗？为什么"><span class="nav-number">14.12.</span> <span class="nav-text">¶Redis 持久化期间，主进程还能对外提供服务吗？为什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？"><span class="nav-number">14.13.</span> <span class="nav-text">¶持久化期间，Redis如何处理新写入的数据呢，这个数据也会直接进行持久化吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制为什么会发生延迟？怎么解决"><span class="nav-number">14.14.</span> <span class="nav-text">¶主从复制为什么会发生延迟？怎么解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-怎么实现高可用"><span class="nav-number">14.15.</span> <span class="nav-text">¶Redis 怎么实现高可用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置"><span class="nav-number">14.16.</span> <span class="nav-text">¶sentinel 中，使用客户端是怎么连接服务器的？（Redisson 配置）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#哈希槽原理？和一致性哈希的区别？怎么落点"><span class="nav-number">14.17.</span> <span class="nav-text">¶哈希槽原理？和一致性哈希的区别？怎么落点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决"><span class="nav-number">14.18.</span> <span class="nav-text">¶Redis雪崩、击穿、穿透等现象是怎么出现的？怎么解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制的流程？传的是文件吗？"><span class="nav-number">14.19.</span> <span class="nav-text">¶主从复制的流程？传的是文件吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#中间传输失败怎么办？中间传输不一致怎么办"><span class="nav-number">14.20.</span> <span class="nav-text">¶中间传输失败怎么办？中间传输不一致怎么办</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">15.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">15.1.</span> <span class="nav-text">¶应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据结构"><span class="nav-number">15.2.</span> <span class="nav-text">¶数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#persistence"><span class="nav-number">15.3.</span> <span class="nav-text">¶Persistence</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#客户端"><span class="nav-number">15.4.</span> <span class="nav-text">¶客户端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制"><span class="nav-number">15.5.</span> <span class="nav-text">¶主从复制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-cluster"><span class="nav-number">15.6.</span> <span class="nav-text">¶Sentinel &amp; Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构迁移"><span class="nav-number">15.7.</span> <span class="nav-text">¶架构迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#twemproxy"><span class="nav-number">15.8.</span> <span class="nav-text">¶Twemproxy</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#codis"><span class="nav-number">15.9.</span> <span class="nav-text">¶Codis</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redisson"><span class="nav-number">15.10.</span> <span class="nav-text">¶Redisson</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么使用-redis"><span class="nav-number">1.</span> <span class="nav-text">¶为什么使用 Redis</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-的缺点-优点"><span class="nav-number">1.1.</span> <span class="nav-text">¶Redis 的缺点 &amp; 优点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-memcached"><span class="nav-number">1.2.</span> <span class="nav-text">¶Redis &amp; Memcached</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用场景"><span class="nav-number">1.3.</span> <span class="nav-text">¶应用场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务"><span class="nav-number">2.</span> <span class="nav-text">¶事务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-事务的特征"><span class="nav-number">2.1.</span> <span class="nav-text">¶Redis 事务的特征</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#watch-命令和基于-cas-check-and-set-的乐观锁"><span class="nav-number">2.2.</span> <span class="nav-text">¶WATCH 命令和基于 CAS（Check-And-Set）的乐观锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#优化"><span class="nav-number">3.</span> <span class="nav-text">¶优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内存"><span class="nav-number">3.1.</span> <span class="nav-text">¶内存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修改数据库配置"><span class="nav-number">3.2.</span> <span class="nav-text">¶修改数据库配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过期时间的设置"><span class="nav-number">3.3.</span> <span class="nav-text">¶过期时间的设置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">3.4.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">3.5.</span> <span class="nav-text">¶缓存雪崩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存预热"><span class="nav-number">3.6.</span> <span class="nav-text">¶缓存预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存淘汰-缓存失效策略和主键失效机制"><span class="nav-number">3.7.</span> <span class="nav-text">¶缓存淘汰（缓存失效策略和主键失效机制）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的过期时间控制"><span class="nav-number">3.7.1.</span> <span class="nav-text">¶key 的过期时间控制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的删除策略"><span class="nav-number">3.7.2.</span> <span class="nav-text">¶key 的删除策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#redis-的数据淘汰策略"><span class="nav-number">3.7.3.</span> <span class="nav-text">¶Redis 的数据淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#自定义缓存淘汰策略"><span class="nav-number">3.7.4.</span> <span class="nav-text">¶自定义缓存淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存淘汰的实现"><span class="nav-number">3.7.5.</span> <span class="nav-text">¶缓存淘汰的实现</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-和数据库双写一致性问题"><span class="nav-number">3.8.</span> <span class="nav-text">¶Redis 和数据库双写一致性问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决-redis-的并发竞争-key-问题"><span class="nav-number">3.9.</span> <span class="nav-text">¶如何解决 redis 的并发竞争 key 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存降级"><span class="nav-number">3.10.</span> <span class="nav-text">¶缓存降级</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-监控"><span class="nav-number">4.</span> <span class="nav-text">¶Redis 监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-cli"><span class="nav-number">4.1.</span> <span class="nav-text">¶redis-cli</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-stat"><span class="nav-number">4.2.</span> <span class="nav-text">¶redis-stat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#slowlog"><span class="nav-number">4.3.</span> <span class="nav-text">¶slowlog</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-benchmark"><span class="nav-number">4.4.</span> <span class="nav-text">¶redis-benchmark</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rdb-文件分析"><span class="nav-number">4.5.</span> <span class="nav-text">¶RDB 文件分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#优化-v2"><span class="nav-number">5.</span> <span class="nav-text">¶优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内存优化"><span class="nav-number">5.1.</span> <span class="nav-text">¶内存优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#批量请求优化"><span class="nav-number">5.2.</span> <span class="nav-text">¶批量请求优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大量数据插入"><span class="nav-number">5.3.</span> <span class="nav-text">¶大量数据插入</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">6.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis与其他kv存储有何不同？"><span class="nav-number">6.1.</span> <span class="nav-text">¶Redis与其他KV存储有何不同？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？"><span class="nav-number">6.2.</span> <span class="nav-text">¶有人说 Redis 只适合用来做缓存，当数据库来用并不合适，为什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis会占用多少内存空间？"><span class="nav-number">6.3.</span> <span class="nav-text">¶Redis会占用多少内存空间？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-的底层数据结构有哪些"><span class="nav-number">6.4.</span> <span class="nav-text">¶Redis 的底层数据结构有哪些</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#存储数据选择-string-还是-hash？"><span class="nav-number">6.5.</span> <span class="nav-text">¶存储数据选择 string 还是 hash？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前"><span class="nav-number">6.6.</span> <span class="nav-text">¶设计 redis 排序，数据结构是金额+花钱的时间，金额越大，时间越早越靠前</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hash-中哈希冲突怎么解决的"><span class="nav-number">6.7.</span> <span class="nav-text">¶hash 中哈希冲突怎么解决的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-淘汰时-如果读取-会不会数据不完整"><span class="nav-number">6.8.</span> <span class="nav-text">¶Redis 淘汰时，如果读取，会不会数据不完整</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-的持久化原理是什么"><span class="nav-number">6.9.</span> <span class="nav-text">¶Redis 的持久化原理是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rdb-和-aof-之间的区别"><span class="nav-number">6.10.</span> <span class="nav-text">¶RDB 和 AOF 之间的区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis的复制原理是什么？"><span class="nav-number">6.11.</span> <span class="nav-text">¶Redis的复制原理是什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-持久化期间-主进程还能对外提供服务吗？为什么"><span class="nav-number">6.12.</span> <span class="nav-text">¶Redis 持久化期间，主进程还能对外提供服务吗？为什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？"><span class="nav-number">6.13.</span> <span class="nav-text">¶持久化期间，Redis如何处理新写入的数据呢，这个数据也会直接进行持久化吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制为什么会发生延迟？怎么解决"><span class="nav-number">6.14.</span> <span class="nav-text">¶主从复制为什么会发生延迟？怎么解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-怎么实现高可用"><span class="nav-number">6.15.</span> <span class="nav-text">¶Redis 怎么实现高可用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置"><span class="nav-number">6.16.</span> <span class="nav-text">¶sentinel 中，使用客户端是怎么连接服务器的？（Redisson 配置）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#哈希槽原理？和一致性哈希的区别？怎么落点"><span class="nav-number">6.17.</span> <span class="nav-text">¶哈希槽原理？和一致性哈希的区别？怎么落点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决"><span class="nav-number">6.18.</span> <span class="nav-text">¶Redis雪崩、击穿、穿透等现象是怎么出现的？怎么解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制的流程？传的是文件吗？"><span class="nav-number">6.19.</span> <span class="nav-text">¶主从复制的流程？传的是文件吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#中间传输失败怎么办？中间传输不一致怎么办"><span class="nav-number">6.20.</span> <span class="nav-text">¶中间传输失败怎么办？中间传输不一致怎么办</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">7.1.</span> <span class="nav-text">¶应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据结构"><span class="nav-number">7.2.</span> <span class="nav-text">¶数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#persistence"><span class="nav-number">7.3.</span> <span class="nav-text">¶Persistence</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#客户端"><span class="nav-number">7.4.</span> <span class="nav-text">¶客户端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从复制"><span class="nav-number">7.5.</span> <span class="nav-text">¶主从复制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sentinel-cluster"><span class="nav-number">7.6.</span> <span class="nav-text">¶Sentinel &amp; Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构迁移"><span class="nav-number">7.7.</span> <span class="nav-text">¶架构迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#twemproxy"><span class="nav-number">7.8.</span> <span class="nav-text">¶Twemproxy</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#codis"><span class="nav-number">7.9.</span> <span class="nav-text">¶Codis</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redisson"><span class="nav-number">7.10.</span> <span class="nav-text">¶Redisson</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#系统优化"><span class="nav-number">7.11.</span> <span class="nav-text">¶系统优化</span></a></li></ol></li></ol></div>
             
 
           </div>

@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Redis,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶Cluster 优势  线性的可扩展性：扩容即迁移槽，已有很多迁移案例； 没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈； 写入安全（Write Safety）：只有在非常少见的 Master 宕机的情况下，写入才会失败，并">
+<meta name="keywords" content="Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis高可用方案Cluster">
+<meta property="og:url" content="https://tallate.github.io/fb6b62e.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶Cluster 优势  线性的可扩展性：扩容即迁移槽，已有很多迁移案例； 没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈； 写入安全（Write Safety）：只有在非常少见的 Master 宕机的情况下，写入才会失败，并">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Cluster.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/ConsistentHashLoadBalance.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E7%BD%91%E7%BB%9C%E5%88%86%E5%8C%BA.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%BC%82%E6%AD%A5%E5%86%99%E5%A4%B1%E8%B4%A5%E7%9A%84%E6%83%85%E5%86%B5.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%B9%B6%E5%8F%91%E5%8F%8C%E5%86%99%E4%B9%B1%E5%BA%8F.png">
+<meta property="og:updated_time" content="2020-11-02T02:25:45.813Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis高可用方案Cluster">
+<meta name="twitter:description" content="¶Cluster 优势  线性的可扩展性：扩容即迁移槽，已有很多迁移案例； 没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈； 写入安全（Write Safety）：只有在非常少见的 Master 宕机的情况下，写入才会失败，并">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Redis/Cluster.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/fb6b62e.html">
+
+
+
+
+
+
+
+  <title>Redis高可用方案Cluster | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fb6b62e.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis高可用方案Cluster</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
+                2019-09-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  12 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="cluster-优势"><a class="header-anchor" href="#cluster-优势">¶</a>Cluster 优势</h2>
+<ol>
+<li>线性的可扩展性：扩容即迁移槽，已有很多迁移案例；</li>
+<li>没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈；</li>
+<li>写入安全（Write Safety）：只有在非常少见的 Master 宕机的情况下，写入才会失败，并且这个失败的时间窗口不大（由一个 Slave 顶替上来）；</li>
+<li>可用性（Availability）：就算有部分 Master 不可用了，它们的 Slave 仍然可以通过选举提升为 Master。</li>
+</ol>
+<h2 id="cluster-缺点"><a class="header-anchor" href="#cluster-缺点">¶</a>Cluster 缺点</h2>
+<ol>
+<li>Redis 集群并不支持处理多个 keys 的命令，因为这需要在不同的节点间移动数据，从而达不到像 Redis 那样的性能，在高负载的情况下可能会导致不可预料的错误。</li>
+<li>Redis 集群不像单机版本的 Redis 那样支持多个数据库，集群只有数据库 0，而且也不支持 SELECT 命令。</li>
+</ol>
+<h2 id="去中心化架构"><a class="header-anchor" href="#去中心化架构">¶</a>去中心化架构</h2>
+<p><img src="http://47.88.24.11/imgs/Redis/Cluster.png" alt="Cluster" title="Cluster"><br>
+redis cluster在设计的时候，就考虑到了<strong>去中心化</strong>，去中间件，也就是说，集群中的每个节点都是平等的关系，都是对等的，每个节点都保存各自的数据和整个集群的状态。<strong>所有的 redis 节点彼此互联(PING-PONG 机制)</strong>，内部使用<strong>二进制协议</strong>优化传输速度和带宽，而且这些连接保持活跃，这样就保证了我们只需要连接集群中的任意一个节点，就可以获取到其他节点的数据。客户端与 redis 节点直连，不需要中间 proxy 层，客户端不需要连接集群所有节点，连接集群中任何一个可用节点即可。</p>
+<h2 id="分区-存储结构"><a class="header-anchor" href="#分区-存储结构">¶</a>分区（存储结构）</h2>
+<p>分区将原来比较大的数据集分离存储到多个存储媒介上，分区后Redis可以管理更大的内存空间和计算能力，但同时多主机又会面临很多分布式集群的可用性、一致性等问题。<br>
+分区策略：</p>
+<ol>
+<li>范围分区<br>
+将不同范围的对象映射到不同的Redis实例，比如用户ID为0到10000的存储到R0,10001到20000的存储到R1，以此类推。<br>
+缺点是需要建立一张映射表，谨小甚微地维护ID和Redis实例之间的映射关系，而且由于需要维护表，导致效率不如其他方案。</li>
+<li>散列分区<br>
+使用散列函数（如CRC32）将key转换为一个数字，取模得到一个0到3的数字（假设Redis服务器有4台），这个数字即对应服务器的序号。</li>
+<li>一致性哈希</li>
+<li>哈希槽<br>
+Redis 集群没有并使用传统的<strong>一致性哈希</strong>来分配数据，而是采用另外一种叫做<strong>哈希槽 (hash slot)<strong>的方式来分配的。redis cluster 默认分配了 16384 个 slot，当我们 set 一个 key 时，会用</strong>CRC16</strong>算法来取模得到所属的 slot，然后将这个 key 分到哈希槽区间的节点上，具体算法就是：<code>CRC16(key) % 16384</code>。所以我们在测试的时候看到 set 和 get 的时候，直接跳转到了 7000 端口的节点。<br>
+客户端在接收到重定向错误（redirections errors） -MOVED 和 -ASK 的时候， 将命令重定向到其他节点。客户端不需要存储集群信息（槽所在位置），但是如何客户端可以缓存键值和节点之间的映射关系，就可以明显提高命令执行的效率了（Redisson 中就是这么做的）。<br>
+在 Cluster 架构中，slave 节点不分配槽，只拥有读权限，但是在代码中 cluster 执行读写操作的都是 master 节点，并不是读就是从节点、写就是主节点。</li>
+</ol>
+<p>一致性哈希的示例实现可以参考Dubbo中的实现：<code>com.alibaba.dubbo.rpc.cluster.loadbalance.ConsistentHashLoadBalance</code><br>
+关键代码如下：<br>
+<img src="http://47.88.24.11/imgs/Redis/ConsistentHashLoadBalance.png" alt="ConsistentHashLoadBalance" title="ConsistentHashLoadBalance"></p>
+<p>分区可以在程序的不同层次实现。</p>
+<ul>
+<li><strong>客户端分区</strong><br>
+就是在客户端就已经决定数据会被存储到哪个redis节点或者从哪个redis节点读取。大多数客户端已经实现了客户端分区。</li>
+<li><strong>代理分区</strong><br>
+意味着客户端将请求发送给代理，然后代理决定去哪个节点写数据或者读数据。代理根据分区规则决定请求哪些Redis实例，然后根据Redis的响应结果返回给客户端。redis和memcached的一种代理实现就是Twemproxy</li>
+<li><strong>查询路由(Query routing)</strong><br>
+意思是客户端随机地请求任意一个redis实例，然后由Redis将请求转发给正确的Redis节点。Redis Cluster实现了一种混合形式的查询路由，但并不是直接将请求从一个redis节点转发到另一个redis节点，而是在客户端的帮助下直接redirected到正确的redis节点。</li>
+</ul>
+<p>分区的缺点<br>
+有些特性在分区的情况下会受到限制：</p>
+<ul>
+<li>涉及多个key的操作通常不会被支持。例如你不能对两个集合求交集，因为他们可能被存储到不同的Redis实例（实际上这种情况也有办法，但是不能直接使用交集指令）。<br>
+同时操作多个key,则不能使用Redis事务.</li>
+<li>分区使用的粒度是key，不能使用一个非常长的排序key存储一个数据集（The partitioning granularity is the key, so it is not possible to shard a dataset with a single huge key like a very big sorted set）.</li>
+<li>当使用分区的时候，数据处理会非常复杂，例如为了备份你必须从不同的Redis实例和主机同时收集RDB / AOF文件。</li>
+<li>分区时动态扩容或缩容可能非常复杂。Redis集群在运行时增加或者删除Redis节点，能做到最大程度对用户透明地数据再平衡，但其他一些客户端分区或者代理分区方法则不支持这种特性。然而，有一种预分片的技术也可以较好的解决这个问题。</li>
+</ul>
+<p>当要把Redis当作持久化存储时，需要注意分区的性质</p>
+<ul>
+<li>如果Redis被当做缓存使用，使用一致性哈希实现动态扩容缩容。</li>
+<li>如果Redis被当做一个持久化存储使用，必须使用固定的keys-to-nodes映射关系，节点的数量一旦确定不能变化。否则的话(即Redis节点需要动态变化的情况），必须使用可以在运行时进行数据再平衡的一套系统，现在Redis Cluster已经支持这种再平衡。</li>
+</ul>
+<h2 id="容错"><a class="header-anchor" href="#容错">¶</a>容错</h2>
+<p>Redis 集群会把数据存在一个 master 节点，然后在这个 master 和其对应的 salve 之间进行数据同步。当读取数据时，也根据 hash 函数找到对应哈希槽所在的 master 节点获取数据。只有当一个 master 挂掉之后，才会启动一个对应的 salve 节点，充当 master 。</p>
+<h3 id="判断一个节点是否宕机"><a class="header-anchor" href="#判断一个节点是否宕机">¶</a>判断一个节点是否宕机</h3>
+<p>一些 CP 特性且中心化的集群来说，当出现节点宕机时经常需要选举新的 Leader 节点，但是 Redis-Cluster 是<strong>去中心化</strong>的，某个 Master 的宕机并不会影响其他节点的工作。但是，当节点失联时，需要考虑网络的抖动情况，毕竟不能因为某几个请求意外超时就推断集群失败了，所以这里引入了投票机制。<br>
+投票过程是集群中所有 master 参与的，每个节点都存有整个集群所有主节点及从节点的信息，它们之间通过互相 ping-pong 来判断节点是否可以连上，如果半数以上 master 节点与当前 master 节点通信超时（cluster-node-timeout），则认为当前 master 节点挂掉。</p>
+<h3 id="判断集群是否-fail"><a class="header-anchor" href="#判断集群是否-fail">¶</a>判断集群是否 fail</h3>
+<p>当 master 挂掉时，并不意味着集群已无法再提供服务了，集群要进入<code>fail（不可用）</code>状态需要满足以下条件之一：</p>
+<ol>
+<li>集群的任意 master 挂掉，且该 master 没有 slave 或 slave 全挂掉了，则集群进入 fail 状态。这是因为，Cluster中所有slot是平均分配到每个Master的，如果有一个Master的slot不能用了、而且这个Master还没有Slave，那么集群就不能提供服务了。</li>
+<li>集群超过半数以上 master 挂掉，无论有无 slave 都进入 fail 状态。</li>
+</ol>
+<p>当集群不可用时，任何操作都将返回<code>((error) CLUSTERDOWN The cluster is down)</code>错误。需要注意的是，必须要 3 个或以上的主节点，否则在创建集群时会失败。</p>
+<h2 id="一致性"><a class="header-anchor" href="#一致性">¶</a>一致性</h2>
+<p>Redis 不能保证强一致性，因为：</p>
+<ol>
+<li>异步复制：写操作会被异步复制到 slave 节点，但可能由于出现网络分区、脑裂而导致数据丢失。<br>
+<img src="http://47.88.24.11/imgs/Redis/%E7%BD%91%E7%BB%9C%E5%88%86%E5%8C%BA.png" alt="网络分区" title="网络分区"><br>
+如上图所示，客户端 Z1 向 Master-B 写入数据后，集群出现了网络分区，且分区持续的时间足够长导致此时 B1 被选举为新的 Master，则在此期间 Z1 向 B 写入的数据就都丢失了。</li>
+</ol>
+<blockquote>
+<p>网络分区出现期间，客户端 Z1 可以向主节点 B 发送写命令的最大时间是有限制的， 这一时间限制称为节点超时时间（node timeout）， 是 Redis 集群的一个重要的配置选项。</p>
+</blockquote>
+<h2 id="集群迁移-单点-cluster"><a class="header-anchor" href="#集群迁移-单点-cluster">¶</a>集群迁移 单点 -&gt; Cluster</h2>
+<p>在企业发展早期，因为业务规模小，一般会采用更方便、更节省资源的 1 主多从（一般是 1 主 2 从 3Sentinel）的架构，简称为 m-s 架构，而随着业务规模的扩展，这种架构的弊端就会显现出来，比如无法扩展、存在单点等。这时一般会考虑往 Cluster 架构迁移，但是，就像所有迁移规范那样，平滑地将数据和流量从老集群迁移到新集群、且过渡过程中不影响服务、随时能够切换回来，是所有迁移工作的前提，毕竟不能为了架构升级就把所有业务都停了。<br>
+因为公司的 Redis 集群之前是直接使用 Lettuce 访问的，并没有 Twemproxy、Codis 这样的中间件，因此迁移只能一个一个集群地推进，而且难做的是，一个集群可能会被好几个服务同时使用，而每个服务又会有多个实例同时访问。</p>
+<h3 id="迁移步骤"><a class="header-anchor" href="#迁移步骤">¶</a>迁移步骤</h3>
+<ol>
+<li>异步双写<br>
+第一步需要打开双写开关，此时对 m-s 的写入会被异步写入到新 Cluster。<br>
+此时 m-s 正常提供读写服务，异步双写并不会影响原来的功能（除非整出 Bug 来了），就像 Cluster 不存在一样，但是此时往 Cluster 写入的数据基本是错误的，因为其中并没有包含之前的数据，可以认为 Cluster 中都是脏数据。</li>
+<li>复制<br>
+这一步如果有时间有能力有需要可以自研一个迁移工具，但是实际上 Github 上已经有一些同步工具了，比如唯品会的<a href="https://github.com/vipshop/redis-migrate-tool" target="_blank" rel="noopener">redis-migrate-tool</a>、豌豆荚的<a href="https://github.com/CodisLabs/redis-port" target="_blank" rel="noopener">redis-port</a>、网易的<a href="https://github.com/helifu/redis-migration" target="_blank" rel="noopener">redis-migration</a>。<br>
+像 redis-migrate-tool 提供了 m-s 向 Cluster 直接迁移的支持，但是更稳妥的方式可能还是先导出 m-s 的一份快照（从库即可），这样可以减小同步过程对线上业务的影响，且方便留作备份。</li>
+<li>灰度<br>
+为了减少出问题时对线上业务的影响，需要灰度开关的支持，实现 Redis QPS 流量逐渐地由单点向集群过渡，多次调大灰度开关值，使得 redis 集群系统逐渐承担起 redis 流量的主体，也避免了新部署的集群系统不可用或者我们的迁移出现失误导致的服务不可用现象。<br>
+具体地讲，灰度过程应当含有以下几个步骤：
+<ol>
+<li>将 10%写流量同步写入 Cluster（其余的异步写入），观察一段时间；</li>
+<li>同步写入 Cluster，观察一段时间；</li>
+<li>异步读取 Cluster 中的数据，与 m-s 中的结果进行对比校验，确保新老数据是否同步，观察一段时间；</li>
+<li>将所有读操作完全切到 Cluster，但仍保持对 m-s 的写入，观察一段时间；</li>
+<li>停掉对 m-s 的写入，此时迁移完毕。</li>
+</ol>
+</li>
+</ol>
+<blockquote>
+<p>注意每一步都采用配置进行控制，如果出现了不可预知的情况，可以快速的回退到初始状态。</p>
+</blockquote>
+<h3 id="迁移过程中可能发生的情况"><a class="header-anchor" href="#迁移过程中可能发生的情况">¶</a>迁移过程中可能发生的情况</h3>
+<p>迁移过程中可能会出现以下几种情况：</p>
+<ol>
+<li>key 被复制后（注意复制过去是直接覆盖掉），m-s 更新了这个 key。这个更新之后会被双写到 Cluster，因此 m-s 和 Cluster 可以保持一致；</li>
+<li>复制流程过后，key 新增了。同样会被双写同步到 Cluster；</li>
+<li>复制前，双写 Cluster 失败了。由于复制过程中会将所有 key 都覆盖一次，所以这些失败的 key 不会造成影响；</li>
+<li>双写失败问题：复制后、且写流量未迁移，双写失败了。这种情况下贸然打开开关会造成 m-s 和 Cluster 之间数据的不一致，可能会引起未知的问题；<br>
+<img src="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%BC%82%E6%AD%A5%E5%86%99%E5%A4%B1%E8%B4%A5%E7%9A%84%E6%83%85%E5%86%B5.png" alt="迁移-异步写失败的情况" title="迁移-异步写失败的情况"></li>
+<li>并发双写乱序：如下图所示，由于乱序问题，老 Redis Server 最终保存下来的值是第二次请求触发的，而新 Redis Cluster 保存的是第一次的。<br>
+<img src="http://47.88.24.11/imgs/Redis/%E8%BF%81%E7%A7%BB-%E5%B9%B6%E5%8F%91%E5%8F%8C%E5%86%99%E4%B9%B1%E5%BA%8F.png" alt="迁移-并发双写乱序" title="迁移-并发双写乱序"></li>
+<li>双写与复制乱序：类似上面这种情况，只不过要把应用服务器 B 换成专门负责在 Redis 服务器之间复制数据的服务器。</li>
+<li>写流量迁移后，写 Cluster 失败了。如果非常倒霉发生了这种事，还是赶紧切回到原来的 m-s 吧。</li>
+</ol>
+<p>由于这些问题的存在，数据迁移基本做不到百分之百的可靠安全，比较适合一些缓存数据并不太重要的场景，或者至少在灰度步骤小心一些。<br>
+退一步讲，其实可以在夜间的业务低谷期把服务停了做迁移，这种方案最简单、可讨论的空间也最小。<br>
+另外，一些 Redis 的 Cluster 解决方案已经提供了迁移功能，比如<a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">Codis</a>。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Redis/" rel="tag"># Redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/bcd62ed6.html" rel="next" title="并发和常见并发问题">
+                <i class="fa fa-chevron-left"></i> 并发和常见并发问题
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/d368c702.html" rel="prev" title="Redis高可用方案Sentinel">
+                Redis高可用方案Sentinel <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">117</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">56</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#cluster-优势"><span class="nav-number">1.</span> <span class="nav-text">¶Cluster 优势</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cluster-缺点"><span class="nav-number">2.</span> <span class="nav-text">¶Cluster 缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#去中心化架构"><span class="nav-number">3.</span> <span class="nav-text">¶去中心化架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分区-存储结构"><span class="nav-number">4.</span> <span class="nav-text">¶分区（存储结构）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#容错"><span class="nav-number">5.</span> <span class="nav-text">¶容错</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#判断一个节点是否宕机"><span class="nav-number">5.1.</span> <span class="nav-text">¶判断一个节点是否宕机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#判断集群是否-fail"><span class="nav-number">5.2.</span> <span class="nav-text">¶判断集群是否 fail</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一致性"><span class="nav-number">6.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#集群迁移-单点-cluster"><span class="nav-number">7.</span> <span class="nav-text">¶集群迁移 单点 -&gt; Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#迁移步骤"><span class="nav-number">7.1.</span> <span class="nav-text">¶迁移步骤</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#迁移过程中可能发生的情况"><span class="nav-number">7.2.</span> <span class="nav-text">¶迁移过程中可能发生的情况</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>
