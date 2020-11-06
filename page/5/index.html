@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e39c963b.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/e39c963b.html" itemprop="url">JVM 源码分析</a></h1>
+                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
         
 
         <div class="post-meta">
@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.9k 字
+                  765 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  7 分钟
+                  2 分钟
                 </span>
               
             </div>
@@ -391,162 +391,41 @@
         
           
             <a id="more"></a>
-<h2 id="搭建源码调试环境"><a class="header-anchor" href="#搭建源码调试环境">¶</a>搭建源码调试环境</h2>
-<p>源码下载地址：<a href="https://github.com/unofficial-openjdk/openjdk" target="_blank" rel="noopener">unofficial-openjdk/openjdk</a></p>
-<ol>
-<li><a href="https://segmentfault.com/a/1190000008346240" target="_blank" rel="noopener">OpenJDK9 Hotspot Ubuntu 编译和调试</a><br>
-mac 环境下搭建：<a href="https://www.jianshu.com/p/ee7e9176632c" target="_blank" rel="noopener">mac 下编译 openjdk1.9 及集成 clion 动态调试</a></li>
-</ol>
-<h3 id="遇到的问题"><a class="header-anchor" href="#遇到的问题">¶</a>遇到的问题</h3>
-<ol>
-<li>g++和 gcc 版本不匹配</li>
-<li>一些 Warning 被当作错误报错了<br>
-大部分 Warning 不会影响最终结果，可以关掉：<a href="https://blog.csdn.net/desiyonan/article/details/80802066" target="_blank" rel="noopener">https://blog.csdn.net/desiyonan/article/details/80802066</a></li>
-</ol>
-<h3 id="阅读"><a class="header-anchor" href="#阅读">¶</a>阅读</h3>
-<ol>
-<li><a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">如何找 JDK 中 native 代码的位置？</a></li>
-<li><a href="http://rednaxelafx.iteye.com/blog/1549577" target="_blank" rel="noopener">OpenJDK 源码阅读导航</a></li>
-</ol>
-<h3 id="编译-openjdk"><a class="header-anchor" href="#编译-openjdk">¶</a>编译 openjdk</h3>
-<ol>
-<li>下载<br>
-代码的下载见 building 文档，使用一个 Mercurial 工具进行源码控制。</li>
-<li>准备工具<br>
-找到这种开放源码的软件，第一步当然是查看 README 了，openjdk 的 README 中告知了 building 文档的位置，相当详细。<br>
-硬件要求<br>
-操作系统要求<br>
-编译器要求，需要 gcc 和 clang，他们的区别见<a href="https://www.zhihu.com/question/20235742" target="_blank" rel="noopener">Clang 比 GCC 好在哪里？</a><br>
-JDK 要求，虽然挺矛盾的，但是一部分模块是用 JDK 写的，所以 Java 编译器也是需要的，一般编译 JDK8 时需要的 JDK 版本是 7 就够了，但是 openjdk 需要 8 才行（不知道为什么），这个 jdk 可以直接使用 apt-get 安装。<br>
-外部库要求，<br>
-其他工具，make、bash、autoconf</li>
-<li>configure<br>
-准备所有配置文件</li>
-<li>make<br>
-编译源码，默认下只会编译一些必要的部分，如果编译成功可以在 openjdk/build 文件夹下找到目标文件，我的成品所在目录是<code>${openjdk}/build/linux-x86_64-normal-server-release/jdk/bin</code>。</li>
-<li>run test<br>
-openjdk 使用了一个叫 jtreg 的测试框架，文档有<a href="http://openjdk.java.net/jtreg/build.html" target="_blank" rel="noopener">这里</a>还有<a href="https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/content/en/intermediate-steps/how_to_use_jtreg_-_java_regression_test_harness.html" target="_blank" rel="noopener">这里</a>，我设置了一个愚蠢的环境变量 JAVA18HOME 然后尝试着去<code>make -C make</code>编译它，但是还是提示缺少什么<code>org.testing</code>，可能还有什么依赖库没装，这个框架可能是给 oracle 的内部员工或者外星人用的吧？</li>
-</ol>
-<h3 id="定位-object-的-native-方法"><a class="header-anchor" href="#定位-object-的-native-方法">¶</a>定位 Object 的 native 方法</h3>
-<ol>
-<li>
-<p>搜索“Object”打开 jdk 下的 Object.c 文件<br>
-看到下面这个方法数组：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static JNINativeMethod methods[] = &#123;</span><br><span class="line">    &#123;&quot;hashCode&quot;,    &quot;()I&quot;,                    (void *)&amp;JVM_IHashCode&#125;,</span><br><span class="line">    &#123;&quot;wait&quot;,        &quot;(J)V&quot;,                   (void *)&amp;JVM_MonitorWait&#125;,</span><br><span class="line">    &#123;&quot;notify&quot;,      &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotify&#125;,</span><br><span class="line">    &#123;&quot;notifyAll&quot;,   &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotifyAll&#125;,</span><br><span class="line">    &#123;&quot;clone&quot;,       &quot;()Ljava/lang/Object;&quot;,   (void *)&amp;JVM_Clone&#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>然后搜索“JVM_MonitorWait”打开 hotspot 下的 jvm.cpp 文件<br>
-里面有下面这条语句：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">JVM_ENTRY(void, JVM_MonitorWait(JNIEnv* env, jobject handle, jlong ms))</span><br><span class="line">  JVMWrapper(&quot;JVM_MonitorWait&quot;);</span><br><span class="line">  Handle obj(THREAD, JNIHandles::resolve_non_null(handle));</span><br><span class="line">  JavaThreadInObjectWaitState jtiows(thread, ms != 0);</span><br><span class="line">  if (JvmtiExport::should_post_monitor_wait()) &#123;</span><br><span class="line">    JvmtiExport::post_monitor_wait((JavaThread *)THREAD, (oop)obj(), ms);</span><br><span class="line"></span><br><span class="line">    // The current thread already owns the monitor and it has not yet</span><br><span class="line">    // been added to the wait queue so the current thread cannot be</span><br><span class="line">    // made the successor. This means that the JVMTI_EVENT_MONITOR_WAIT</span><br><span class="line">    // event handler cannot accidentally consume an unpark() meant for</span><br><span class="line">    // the ParkEvent associated with this ObjectMonitor.</span><br><span class="line">  &#125;</span><br><span class="line">  ObjectSynchronizer::wait(obj, ms, CHECK);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>我们暂时不知道这几个宏到底什么意思，不过核心大概是最后的那个<code>ObjectSynchronizer::wait</code>吧，这个类定义在 C++文件 synchronizer.cpp 中。</p>
-<ol>
-<li>综上所述<br>
-可以看到如果一个类定义了 native 方法，那么基本可以在 jdk 目录下找到该类的定义（<strong>类所在包结构和其在 openjdk 中的定义的路径有什么关联？？？</strong>），至于其实现，从<a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">知乎</a>上可以找到一段说明，我不知道对错：</li>
-</ol>
-<blockquote>
-<p>如果间接调用了 hotspot 的实现（jvm 会以动态库的形式被加载，prims 文件夹里定义了 hotspot 与其他模块的接口及其实现），那么从 hotspot/src/share/vm/prims/jvm.cpp 中可以找到 JVM_Xxx 函数的实现。</p>
-</blockquote>
-<h3 id="为-object-类添加-native-方法-nop"><a class="header-anchor" href="#为-object-类添加-native-方法-nop">¶</a>为 Object 类添加 native 方法 nop()</h3>
-<p>根据<a href="http://www.infoq.com/cn/articles/Introduction-to-HotSpot" target="_blank" rel="noopener">这里</a>的说法，openjdk 有两种方式来定义 native 函数，一种是按一种特别的方式命名函数，这样加载后就可以和 Java 中的 native 方法对上，另一种是使用 registerNatives()的方式，观察 Object.c 文件可以发现，这种方法先定义了一个 JNINativeMethod 类型的静态数组来做 Java 方法和本地函数的对应，然后使用 JNI 方法注册了一个叫 Java_java_lang_Object_registerNatives 的本地方法来实施这种映射。<br>
-当使用第一种方式在 Object.c 中定义一个特殊命名的 nop()函数时，编译不通过，报错显示<code>Incompatible definition of java.lang.Object</code>，我定义的 nop 函数：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_java_lang_Object_nop(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>然后下面是我使用第二种方式定义 nop()函数的过程（虽然也不行）：</p>
-<ol>
-<li>修改 Object.c<br>
-methods 数组中添加一行： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;nop&quot;, &quot;()V&quot;, (void*)&amp;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>这种定义方法参照了<a href="http://blog.csdn.net/bigapple88/article/details/6756204" target="_blank" rel="noopener">这里</a></p>
-<ol>
-<li>修改 Object.java<br>
-其所在目录为<code>${openjdk}/jdk/src/java.base/share/classes/java/lang/Object.java</code>，为其添加一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">*</span><br><span class="line">*/</span><br><span class="line">@HotSpotIntrinsicCandidate</span><br><span class="line">public native void nop();</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>为什么要加注释？为什么不能加 final？</p>
-<ol>
-<li>重编译 make<br>
-虽然只是添加了一个方法，但是几乎所有包下的都要重新编译了，所以编译过程会稍微有点长。</li>
-<li>测试<br>
-使用<code>javap</code>命令反编译可以看到 Object 类中确实已经有了一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javap $&#123;openjdk&#125;/build/linux-x86_64-normal-server-release/jdk/modules/java.base/java/lang/Object.class</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p><strong>但是实际编译时却报错了，错误大概是Object类不兼容？？？</strong></p>
-<ol>
-<li>native 方法的实现机制<br>
-参见 JNI 原理。</li>
-</ol>
-<h2 id="jni"><a class="header-anchor" href="#jni">¶</a>JNI</h2>
-<h3 id="生成-h头文件"><a class="header-anchor" href="#生成-h头文件">¶</a>生成.h头文件</h3>
-<p>使用 javah 命令，在项目的 src 目录下运行，其中-d 指定目标目录，-jni 是默认选项，生成 jni 头文件，可以加-classpath 指定 class 路径，但必须是绝对路径</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javah -d ../jni -jni com.tallate.HelloJNI</span><br></pre></td></tr></table></figure>
-<p>接下来编译.c 文件，-c 可以生成目标文件（未链接），-I 可以指定#include 查找的目录，不然 jni 有些头文件找不到</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot;  HelloJNI.c</span><br></pre></td></tr></table></figure>
-<p><a href="http://xn--4gqva8gy93g2zbv2i9m2c6jv.so" target="_blank" rel="noopener">接下来编译成一个.so</a> 链接库</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc HelloJNI.c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot; -fPIC -shared -o libhello.so</span><br></pre></td></tr></table></figure>
-<p>接下来可以在Java中加载</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 在linux下动态库必须有前缀lib</span><br><span class="line">System.loadLibrary(&quot;hello&quot;);</span><br></pre></td></tr></table></figure>
-<h3 id="调用-native-方法的流程"><a class="header-anchor" href="#调用-native-方法的流程">¶</a>调用 native 方法的流程</h3>
-<ol>
-<li>native 方法编译后多一个 ACC_NATIVE 标志</li>
-<li>loadLibrary 方法调用 JVM 的 load 本地方法</li>
-<li>load 方法最终调用系统调用 dlopen 加载动态链接库</li>
-<li>调用本地方法时，实际上调用了 JVM 中加载的函数，栈帧压入本地方法栈中（HotSpot 中本地方法栈=虚拟机栈）</li>
-</ol>
-<h3 id="修改-object-类-为其添加一个-native-方法-nop"><a class="header-anchor" href="#修改-object-类-为其添加一个-native-方法-nop">¶</a>修改 Object 类，为其添加一个 native 方法 nop()</h3>
-<h2 id="锁-内置锁"><a class="header-anchor" href="#锁-内置锁">¶</a>锁（内置锁）</h2>
-<ol>
-<li>锁的存储结构？</li>
-<li>获取锁的时机？</li>
-<li>释放锁的时机？</li>
-</ol>
-<h2 id="线程"><a class="header-anchor" href="#线程">¶</a>线程</h2>
-<p>和 JDK 的线程操作相关的类有 Object 和 Thread，Object 中包括 wait、notify 和 notifyAll，Thread 中包括 yield、sleep、exit、interrupt、join、start，run 的主要任务是执行用户定义的逻辑，还有一些方法已经被 Deprecated，不必再提</p>
-<h3 id="源码中和线程操作相关的一些数据结构"><a class="header-anchor" href="#源码中和线程操作相关的一些数据结构">¶</a>源码中和线程操作相关的一些数据结构</h3>
-<ol>
-<li>
-<p>ObjectMonitor<br>
-对象监视器，定义和声明在 objectMonitor.*中，主要包含</p>
-</li>
-<li>
-<p>ObjectWaiter</p>
-</li>
-<li>
-<p>ObjectSynchronizer</p>
-</li>
-</ol>
-<h3 id="wait"><a class="header-anchor" href="#wait">¶</a>wait</h3>
-<p>wait 是 native 方法，实现在 synchronizer.cpp 中，ObjectSynchronizer::wait：</p>
-<ol>
-<li>
-<p>通过<code>ObjectSynchronizer::inflate</code>方法找到 object 中的<code>ObjectMonitor monitor</code></p>
-</li>
-<li>
-<p>调用 monitor.wait<br>
-wait 方法比较复杂，但是核心过程只有 3 步：</p>
+<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
+<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
+<img src="http://47.88.24.11/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
+<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
+<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
+Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
+<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
+<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
+此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
+<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
+<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
 <ul>
-<li>ObjectMonitor::AddWaiter(…)将新建立的 ObjectWaiter 对象插入_WaitSet 队列的末尾</li>
-<li>ObjectMonitor::exit(…)释放锁</li>
-<li>Self-&gt;_ParkEvent-&gt;park等待</li>
+<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
+<li>检查变量使用前是否已声明；</li>
+<li>推导泛型方法的类型参数；</li>
+<li>检查类型匹配性；</li>
+<li>进行常量折叠；</li>
+<li>检查所有语句都可到达；</li>
+<li>检查所有 checked exception 都被捕获或抛出；</li>
+<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
+<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
+<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
+<li>等…</li>
 </ul>
-</li>
-</ol>
+<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
+<ul>
+<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
+<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
+<li>最后从符号表生成 class 文件。</li>
+</ul>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="jni-v2"><a class="header-anchor" href="#jni-v2">¶</a>JNI</h3>
 <ol>
-<li><a href="http://blog.csdn.net/huachao1001/article/category/2862631" target="_blank" rel="noopener">介绍</a></li>
-<li><a href="http://blog.csdn.net/ngvjai/article/details/8520840" target="_blank" rel="noopener">生成.so 方法</a></li>
-<li><a href="http://blog.csdn.net/larrylgq/article/details/7515362" target="_blank" rel="noopener">修改 java.library.path 方法</a></li>
-<li><a href="http://blog.csdn.net/hackooo/article/details/48395765/" target="_blank" rel="noopener">Java JNI 实现原理初探</a></li>
-<li><a href="http://blog.chinaunix.net/uid-22028680-id-3178229.html" target="_blank" rel="noopener">Java Native Interface (JNI) 工作原理</a></li>
-<li><a href="http://www.cnblogs.com/Anker/p/3746802.html" target="_blank" rel="noopener">dlopen</a></li>
-</ol>
-<h3 id="线程-v2"><a class="header-anchor" href="#线程-v2">¶</a>线程</h3>
-<ol>
-<li><a href="https://www.zhihu.com/question/23328075" target="_blank" rel="noopener">java sleep 和 wait 的区别的疑惑?</a></li>
-<li><a href="http://blog.csdn.net/raintungli/article/details/6532784" target="_blank" rel="noopener">java 中的 wait 和 notify 实现的源码分析</a></li>
-<li><a href="http://blog.csdn.net/raintungli/article/details/6553337" target="_blank" rel="noopener">JVM Thread stop 的源码分析</a></li>
+<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
 </ol>
 
           
@@ -3014,6 +2893,324 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d368c702.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/d368c702.html" itemprop="url">Redis高可用方案Sentinel</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
+                2019-09-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5.2k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  20 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h2 id="操作"><a class="header-anchor" href="#操作">¶</a>操作</h2>
+<ol>
+<li>
+<p>Master<br>
+TODO</p>
+</li>
+<li>
+<p>Slave</p>
+</li>
+<li>
+<p>Sentinel</p>
+</li>
+<li>
+<p>获取集群信息</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 info Sentinel</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>获取 master 节点地址</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="客户端如何连接sentinel集群"><a class="header-anchor" href="#客户端如何连接sentinel集群">¶</a>客户端如何连接Sentinel集群</h2>
+<p><img src="http://47.88.24.11/imgs/Redis/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
+在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
+<ul>
+<li>Master 和 Slave 的配置和之前并无区别；</li>
+<li>Sentinel 相当于对 Master 的代理，Sentinel 可以通过发布订阅功能获取到 Slave 和其他 Sentinel 的信息。</li>
+</ul>
+<blockquote>
+<p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
+</blockquote>
+<h2 id="sentinel-执行原理"><a class="header-anchor" href="#sentinel-执行原理">¶</a>Sentinel 执行原理</h2>
+<p><img src="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg" alt="Sentinel的主要任务" title="Sentinel的主要任务"><br>
+在Sentinel的主事件循环中可以看到它每100毫秒执行的定时任务：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Run the Sentinel timer if we are in sentinel mode. */</span><br><span class="line">    // 如果服务器运行在 sentinel 模式下，那么执行 SENTINEL 的主函数</span><br><span class="line">    run_with_period(100) &#123;</span><br><span class="line">        if (server.sentinel_mode) sentinelTimer();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。<br>
+如果一个实例（instance）距离最后一次有效回复 <code>PING</code> 命令的时间超过 <code>down-after-milliseconds</code> 选项所指定的值， 那么这个实例会被 Sentinel 标记为<strong>主观下线</strong>。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br></pre></td><td class="code"><pre><span class="line">void sentinelHandleDictOfRedisInstances(dict *instances) &#123;</span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">    // 遍历多个实例，这些实例可以是多个主服务器、多个从服务器或者多个 sentinel</span><br><span class="line">    di = dictGetIterator(instances);</span><br><span class="line">    while((de = dictNext(di)) != NULL) &#123;</span><br><span class="line"></span><br><span class="line">        // 取出实例对应的实例结构</span><br><span class="line">        sentinelRedisInstance *ri = dictGetVal(de);</span><br><span class="line"></span><br><span class="line">        // 执行调度操作</span><br><span class="line">        sentinelHandleRedisInstance(ri);</span><br><span class="line"></span><br><span class="line">        // 如果被遍历的是主服务器，那么递归地遍历该主服务器的所有从服务器</span><br><span class="line">        // 以及所有 sentinel</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">            // 所有从服务器</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;slaves);</span><br><span class="line"></span><br><span class="line">            // 所有 sentinel</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;sentinels);</span><br><span class="line"></span><br><span class="line">            // 对已下线主服务器（ri）的故障迁移已经完成</span><br><span class="line">            // ri 的所有从服务器都已经同步到新主服务器</span><br><span class="line">            if (ri-&gt;failover_state == SENTINEL_FAILOVER_STATE_UPDATE_CONFIG) &#123;</span><br><span class="line">                // 已选出新的主服务器</span><br><span class="line">                switch_to_promoted = ri;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    /* ========== MONITORING HALF ============ */</span><br><span class="line">    /* ==========     监控操作    =========*/</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    /* 对所有类型实例进行处理 */</span><br><span class="line"></span><br><span class="line">    // 如果有需要的话，创建连向实例的网络连接</span><br><span class="line">    sentinelReconnectInstance(ri);</span><br><span class="line"></span><br><span class="line">    // 根据情况，向实例发送 PING、 INFO 或者 PUBLISH 命令</span><br><span class="line">    sentinelSendPeriodicCommands(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 根据时间和实例类型等情况，向实例发送命令，比如 INFO 、PING 和 PUBLISH</span><br><span class="line">// 虽然函数的名字包含 Ping ，但命令并不只发送 PING 命令</span><br><span class="line">/* Send periodic PING, INFO, and PUBLISH to the Hello channel to</span><br><span class="line"> * the specified master or slave instance. */</span><br><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    mstime_t now = mstime();</span><br><span class="line">    mstime_t info_period, ping_period;</span><br><span class="line">    int retval;</span><br><span class="line"></span><br><span class="line">    /* Return ASAP if we have already a PING or INFO already pending, or</span><br><span class="line">     * in the case the instance is not properly connected. */</span><br><span class="line">    // 函数不能在网络连接未创建时执行</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_DISCONNECTED) return;</span><br><span class="line"></span><br><span class="line">    /* For INFO, PING, PUBLISH that are not critical commands to send we</span><br><span class="line">     * also have a limit of SENTINEL_MAX_PENDING_COMMANDS. We don&apos;t</span><br><span class="line">     * want to use a lot of memory just because a link is not working</span><br><span class="line">     * properly (note that anyway there is a redundant protection about this,</span><br><span class="line">     * that is, the link will be disconnected and reconnected if a long</span><br><span class="line">     * timeout condition is detected. */</span><br><span class="line">    // 为了避免 sentinel 在实例处于不正常状态时，发送过多命令</span><br><span class="line">    // sentinel 只在待发送命令的数量未超过 SENTINEL_MAX_PENDING_COMMANDS 常量时</span><br><span class="line">    // 才进行命令发送</span><br><span class="line">    if (ri-&gt;pending_commands &gt;= SENTINEL_MAX_PENDING_COMMANDS) return;</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* We ping instances every time the last received pong is older than</span><br><span class="line">     * the configured &apos;down-after-milliseconds&apos; time, but every second</span><br><span class="line">     * anyway if &apos;down-after-milliseconds&apos; is greater than 1 second. */</span><br><span class="line">    ping_period = ri-&gt;down_after_period;</span><br><span class="line">    if (ping_period &gt; SENTINEL_PING_PERIOD) ping_period = SENTINEL_PING_PERIOD;</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pong_time) &gt; ping_period) &#123;</span><br><span class="line">        /* Send PING to all the three kinds of instances. */</span><br><span class="line">        sentinelSendPing(ri);</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pub_time) &gt; SENTINEL_PUBLISH_PERIOD) &#123;</span><br><span class="line">        /* PUBLISH hello messages to all the three kinds of instances. */</span><br><span class="line">        sentinelSendHello(ri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>如果一个主服务器被标记为<strong>主观下线</strong>， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line"></span><br><span class="line">    /* We don&apos;t proceed with the acting half if we are in TILT mode.</span><br><span class="line">     * TILT happens when we find something odd with the time, like a</span><br><span class="line">     * sudden change in the clock. */</span><br><span class="line">    // 如果 Sentinel 处于 TILT 模式，那么不执行故障检测。</span><br><span class="line">    if (sentinel.tilt) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果 TILI 模式未解除，那么不执行动作</span><br><span class="line">        if (mstime()-sentinel.tilt_start_time &lt; SENTINEL_TILT_PERIOD) return;</span><br><span class="line"></span><br><span class="line">        // 时间已过，退出 TILT 模式</span><br><span class="line">        sentinel.tilt = 0;</span><br><span class="line">        sentinelEvent(REDIS_WARNING,&quot;-tilt&quot;,NULL,&quot;#tilt mode exited&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    // 检查给定实例是否进入 SDOWN 状态</span><br><span class="line">    sentinelCheckSubjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Is this instance down from our point of view? */</span><br><span class="line">// 检查实例是否以下线（从本 Sentinel 的角度来看）</span><br><span class="line">void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Update the SDOWN flag. We believe the instance is SDOWN if:</span><br><span class="line">     *</span><br><span class="line">     * 更新 SDOWN 标识。如果以下条件被满足，那么 Sentinel 认为实例已下线：</span><br><span class="line">     *</span><br><span class="line">     * 1) It is not replying.</span><br><span class="line">     *    它没有回应命令</span><br><span class="line">     * 2) We believe it is a master, it reports to be a slave for enough time</span><br><span class="line">     *    to meet the down_after_period, plus enough time to get two times</span><br><span class="line">     *    INFO report from the instance. </span><br><span class="line">     *    Sentinel 认为实例是主服务器，这个服务器向 Sentinel 报告它将成为从服务器，</span><br><span class="line">     *    但在超过给定时限之后，服务器仍然没有完成这一角色转换。</span><br><span class="line">     */</span><br><span class="line">    if (elapsed &gt; ri-&gt;down_after_period ||</span><br><span class="line">        (ri-&gt;flags &amp; SRI_MASTER &amp;&amp;</span><br><span class="line">         ri-&gt;role_reported == SRI_SLAVE &amp;&amp;</span><br><span class="line">         mstime() - ri-&gt;role_reported_time &gt;</span><br><span class="line">          (ri-&gt;down_after_period+SENTINEL_INFO_PERIOD*2)))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Is subjectively down */</span><br><span class="line">        if ((ri-&gt;flags &amp; SRI_S_DOWN) == 0) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;+sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 记录进入 SDOWN 状态的时间</span><br><span class="line">            ri-&gt;s_down_since_time = mstime();</span><br><span class="line">            // 打开 SDOWN 标志</span><br><span class="line">            ri-&gt;flags |= SRI_S_DOWN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 移除（可能有的） SDOWN 状态</span><br><span class="line">        /* Is subjectively up */</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_S_DOWN) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;-sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 移除相关标志</span><br><span class="line">            ri-&gt;flags &amp;= ~(SRI_S_DOWN|SRI_SCRIPT_KILL_SENT);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为<strong>客观下线</strong>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line">    </span><br><span class="line">    ...SDOWN检测</span><br><span class="line"></span><br><span class="line">    /* Only masters */</span><br><span class="line">    /* 对主服务器进行处理 */</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">        // 判断 master 是否进入 ODOWN 状态</span><br><span class="line">        sentinelCheckObjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">        // 如果主服务器进入了 ODOWN 状态，那么开始一次故障转移操作</span><br><span class="line">        if (sentinelStartFailoverIfNeeded(ri))</span><br><span class="line">            // 强制向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">            // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">            sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_ASK_FORCED);</span><br><span class="line"></span><br><span class="line">        // 执行故障转移</span><br><span class="line">        sentinelFailoverStateMachine(ri);</span><br><span class="line"></span><br><span class="line">        // 如果有需要的话，向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">        // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">        // 这一句是对那些没有进入 if(sentinelStartFailoverIfNeeded(ri)) &#123; /* ... */ &#125;</span><br><span class="line">        // 语句的主服务器使用的</span><br><span class="line">        sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_NO_FLAGS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意上边发请求时使用的回调函数<code>sentinelInfoReplyCallback</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 处理 INFO 命令的回复</span><br><span class="line">void sentinelInfoReplyCallback(redisAsyncContext *c, void *reply, void *privdata) &#123;</span><br><span class="line">    sentinelRedisInstance *ri = c-&gt;data;</span><br><span class="line">    redisReply *r;</span><br><span class="line"></span><br><span class="line">    if (ri) ri-&gt;pending_commands--;</span><br><span class="line">    if (!reply || !ri) return;</span><br><span class="line">    r = reply;</span><br><span class="line"></span><br><span class="line">    if (r-&gt;type == REDIS_REPLY_STRING) &#123;</span><br><span class="line">        // 解析info命令的响应数据</span><br><span class="line">        sentinelRefreshInstanceInfo(ri,r-&gt;str);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>当没有足够数量的 Sentinel 同意主服务器已经下线，主服务器的客观下线状态就会被移除。<br>
+当主服务器重新向 Sentinel 的 PING 命令返回有效回复时，主服务器的主观下线状态就会被移除。</li>
+</ul>
+<h2 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h2>
+<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
+哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
+<ul>
+<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
+<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
+</ul>
+<h2 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h2>
+<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
+每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
+<blockquote>
+<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
+</blockquote>
+<h2 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h2>
+<ul>
+<li>主观下线（Subjectively Down， 简称 SDOWN）<br>
+主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
+如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
+</ul>
+<blockquote>
+<p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
+</blockquote>
+<ul>
+<li>客观下线（Objectively Down， 简称 ODOWN）<br>
+客观下线指的是多个 Sentinel 实例在对同一个 Master 做出 SDOWN 判断， 并且通过 SENTINEL <code>is-master-down-by-addr</code> 命令互相交流之后，得出的服务器下线判断。 （一个 Sentinel 可以通过向另一个 Sentinel 发送 SENTINEL is-master-down-by-addr 命令来询问对方是否认为给定的服务器已下线。）<br>
+从主观下线切换到客观下线并不是通过较严格的投票算法，而是采用了<strong>流言协议（gossip protocol）</strong>：只要 Sentinel 在给定时间内从其他 Sentinel 接收到足够数量的 Master 下线通知，那么 Sentinel 就会执行状态的切换；如果之后其他 Sentinel 不再报告 Master 已下线，则客观下线状态就会被移除。<br>
+只要一个 Sentinel 发现某个 Master 进入客观下线状态，之后就会进入<strong>故障迁移</strong>阶段，选举出一个 Sentinel 对失效的 Master 执行自动故障迁移操作。</li>
+</ul>
+<blockquote>
+<p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
+</blockquote>
+<h2 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h2>
+<p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
+<ul>
+<li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
+<li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
+</ul>
+<p>故障转移主要分为Sentinel选主和Slave选主两个步骤，Sentinel选主流程如下：</p>
+<ul>
+<li>Sentinel发现主服务器已经进入客观下线状态。</li>
+<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
+<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
+</ul>
+<p>Slave选举的规则如下：</p>
+<ul>
+<li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
+<li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
+<li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
+</ul>
+<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
+<p>提升新的Master的流程如下：</p>
+<ul>
+<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
+<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
+<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
+<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
+</ul>
+<p>客户端感知新master流程如下：<br>
+哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
+另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
+一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
+<h2 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h2>
+<p>配置安全性：</p>
+<ul>
+<li>每当一个 Redis 实例被重新配置（reconfigured） —— 无论是被设置成主服务器、从服务器、又或者被设置成其他主服务器的从服务器 —— Sentinel 都会向被重新配置的实例发送一个 CONFIG REWRITE 命令， 从而确保这些配置会持久化在硬盘里。完成重新配置之后，从服务器会去复制正确的主服务器。</li>
+<li>Sentinel 的状态会被持久化到 Sentinel 配置文件里，当 Sentinel 接收到新配置或 Leader Sentinel 为 Master 创建一个新配置时，这些配置都会与<code>epoch</code>一起被保存到磁盘；</li>
+</ul>
+<p>故障自动迁移的一致性：</p>
+<ul>
+<li>Raft 算法保证在一个 epoch 里只有一个 Leader Sentinel 产生，减少了脑裂的风险；</li>
+<li>Sentinel 集群总是以更高的 epoch 为准，因为发生<code>网络分区（network partition）</code>时可能会有 Sentinel 包含老的配置，而当这个 Sentinel 服务器接收到其他 Sentinel 的版本更新配置时就会进行更新。</li>
+<li>发生网络分区并且某些 Sentinel 仍在采用老的配置时，如果有客户端连接到这些 Sentinel 上，最终可能就会将请求转发到非 Master 服务器上，造成数据不一致。因此，应该使用 <code>min-slaves-to-write</code> 选项， 让主服务器在连接的从实例少于给定数量时停止执行写操作， 与此同时， 应该在每个运行 Redis 主服务器或从服务器的机器上运行 Redis Sentinel 进程。</li>
+</ul>
+<h2 id="tilt-模式"><a class="header-anchor" href="#tilt-模式">¶</a>TILT 模式</h2>
+<p>TILT 模式是一种特殊的保护模式，Sentinel 每隔 100ms 会向实例发一次<code>PING</code>命令，并将上一次 PING 成功的时间和当前时间比对，从而知道与该实例有多长时间没有进行任何成功通讯：</p>
+<ul>
+<li>如果两次调用时间之间的差距为负值， 或者非常大（超过 2 秒钟）， 那么 Sentinel 进入 TILT 模式。</li>
+<li>如果 Sentinel 已经进入 TILT 模式， 那么 Sentinel 延迟退出 TILT 模式的时间。</li>
+</ul>
+<blockquote>
+<p>Sentinel严重依赖计算机的时间功能，一旦计算机的时间功能出现故障， 或者计算机非常忙碌， 又或者进程因为某些原因而被阻塞时， Sentinel 可能也会跟着出现故障。</p>
+</blockquote>
+<p>进入 TILT 模式后，Sentinel 仍然会继续监视所有目标，但是：</p>
+<ul>
+<li>它不再执行任何操作，比如故障转移。</li>
+<li>当有实例向这个 Sentinel 发送 SENTINEL <code>is-master-down-by-addr</code> 命令时， Sentinel 返回负值： 因为这个 Sentinel 所进行的下线判断已经不再准确。</li>
+</ul>
+<p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
+<h2 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h2>
+<p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9dda6023.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -3224,387 +3421,6 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
 <li>并发非常大，单线程读写客户端IO数据存在性能瓶颈，虽然采用IO多路复用机制，但是读写客户端数据依旧是同步IO，只能单线程依次读取客户端的数据，无法利用到CPU多核。<br>
 对此，Redis6.0推出了多线程，可以在高并发场景下利用CPU多核多线程读写客户端数据。</li>
 </ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/f1a5dd67.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/f1a5dd67.html" itemprop="url">Redis 数据结构</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
-                2019-09-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  4.2k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  16 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h1>基本数据结构</h1>
-<h2 id="string"><a class="header-anchor" href="#string">¶</a>String</h2>
-<h3 id="特点"><a class="header-anchor" href="#特点">¶</a>特点</h3>
-<ol>
-<li>最大能存储 512MB == 536870912 B(byte) ；</li>
-<li>二进制安全，在传输数据的时候，能保证二进制数据的信息安全，也就是不会被篡改、破译；如果被攻击，能够及时检测出来</li>
-<li>能存储各种类型的数据，字符串、数字，以至对象（通过json序列化）、位图等。</li>
-</ol>
-<h3 id="基本使用"><a class="header-anchor" href="#基本使用">¶</a>基本使用</h3>
-<p>容量：512M</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">set aa &apos;str&apos;</span><br><span class="line">get aa</span><br></pre></td></tr></table></figure>
-<p>操作总结</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">set/get/del/append/strlen key</span><br><span class="line">incr/decr/incrby/decrby key</span><br><span class="line">getrange key start end/setrange key offset value（从offset处开始读取/覆盖）</span><br><span class="line">setex key seconds value(set with expire插入key的同时设置过期时间)/setnx key value(set if not exists如果已存在则直接返回0)</span><br><span class="line">mset/mget/msetnx key value &#123;key value&#125;（设置/读取多个key的值，msetnx比较特殊，要么都成功，要么一个都不执行，可以用来设置一个对象的多个不同字段）</span><br><span class="line">getset key(设置并返回key对应的旧值，可以用于计数器的重置)</span><br></pre></td></tr></table></figure>
-<h3 id="常见应用"><a class="header-anchor" href="#常见应用">¶</a>常见应用</h3>
-<p>字符串、jpg图片、序列化对象、一些复杂的计数功能的缓存</p>
-<h2 id="hash"><a class="header-anchor" href="#hash">¶</a>Hash</h2>
-<p>存储 String 类型键值对的映射表、对象</p>
-<h3 id="基本使用方法"><a class="header-anchor" href="#基本使用方法">¶</a>基本使用方法</h3>
-<p>容量：每个 Hash 可存 2^32 - 1（约 40 亿）个键值对</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hmset user username &apos;name&apos; password &apos;123456&apos; # 定义一个有两个元素的Hash表</span><br><span class="line">hgetall user # 获取user中所有key和value</span><br><span class="line">hget user username # 获取user中key为username的value</span><br></pre></td></tr></table></figure>
-<h3 id="常见应用-v2"><a class="header-anchor" href="#常见应用-v2">¶</a>常见应用</h3>
-<p>单点登录（存&lt;CookieId, 用户信息&gt;，设置 30 分钟为缓存过期时间，能很好地模拟出类似 Session 的效果）。</p>
-<h2 id="list"><a class="header-anchor" href="#list">¶</a>List</h2>
-<p>String列表</p>
-<h3 id="基本使用方法-v2"><a class="header-anchor" href="#基本使用方法-v2">¶</a>基本使用方法</h3>
-<p>容量：每个 List 可存 2^32 - 1 个元素</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">lpush ball basketball soccer # 按顺序从左侧压入，如果ball列表不存在则创建</span><br><span class="line">rpush ball volleyball</span><br><span class="line">lrange 0 1 # 获取索引从0到1的值</span><br></pre></td></tr></table></figure>
-<p>操作总结</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">lpush/rpush/lrange</span><br><span class="line">lpop/rpop</span><br><span class="line">lindex</span><br><span class="line">llen</span><br><span class="line">lrem key</span><br><span class="line">ltrim key</span><br><span class="line">rpoplpush</span><br><span class="line">lset key index value</span><br><span class="line">linsert key before/after val1 val2</span><br></pre></td></tr></table></figure>
-<h3 id="常见应用-v3"><a class="header-anchor" href="#常见应用-v3">¶</a>常见应用</h3>
-<p>简单的消息队列<br>
-基于 Redis 的分页功能（利用 lrang 命令，性能极佳，用户体验好）</p>
-<h2 id="set"><a class="header-anchor" href="#set">¶</a>Set</h2>
-<p>字符串的无序集合，使用 Hash 实现（key 和 value 相同的 Hash）</p>
-<h3 id="基本使用方法-v3"><a class="header-anchor" href="#基本使用方法-v3">¶</a>基本使用方法</h3>
-<p>容量：2^32 - 1 个成员</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sadd myset li1 # 向集合myset中添加一个元素li1，若不存在则创建</span><br><span class="line">smembers myset</span><br></pre></td></tr></table></figure>
-<h3 id="常见应用-v4"><a class="header-anchor" href="#常见应用-v4">¶</a>常见应用</h3>
-<p>全局去重（为什么不用 JDK 自带的 Set 去重？因为我们的系统一般都是集群部署）<br>
-计算共同喜好、全部喜好、自己独有的喜好等功能（交集、并集、差集）</p>
-<h2 id="zset"><a class="header-anchor" href="#zset">¶</a>ZSet</h2>
-<p>字符串的有序集合，每个元素都关联一个 double 类型的权重参数 score，集合中的元素能够按 score 进行排列。</p>
-<h3 id="基本使用方法-v4"><a class="header-anchor" href="#基本使用方法-v4">¶</a>基本使用方法</h3>
-<p>容量：2^32 - 1 个成员</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">zadd myzset 0 abc</span><br><span class="line">zrangebyscore myzset 0 10</span><br></pre></td></tr></table></figure>
-<h3 id="常见应用-v5"><a class="header-anchor" href="#常见应用-v5">¶</a>常见应用</h3>
-<p>排行榜<br>
-取 Top N 操作<br>
-延时任务（<a href="https://www.cnblogs.com/rjzheng/p/8972725.html%EF%BC%89" target="_blank" rel="noopener">https://www.cnblogs.com/rjzheng/p/8972725.html）</a><br>
-范围查找</p>
-<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
-<p>实现上类似于 Java 的 SortedSet 和 HashMap 的结合体，value 唯一（Set 结构的特点），每个 value 一个 score 代表该 value 的排序权重。<br>
-zset 内部是使用一种叫做跳跃列表的结构实现的。</p>
-<h1>Redis 数据结构的实现</h1>
-<h2 id="数据结构的声明和实现"><a class="header-anchor" href="#数据结构的声明和实现">¶</a>数据结构的声明和实现</h2>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%8F%8A%E5%85%B6%E5%AE%9E%E7%8E%B0.png" alt="Redis数据结构及其实现" title="Redis数据结构及其实现"><br>
-Redis 中的 set、zset 等结构在 Redis 中并不是由一个单独的数据结构实现的，而是会根据情况有所变化。</p>
-<h3 id="set-v2"><a class="header-anchor" href="#set-v2">¶</a>set</h3>
-<p>set和Java中的HashSet有点像，它本身是HashMap的封装，key是集合中的对象，而value直接用NULL代替。<br>
-但是注意一些特殊情况：</p>
-<ul>
-<li>创建集合对象时，如果发现集合内的元素可以使用整数（longlong）编码，则创建一个intset而不是dict；</li>
-<li>之前是intset编码的情况下，插入的新元素如果是非整数的，那么集合会被重新转换成dict编码的；或者插入的元素数量达到了阈值（512），也会自动转换成dict。<br>
-创建代码见：<code>t_set.c/setTypeCreate()</code></li>
-</ul>
-<h3 id="zset-v2"><a class="header-anchor" href="#zset-v2">¶</a>zset</h3>
-<p>zset同样有两种形态：ziplist编码和skiplist编码。</p>
-<ul>
-<li>按ziplist编码的情况下：<br>
-zset本身就是个ziplist对象。</li>
-<li>按skiplist编码的情况下：<br>
-zset的集合功能是通过dict实现的，这部分和set并无区别；<br>
-zset的有序性是通过skiplist实现的，skiplist按分值排序成员，支持平均复杂度为O(logN)的按分值定位成员的操作。</li>
-</ul>
-<p>执行zadd命令代码：<code>t_zset.c/zaddGenericCommand()</code><br>
-创建zset对象：<code>object.c/createZsetZiplistObject()</code>、<code>object.c/createZsetObject()</code></p>
-<h2 id="sds-simple-dynamic-string"><a class="header-anchor" href="#sds-simple-dynamic-string">¶</a>SDS(Simple Dynamic String)</h2>
-<p>Redis 中的动态数组有以下特点：</p>
-<ul>
-<li>可动态扩展内存。sds 表示的字符串其内容可以修改，也可以追加。在很多语言中字符串会分为 mutable 和 immutable 两种，显然 sds 属于 mutable 类型的。</li>
-<li>减少修改字符串的内存重新分配次数<br>
-C语言由于不记录字符串的长度，所以如果要修改字符串，必须要重新分配内存（先释放再申请），因为如果没有重新分配，字符串长度增大时会造成内存缓冲区溢出，字符串长度减小时会造成内存泄露。<br>
-而对于SDS，由于<code>len</code>属性和<code>free</code>属性的存在，对于修改字符串SDS实现了空间预分配和惰性空间释放两种策略：<br>
-1、空间预分配：对字符串进行空间扩展的时候，扩展的内存比实际需要的多，这样可以减少连续执行字符串增长操作所需的内存重分配次数。<br>
-2、惰性空间释放：对字符串进行缩短操作时，程序不立即使用内存重新分配来回收缩短后多余的字节，而是使用 free 属性将这些字节的数量记录下来，等待后续使用。（当然SDS也提供了相应的API，当我们有需要时，也可以手动释放这些未使用的空间。）</li>
-<li>二进制安全（Binary Safe）。sds 能存储任意二进制数据，而不仅仅是可打印字符。</li>
-<li>与传统的 C 语言字符串类型兼容。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct SDS&lt;T&gt; &#123;</span><br><span class="line">  T capacity; // 数组容量</span><br><span class="line">  T len; // 数组当前长度</span><br><span class="line">  byte flags; // 特殊标识位，不理睬它</span><br><span class="line">  byte[] content; // 数组内容</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>下面的函数将 t 数组拷贝到 s 中，如果长度不够则需要进行扩容：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">/* Append the specified binary-safe string pointed by &apos;t&apos; of &apos;len&apos; bytes to the</span><br><span class="line"> * end of the specified sds string &apos;s&apos;.</span><br><span class="line"> *</span><br><span class="line"> * After the call, the passed sds string is no longer valid and all the</span><br><span class="line"> * references must be substituted with the new pointer returned by the call. */</span><br><span class="line">sds sdscatlen(sds s, const void *t, size_t len) &#123;</span><br><span class="line">    size_t curlen = sdslen(s);  // 原字符串长度</span><br><span class="line"></span><br><span class="line">    // 按需调整空间，如果 capacity 不够容纳追加的内容，就会重新分配字节数组并复制原字符串的内容到新数组中</span><br><span class="line">    s = sdsMakeRoomFor(s,len);</span><br><span class="line">    if (s == NULL) return NULL; // 内存不足</span><br><span class="line">    memcpy(s+curlen, t, len);  // 追加目标字符串的内容到字节数组中</span><br><span class="line">    sdssetlen(s, curlen+len); // 设置追加后的长度值</span><br><span class="line">    s[curlen+len] = &apos;\0&apos;; // 让字符串以\0 结尾，便于调试打印，还可以直接使用 glibc 的字符串函数进行操作</span><br><span class="line">    return s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>SDS 有 embstr 和 raw 两种存储结构，它们的区别是：</p>
-<ol>
-<li>内存分配上：<br>
-embstr 调用 1 次 malloc, 因此 redisObject 和 SDS 内存是连续分配的；<br>
-raw 需要调用 2 次 malloc, 因此 redisObject 和 SDS 内存不连续分配</li>
-<li>使用上:<br>
-embstr 整体 64 byte, 正好和<strong>cpu cache line</strong> 64byte 一样, 可以更好的使用缓存, 效率更高</li>
-</ol>
-<h2 id="quicklist"><a class="header-anchor" href="#quicklist">¶</a>quicklist</h2>
-<p>Redis 早期版本存储 list 数据结构采用（元素少时 ziplist、多时 linkedlist ）的方案，但是：</p>
-<ol>
-<li>链表的附加空间太高，prev 和 next 指针就要占去 16 个字节（64 位系统）；</li>
-<li>链表每个节点都是单独分配，会加剧内存的碎片化。</li>
-</ol>
-<p>因此在之后的版本中转换为了 quicklist 存储。<br>
-quicklist 是 ziplist 和 linkedlist 的混合体，它将 linkedlist 按段切分，每一段使用 ziplist 来紧凑存储，多个 ziplist 之间使用双向指针串接起来。<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis-quicklist%E7%BB%93%E6%9E%84.png" alt="Redis-quicklist结构" title="Redis-quicklist结构"></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">struct ziplist &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">struct ziplist_compressed &#123;</span><br><span class="line">    int32 size;</span><br><span class="line">    byte[] compressed_data;</span><br><span class="line">&#125;</span><br><span class="line">struct quicklistNode &#123;</span><br><span class="line">    quicklistNode* prev;</span><br><span class="line">    quicklistNode* next;</span><br><span class="line">    ziplist* zl; // 指向压缩列表</span><br><span class="line">    int32 size; // ziplist 的字节总数</span><br><span class="line">    int16 count; // ziplist 中的元素数量</span><br><span class="line">    int2 encoding; // 存储形式 2bit，原生字节数组还是 LZF 压缩存储</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">struct quicklist &#123;</span><br><span class="line">    quicklistNode* head;</span><br><span class="line">    quicklistNode* tail;</span><br><span class="line">    long count; // 元素总数</span><br><span class="line">    int nodes; // ziplist 节点的个数</span><br><span class="line">    int compressDepth; // LZF 算法压缩深度</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="ziplist"><a class="header-anchor" href="#ziplist">¶</a>ziplist</h2>
-<p>ziplist 是一种压缩存储的数组结构，当 Redis 中的集合数据结构很小，则它会使用这种紧凑的存储形式存储，元素之间紧挨着存储，查找就是对数组进行遍历找到目标对象。</p>
-<ul>
-<li>zset 和 hash 容器在元素个数较少时会采用 ziplist 存储。当存储的对象数量小于 512 且所有 entry 的 value 值长度小于 64，采用 ziplist 存储，否则转为采用 hashtable 存储。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">import redis</span><br><span class="line">client = redis.StrictRedis()</span><br><span class="line">client.delete(&quot;hello&quot;)</span><br><span class="line">for i in range(512):</span><br><span class="line">    client.hset(&quot;hello&quot;, str(i), str(i))</span><br><span class="line">print client.object(&quot;encoding&quot;, &quot;hello&quot;)</span><br><span class="line">client.hset(&quot;hello&quot;, &quot;512&quot;, &quot;512&quot;)</span><br><span class="line"># 或者插入一个长度为65的值也能起到转化的作用</span><br><span class="line">print client.object(&quot;encoding&quot;, &quot;hello&quot;)</span><br></pre></td></tr></table></figure>
-<p>可以上服务器上使用<code>debug object</code>命令验证数据结构的类型：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; zadd hgc_test 1.0 go 2.0 python 2.0 java</span><br><span class="line">...</span><br><span class="line">&gt; debug object hgc_test</span><br><span class="line">Value at:0x7f73c6d673a0 refcount:1 encoding:ziplist serializedlength:36 lru:1381596 lru_seconds_idle:77</span><br></pre></td></tr></table></figure>
-<h3 id="结构"><a class="header-anchor" href="#结构">¶</a>结构</h3>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-ziplist%E7%BB%93%E6%9E%84.png" alt="Redis-ziplist结构" title="Redis-ziplist结构"></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">struct ziplist&lt;T&gt; &#123;</span><br><span class="line">    int32 zlbytes; // 整个压缩列表占用字节数</span><br><span class="line">    int32 zltail_offset; // 最后一个元素距离压缩列表起始位置的偏移量，用于快速定位到最后一个节点</span><br><span class="line">    int16 zllength; // 元素个数</span><br><span class="line">    T[] entries; // 元素内容列表，挨个挨个紧凑存储</span><br><span class="line">    int8 zlend; // 标志压缩列表的结束，值恒为 0xFF</span><br><span class="line">&#125;</span><br><span class="line">struct entry &#123;</span><br><span class="line">    int&lt;var&gt; prevlen; // 前一个 entry 的字节长度</span><br><span class="line">    int&lt;var&gt; encoding; // 元素类型编码</span><br><span class="line">    optional byte[] content; // 元素内容</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>zltail_offset 字段可以快速定位到 ziplist 中的最后一个节点，可以用于倒序遍历，entry 中的 prevlen 表示前一个 entry 的字节长度，可以用于倒序遍历时找到下一个元素的位置；</li>
-<li>encoding 记录编码类型，ziplist 利用该字段决定后面的 content 内容的形式，比如用<code>00xxxxxx</code>表示最大长度为 63 的短字符串，<code>01xxxxxx xxxxxxxx</code>表示中等长度的字符串；</li>
-</ul>
-<h3 id="插入"><a class="header-anchor" href="#插入">¶</a>插入</h3>
-<p>ziplist 是紧凑存储的，没有冗余空间，因此插入一个新元素就需要调用 realloc 重新分配内存空间，并将之前的内容一次性拷贝到新的内存空间中。<br>
-重新分配空间是比较耗时的，因此 ziplist 不适合存储大量数据。</p>
-<h3 id="更新-删除"><a class="header-anchor" href="#更新-删除">¶</a>更新/删除</h3>
-<p>修改或删除一个元素后其后一个位置的元素中的 prevlen 也需要级联更新，prevlen 字段又是变长的，所以可能会导致连锁反应。</p>
-<h3 id="ziplist-vs-dict"><a class="header-anchor" href="#ziplist-vs-dict">¶</a>ziplist vs dict</h3>
-<p>为什么 hash 结构中会采用 ziplist 而不是 dict，主要原因如下：</p>
-<ol>
-<li>数据量小时，ziplist 的速度也很快；</li>
-<li>数据量大时，ziplist 在每次插入或修改时引发的 realloc 操作会有更大的概率造成内存拷贝，从而降低性能，而且数据项过多的时候，在 ziplist 上查找指定数据项的性能会变得很低，因为在 ziplist 上的查找需要进行遍历。</li>
-</ol>
-<h2 id="dict-字典"><a class="header-anchor" href="#dict-字典">¶</a>dict（字典）</h2>
-<p>dict 是 Redis 中使用最广泛的数据结构：</p>
-<ol>
-<li>hash 结构的数据会用到字典；</li>
-<li>整个 Redis 数据库的所有 key 和 value 也组成了一个全局字典；</li>
-<li>带过期时间的 key 集合也是一个字典；</li>
-<li>set 结构的底层实现也是字典，只是所有 value 都是 NULL；</li>
-<li>zset 集合中存储 value 和 score 值的映射关系也是通过 dict 结构实现的。</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">struct RedisDb &#123;</span><br><span class="line">    dict* dict; // all keys  key=&gt;value</span><br><span class="line">    dict* expires; // all expired keys key=&gt;long(timestamp)</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct dict &#123;</span><br><span class="line">    ...</span><br><span class="line">    dictht ht[2];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">struct zset &#123;</span><br><span class="line">    dict *dict; // all values  value=&gt;score</span><br><span class="line">    zskiplist *zsl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="hashtable"><a class="header-anchor" href="#hashtable">¶</a>hashtable</h3>
-<p>dict 中的 hashtable 结构和 Java 中的 HashMap 类似，使用一个数组来保存所有的哈希桶，通过<strong>siphash</strong>函数来将 key 散列到数组中的某个桶上，每个哈希桶都是一个链表，也就是说如果发生哈希冲突，则将新元素直接插入到桶的头部。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">struct dictEntry &#123;</span><br><span class="line">    void* key;</span><br><span class="line">    void* val;</span><br><span class="line">    dictEntry* next; // 链接下一个 entry</span><br><span class="line">&#125;</span><br><span class="line">struct dictht &#123;</span><br><span class="line">    dictEntry** table; // 二维</span><br><span class="line">    long size; // 第一维数组的长度</span><br><span class="line">    long used; // hash 表中的元素个数</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="扩容：渐进式-rehash"><a class="header-anchor" href="#扩容：渐进式-rehash">¶</a>扩容：渐进式 rehash</h3>
-<p>正常情况下，当 hashtable 中元素的个数等于第一维数组的长度时、来了一个新增/修改/删除操作，就会触发扩容，扩容的新数组是原数组大小的 2 倍。</p>
-<blockquote>
-<p>存在一个特殊情况：如果 Redis 正在做 bgsave，为了减少内存页的过多分离 (Copy On Write)，Redis 尽量不去扩容 (<code>dict_can_resize</code>)，但是如果 hash 表已经非常满了，元素的个数已经达到了第一维数组长度的 5 倍 (<code>dict_force_resize_ratio</code>)，说明 hash 表已经过于拥挤了，这个时候就会强制扩容。</p>
-</blockquote>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-dict%E6%89%A9%E5%AE%B9rehash.png" alt="Redis-dict扩容rehash" title="Redis-dict扩容rehash"><br>
-一般情况下 dict 中只有一个 hashtable 有值，但是在扩容时会分配另一个新的 hashtable，然后执行<strong>渐进式</strong>的数据迁移，避免一次性对所有 key 执行 rehash，而是将 rehash 操作分散到了对 dict 的各个增删改查操作中去了。</p>
-<ol>
-<li>在扩容过程中，如果有新增元素，则该元素会被同时添加到新 hashtable 中；</li>
-<li>查询、删除、修改操作中，会先查询旧 hashtable，若存在则迁移这个 key 所在的桶并返回元素，若不存在则到新 hashtable 中查找元素。</li>
-<li>有一个异步线程执行定时任务对字典主动迁移。</li>
-</ol>
-<p>dict 之所以这样设计，是为了避免 rehash 期间单个请求的响应时间剧烈增加。<br>
-当旧 hashtable 中无元素时，即代表迁移完毕，这时会将新旧 hashtable 的指针交换，旧的会被删除，而新的则取而代之。</p>
-<h3 id="缩容"><a class="header-anchor" href="#缩容">¶</a>缩容</h3>
-<p>当 hash 表因为元素的逐渐删除变得越来越稀疏时，Redis 会对 hash 表进行缩容来减少 hash 表的第一维数组空间占用。缩容的条件是元素个数低于数组长度的 10%。<br>
-缩容不会考虑 Redis 是否正在做 bgsave，因为 COW 的特性是当内存页上的数据被修改时会复制一页做修改，如果删除操作并不会触发删除内存页的数据，操作系统回收内存机制导致的。</p>
-<h3 id="全局哈希表"><a class="header-anchor" href="#全局哈希表">¶</a>全局哈希表</h3>
-<p><code>get a</code>和<code>llen b</code>中的a和b是不同数据结构的对象，他们统统被存储在一个叫全局哈希表的地方。<br>
-哈希表中的每个哈希桶存储的不是值本身，而是指向它们的指针。<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis%E4%B8%AD%E7%9A%84%E5%85%A8%E5%B1%80%E5%93%88%E5%B8%8C%E8%A1%A8.jpg" alt="Redis中的全局哈希表" title="Redis中的全局哈希表"><br>
-代码定义在：<code>redis.h/redisDb</code></p>
-<p>缺点：</p>
-<ol>
-<li>过多的哈希冲突容易产生过长的哈希桶（哈希冲突链）。<br>
-为了减少这个问题产生的影响，需要对哈希表进行rehash操作，这个rehash操作和dict数据结构的rehash原理是一样的。</li>
-</ol>
-<blockquote>
-<p>全局哈希表实际上就是dict，可以看源码中的定义。</p>
-</blockquote>
-<p>优点：</p>
-<ol>
-<li>合适的散列函数和扩容机制可以保证<code>O(1)</code>的操作复杂度。</li>
-</ol>
-<h2 id="skiplist"><a class="header-anchor" href="#skiplist">¶</a>skiplist</h2>
-<p>zset 中除了 dict（字典）外，还会用一个 skiplist 来提供按score排序的要求，以实现指定 score 的范围来获取 value 列表的功能。</p>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis-skiplist%E7%BB%93%E6%9E%84.png" alt="Redis-skiplist结构" title="Redis-skiplist结构"></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">struct zslnode &#123;</span><br><span class="line">  string value;</span><br><span class="line">  double score;</span><br><span class="line">  zslnode*[] forwards;  // 多层连接指针</span><br><span class="line">  zslnode* backward;  // 回溯指针</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct zsl &#123;</span><br><span class="line">  zslnode* header; // 跳跃列表头指针</span><br><span class="line">  int maxLevel; // 跳跃列表当前的最高层</span><br><span class="line">  map&lt;string, zslnode*&gt; ht; // hash 结构的所有键值对</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>各层均为一个有序的链表结构；</li>
-<li>层数越大，节点越少；</li>
-<li>有一个 header 节点作为哨兵，value=null，score=Double.MIN_VALUE。</li>
-</ul>
-<h3 id="插入-v2"><a class="header-anchor" href="#插入-v2">¶</a>插入</h3>
-<p>插入时会先自顶向下找到新节点在跳表中底层的插入位置，插入每一层时都有概率晋升到更高一层，在 Redis 中是 25%。</p>
-<h3 id="删除"><a class="header-anchor" href="#删除">¶</a>删除</h3>
-<p>删除每一层上的对应节点。</p>
-<h3 id="更新"><a class="header-anchor" href="#更新">¶</a>更新</h3>
-<p>如果不影响排序则直接更新，否则会先删除再重新插入。</p>
-<h2 id="布隆过滤器"><a class="header-anchor" href="#布隆过滤器">¶</a>布隆过滤器</h2>
-<h2 id="hyperloglog"><a class="header-anchor" href="#hyperloglog">¶</a>HyperLogLog</h2>
-<p>布隆过滤器用于实现<code>contains</code>的需求，而 HyperLogLog 主要用于实现<code>count</code>。<br>
-同样是一个特别大的位数组，HyperLogLog 将位数组拆分为桶，每个桶是连续的 6 个位，计数时并非单独对某个桶计数，而是：</p>
-<ul>
-<li>set 操作：计算 key 的散列值，为一个 64 位的数字，前 14 位是桶的位置，桶记录后 50 位中第一个 1 的位置 count，并且<code>count = max(count, oldCount)</code>，即每次记录最大的计数。</li>
-<li>count 操作：因为是概率算法，每个桶的计数值并不精确，但是所有桶的调和均值非常接近真实的计数值。</li>
-</ul>
-<h2 id="pubsub"><a class="header-anchor" href="#pubsub">¶</a>pubsub</h2>
-<p>用于实现轻量级的发布订阅功能。</p>
-<h2 id="geohash"><a class="header-anchor" href="#geohash">¶</a>geohash</h2>
 
           
         
