@@ -88,8 +88,10 @@
 <meta property="og:description" content="¶操作   Master TODO   Slave   Sentinel   获取集群信息  1redis-cli -p 26379 info Sentinel   获取 master 节点地址  1redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster   ¶客户端如何连接Sentinel集群  在 Sentinel 模式下，客户">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Sentinel.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/RedisSentinel%E4%BA%8B%E4%BB%B6.jpg">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg">
-<meta property="og:updated_time" content="2020-11-04T02:06:23.380Z">
+<meta property="og:image" content="http://47.88.24.11/imgs/MySQL%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/RedisSentinel%E6%8A%95%E7%A5%A8.jpg">
+<meta property="og:updated_time" content="2020-11-07T12:41:31.138Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis高可用方案Sentinel">
 <meta name="twitter:description" content="¶操作   Master TODO   Slave   Sentinel   获取集群信息  1redis-cli -p 26379 info Sentinel   获取 master 节点地址  1redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster   ¶客户端如何连接Sentinel集群  在 Sentinel 模式下，客户">
@@ -377,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  20 分钟
+                  21 分钟
                 </span>
               
             </div>
@@ -429,6 +431,8 @@ TODO</p>
 <blockquote>
 <p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
 </blockquote>
+<p>同理，客户端也可以通过pubsub功能来订阅集群中的其他信息，关键事件如下：<br>
+<img src="http://47.88.24.11/imgs/Redis/RedisSentinel%E4%BA%8B%E4%BB%B6.jpg" alt="RedisSentinel事件" title="RedisSentinel事件"></p>
 <h2 id="sentinel-执行原理"><a class="header-anchor" href="#sentinel-执行原理">¶</a>Sentinel 执行原理</h2>
 <p><img src="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg" alt="Sentinel的主要任务" title="Sentinel的主要任务"><br>
 在Sentinel的主事件循环中可以看到它每100毫秒执行的定时任务：</p>
@@ -491,12 +495,13 @@ TODO</p>
 <li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
 <li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
 </ul>
-<p>故障转移主要分为Sentinel选主和Slave选主两个步骤，Sentinel选主流程如下：</p>
+<p>故障转移主要分为Sentinel选举和故障转移（Master替换）两个步骤，Sentinel选主流程如下：</p>
 <ul>
 <li>Sentinel发现主服务器已经进入客观下线状态。</li>
 <li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
 <li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
 </ul>
+<h3 id="slave选举"><a class="header-anchor" href="#slave选举">¶</a>Slave选举</h3>
 <p>Slave选举的规则如下：</p>
 <ul>
 <li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
@@ -504,6 +509,9 @@ TODO</p>
 <li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
 </ul>
 <p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
+<p>之后所有Slave进行投票：<br>
+<img src="http://47.88.24.11/imgs/MySQL%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/RedisSentinel%E6%8A%95%E7%A5%A8.jpg" alt="RedisSentinel投票" title="RedisSentinel投票"></p>
+<h3 id="故障转移"><a class="header-anchor" href="#故障转移">¶</a>故障转移</h3>
 <p>提升新的Master的流程如下：</p>
 <ul>
 <li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
@@ -574,8 +582,8 @@ TODO</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/f1a5dd67.html" rel="next" title="Redis 数据结构">
-                <i class="fa fa-chevron-left"></i> Redis 数据结构
+              <a href="/9dda6023.html" rel="next" title="Redis 进程和 IO 模型">
+                <i class="fa fa-chevron-left"></i> Redis 进程和 IO 模型
               </a>
             
           </div>
@@ -584,8 +592,8 @@ TODO</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/df2941e1.html" rel="prev" title="Redis 原理总结">
-                Redis 原理总结 <i class="fa fa-chevron-right"></i>
+              <a href="/edd4cfac.html" rel="prev" title="Redis 复制">
+                Redis 复制 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -668,7 +676,7 @@ TODO</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">119</span>
+                  <span class="site-state-item-count">120</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -679,7 +687,7 @@ TODO</p>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-count">10</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -725,7 +733,7 @@ TODO</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端如何连接sentinel集群"><span class="nav-number">2.</span> <span class="nav-text">¶客户端如何连接Sentinel集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-执行原理"><span class="nav-number">3.</span> <span class="nav-text">¶Sentinel 执行原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态感知-info"><span class="nav-number">4.</span> <span class="nav-text">¶状态感知（info）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#心跳检测-ping"><span class="nav-number">5.</span> <span class="nav-text">¶心跳检测（ping）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主观下线和客观下线"><span class="nav-number">6.</span> <span class="nav-text">¶主观下线和客观下线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障迁移-master-挂掉-sentinel选举新master"><span class="nav-number">7.</span> <span class="nav-text">¶故障迁移（Master 挂掉，Sentinel选举新Master）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-选举的安全性"><span class="nav-number">8.</span> <span class="nav-text">¶Sentinel 选举的安全性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tilt-模式"><span class="nav-number">9.</span> <span class="nav-text">¶TILT 模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#busy-状态"><span class="nav-number">10.</span> <span class="nav-text">¶BUSY 状态</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端如何连接sentinel集群"><span class="nav-number">2.</span> <span class="nav-text">¶客户端如何连接Sentinel集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-执行原理"><span class="nav-number">3.</span> <span class="nav-text">¶Sentinel 执行原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态感知-info"><span class="nav-number">4.</span> <span class="nav-text">¶状态感知（info）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#心跳检测-ping"><span class="nav-number">5.</span> <span class="nav-text">¶心跳检测（ping）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主观下线和客观下线"><span class="nav-number">6.</span> <span class="nav-text">¶主观下线和客观下线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障迁移-master-挂掉-sentinel选举新master"><span class="nav-number">7.</span> <span class="nav-text">¶故障迁移（Master 挂掉，Sentinel选举新Master）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#slave选举"><span class="nav-number">7.1.</span> <span class="nav-text">¶Slave选举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障转移"><span class="nav-number">7.2.</span> <span class="nav-text">¶故障转移</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-选举的安全性"><span class="nav-number">8.</span> <span class="nav-text">¶Sentinel 选举的安全性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tilt-模式"><span class="nav-number">9.</span> <span class="nav-text">¶TILT 模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#busy-状态"><span class="nav-number">10.</span> <span class="nav-text">¶BUSY 状态</span></a></li></ol></div>
             
 
           </div>
