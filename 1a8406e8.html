@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentLinkedQueue%E7%9A%84%E9%98%9F%E5%88%97%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentHashMap%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%B9%B6%E5%8F%91/ConcurrentHashMap%E7%9A%84put%E6%93%8D%E4%BD%9C.png">
-<meta property="og:updated_time" content="2020-10-12T04:58:46.285Z">
+<meta property="og:updated_time" content="2020-11-10T00:07:21.200Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="并发和并发安全容器">
 <meta name="twitter:description" content="无锁栈 ¶Treiber Stack 无锁列表 ¶CopyOnWriteArrayList CopyOnWriteArrayList 是一个线程安全的 ArrayList，对其进行的修改操作和元素迭代操作都是在底层创建一个拷贝的数组（快照）上进行的，也就是写时拷贝策略。CopyOnWriteArrayList 适合读多写少的场景，但如果应用在写操作频繁的场景下反而会降低性能。   lock：保证">
@@ -364,7 +364,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.4k 字
+                  2.8k 字
                 </span>
               
 
@@ -380,7 +380,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  9 分钟
+                  11 分钟
                 </span>
               
             </div>
@@ -527,6 +527,25 @@ ConcurrentHashMap 中哈希槽的实现方法有两种：链表和红黑树，�
 扩容的触发条件与HashMap一致。<br>
 扩容流程大致上是：遍历哈希槽，对每个需要迁移的哈希槽进行<code>synchronized</code>加锁。<br>
 当扩容开始后，其他线程必须等扩容完成后才能工作，但其他线程也不是就一直阻塞等扩容完成，而是调用<code>helpTransfer</code>方法一起帮助进行扩容，实际上扩容的单位是哈希槽，因此多线程并发执行扩容并不会导致冲突增加。</p>
+<h3 id="size"><a class="header-anchor" href="#size">¶</a>size</h3>
+<p>size操作返回的是一个不精确的值，因为进行统计的过程中，很有可能会有其他线程正在进行插入和删除操作。</p>
+<p>1.8之前的size：</p>
+<ol>
+<li>遍历segments数组，将每个segment的count加起来作为总数，将modCount加起来作为修改总数；<br>
+modCount会在每次segment被修改时+1（只增不减），用于比较。</li>
+<li>再做一遍遍历，将这次的modCount总数和上一次的比较，如果一致则计数准确直接返回，否则重试；</li>
+<li>如果重试了2次都不行，则第三次会对segment加锁再统计。</li>
+</ol>
+<p>1.8之后，没有了分段锁，size不会每次都遍历segments统计，而是在更新时修改总数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">public int size() &#123;</span><br><span class="line">    long n = sumCount();</span><br><span class="line">    return ((n &lt; 0L) ? 0 :</span><br><span class="line">            (n &gt; (long)Integer.MAX_VALUE) ? Integer.MAX_VALUE :</span><br><span class="line">            (int)n);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">final long sumCount() &#123;</span><br><span class="line">    CounterCell[] as = counterCells; CounterCell a;</span><br><span class="line">    long sum = baseCount;</span><br><span class="line">    if (as != null) &#123;</span><br><span class="line">        for (int i = 0; i &lt; as.length; ++i) &#123;</span><br><span class="line">            if ((a = as[i]) != null)</span><br><span class="line">                sum += a.value;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return sum;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>从源码中可以看到，<code>ConcurrentHashMap#size</code>的结果就是：<br>
+<code>baseCount + sum(counterCells)</code><br>
+其中：</p>
+<ul>
+<li>baseCount：计数，总数发生变化时通过CAS修改</li>
+<li>counterCells：如果baseCount CAS修改失败，作为兜底，类似LongAdder的思路。</li>
+</ul>
+<p>put操作的末尾会调用addCount()更新baseCount的值，如果CAS修改失败了，则使用counterCells，如果CAS修改 counterCells失败了，则使用fullAddCount方法继续死循环操作，直到成功。</p>
 <h1>QA</h1>
 <ol>
 <li>
@@ -590,8 +609,8 @@ JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/fca77f63.html" rel="prev" title="Linux 与 IO">
-                Linux 与 IO <i class="fa fa-chevron-right"></i>
+              <a href="/283c6d00.html" rel="prev" title="Linux 与文件系统">
+                Linux 与文件系统 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -674,7 +693,7 @@ JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">120</span>
+                  <span class="site-state-item-count">122</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -685,7 +704,7 @@ JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-count">13</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -696,7 +715,7 @@ JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">57</span>
+                  <span class="site-state-item-count">59</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -731,7 +750,7 @@ JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">无锁栈</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#treiber-stack"><span class="nav-number">1.1.</span> <span class="nav-text">¶Treiber Stack</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">无锁列表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#copyonwritearraylist"><span class="nav-number">2.1.</span> <span class="nav-text">¶CopyOnWriteArrayList</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#add-e-e"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶add(E e)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get-int-index"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶get(int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#set-int-index-e-element"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶set(int index, E element)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-int-index"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶remove(int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-object-o"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶remove(Object o)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-object-o-object-snapshot-int-index"><span class="nav-number">2.1.6.</span> <span class="nav-text">¶remove(Object o, Object[] snapshot, int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#iterator"><span class="nav-number">2.1.7.</span> <span class="nav-text">¶iterator</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">无锁队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#concurrentlinkedqueue"><span class="nav-number">3.1.</span> <span class="nav-text">¶ConcurrentLinkedQueue</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#数据结构"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#入队-offer"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶入队 - offer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#出队-poll"><span class="nav-number">3.1.3.</span> <span class="nav-text">¶出队 - poll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arrayblockingqueue-和-linkedblockingqueue"><span class="nav-number">3.2.</span> <span class="nav-text">¶ArrayBlockingQueue 和 LinkedBlockingQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#priorityblockingqueue"><span class="nav-number">3.3.</span> <span class="nav-text">¶PriorityBlockingQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#队列比较"><span class="nav-number">3.4.</span> <span class="nav-text">¶队列比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#disruptor"><span class="nav-number">3.5.</span> <span class="nav-text">¶Disruptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#logback-框架中异步日志打印中-arrayblockingqueue-的使用"><span class="nav-number">3.6.</span> <span class="nav-text">¶Logback 框架中异步日志打印中 ArrayBlockingQueue 的使用</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">并发安全 Map</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#concurrenthashmap"><span class="nav-number">4.1.</span> <span class="nav-text">¶ConcurrentHashMap</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#get"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶get</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#put"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶put</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rehash"><span class="nav-number">4.1.3.</span> <span class="nav-text">¶rehash</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">QA</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">无锁栈</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#treiber-stack"><span class="nav-number">1.1.</span> <span class="nav-text">¶Treiber Stack</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">无锁列表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#copyonwritearraylist"><span class="nav-number">2.1.</span> <span class="nav-text">¶CopyOnWriteArrayList</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#add-e-e"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶add(E e)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get-int-index"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶get(int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#set-int-index-e-element"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶set(int index, E element)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-int-index"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶remove(int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-object-o"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶remove(Object o)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove-object-o-object-snapshot-int-index"><span class="nav-number">2.1.6.</span> <span class="nav-text">¶remove(Object o, Object[] snapshot, int index)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#iterator"><span class="nav-number">2.1.7.</span> <span class="nav-text">¶iterator</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">无锁队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#concurrentlinkedqueue"><span class="nav-number">3.1.</span> <span class="nav-text">¶ConcurrentLinkedQueue</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#数据结构"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#入队-offer"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶入队 - offer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#出队-poll"><span class="nav-number">3.1.3.</span> <span class="nav-text">¶出队 - poll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arrayblockingqueue-和-linkedblockingqueue"><span class="nav-number">3.2.</span> <span class="nav-text">¶ArrayBlockingQueue 和 LinkedBlockingQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#priorityblockingqueue"><span class="nav-number">3.3.</span> <span class="nav-text">¶PriorityBlockingQueue</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#队列比较"><span class="nav-number">3.4.</span> <span class="nav-text">¶队列比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#disruptor"><span class="nav-number">3.5.</span> <span class="nav-text">¶Disruptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#logback-框架中异步日志打印中-arrayblockingqueue-的使用"><span class="nav-number">3.6.</span> <span class="nav-text">¶Logback 框架中异步日志打印中 ArrayBlockingQueue 的使用</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">并发安全 Map</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#concurrenthashmap"><span class="nav-number">4.1.</span> <span class="nav-text">¶ConcurrentHashMap</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#get"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶get</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#put"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶put</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rehash"><span class="nav-number">4.1.3.</span> <span class="nav-text">¶rehash</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#size"><span class="nav-number">4.1.4.</span> <span class="nav-text">¶size</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">QA</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>

@@ -266,6 +266,694 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/ad5b98b9.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/ad5b98b9.html" itemprop="url">JVM 的结构</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5.5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  19 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<p><img src="http://47.88.24.11/imgs/JVM/JVM%E7%BB%93%E6%9E%84.png" alt="JVM结构" title="JVM结构"><br>
+JVM 特指用于运行由 Java 虚拟机规范规定的字节码的运行时系统，它具有以下特征：</p>
+<ul>
+<li>平台无关性<br>
+JVM 本身是平台相关的，只是对不同平台都有实现，所以我们编译成的字节码才可以在各个平台上执行，因此称 Java 平台无关指的是字节码是平台无关的。</li>
+<li>高度抽象<br>
+JVM 提供了编译器、类加载、动态内存管理、线程等一套工具，作为虚拟机，程序经编译后运行在 JVM 上时，几乎完全不必担心平台的兼容性。<br>
+本地方法接口只是作为一个扩展功能提供，并不是必须的，实际上除了对性能严格要求的场合，本地方法一般不会被使用。</li>
+</ul>
+<blockquote>
+<p>编译器严格来说和虚拟机并无太大关联，JVM 可以供 Groovy、Kotlin、Scala 等一系列语言作为运行时环境，</p>
+</blockquote>
+<p>下图表示 JVM 的系统结构，包括与 Class 文件打交道的类装载系统、进行运行时数据管理的系统、进行方法执行的系统、本地方法接口（JNI）和本地方法库这些部分。</p>
+<h3 id="类装载子系统"><a class="header-anchor" href="#类装载子系统">¶</a>类装载子系统</h3>
+<p>类装载子系统负责查找并装载类型，类装载器主要包含两种：<strong>启动类装载器（Java 虚拟机实现的一部分）<strong>和</strong>用户自定义类装载器（Java 程序的一部分）</strong>。</p>
+<p>启动类装载器 – Java 虚拟机必须有一个启动类装载器，用于装载受信任的类，如 Java API 的 class 文件。<br>
+用户自定义类装载器 – 继承自 ClassLoader 类，ClassLoader 的如下四个方法，是通往 Java 虚拟机的通道。</p>
+<ul>
+<li>protected final Class defineClass(String name, byte data[], int offset, int length); // data 为二进制的 Java Class 文件数据，表示一个新的可用类型，之后把这个类型导入到方法区中</li>
+<li>protected final Class defineClass(String name, byte data[], int offset, int length, ProtectionDomain protectionDomain);</li>
+<li>protected final Class findSystemClass(String name); // 参数为全限定名，通过类装载器进行装载</li>
+<li>protected final void resolveClass(Class c); // 参数为 Class 实例，完成连接初始化操作</li>
+</ul>
+<p>类装载子系统负责<strong>定位和导入二进制 class 文件，并且保证导入类的正确性，为类变量分配并初始化内存，以及帮助解析符号引用</strong>。类装载器必须严格按照如下顺序进行类的装载。</p>
+<ol>
+<li>装载 – 查找并装载类型的二进制数据</li>
+<li>连接 – 执行验证，准备，以及解析（可选），连接分为如下三个步骤<br>
+验证 – 确保被导入类型的正确性<br>
+准备 – 为类变量（static）分配内存，并将其初始化为默认值<br>
+解析 – 把类型中的符号引用转换为直接引用</li>
+<li>初始化 – 把类变量初始化为正确初始值</li>
+</ol>
+<h2 id="内存管理系统"><a class="header-anchor" href="#内存管理系统">¶</a>内存管理系统</h2>
+<h3 id="方法区"><a class="header-anchor" href="#方法区">¶</a>方法区</h3>
+<p>方法区是线程共享的内存区域，用于存储已被虚拟机加载的类信息、常量、静态变量、即时编译器编译后的代码等数据，当方法区无法满足内存分配需求时，将抛出 OutOfMemoryError。<br>
+类信息包括：</p>
+<ol>
+<li>类型全限定名。</li>
+<li>类型的直接超类的全限定名（除非这个类型是 java.lang.Object，它没有超类）。</li>
+<li>类型是类类型还是接口类型。</li>
+<li>类型的访问修饰符（public、abstract、final 的某个子集）。</li>
+<li>任何直接超接口的全限定名的有序列表。</li>
+<li>类型的常量池。</li>
+<li>字段信息。</li>
+<li>方法信息。</li>
+<li>除了常量以外的所有类（静态）变量。</li>
+<li>一个到类 ClassLoader 的引用。</li>
+<li>一个到 Class 类的引用。</li>
+</ol>
+<p>着重介绍<strong>常量池</strong>，虚拟机必须要为每个被装载的类型维护一个常量池。常量池就是该类型所用常量的一个有序集合，包括直接常量和对其他类型、字段和方法的符号引用。它在 Java 程序的<strong>动态连接</strong>（运行时解析字节码中使用到的符号引用）中起着核心作用。<br>
+除了以上结构外，JVM 的实现者还可以添加一些其他的数据结构，如方法表：对每个加载的非抽象类的类信息中都添加一个方法表，方法表是一组对类实例方法的直接引用——包括从父类继承的方法，JVM 可以通过方法表快速找到实例方法。</p>
+<blockquote>
+<p>C++中 virtual 函数是通过虚函数表实现的，Java 中所有方法都是 virtual 的，因此也就不需要再标注虚拟了，正像 Java 虽然宣称没有指针，但是 Java 里其实全是指针。Java 中类似的检查机制不少，这体现了 Java 的一种设计思想：始终将安全放在效率之上。</p>
+</blockquote>
+<h3 id="元空间"><a class="header-anchor" href="#元空间">¶</a>元空间</h3>
+<p>JDK1.8 的一大改动是方法区变成了元空间，其实就是放开了类空间的大小，容量取决于是 32 位或是 64 位操作系统的可用虚拟内存大小，32 位系统本地最多有 4G 虚拟内存空间，物理内存取决于操作系统的配置。新参数<code>MaxMetaspaceSize</code>用于限制本地内存分配给类元数据的大小，如果没有指定这个参数，元空间会在运行时根据需要动态调整，大小随意。对于没用的类及类加载器的垃圾回收将在元数据使用达到 MaxMetaspaceSize 参数的设定值时进行。</p>
+<h3 id="堆"><a class="header-anchor" href="#堆">¶</a>堆</h3>
+<p>一个虚拟机实例只对应一个堆空间，堆是<strong>线程共享</strong>的，当然还有可能会划分出多个线程私有的分配缓冲区（<strong>TLAB</strong>）。堆空间是存放对象实例的地方，几乎所有对象实例都在这里分配。堆也是<strong>垃圾收集器</strong>管理的主要区域，因此也被称为“GC 堆”。<br>
+堆可以处于物理上不连续的内存空间中，只要逻辑上连续即可，就像磁盘空间一样。<br>
+当堆中没有足够的内存进行对象实例分配时，并且堆也无法扩展时，会抛出 OutOfMemoryError 异常。<br>
+对 OOM 的排查通常是先通过内存映像分析工具对 Dump 出来的堆转储快照进行分析，重点是确认内存中的对象是否是必要的，也就是要先分清楚到底是出现了<strong>内存泄漏</strong>还是<strong>内存溢出</strong>。</p>
+<ul>
+<li>如果是内存泄漏，可进一步通过工具查看泄露对象到 GC Roots 的引用链。于是就能找到泄露对象的类型信息及 GC Roots 引用链的信息，就可以比较准确地定位出泄露代码的位置。</li>
+<li>如果不存在泄露，就是内存中的对象确实都还必须存活着，那就应当检查虚拟机的堆参数（-Xmx 与 -Xms），与机器物理内存对比看是否还可以调大，从代码上检查是否存在某些对象生命周期过长、持有状态时间过长的情况，尝试减少程序运行期的内存消耗。</li>
+</ul>
+<h3 id="程序计数器"><a class="header-anchor" href="#程序计数器">¶</a>程序计数器</h3>
+<p>每个线程拥有自己的程序计数器，线程之间的程序计数器互不影响，在任何一个确定的时刻，一个处理器（对于多核处理器来说是一个内核）都只会执行一条线程中的指令。<br>
+PC 寄存器的内容总是下一条将被执行指令的&quot;地址&quot;，这里的&quot;地址&quot;可以是一个本地指针，也可以是在方法字节码中相对于该方法起始指令的偏移量。</p>
+<ul>
+<li>如果该线程正在执行一个本地方法，则程序计数器内容为 undefined。</li>
+<li>此区域在 Java 虚拟机规范中没有规定任何 OutOfMemoryError 情况的区域。</li>
+</ul>
+<h3 id="虚拟机栈"><a class="header-anchor" href="#虚拟机栈">¶</a>虚拟机栈</h3>
+<p>我们一般会把 Java 内存区分为堆内存和栈内存，而所指的“栈”就是这里的虚拟机栈，或者说是虚拟机栈中局部变量表部分。<br>
+Java 栈也是线程私有的，虚拟机只会对栈进行两种操作，以帧为单位的<strong>入栈</strong>和<strong>出栈</strong>。每个方法在执行时都会创建一个<strong>栈帧</strong>，并入栈，成为当前帧，每一个方法从调用直至执行完成的过程，就对应着一个栈帧在虚拟机栈中从入栈到出栈的过程。栈帧由三部分组成：局部变量区、操作数栈、帧数据区。<br>
+<strong>局部变量区</strong>被组织为一个以字长为单位、从 0 开始计数的数组。字节码指令通过从 0 开始的索引来使用其中的数据。类型为 int、float、reference 和 returnAddress 的值在数组中只占据一项，而类型为 byte、short 和 char 的值存入时都会转化为 int 类型，也占一项，而 long、double 则连续占据两项。<br>
+<strong>操作数栈</strong>也常被称为操作栈，它是一个后入先出栈。当一个方法刚刚执行的时候，这个方法的操作数栈是空的，在方法执行的过程中，会有各种字节码指令向操作数栈中写入和提取值，也就是入栈与出栈操作。在使用操作数栈时需要注意实例方法和类方法：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Example &#123;</span><br><span class="line">    // 类方法</span><br><span class="line">    public static int classMethod(int i, long l, float f, double d, Object o, byte b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    // 实例方法</span><br><span class="line">    public int instanceMethod(char c, double d, short s, boolean b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>类方法和实例方法栈帧结构有所不同，从图中可以看到它们之间的区别：</p>
+<ul>
+<li>类方法帧里没有隐含的 this 引用，而实例方法帧中会隐含一个 this 引用；</li>
+</ul>
+<p>并且注意：</p>
+<ul>
+<li>byte,char,short,boolean 类型存入局部变量区的时候都会被转化成 int 类型值，当被存回堆或者方法区时，才会转化回原来的类型；</li>
+<li>returnAddress 类型数据是指向字节码的指针（方法区的字节码指令），它只存在于字节码层面，与编程语言无关，我们在 Java 语言中是不会直接与 returnAddress 类型数据打交道的。</li>
+</ul>
+<blockquote>
+<p>每个线程所持有的程序计数器（pc）实际上就是 returnAddress 类型的数据，当线程执行 native 方法时，pc 中的值为 undefied。</p>
+</blockquote>
+<ul>
+<li>操作数栈被组织成一个以字长为单位的数组，它是通过标准的栈操作——即入栈和出栈来进行访问，而不是通过索引访问。入栈和出栈也会存在类型的转化；</li>
+<li>当一个方法执行完毕之后，要返回之前调用它的地方，因此在栈帧中必须保存一个方法返回地址。方法退出的过程实际上等同于把当前栈帧出栈，因此退出时可能执行的操作有：恢复上层方法的局部变量表和操作数栈，把返回值(如果有的话)压入调用都栈帧的操作数栈中，调用 PC 计数器的值以指向方法调用指令后面的一条指令等。</li>
+<li>每个栈帧都包含一个指向运行时常量池中该栈帧所属方法的引用，持有这个引用是为了支持方法调用过程中的动态连接。在 Class 文件的常量池中存有大量的符号引用，字节码中的方法调用指令就以常量池中指向方法的符号引用为参数。这些符号引用一部分会在类加载阶段或第一次使用的时候转化为直接引用，这种转化称为静态解析。另外一部分将在每一次的运行期期间转化为直接引用，这部分称为动态连接。</li>
+</ul>
+<p><strong>栈数据区</strong>存放一些用于支持常量池解析、正常方法返回以及异常派发机制的信息。即将常量池的符号引用转化为直接地址引用、恢复发起调用的方法的帧进行正常返回，发生异常时转交异常表进行处理。</p>
+<ul>
+<li>虚拟机规范允许具体的虚拟机实现增加一些规范里没有描述的信息到栈帧中，例如与高度相关的信息，这部分信息完全取决于具体的虚拟机实现。在实际开发中，一般会把动态连接，方法返回地址与其它附加信息全部归为一类，称为<strong>栈帧信息</strong>。</li>
+</ul>
+<p>在 Java 虚拟机规范中，规定了两种异常状况：如果线程请求的栈深度大于虚拟机所允许的深度，将抛出 StackOverflowError 异常；如果虚拟机栈可以动态扩展，当扩展时无法申请到足够的内存，就会抛出 OutOfMemoryError 异常。</p>
+<p>系统分配给每个进程的内存是有限制的，除去 Java 堆、方法区、程序计数器，如果虚拟机进程本身耗费的内存不计算在内，剩下内存就由虚拟机栈和本地方法栈“瓜分”了。每个线程分配到的栈容量越大，可以建立的线程数量自然就越少，建立线程时就越容易把剩下的内存耗尽，出现<strong>虚拟机栈溢出</strong>的情况。</p>
+<ul>
+<li>如果线程请求的栈深度大于虚拟机所允许的最大深度，将抛出 StackOverflowError 异常，出现 StackOverflowError 异常时有错误栈可以阅读，栈深度在大多数情况下达到 1000~2000 完全没有问题，对于正常的方法调用（包括递归），这个深度在一半情况下完全够用。</li>
+<li>如果虚拟机在扩展栈（建立更多的线程）时无法申请到足够的内存空间，则抛出 OutOfMemoryError 异常，在不能减少线程数或者更换 64 位虚拟机的情况下，就只能通过减少最大堆和减少栈容量来换取更多的线程。</li>
+</ul>
+<p>一般可以认为 Java 中的一切变量都是引用，实际的对象存储在堆中，但是基础类型比较特殊，它们可以直接使用操作符进行算数运算，不过基础类型也带来了一些问题，比如装箱拆箱过程中可能产生空指针异常。Java 中引入基础类型的动机应该是性能与空间利用率，毕竟使用引用时还得通过<strong>指针碰撞</strong>或<strong>空闲列表</strong>方法（根据垃圾收集器不同而不同）来找到实际对象，而且基础类型本身占用的空间不多，如果用引用势必占用的空间会加倍。<br>
+基础类型并不是都分配在栈上，具体有以下几种情况：</p>
+<ol>
+<li>在方法中声明的变量，即该变量是局部变量，每当程序调用方法时，系统都会为该方法建立一个方法栈，其所在方法中声明的变量就放在方法栈中，当方法结束系统会释放方法栈，其对应在该方法中声明的变量随着栈的销毁而结束，这就局部变量只能在方法中有效的原因<br>
+在方法中声明的变量可以是基本类型的变量，也可以是引用类型的变量。
+<ul>
+<li>当声明是基本类型的变量的时，其变量名及值（变量名及值是两个概念）是放在方法栈中</li>
+<li>当声明的是引用变量时，所声明的变量（该变量实际上是在方法中存储的是内存地址值）是放在方法的栈中，该变量所指向的对象是放在堆类存中的。</li>
+</ul>
+</li>
+<li>在类中声明的变量是成员变量，也叫全局变量，放在堆中的（因为全局变量不会随着某个方法执行结束而销毁）。<br>
+同样在类中声明的变量即可是基本类型的变量 也可是引用类型的变量
+<ul>
+<li>当声明的是基本类型的变量其变量名及值是放在堆中的</li>
+<li>引用类型时，其声明的变量仍然会存储一个内存地址值，该内存地址值指向所引用的对象。引用变量名和对应的对象仍然存储在相应的堆中</li>
+</ul>
+</li>
+</ol>
+<h3 id="堆外内存"><a class="header-anchor" href="#堆外内存">¶</a>堆外内存</h3>
+<h4 id="一个例子"><a class="header-anchor" href="#一个例子">¶</a>一个例子</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 分配一块1024字节的堆外内存</span><br><span class="line">ByteBuffer buffer = ByteBuffer.allocateDirect(1024);</span><br><span class="line">System.out.println(buffer.capacity());</span><br><span class="line">buffer.putInt(0, 2018);</span><br><span class="line">System.out.println(buffer.getInt(0));</span><br></pre></td></tr></table></figure>
+<h4 id="为什么要使用堆外内存"><a class="header-anchor" href="#为什么要使用堆外内存">¶</a>为什么要使用堆外内存</h4>
+<p>主要是因为堆外内存在 IO 操作方面的优势，举一个例子：在通信中，将存在于堆内存中的数据 flush 到远程时，需要首先将堆内存中的数据拷贝到堆外内存中，然后再写入 Socket 中；如果直接将数据存到堆外内存中就可以避免上述拷贝操作，提升性能。类似的例子还有读写文件。<br>
+但是需要注意的是，直接访问堆外内存并不会比访问 Java 堆更快：<a href="https://mp.weixin.qq.com/s/njCKlx8mBh6kSP2lC9mT4g" target="_blank" rel="noopener">哪个更快：Java 堆还是本地内存</a>。堆外内存更适合用于操作大块的数据（&gt;2G）、可以直接使用操作系统提供的本地 IO 进行操作。</p>
+<h4 id="可用的堆外内存额度"><a class="header-anchor" href="#可用的堆外内存额度">¶</a>可用的堆外内存额度</h4>
+<ol>
+<li>可以通过设定 <code>-XX:MaxDirectMemorySize</code> 来显式指定最大的堆外内存。</li>
+<li>设定 <code>-Dsun.nio.MaxDirectMemorySize</code> 来显式指定：如果该属性为-1，则取<code>directMemory = Runtime.getRuntime().maxMemory()</code>，即 JVM 运行时的最大内存；否则，如果指定这个属性等于-1，则默认为 64M。<br>
+如果是 JDK8，具体代码见<code>VM.saveAndRemoveProperties()</code>，如果是 JDK8 之前，则代码见<code>VM.maxDirectMemory()</code>。<br>
+另外，<code>Runtime.getRuntime().maxMemory()</code>是一个 native 方法，HotSpot 中对应的 C++代码如下所示：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jlong JNICALL</span><br><span class="line">Java_java_lang_Runtime_maxMemory(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">    return JVM_MaxMemory();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">JVM_ENTRY_NO_ENV(jlong, JVM_MaxMemory(void))</span><br><span class="line">  JVMWrapper(&quot;JVM_MaxMemory&quot;);</span><br><span class="line">  size_t n = Universe::heap()-&gt;max_capacity();</span><br><span class="line">  return convert_size_t_to_jlong(n);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
+<p>其中 max_capacity() 实际返回的是 –Xmx 设置值减去一个 survivor space 的预留区大小，与堆内大小存很接近。</p>
+<h4 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h4>
+<ol>
+<li>分配<br>
+ByteBuffer.allocateDirect<br>
+DirectByteBuffer(int)<br>
+-&gt; Bits.reserveMemory 在系统中保存总分配内存（按页分配）的大小和实际内存的大小<br>
+-&gt; Bits.tryReserveMemory 判断系统内存（堆外内存）是否足够，Bits 有一个全局 totalCapacity 变量记录当前已经使用的堆外内存量<br>
+-&gt; JavaLangRefAccess.tryHandlePendingReference 非阻塞，将已经被 JVM 垃圾回收的 DirectBuffer 对象的堆外内存释放。<br>
+-&gt; System.gc 触发一次 FullGC，<code>System.gc</code>并不能保证 FullGC 被马上执行，如果设置了<code>-XX:+DisableExplicitGC</code>则这种显式的 GC 会被禁用<br>
+-&gt; Bits.tryReserveMemory 为了等待 FullGC 释放足够的空间，之后还会重试最多 9 次 tryReserveMemory，每次重试会 sleep 1, 2, 4, 8, 16, 32, 64, 128, 256ms，也就是说最多可以等 0.5s<br>
+-&gt; throw new OutOfMemoryError 分配空间失败，抛出 OOM 异常<br>
+-&gt; Unsafe.allocateMemory native 方法，通过 JNI 调用 C++函数分配堆外内存，并返回内存基地址<br>
+-&gt; Unsafe.setMemory(base, size, (byte) 0) 将分配的内存清零<br>
+-&gt; Cleaner.create 创建一个 Cleaner 用于释放堆空间</li>
+<li>释放<br>
+Cleaner.create Cleaner 内部维护了一个 static 的 Cleaner 对象的链表，create 调用创建了一个 Cleaner 对象并将其加入到该链表中<br>
+-&gt; new Cleaner(DirectByteBuffer, new Deallocator(base, size, cap))</li>
+</ol>
+<p>Cleaner 实现 GC 回收堆外内存的原理是<code>PhantomReference（虚引用）</code>，虚引用必须和引用队列（ReferenceQueue）一起使用，一般用于实现追踪垃圾收集器的回收动作。虚引用不会影响 JVM 是否要 GC 这个对象的判断，当 GC 某个对象时，如果有此对象上还有虚引用，会将虚引用对象插入 <code>ReferenceQueue</code> 队列。<br>
+对于 Cleaner 对象，当 GC 时发现它除了虚引用外已不可达（持有它的 DirectByteBuffer 对象在 GC 中被回收了，此时，只有 Cleaner 对象唯一保存了堆外内存的数据），就会把它放进 Reference 类的 <code>pending</code> 静态变量里。<br>
+PhantomReference 的父类是 Reference，Reference 类内部的 static 块会启动 ReferenceHandler 线程，线程优先级很高，这个线程是用来处理 JVM 在 GC 过程中交接过来的 reference（<code>pending</code>）。<br>
+下面是该线程的大致执行流程：<br>
+ReferenceHandler.run() 死循环处理 JVM 提交的 reference，如果是 Clearner 则调用其 clean 方法<br>
+-&gt; Cleaner.clean<br>
+-&gt; Cleaner.remove(Cleaner) 首先将 Cleaner 从链表中移除，以便 Cleaner 自身可被 GC 回收掉<br>
+-&gt; DirectByteBuffer.Deallocator.run()<br>
+-&gt; Unsafe.freeMemory 释放分配的堆外内存<br>
+-&gt; Bits.unreserveMemory 更新 Bits.totalCapacity</p>
+<h4 id="手动释放堆外内存"><a class="header-anchor" href="#手动释放堆外内存">¶</a>手动释放堆外内存</h4>
+<p>如前面所述，可以通过编码调用 DirectByteBuffer 的 cleaner 的 clean 方法来释放堆外内存。但需要注意：cleaner 是 private 访问权限，所以，需使用反射来实现。</p>
+<h4 id="mappedbytebuffer"><a class="header-anchor" href="#mappedbytebuffer">¶</a>MappedByteBuffer</h4>
+<p>MappedByteBuffer 是用来访问大文件的，其实是利用操作系统的 mapedfile 的机制，把一个大文件映射到物理内存，然后用户进程像访问内存一样访问文件，背后操作系统会把磁盘文件映射到内存中来，这是操作系统预估你想存取哪块提前为你准备好的。</p>
+<h3 id="本地方法栈"><a class="header-anchor" href="#本地方法栈">¶</a>本地方法栈</h3>
+<p>访问本地方式时使用到的栈，为本地方法服务，与虚拟机栈一样，本地方法区域也会抛出 StackOverflowError 和 OutOfMemoryError 异常。</p>
+<h2 id="方法执行引擎"><a class="header-anchor" href="#方法执行引擎">¶</a>方法执行引擎</h2>
+<p>用户所编写的程序如何表现正确的行为需要执行引擎的支持，执行引擎执行字节码指令，完成程序的功能。</p>
+<h2 id="本地方法接口-jni"><a class="header-anchor" href="#本地方法接口-jni">¶</a>本地方法接口（JNI）</h2>
+<p>本地方法接口称为 JNI，是为可移植性准备的。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li>《Hotspot 实战》</li>
+<li><a href="https://blog.csdn.net/column/details/14851.html" target="_blank" rel="noopener">GC 性能优化</a></li>
+<li><a href="https://blog.csdn.net/lirenzuo/column/info/17179" target="_blank" rel="noopener">JVM 菜鸟进阶高手之路</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jvms/se8/html/index.html" target="_blank" rel="noopener">The Java® Virtual Machine Specification</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jls/se8/html/index.html" target="_blank" rel="noopener">The Java® Language Specification</a></li>
+<li><a href="https://www.jianshu.com/p/7f6832d61880" target="_blank" rel="noopener">Java 和操作系统交互细节</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e39c963b.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e39c963b.html" itemprop="url">JVM 源码分析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.9k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  7 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="搭建源码调试环境"><a class="header-anchor" href="#搭建源码调试环境">¶</a>搭建源码调试环境</h2>
+<p>源码下载地址：<a href="https://github.com/unofficial-openjdk/openjdk" target="_blank" rel="noopener">unofficial-openjdk/openjdk</a></p>
+<ol>
+<li><a href="https://segmentfault.com/a/1190000008346240" target="_blank" rel="noopener">OpenJDK9 Hotspot Ubuntu 编译和调试</a><br>
+mac 环境下搭建：<a href="https://www.jianshu.com/p/ee7e9176632c" target="_blank" rel="noopener">mac 下编译 openjdk1.9 及集成 clion 动态调试</a></li>
+</ol>
+<h3 id="遇到的问题"><a class="header-anchor" href="#遇到的问题">¶</a>遇到的问题</h3>
+<ol>
+<li>g++和 gcc 版本不匹配</li>
+<li>一些 Warning 被当作错误报错了<br>
+大部分 Warning 不会影响最终结果，可以关掉：<a href="https://blog.csdn.net/desiyonan/article/details/80802066" target="_blank" rel="noopener">https://blog.csdn.net/desiyonan/article/details/80802066</a></li>
+</ol>
+<h3 id="阅读"><a class="header-anchor" href="#阅读">¶</a>阅读</h3>
+<ol>
+<li><a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">如何找 JDK 中 native 代码的位置？</a></li>
+<li><a href="http://rednaxelafx.iteye.com/blog/1549577" target="_blank" rel="noopener">OpenJDK 源码阅读导航</a></li>
+</ol>
+<h3 id="编译-openjdk"><a class="header-anchor" href="#编译-openjdk">¶</a>编译 openjdk</h3>
+<ol>
+<li>下载<br>
+代码的下载见 building 文档，使用一个 Mercurial 工具进行源码控制。</li>
+<li>准备工具<br>
+找到这种开放源码的软件，第一步当然是查看 README 了，openjdk 的 README 中告知了 building 文档的位置，相当详细。<br>
+硬件要求<br>
+操作系统要求<br>
+编译器要求，需要 gcc 和 clang，他们的区别见<a href="https://www.zhihu.com/question/20235742" target="_blank" rel="noopener">Clang 比 GCC 好在哪里？</a><br>
+JDK 要求，虽然挺矛盾的，但是一部分模块是用 JDK 写的，所以 Java 编译器也是需要的，一般编译 JDK8 时需要的 JDK 版本是 7 就够了，但是 openjdk 需要 8 才行（不知道为什么），这个 jdk 可以直接使用 apt-get 安装。<br>
+外部库要求，<br>
+其他工具，make、bash、autoconf</li>
+<li>configure<br>
+准备所有配置文件</li>
+<li>make<br>
+编译源码，默认下只会编译一些必要的部分，如果编译成功可以在 openjdk/build 文件夹下找到目标文件，我的成品所在目录是<code>${openjdk}/build/linux-x86_64-normal-server-release/jdk/bin</code>。</li>
+<li>run test<br>
+openjdk 使用了一个叫 jtreg 的测试框架，文档有<a href="http://openjdk.java.net/jtreg/build.html" target="_blank" rel="noopener">这里</a>还有<a href="https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/content/en/intermediate-steps/how_to_use_jtreg_-_java_regression_test_harness.html" target="_blank" rel="noopener">这里</a>，我设置了一个愚蠢的环境变量 JAVA18HOME 然后尝试着去<code>make -C make</code>编译它，但是还是提示缺少什么<code>org.testing</code>，可能还有什么依赖库没装，这个框架可能是给 oracle 的内部员工或者外星人用的吧？</li>
+</ol>
+<h3 id="定位-object-的-native-方法"><a class="header-anchor" href="#定位-object-的-native-方法">¶</a>定位 Object 的 native 方法</h3>
+<ol>
+<li>
+<p>搜索“Object”打开 jdk 下的 Object.c 文件<br>
+看到下面这个方法数组：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static JNINativeMethod methods[] = &#123;</span><br><span class="line">    &#123;&quot;hashCode&quot;,    &quot;()I&quot;,                    (void *)&amp;JVM_IHashCode&#125;,</span><br><span class="line">    &#123;&quot;wait&quot;,        &quot;(J)V&quot;,                   (void *)&amp;JVM_MonitorWait&#125;,</span><br><span class="line">    &#123;&quot;notify&quot;,      &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotify&#125;,</span><br><span class="line">    &#123;&quot;notifyAll&quot;,   &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotifyAll&#125;,</span><br><span class="line">    &#123;&quot;clone&quot;,       &quot;()Ljava/lang/Object;&quot;,   (void *)&amp;JVM_Clone&#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>然后搜索“JVM_MonitorWait”打开 hotspot 下的 jvm.cpp 文件<br>
+里面有下面这条语句：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">JVM_ENTRY(void, JVM_MonitorWait(JNIEnv* env, jobject handle, jlong ms))</span><br><span class="line">  JVMWrapper(&quot;JVM_MonitorWait&quot;);</span><br><span class="line">  Handle obj(THREAD, JNIHandles::resolve_non_null(handle));</span><br><span class="line">  JavaThreadInObjectWaitState jtiows(thread, ms != 0);</span><br><span class="line">  if (JvmtiExport::should_post_monitor_wait()) &#123;</span><br><span class="line">    JvmtiExport::post_monitor_wait((JavaThread *)THREAD, (oop)obj(), ms);</span><br><span class="line"></span><br><span class="line">    // The current thread already owns the monitor and it has not yet</span><br><span class="line">    // been added to the wait queue so the current thread cannot be</span><br><span class="line">    // made the successor. This means that the JVMTI_EVENT_MONITOR_WAIT</span><br><span class="line">    // event handler cannot accidentally consume an unpark() meant for</span><br><span class="line">    // the ParkEvent associated with this ObjectMonitor.</span><br><span class="line">  &#125;</span><br><span class="line">  ObjectSynchronizer::wait(obj, ms, CHECK);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>我们暂时不知道这几个宏到底什么意思，不过核心大概是最后的那个<code>ObjectSynchronizer::wait</code>吧，这个类定义在 C++文件 synchronizer.cpp 中。</p>
+<ol>
+<li>综上所述<br>
+可以看到如果一个类定义了 native 方法，那么基本可以在 jdk 目录下找到该类的定义（<strong>类所在包结构和其在 openjdk 中的定义的路径有什么关联？？？</strong>），至于其实现，从<a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">知乎</a>上可以找到一段说明，我不知道对错：</li>
+</ol>
+<blockquote>
+<p>如果间接调用了 hotspot 的实现（jvm 会以动态库的形式被加载，prims 文件夹里定义了 hotspot 与其他模块的接口及其实现），那么从 hotspot/src/share/vm/prims/jvm.cpp 中可以找到 JVM_Xxx 函数的实现。</p>
+</blockquote>
+<h3 id="为-object-类添加-native-方法-nop"><a class="header-anchor" href="#为-object-类添加-native-方法-nop">¶</a>为 Object 类添加 native 方法 nop()</h3>
+<p>根据<a href="http://www.infoq.com/cn/articles/Introduction-to-HotSpot" target="_blank" rel="noopener">这里</a>的说法，openjdk 有两种方式来定义 native 函数，一种是按一种特别的方式命名函数，这样加载后就可以和 Java 中的 native 方法对上，另一种是使用 registerNatives()的方式，观察 Object.c 文件可以发现，这种方法先定义了一个 JNINativeMethod 类型的静态数组来做 Java 方法和本地函数的对应，然后使用 JNI 方法注册了一个叫 Java_java_lang_Object_registerNatives 的本地方法来实施这种映射。<br>
+当使用第一种方式在 Object.c 中定义一个特殊命名的 nop()函数时，编译不通过，报错显示<code>Incompatible definition of java.lang.Object</code>，我定义的 nop 函数：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_java_lang_Object_nop(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>然后下面是我使用第二种方式定义 nop()函数的过程（虽然也不行）：</p>
+<ol>
+<li>修改 Object.c<br>
+methods 数组中添加一行： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;nop&quot;, &quot;()V&quot;, (void*)&amp;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>这种定义方法参照了<a href="http://blog.csdn.net/bigapple88/article/details/6756204" target="_blank" rel="noopener">这里</a></p>
+<ol>
+<li>修改 Object.java<br>
+其所在目录为<code>${openjdk}/jdk/src/java.base/share/classes/java/lang/Object.java</code>，为其添加一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">*</span><br><span class="line">*/</span><br><span class="line">@HotSpotIntrinsicCandidate</span><br><span class="line">public native void nop();</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>为什么要加注释？为什么不能加 final？</p>
+<ol>
+<li>重编译 make<br>
+虽然只是添加了一个方法，但是几乎所有包下的都要重新编译了，所以编译过程会稍微有点长。</li>
+<li>测试<br>
+使用<code>javap</code>命令反编译可以看到 Object 类中确实已经有了一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javap $&#123;openjdk&#125;/build/linux-x86_64-normal-server-release/jdk/modules/java.base/java/lang/Object.class</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p><strong>但是实际编译时却报错了，错误大概是Object类不兼容？？？</strong></p>
+<ol>
+<li>native 方法的实现机制<br>
+参见 JNI 原理。</li>
+</ol>
+<h2 id="jni"><a class="header-anchor" href="#jni">¶</a>JNI</h2>
+<h3 id="生成-h头文件"><a class="header-anchor" href="#生成-h头文件">¶</a>生成.h头文件</h3>
+<p>使用 javah 命令，在项目的 src 目录下运行，其中-d 指定目标目录，-jni 是默认选项，生成 jni 头文件，可以加-classpath 指定 class 路径，但必须是绝对路径</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javah -d ../jni -jni com.tallate.HelloJNI</span><br></pre></td></tr></table></figure>
+<p>接下来编译.c 文件，-c 可以生成目标文件（未链接），-I 可以指定#include 查找的目录，不然 jni 有些头文件找不到</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot;  HelloJNI.c</span><br></pre></td></tr></table></figure>
+<p><a href="http://xn--4gqva8gy93g2zbv2i9m2c6jv.so" target="_blank" rel="noopener">接下来编译成一个.so</a> 链接库</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc HelloJNI.c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot; -fPIC -shared -o libhello.so</span><br></pre></td></tr></table></figure>
+<p>接下来可以在Java中加载</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 在linux下动态库必须有前缀lib</span><br><span class="line">System.loadLibrary(&quot;hello&quot;);</span><br></pre></td></tr></table></figure>
+<h3 id="调用-native-方法的流程"><a class="header-anchor" href="#调用-native-方法的流程">¶</a>调用 native 方法的流程</h3>
+<ol>
+<li>native 方法编译后多一个 ACC_NATIVE 标志</li>
+<li>loadLibrary 方法调用 JVM 的 load 本地方法</li>
+<li>load 方法最终调用系统调用 dlopen 加载动态链接库</li>
+<li>调用本地方法时，实际上调用了 JVM 中加载的函数，栈帧压入本地方法栈中（HotSpot 中本地方法栈=虚拟机栈）</li>
+</ol>
+<h3 id="修改-object-类-为其添加一个-native-方法-nop"><a class="header-anchor" href="#修改-object-类-为其添加一个-native-方法-nop">¶</a>修改 Object 类，为其添加一个 native 方法 nop()</h3>
+<h2 id="锁-内置锁"><a class="header-anchor" href="#锁-内置锁">¶</a>锁（内置锁）</h2>
+<ol>
+<li>锁的存储结构？</li>
+<li>获取锁的时机？</li>
+<li>释放锁的时机？</li>
+</ol>
+<h2 id="线程"><a class="header-anchor" href="#线程">¶</a>线程</h2>
+<p>和 JDK 的线程操作相关的类有 Object 和 Thread，Object 中包括 wait、notify 和 notifyAll，Thread 中包括 yield、sleep、exit、interrupt、join、start，run 的主要任务是执行用户定义的逻辑，还有一些方法已经被 Deprecated，不必再提</p>
+<h3 id="源码中和线程操作相关的一些数据结构"><a class="header-anchor" href="#源码中和线程操作相关的一些数据结构">¶</a>源码中和线程操作相关的一些数据结构</h3>
+<ol>
+<li>
+<p>ObjectMonitor<br>
+对象监视器，定义和声明在 objectMonitor.*中，主要包含</p>
+</li>
+<li>
+<p>ObjectWaiter</p>
+</li>
+<li>
+<p>ObjectSynchronizer</p>
+</li>
+</ol>
+<h3 id="wait"><a class="header-anchor" href="#wait">¶</a>wait</h3>
+<p>wait 是 native 方法，实现在 synchronizer.cpp 中，ObjectSynchronizer::wait：</p>
+<ol>
+<li>
+<p>通过<code>ObjectSynchronizer::inflate</code>方法找到 object 中的<code>ObjectMonitor monitor</code></p>
+</li>
+<li>
+<p>调用 monitor.wait<br>
+wait 方法比较复杂，但是核心过程只有 3 步：</p>
+<ul>
+<li>ObjectMonitor::AddWaiter(…)将新建立的 ObjectWaiter 对象插入_WaitSet 队列的末尾</li>
+<li>ObjectMonitor::exit(…)释放锁</li>
+<li>Self-&gt;_ParkEvent-&gt;park等待</li>
+</ul>
+</li>
+</ol>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="jni-v2"><a class="header-anchor" href="#jni-v2">¶</a>JNI</h3>
+<ol>
+<li><a href="http://blog.csdn.net/huachao1001/article/category/2862631" target="_blank" rel="noopener">介绍</a></li>
+<li><a href="http://blog.csdn.net/ngvjai/article/details/8520840" target="_blank" rel="noopener">生成.so 方法</a></li>
+<li><a href="http://blog.csdn.net/larrylgq/article/details/7515362" target="_blank" rel="noopener">修改 java.library.path 方法</a></li>
+<li><a href="http://blog.csdn.net/hackooo/article/details/48395765/" target="_blank" rel="noopener">Java JNI 实现原理初探</a></li>
+<li><a href="http://blog.chinaunix.net/uid-22028680-id-3178229.html" target="_blank" rel="noopener">Java Native Interface (JNI) 工作原理</a></li>
+<li><a href="http://www.cnblogs.com/Anker/p/3746802.html" target="_blank" rel="noopener">dlopen</a></li>
+</ol>
+<h3 id="线程-v2"><a class="header-anchor" href="#线程-v2">¶</a>线程</h3>
+<ol>
+<li><a href="https://www.zhihu.com/question/23328075" target="_blank" rel="noopener">java sleep 和 wait 的区别的疑惑?</a></li>
+<li><a href="http://blog.csdn.net/raintungli/article/details/6532784" target="_blank" rel="noopener">java 中的 wait 和 notify 实现的源码分析</a></li>
+<li><a href="http://blog.csdn.net/raintungli/article/details/6553337" target="_blank" rel="noopener">JVM Thread stop 的源码分析</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -975,336 +1663,6 @@ JVM 进行 GC 时，需要对相应堆分区的已用内存进行遍历；假如
 方法调用栈深度超出了虚拟机的允许范围。</li>
 <li>栈引起的OOM<br>
 虚拟机在扩展栈时无法申请到足够空间。</li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e39c963b.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e39c963b.html" itemprop="url">JVM 源码分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
-                2019-10-05
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.9k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  7 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="搭建源码调试环境"><a class="header-anchor" href="#搭建源码调试环境">¶</a>搭建源码调试环境</h2>
-<p>源码下载地址：<a href="https://github.com/unofficial-openjdk/openjdk" target="_blank" rel="noopener">unofficial-openjdk/openjdk</a></p>
-<ol>
-<li><a href="https://segmentfault.com/a/1190000008346240" target="_blank" rel="noopener">OpenJDK9 Hotspot Ubuntu 编译和调试</a><br>
-mac 环境下搭建：<a href="https://www.jianshu.com/p/ee7e9176632c" target="_blank" rel="noopener">mac 下编译 openjdk1.9 及集成 clion 动态调试</a></li>
-</ol>
-<h3 id="遇到的问题"><a class="header-anchor" href="#遇到的问题">¶</a>遇到的问题</h3>
-<ol>
-<li>g++和 gcc 版本不匹配</li>
-<li>一些 Warning 被当作错误报错了<br>
-大部分 Warning 不会影响最终结果，可以关掉：<a href="https://blog.csdn.net/desiyonan/article/details/80802066" target="_blank" rel="noopener">https://blog.csdn.net/desiyonan/article/details/80802066</a></li>
-</ol>
-<h3 id="阅读"><a class="header-anchor" href="#阅读">¶</a>阅读</h3>
-<ol>
-<li><a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">如何找 JDK 中 native 代码的位置？</a></li>
-<li><a href="http://rednaxelafx.iteye.com/blog/1549577" target="_blank" rel="noopener">OpenJDK 源码阅读导航</a></li>
-</ol>
-<h3 id="编译-openjdk"><a class="header-anchor" href="#编译-openjdk">¶</a>编译 openjdk</h3>
-<ol>
-<li>下载<br>
-代码的下载见 building 文档，使用一个 Mercurial 工具进行源码控制。</li>
-<li>准备工具<br>
-找到这种开放源码的软件，第一步当然是查看 README 了，openjdk 的 README 中告知了 building 文档的位置，相当详细。<br>
-硬件要求<br>
-操作系统要求<br>
-编译器要求，需要 gcc 和 clang，他们的区别见<a href="https://www.zhihu.com/question/20235742" target="_blank" rel="noopener">Clang 比 GCC 好在哪里？</a><br>
-JDK 要求，虽然挺矛盾的，但是一部分模块是用 JDK 写的，所以 Java 编译器也是需要的，一般编译 JDK8 时需要的 JDK 版本是 7 就够了，但是 openjdk 需要 8 才行（不知道为什么），这个 jdk 可以直接使用 apt-get 安装。<br>
-外部库要求，<br>
-其他工具，make、bash、autoconf</li>
-<li>configure<br>
-准备所有配置文件</li>
-<li>make<br>
-编译源码，默认下只会编译一些必要的部分，如果编译成功可以在 openjdk/build 文件夹下找到目标文件，我的成品所在目录是<code>${openjdk}/build/linux-x86_64-normal-server-release/jdk/bin</code>。</li>
-<li>run test<br>
-openjdk 使用了一个叫 jtreg 的测试框架，文档有<a href="http://openjdk.java.net/jtreg/build.html" target="_blank" rel="noopener">这里</a>还有<a href="https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/content/en/intermediate-steps/how_to_use_jtreg_-_java_regression_test_harness.html" target="_blank" rel="noopener">这里</a>，我设置了一个愚蠢的环境变量 JAVA18HOME 然后尝试着去<code>make -C make</code>编译它，但是还是提示缺少什么<code>org.testing</code>，可能还有什么依赖库没装，这个框架可能是给 oracle 的内部员工或者外星人用的吧？</li>
-</ol>
-<h3 id="定位-object-的-native-方法"><a class="header-anchor" href="#定位-object-的-native-方法">¶</a>定位 Object 的 native 方法</h3>
-<ol>
-<li>
-<p>搜索“Object”打开 jdk 下的 Object.c 文件<br>
-看到下面这个方法数组：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static JNINativeMethod methods[] = &#123;</span><br><span class="line">    &#123;&quot;hashCode&quot;,    &quot;()I&quot;,                    (void *)&amp;JVM_IHashCode&#125;,</span><br><span class="line">    &#123;&quot;wait&quot;,        &quot;(J)V&quot;,                   (void *)&amp;JVM_MonitorWait&#125;,</span><br><span class="line">    &#123;&quot;notify&quot;,      &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotify&#125;,</span><br><span class="line">    &#123;&quot;notifyAll&quot;,   &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotifyAll&#125;,</span><br><span class="line">    &#123;&quot;clone&quot;,       &quot;()Ljava/lang/Object;&quot;,   (void *)&amp;JVM_Clone&#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>然后搜索“JVM_MonitorWait”打开 hotspot 下的 jvm.cpp 文件<br>
-里面有下面这条语句：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">JVM_ENTRY(void, JVM_MonitorWait(JNIEnv* env, jobject handle, jlong ms))</span><br><span class="line">  JVMWrapper(&quot;JVM_MonitorWait&quot;);</span><br><span class="line">  Handle obj(THREAD, JNIHandles::resolve_non_null(handle));</span><br><span class="line">  JavaThreadInObjectWaitState jtiows(thread, ms != 0);</span><br><span class="line">  if (JvmtiExport::should_post_monitor_wait()) &#123;</span><br><span class="line">    JvmtiExport::post_monitor_wait((JavaThread *)THREAD, (oop)obj(), ms);</span><br><span class="line"></span><br><span class="line">    // The current thread already owns the monitor and it has not yet</span><br><span class="line">    // been added to the wait queue so the current thread cannot be</span><br><span class="line">    // made the successor. This means that the JVMTI_EVENT_MONITOR_WAIT</span><br><span class="line">    // event handler cannot accidentally consume an unpark() meant for</span><br><span class="line">    // the ParkEvent associated with this ObjectMonitor.</span><br><span class="line">  &#125;</span><br><span class="line">  ObjectSynchronizer::wait(obj, ms, CHECK);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>我们暂时不知道这几个宏到底什么意思，不过核心大概是最后的那个<code>ObjectSynchronizer::wait</code>吧，这个类定义在 C++文件 synchronizer.cpp 中。</p>
-<ol>
-<li>综上所述<br>
-可以看到如果一个类定义了 native 方法，那么基本可以在 jdk 目录下找到该类的定义（<strong>类所在包结构和其在 openjdk 中的定义的路径有什么关联？？？</strong>），至于其实现，从<a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">知乎</a>上可以找到一段说明，我不知道对错：</li>
-</ol>
-<blockquote>
-<p>如果间接调用了 hotspot 的实现（jvm 会以动态库的形式被加载，prims 文件夹里定义了 hotspot 与其他模块的接口及其实现），那么从 hotspot/src/share/vm/prims/jvm.cpp 中可以找到 JVM_Xxx 函数的实现。</p>
-</blockquote>
-<h3 id="为-object-类添加-native-方法-nop"><a class="header-anchor" href="#为-object-类添加-native-方法-nop">¶</a>为 Object 类添加 native 方法 nop()</h3>
-<p>根据<a href="http://www.infoq.com/cn/articles/Introduction-to-HotSpot" target="_blank" rel="noopener">这里</a>的说法，openjdk 有两种方式来定义 native 函数，一种是按一种特别的方式命名函数，这样加载后就可以和 Java 中的 native 方法对上，另一种是使用 registerNatives()的方式，观察 Object.c 文件可以发现，这种方法先定义了一个 JNINativeMethod 类型的静态数组来做 Java 方法和本地函数的对应，然后使用 JNI 方法注册了一个叫 Java_java_lang_Object_registerNatives 的本地方法来实施这种映射。<br>
-当使用第一种方式在 Object.c 中定义一个特殊命名的 nop()函数时，编译不通过，报错显示<code>Incompatible definition of java.lang.Object</code>，我定义的 nop 函数：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_java_lang_Object_nop(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>然后下面是我使用第二种方式定义 nop()函数的过程（虽然也不行）：</p>
-<ol>
-<li>修改 Object.c<br>
-methods 数组中添加一行： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;nop&quot;, &quot;()V&quot;, (void*)&amp;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>这种定义方法参照了<a href="http://blog.csdn.net/bigapple88/article/details/6756204" target="_blank" rel="noopener">这里</a></p>
-<ol>
-<li>修改 Object.java<br>
-其所在目录为<code>${openjdk}/jdk/src/java.base/share/classes/java/lang/Object.java</code>，为其添加一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">*</span><br><span class="line">*/</span><br><span class="line">@HotSpotIntrinsicCandidate</span><br><span class="line">public native void nop();</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>为什么要加注释？为什么不能加 final？</p>
-<ol>
-<li>重编译 make<br>
-虽然只是添加了一个方法，但是几乎所有包下的都要重新编译了，所以编译过程会稍微有点长。</li>
-<li>测试<br>
-使用<code>javap</code>命令反编译可以看到 Object 类中确实已经有了一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javap $&#123;openjdk&#125;/build/linux-x86_64-normal-server-release/jdk/modules/java.base/java/lang/Object.class</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p><strong>但是实际编译时却报错了，错误大概是Object类不兼容？？？</strong></p>
-<ol>
-<li>native 方法的实现机制<br>
-参见 JNI 原理。</li>
-</ol>
-<h2 id="jni"><a class="header-anchor" href="#jni">¶</a>JNI</h2>
-<h3 id="生成-h头文件"><a class="header-anchor" href="#生成-h头文件">¶</a>生成.h头文件</h3>
-<p>使用 javah 命令，在项目的 src 目录下运行，其中-d 指定目标目录，-jni 是默认选项，生成 jni 头文件，可以加-classpath 指定 class 路径，但必须是绝对路径</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javah -d ../jni -jni com.tallate.HelloJNI</span><br></pre></td></tr></table></figure>
-<p>接下来编译.c 文件，-c 可以生成目标文件（未链接），-I 可以指定#include 查找的目录，不然 jni 有些头文件找不到</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot;  HelloJNI.c</span><br></pre></td></tr></table></figure>
-<p><a href="http://xn--4gqva8gy93g2zbv2i9m2c6jv.so" target="_blank" rel="noopener">接下来编译成一个.so</a> 链接库</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc HelloJNI.c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot; -fPIC -shared -o libhello.so</span><br></pre></td></tr></table></figure>
-<p>接下来可以在Java中加载</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 在linux下动态库必须有前缀lib</span><br><span class="line">System.loadLibrary(&quot;hello&quot;);</span><br></pre></td></tr></table></figure>
-<h3 id="调用-native-方法的流程"><a class="header-anchor" href="#调用-native-方法的流程">¶</a>调用 native 方法的流程</h3>
-<ol>
-<li>native 方法编译后多一个 ACC_NATIVE 标志</li>
-<li>loadLibrary 方法调用 JVM 的 load 本地方法</li>
-<li>load 方法最终调用系统调用 dlopen 加载动态链接库</li>
-<li>调用本地方法时，实际上调用了 JVM 中加载的函数，栈帧压入本地方法栈中（HotSpot 中本地方法栈=虚拟机栈）</li>
-</ol>
-<h3 id="修改-object-类-为其添加一个-native-方法-nop"><a class="header-anchor" href="#修改-object-类-为其添加一个-native-方法-nop">¶</a>修改 Object 类，为其添加一个 native 方法 nop()</h3>
-<h2 id="锁-内置锁"><a class="header-anchor" href="#锁-内置锁">¶</a>锁（内置锁）</h2>
-<ol>
-<li>锁的存储结构？</li>
-<li>获取锁的时机？</li>
-<li>释放锁的时机？</li>
-</ol>
-<h2 id="线程"><a class="header-anchor" href="#线程">¶</a>线程</h2>
-<p>和 JDK 的线程操作相关的类有 Object 和 Thread，Object 中包括 wait、notify 和 notifyAll，Thread 中包括 yield、sleep、exit、interrupt、join、start，run 的主要任务是执行用户定义的逻辑，还有一些方法已经被 Deprecated，不必再提</p>
-<h3 id="源码中和线程操作相关的一些数据结构"><a class="header-anchor" href="#源码中和线程操作相关的一些数据结构">¶</a>源码中和线程操作相关的一些数据结构</h3>
-<ol>
-<li>
-<p>ObjectMonitor<br>
-对象监视器，定义和声明在 objectMonitor.*中，主要包含</p>
-</li>
-<li>
-<p>ObjectWaiter</p>
-</li>
-<li>
-<p>ObjectSynchronizer</p>
-</li>
-</ol>
-<h3 id="wait"><a class="header-anchor" href="#wait">¶</a>wait</h3>
-<p>wait 是 native 方法，实现在 synchronizer.cpp 中，ObjectSynchronizer::wait：</p>
-<ol>
-<li>
-<p>通过<code>ObjectSynchronizer::inflate</code>方法找到 object 中的<code>ObjectMonitor monitor</code></p>
-</li>
-<li>
-<p>调用 monitor.wait<br>
-wait 方法比较复杂，但是核心过程只有 3 步：</p>
-<ul>
-<li>ObjectMonitor::AddWaiter(…)将新建立的 ObjectWaiter 对象插入_WaitSet 队列的末尾</li>
-<li>ObjectMonitor::exit(…)释放锁</li>
-<li>Self-&gt;_ParkEvent-&gt;park等待</li>
-</ul>
-</li>
-</ol>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="jni-v2"><a class="header-anchor" href="#jni-v2">¶</a>JNI</h3>
-<ol>
-<li><a href="http://blog.csdn.net/huachao1001/article/category/2862631" target="_blank" rel="noopener">介绍</a></li>
-<li><a href="http://blog.csdn.net/ngvjai/article/details/8520840" target="_blank" rel="noopener">生成.so 方法</a></li>
-<li><a href="http://blog.csdn.net/larrylgq/article/details/7515362" target="_blank" rel="noopener">修改 java.library.path 方法</a></li>
-<li><a href="http://blog.csdn.net/hackooo/article/details/48395765/" target="_blank" rel="noopener">Java JNI 实现原理初探</a></li>
-<li><a href="http://blog.chinaunix.net/uid-22028680-id-3178229.html" target="_blank" rel="noopener">Java Native Interface (JNI) 工作原理</a></li>
-<li><a href="http://www.cnblogs.com/Anker/p/3746802.html" target="_blank" rel="noopener">dlopen</a></li>
-</ol>
-<h3 id="线程-v2"><a class="header-anchor" href="#线程-v2">¶</a>线程</h3>
-<ol>
-<li><a href="https://www.zhihu.com/question/23328075" target="_blank" rel="noopener">java sleep 和 wait 的区别的疑惑?</a></li>
-<li><a href="http://blog.csdn.net/raintungli/article/details/6532784" target="_blank" rel="noopener">java 中的 wait 和 notify 实现的源码分析</a></li>
-<li><a href="http://blog.csdn.net/raintungli/article/details/6553337" target="_blank" rel="noopener">JVM Thread stop 的源码分析</a></li>
 </ol>
 
           
@@ -3210,375 +3568,11 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/edd4cfac.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/edd4cfac.html" itemprop="url">Redis 复制</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
-                2019-09-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  5.6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  20 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h2 id="使用主从复制"><a class="header-anchor" href="#使用主从复制">¶</a>使用主从复制</h2>
-<ol>
-<li>
-<p>运行 Master<br>
-调整 Master 内存中保存的缓冲积压部分（replication backlog），以便执行部分重同步。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 缓冲区越大，可断开连接再重连执行部分重同步的时间越长，缓冲区会在每次连接时分配。</span><br><span class="line">repl-backlog-size 1mb</span><br><span class="line">repl-backlog-ttl 3600</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>运行 Slave<br>
-先在配置文件中设置 Master 和 logfile 路径再运行</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">slaveof 172.16.205.141 6379</span><br><span class="line">logfile &quot;/usr/redis/log/slave.log&quot;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>级联复制（从从复制）<br>
-之前是所有 Slave 连到一个 Master 上，这是一种中心化的办法，对 Master 的负担较大，事实上我们完全可以不全部连到 Master 上，而是 Master-&gt;Slave1-&gt;Slave2 这样传递。<br>
-实现级联复制也较简单，只用修改 Slave2 配置文件的<code>slaveof</code>属性即可。</p>
-</li>
-<li>
-<p>Master write，Slave read<br>
-通过程序（客户端）实现数据的读写分离，即在程序中判断请求是读是写，让 Master 负责处理写请求，Slave 负责处理读请求；通过扩展 Slave 处理更多的并发请求，减轻 Master 端的负载。</p>
-</li>
-</ol>
-<h2 id="同步复制和异步复制"><a class="header-anchor" href="#同步复制和异步复制">¶</a>同步复制和异步复制</h2>
-<p>Redis 使用默认的<strong>异步复制</strong>，其特点是低延迟和高性能，不会影响 Redis 主线程的响应效率。</p>
-<ul>
-<li>Redis 复制在 master 侧是非阻塞的。这意味着 master 在一个或多个 slave 进行初次同步或者是部分重同步时，可以继续处理查询请求。</li>
-<li>复制在 slave 侧大部分也是非阻塞的。当 slave 进行初次同步时，它可以使用旧数据集处理查询请求，假设你在 redis.conf 中配置了让 Redis 这样做的话。否则，你可以配置如果复制流断开， Redis slave 会返回一个 error 给客户端。但是，在初次同步之后，旧数据集必须被删除，同时加载新的数据集。 slave 在这个短暂的时间窗口内（如果数据集很大，会持续较长时间），会阻塞到来的连接请求。自 Redis 4.0 开始，可以配置 Redis 使删除旧数据集的操作在另一个不同的线程中进行，但是，加载新数据集的操作依然需要在主线程中进行并且会阻塞 slave 。</li>
-</ul>
-<blockquote>
-<p>Redis 虽然声称是单线程模型，但是很多功能仍然是采用多线程实现的。</p>
-</blockquote>
-<h2 id="什么时候触发复制"><a class="header-anchor" href="#什么时候触发复制">¶</a>什么时候触发复制</h2>
-<ul>
-<li>当一个 Master 和一个 Slave 实例连接正常时，Master 通过向 Slave 发送命令流来<strong>增量同步</strong>自身数据集的改变情况，包括客户端的写入、key 的过期等；</li>
-<li>Master 与 Slave 之间因为网络问题或宕机，之后 Slave 重新连上 Master 时会尝试进行<strong>部分重同步</strong>，即只获取在断开连接期间内丢失的命令流；<br>
-为此，slave 会记住旧 master 的旧 replication ID 和复制偏移量，因此即使询问旧的 replication ID，其也可以将部分复制缓冲提供给连接的 slave 。</li>
-<li>当无法进行部分重同步时，Slave 会请求进行全量重同步。Master 需要创建所有数据的快照，将之发送给 Slave，之后在数据集发生更改时持续发送命令流到 Slave。</li>
-</ul>
-<h2 id="主从复制执行过程-slave怎么与master建立连接"><a class="header-anchor" href="#主从复制执行过程-slave怎么与master建立连接">¶</a>主从复制执行过程 - Slave怎么与Master建立连接</h2>
-<p><img src="http://47.88.24.11/imgs/Redis/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6.png" alt="主从复制" title="主从复制"><br>
-1、Slave Redis实例上配置<code>slaveof xxx</code>，表示将成为另一台Redis实例的从服务器，启动 Slave时，需要设置当前节点的Master信息，并开始主从同步过程；<br>
-代码位置：<code>replication.c/slaveofCommand()</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 进入连接状态（重点）</span><br><span class="line">server.repl_state = REDIS_REPL_CONNECT;</span><br><span class="line">server.master_repl_offset = 0;</span><br><span class="line">server.repl_down_since = 0;</span><br></pre></td></tr></table></figure>
-<p>2、上边设置复制信息成功后，Redis服务器会有一个cron任务（<code>serverCron</code>）定时判断需要进行同步操作，向Master建立连接，也就是一个握手的过程；<br>
-代码位置：<code>replication.c/replicationCron()</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (server.repl_state == REPL_STATE_CONNECT) &#123;</span><br><span class="line">   if (connectWithMaster() == C_OK) &#123;</span><br><span class="line">       serverLog(LL_NOTICE,&quot;MASTER &lt;-&gt; SLAVE sync started&quot;);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>serverCron是Redis的主事件循环，负责超多的任务，包括过期key处理、rehash、备份RDB文件、AOF重写等等。</p>
-</blockquote>
-<p>3、确定连接后，接下来，cron任务里还有比较关键的一项是确定复制方案，<br>
-会先向 Master 发送一个 PSYNC Command，Master会返回复制方案，也就是下面的全量、增量及不支持这3种情况：<br>
-代码位置：<code>replication.c/syncWithMaster()</code><br>
-<code>replication.c/slaveTryPartialResynchronization()</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 向主服务器发送 PSYNC 命令</span><br><span class="line">reply = sendSynchronousCommand(fd,&quot;PSYNC&quot;,psync_runid,psync_offset,NULL);</span><br><span class="line"></span><br><span class="line">// 全量复制</span><br><span class="line">if (!strncmp(reply,&quot;+FULLRESYNC&quot;,11)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 增量复制</span><br><span class="line">if (!strncmp(reply,&quot;+CONTINUE&quot;,9)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 错误，目前master不支持PSYNC</span><br><span class="line">if (strncmp(reply,&quot;-ERR&quot;,4)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>注意PSYNC命令的两个参数：</p>
-<ul>
-<li>主库的runID：每个Redis实例启动时都会自动生成的一个随机ID，用来唯一标识这个实例。<br>
-当从库和主库第一次复制时，因为不知道主库的runID，因此会将runID设为&quot;?&quot;。</li>
-<li>复制进度offset：设为-1表示第一次复制。</li>
-</ul>
-<h2 id="主从复制执行过程-master如何处理psync命令"><a class="header-anchor" href="#主从复制执行过程-master如何处理psync命令">¶</a>主从复制执行过程 - Master如何处理PSYNC命令</h2>
-<p>1、无论是第一次连接还是重新连接，Master 都会启动一个后台进程（fork），将<strong>数据快照</strong>保存到数据文件中，同时 Master 会记录<strong>所有修改数据的命令</strong>并缓存在数据文件中（持久化），Master会将文件内容加载到内存中，等之后回传给Slave（复制）；<br>
-2、Master端与Slave端完成握手后，需要判断是需要进行全量还是增量复制（也就是上面的返回<code>+FULLRESYNC</code>还是<code>+CONTINUE</code><br>
-处理Slave的<code>PSYNC</code>命令的代码位置：<code>replication.c/syncCommand()</code><br>
-判断是否需要执行全量复制的代码位置：<code>replication.c/masterTryPartialResynchronization()</code><br>
-执行全量复制的条件如下代码所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">// 检查 master id 是否和 runid 一致，只有一致的情况下才考虑执行psync</span><br><span class="line">if (strcasecmp(master_runid, server.runid)) &#123;</span><br><span class="line">    /* Run id &quot;?&quot; is used by slaves that want to force a full resync. */</span><br><span class="line">    // 从服务器提供的 run id 和服务器的 run id 不一致</span><br><span class="line">    if (master_runid[0] != &apos;?&apos;) &#123;</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Partial resynchronization not accepted: &quot;</span><br><span class="line">            &quot;Runid mismatch (Client asked for runid &apos;%s&apos;, my runid is &apos;%s&apos;)&quot;,</span><br><span class="line">            master_runid, server.runid);</span><br><span class="line">    // 从服务器提供的 run id 为 &apos;?&apos; ，表示强制 FULL RESYNC</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Full resync requested by slave.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    // 需要 full resync</span><br><span class="line">    goto need_full_resync;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 判断当前Slave带来的offset在Master的backlog中是否还能找到，找不到则执行全量复制</span><br><span class="line">if (getLongLongFromObjectOrReply(c,c-&gt;argv[2],&amp;psync_offset,NULL) !=</span><br><span class="line">       REDIS_OK) goto need_full_resync;</span><br><span class="line"></span><br><span class="line">// 如果没有backlog</span><br><span class="line">if (!server.repl_backlog ||</span><br><span class="line">    // 或者 psync_offset 小于 server.repl_backlog_off</span><br><span class="line">    // （想要恢复的那部分数据已经被覆盖）</span><br><span class="line">    psync_offset &lt; server.repl_backlog_off ||</span><br><span class="line">    // psync offset 大于 backlog 所保存的数据的偏移量</span><br><span class="line">    psync_offset &gt; (server.repl_backlog_off + server.repl_backlog_histlen))</span><br><span class="line">&#123;</span><br><span class="line">    // 执行 FULL RESYNC</span><br><span class="line">    redisLog(REDIS_NOTICE,</span><br><span class="line">        &quot;Unable to partial resync with the slave for lack of backlog (Slave request was: %lld).&quot;, psync_offset);</span><br><span class="line">    if (psync_offset &gt; server.master_repl_offset) &#123;</span><br><span class="line">        redisLog(REDIS_WARNING,</span><br><span class="line">            &quot;Warning: slave tried to PSYNC with an offset that is greater than the master replication offset.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    goto need_full_resync;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>3、如果是部分复制<br>
-Master会向Slave发送 backlog 中从 offset 到 backlog 尾部之间的数据<br>
-代码：<code>replication.c/addReplyReplicationBacklog()</code><br>
-4、如果是全量复制<br>
-这种情况下，Master并不会直接将RDB文件传给Slave，而是先发给Slave<code>+FULLRESYNC</code>，；<br>
-代码：<code>replication.c/masterTryPartialResynchronization()</code>的末尾<br>
-什么时候Master会将RDB文件传给Slave呢？如果当前已经有可用的RDB文件，则直接将RDB文件传输给Slave；如果当前RDB正在备份过程中，Master会在每次RDB文件备份完毕后执行一次传输任务。<br>
-syncCommand末尾Master判断RDB当前的备份状态，如果是可用的就直接传给Slave：<code>replication.c/syncCommand()</code><br>
-主事件循环中发RDB文件的代码见：<code>replication.c/sendBulkToSlave()</code></p>
-<h2 id="主从复制执行过程-slave如何接收复制数据"><a class="header-anchor" href="#主从复制执行过程-slave如何接收复制数据">¶</a>主从复制执行过程 - Slave如何接收复制数据</h2>
-<p>1、如果是全量复制<br>
-Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayload</code>处理器，用于读取从Master发送过来的RDB文件。<br>
-2、Slave 将数据文件保存到磁盘上，然后再加载到内存中；<br>
-从库接收到RDB文件后，会先清空当前数据库，然后加载RDB文件，这是因为从库在开始和主库同步前可能保存了其他数据，为了避免之前数据的影响，从库需要先把当前数据库清空。<br>
-3、同步过程中主库产生的新数据也要同步给从库<br>
-主库同步数据给从库的过程中，主库不会被阻塞，仍然可以正常接收请求（否则Redis服务不就中断了？），但是这些请求中的写操作并没有记录到刚刚生成的RDB文件中，为了保证主从库的数据一致性，主库会在内存中用专门的<strong>replication buffer（代码中对应</strong>repl_backlog_buffer**）**记录RDB文件生成后收到的所有写操作。<br>
-<code>repl_backlog_buffer</code>是一个环形缓冲区，主库会记录自己写到的位置，而从库则会记录自己已经读到的位置，可以使用<code>repl_backlog_size</code>来配置这个缓冲区的大小，如果配得过小，可能会导致增量复制阶段从库复制进度赶不上主库，进而导致从库重新进行全量复制。<br>
-在Master端定义的offset是<code>master_repl_offset</code>，在Slave端定义的offset是<code>slave_repl_offset</code>，正常情况下这两个偏移量是基本相等的。<br>
-增量同步期间，从库在发送psync的同时，会把自己当前的slave_repl_offset发给主库，主库判断自己的master_repl_offset和slave_repl_offset之间的差距，如果断连了，master_repl_offset可能会超过slave_repl_offset，那么将这超过的部分发给slave就可以恢复同步了。</p>
-<h2 id="主从复制原理"><a class="header-anchor" href="#主从复制原理">¶</a>主从复制原理</h2>
-<p>当用户往 Master 端写入数据时，通过<code>Redis Sync</code>机制将数据文件发送至 Slave，Slave 也会执行相同的操作确保数据一致。</p>
-<ol>
-<li>同一个 Master 可以拥有多个 Slaves。Master 下的 Slave 还可以接受同一架构中其它 Slave 的链接与同步请求，实现数据的<strong>级联复制</strong>，即 Master-&gt;Slave-&gt;Slave 模式；<br>
-<code>repl-diskless-sync-delay</code>参数可以延迟启动数据传输，目的可以在第一个 slave 就绪后，等待更多的 slave 就绪。<br>
-<strong>主从复制最好配置成级联复制，因为这样更容易解决单点问题，避免Master承受过大的复制压力</strong>。</li>
-<li>Master 以<strong>非阻塞</strong>的方式同步数据至 slave，这将意味着 Master 会继续处理一个或多个 slave 的读写请求；</li>
-<li>Slave 端同步数据也可以修改为非阻塞的方式，当 slave 在执行新的同步时，它仍可以用旧的数据信息来提供查询；否则，当 slave 与 master 失去联系时，slave 会返回一个错误给客户端；</li>
-<li>主从复制可以做到<strong>读写分离</strong>，保证了可扩展性，即多个 slave 专门提供只读查询与数据的冗余，Master 端专门提供写操作；</li>
-<li>通过配置禁用 Master 数据持久化机制，将其数据持久化操作交给 Slaves 完成，避免在 Master 中要有独立的进程来完成此操作。</li>
-<li>Redis 主从复制的性能问题，为了主从复制的速度和连接的稳定性，Slave 和 Master 最好在同一个局域网内。</li>
-</ol>
-<p>标识同步进程：</p>
-<ol>
-<li>每个 Master 都有一个<code>Replication ID</code>：这是一个较大的伪随机字符串，标记了一个给定的数据集。</li>
-<li>每个 Master 持有一个偏移量<code>offset</code>，Master 将自己产生的复制流发送给 slave 时，发送多少个字节的数据，自身的偏移量就会增加多少，目的是当有新的操作修改自己的数据集时，它可以以此更新 Slave 的状态。即使没有 Slave 连接到 Master，offset 也会自增，所以基本上每一对 <code>&lt;Replication ID, offset&gt;</code> 都会标识一个 Master 数据集的确切版本。</li>
-<li>Slave 也维护了一个复制偏移量<code>offset</code>，代表从库同步的字节数，从库每收到主节点传来的 N 个字节数据时，从库的 offset 增加 N。<br>
-Master 和 Slave 的<code>offset</code>总是不断增大，这也是判断主从数据是否同步的标志，若主从的 offset 相同则表示数据同步量，不通则表示数据不同步。</li>
-</ol>
-<p>复制积压缓冲区<br>
-主节点(master)响应写命令时，不但会把命名发送给从节点，还会写入复制积压缓冲区，用于复制命令丢失的数据补救。<br>
-Slave 连接中断时主节点仍然可以响应命令，但因复制连接中断命令无法发送给 Slave。之后，当 Slave 重启并触发部分复制时，Master 可以将复制积压缓冲区的内容同步给 Slave，从而提高复制效率；</p>
-<p>部分重同步过程：</p>
-<ol>
-<li>当 Slave 连接到 Master，发送一个<code>PSYNC</code>命令表明自己记录的旧的 Master <code>Replication ID</code>和它们至今为止处理的偏移量<code>offset</code>；</li>
-<li>Master 仅发送 Slave 所需的增量部分的命令流，即上次同步偏移量<code>offset</code>之后执行的写命令；</li>
-<li>但是如果 master 的缓冲区中没有足够的命令积压缓冲记录，或者如果 slave 引用了不再知道的历史记录（replication ID），则会转而进行一个全量重同步：在这种情况下， slave 会得到一个完整的数据集副本，从头开始。</li>
-</ol>
-<p>全量同步（完整重同步）：</p>
-<ol>
-<li>Slave 向 Master 发送<code>PSYNC</code>命令；</li>
-<li>Master 执行<code>BGSAVE</code>命令，开启一个后台进程用于生成一个 RDB 文件；</li>
-<li>同时它开始缓冲所有从客户端接收到的新的写入命令；</li>
-<li>当后台保存完成时， master 将数据集文件传输给 slave， slave 将之保存在磁盘上，然后加载文件到内存；</li>
-<li>再然后 master 会将所有缓冲的写命令发给 slave，这个过程以指令流的形式完成并且和 Redis 协议本身的格式相同。</li>
-</ol>
-<blockquote>
-<p>可以通过<code>telnet</code>连接到 Redis 服务器上然后发送<code>SYNC</code>命令来模拟这个过程，但是因为<code>SYNC</code>功能有限（比如不支持部分重同步），现在的版本用<code>PSYNC</code>作为代替。<br>
-正常情况下，全量同步会先在磁盘上创建一个 RDB 文件，传输时将其加载进内存，然后 Slave 对此进行数据的同步，如果磁盘性能很低，这个过程压力会比较大，<code>Redis 2.8.18</code>之后支持直接传输 RDB 文件，可以使用<code>repl-diskless-sync</code>配置参数配置。</p>
-</blockquote>
-<p>全量同步完成以后，在此后的时间里主从维护着心跳检查来确认对方是否在线，每隔一段时间（默认 10 秒，通过<code>repl-ping-slave-period</code>参数指定）主节点向从节点发送 PING 命令判断从节点是否在线，而从节点每秒 1 次向主节点发送 REPLCONF ACK 命令，命令格式为：<code>REPLCONF ACK {offset}</code>，其中 offset 指的是从节点保存的复制偏移量，作用是：</p>
-<ol>
-<li>向主节点报告自己复制进度，主节点会对比复制偏移量向从节点发送未同步的命令；</li>
-<li>判断主节点是否在线。</li>
-</ol>
-<h2 id="主从库间网络断了怎么办？"><a class="header-anchor" href="#主从库间网络断了怎么办？">¶</a>主从库间网络断了怎么办？</h2>
-<p>Redis2.8之前，如果主从同步过程中出现了网络闪断，那么主从是会重新进行一次全量复制的，开销非常大。<br>
-Redis2.8之后，网络闪断后，主从会采取<strong>增量复制</strong>，将闪断期间的命令发给从库。</p>
-<h2 id="宕机恢复"><a class="header-anchor" href="#宕机恢复">¶</a>宕机恢复</h2>
-<p>因为 slave 顶多只负责处理读请求，slave 挂掉不会造成数据丢失的问题。<br>
-slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能力，并且能在重启后快速恢复：</p>
-<ol>
-<li>恢复正常后重新连接；</li>
-<li>Master 收到 Slave 的连接后，第一次同步时，主节点做一次 bgsave，并同时将后续修改操作记录到内存 buffer；</li>
-<li>Master 将其完整的 rdb 数据文件全量发送给 Slave；</li>
-<li>Slave 接收完成后将 rdb 镜像文件加载到内存，加载完成后，再通知 Master 将期间修改的操作记录同步到 Slave 节点进行重放就完成了同步过程；</li>
-<li>如果 Master 同时收到多个 Slave 发来的同步请求，Master 只会在后台启动一个进程保存数据文件，然后将其发送给所有的 Slave，确保 Slave 正常。</li>
-</ol>
-<p>主从复制无法应对 Master 挂掉的情况，实际上这种方案只能尽量保证数据不会丢失，不能保证服务的高可用性，为此，需要引入 Redis 的 Sentinel 机制。</p>
-<p>客户端可以使用 <code>WAIT</code> 命令来请求同步复制某些特定的数据。但是，WAIT 命令只能确保在其他 Redis 实例中有指定数量的已确认的副本：在故障转移期间，由于不同原因的故障转移或是由于 Redis 持久性的实际配置，故障转移期间确认的写入操作可能仍然会丢失。</p>
-<h2 id="是否可以关闭持久化"><a class="header-anchor" href="#是否可以关闭持久化">¶</a>是否可以关闭持久化</h2>
-<p>作为复制方案中的一环，可以考虑关闭 Master 或 Slave 的持久化功能，但是并不建议关掉它们，因为：</p>
-<ul>
-<li>如果关闭 Master 的持久化：重启（重启功能可以由一些只能运维工具来保证，比如 K8S）的 Master 将从一个空数据集开始，如果一个 Slave 试图与它同步，那么这个 Slave 也会被清空。</li>
-<li>如果关闭 Slave 的持久化：重启的 Slave 需要从 Master 全量同步数据。</li>
-</ul>
-<p>正如前所述，关闭了持久化并配置了自动重启的 Master 是危险的——会导致整个集群的数据全部被清空。<br>
-如果 Sentinel 集群用于需要高可用的场景、且 Master 被关闭掉了持久化功能，也是非常危险的：</p>
-<ul>
-<li>如果重启比较慢，Sentinel 的故障迁移机制重新选主，一个 Slave 会上升为 Master；</li>
-<li>如果重启得足够快，Sentinel 没有探测到故障，此时 Master 数据被清空了，而 Slave 仍从 Master 同步数据，这将引起上边提到的故障模式——数据将丢失。</li>
-</ul>
-<p>因此，如果考虑磁盘性能过慢会导致延迟、关掉了持久化，那么自动重启进程这项应该被禁用。</p>
-<h2 id="只读-slave"><a class="header-anchor" href="#只读-slave">¶</a>只读 Slave</h2>
-<p>Redis2.6 之后，Redis 支持只读模式，可以使用<code>slave-read-only</code>配置来控制这个行为。<br>
-只读模式下的 slave 将会拒绝所有写入命令，因此实践中不可能由于某种出错而将数据写入 slave 。但这并不意味着该特性旨在将一个 slave 实例暴露到 Internet ，或者更广泛地说，将之暴露在存在不可信客户端的网络，因为像 DEBUG 或者 CONFIG 这样的管理员命令仍在启用。但是，在 redis.conf 文件中使用 rename-command 指令可以禁用上述管理员命令以提高只读实例的安全性。</p>
-<h2 id="数据丢失窗口"><a class="header-anchor" href="#数据丢失窗口">¶</a>数据丢失窗口</h2>
-<p>由于 Redis 使用异步复制，无法保证 Slave 是否实际接收到给定的写命令，因此总会有一个<strong>数据丢失窗口</strong>。既然无法避免，那么只能退一步、控制影响范围了，Redis 可以保证：</p>
-<ol>
-<li>Redis slave 每秒钟都会 ping master，确认已处理的复制流的数量。</li>
-<li>Redis master 会记得上一次从每个 slave 都收到 ping 的时间。</li>
-<li>用户可以配置一个最小的 slave 数量，使得它滞后 &lt;= 最大秒数。</li>
-<li>如果至少有 N 个 slave ，并且滞后小于 M 秒，则写入将被接受。如果条件不满足，master 将会回复一个 error 并且写入将不被接受。</li>
-</ol>
-<p>对于给定的写入来说，不能保证一致性，但至少数据丢失的时间窗限制在给定的秒数内。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">min-slaves-to-write &lt;slave 数量&gt;</span><br><span class="line">min-slaves-max-lag &lt;秒数&gt;</span><br></pre></td></tr></table></figure>
-<h2 id="过期的-key"><a class="header-anchor" href="#过期的-key">¶</a>过期的 key</h2>
-<p>由于复制的异步特性，对 key 设置过期时间和写入操作很容易导致 race condition 及导致数据集不一致，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(1) sadd x 1</span><br><span class="line">(2) expire x 100</span><br><span class="line">(3) sadd x 2</span><br></pre></td></tr></table></figure>
-<p>在 Master 上，命令(3)是在过期前执行的，而 Slave 上可能因为延后导致命令(3)执行前 x 就已经过期了，此时 x 是没有过期时间的（ttl x 得到-1 表示不过期），这就导致了数据的不一致。</p>
-<blockquote>
-<p>set 命令不会出现这个问题，因为 set 会将过期时间给覆盖成-1。当然情况比较复杂，也有可能是我没有想到。</p>
-</blockquote>
-<p>为了保证针对过期的 key 的复制能够正确工作，Redis 提供如下保证：</p>
-<ol>
-<li>slave 不会让 key 过期，而是等待 master 让 key 过期。当一个 master 让一个 key 到期（或由于 LRU 算法将之驱逐）时，它会合成一个 DEL 命令并传输到所有的 slave。一旦一个 slave 被提升为一个 master ，它将开始独立地过期 key，而不需要任何旧 master 的帮助。</li>
-<li>但是，由于这是 master 驱动的 key 过期行为，master 无法及时提供 DEL 命令，所以有时候 slave 的内存中仍然可能存在在逻辑上已经过期的 key 。为了处理这个问题，slave 使用它的逻辑时钟以报告只有在不违反数据集的一致性的读取操作（从主机的新命令到达）中才存在 key。用这种方法，slave 避免报告逻辑过期的 key 仍然存在。在实际应用中，使用 slave 程序进行缩放的 HTML 碎片缓存，将避免返回已经比期望的时间更早的数据项。</li>
-<li>在 Lua 脚本执行期间，不执行任何 key 过期操作。当一个 Lua 脚本运行时，从概念上讲，master 中的时间是被冻结的，这样脚本运行的时候，一个给定的键要么存在要么不存在。这可以防止 key 在脚本中间过期，保证将相同的脚本发送到 slave ，从而在二者的数据集中产生相同的效果。</li>
-</ol>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="aof日志更全-为什么主从同步不使用aof而是rdb呢？"><a class="header-anchor" href="#aof日志更全-为什么主从同步不使用aof而是rdb呢？">¶</a>AOF日志更全，为什么主从同步不使用AOF而是RDB呢？</h3>
-<p>因为使用AOF恢复数据库的话是需要将AOF中记录的命令再执行一次的，这个效率远不如直接将RDB中的数据直接加载到内存里。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://www.cnblogs.com/hongmoshui/p/10594639.html" target="_blank" rel="noopener">Redis复制实现原理</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/4/"><i class="fa fa-angle-left"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/6/"><i class="fa fa-angle-right"></i></a>
+    <a class="extend prev" rel="prev" href="/page/4/"><i class="fa fa-angle-left"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><span class="space">&hellip;</span><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/6/"><i class="fa fa-angle-right"></i></a>
   </nav>
 
 
@@ -3624,7 +3618,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">120</span>
+                  <span class="site-state-item-count">122</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -3635,7 +3629,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-count">13</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -3646,7 +3640,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">57</span>
+                  <span class="site-state-item-count">59</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

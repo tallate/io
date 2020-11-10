@@ -89,7 +89,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png">
-<meta property="og:updated_time" content="2020-11-07T09:10:18.132Z">
+<meta property="og:updated_time" content="2020-11-10T06:58:03.964Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis 进程和 IO 模型">
 <meta name="twitter:description" content="¶为什么 Redis 这么快 Redis 采用的是一种单线程工作模型，它能这么快主要归功于下面几个策略：  完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)； 数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的； 采用单线程，避免了不必要的上下文切换和竞争条件，也不存在">
@@ -361,7 +361,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.5k 字
+                  2.7k 字
                 </span>
               
 
@@ -377,7 +377,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  14 分钟
+                  11 分钟
                 </span>
               
             </div>
@@ -433,25 +433,6 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
 根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
 <li>封装不同 IO 模型，为事件处理器提供统一接口</li>
 </ol>
-<h2 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 Key 问题</h2>
-<blockquote>
-<p>也可以叫大 Value 问题。</p>
-</blockquote>
-<p>大 Key 有两种状况：</p>
-<ol>
-<li>Redis 中单个简单的 Key 存储的 value 很大</li>
-<li>hash、set、zset、list 中存储的元素过多（以万为单位）。</li>
-</ol>
-<p>由于 Redis 的单线程模型，读写大 Key 时服务器的耗时可能会比较长、甚至阻塞。</p>
-<p>解决方案一般是能拆则拆，对于单个大 Key 的情况：<br>
-1.1 将大 Key 进行分割，拆成几个小的 key-value，使用 multiGet 获取值。<br>
-这样分拆的意义是将单次操作的压力分摊到多个 Redis 实例上，降低对单个 Redis 的 IO 影响，而且大 Key 拆分之后每次只查询一部分，减小了 IO 阻塞的风险。<br>
-为了均匀分割，可以对 field 进行 hash 并通过质数 N 取余，将余数加到 key 上面。<br>
-1.2 将大 Key 拆分成多个 key-value，并将这些存储在一个 hash 中，每个 field 代表一个具体的属性，使用 hget、hmget 来获取部分的 value，使用 hset、hmset 来更新部分属性</p>
-<p>对于 hash、set、zset、list 中存储的元素过多的情况，可以控制将 field 分散到多个集合内。<br>
-比如以下代码将属于一个大 hash 内的 field 分散到 10000 个拆分后的小 hash 内：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure>
-<p>对于一些需要考虑顺序的场景，比如 lpop、zrange，需要在 hash 函数上做些文章，比如按照时间来拆分。</p>
 <h2 id="redis单线程多路复用io模型实现-事件注册"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件注册">¶</a>Redis单线程多路复用IO模型实现 - 事件注册</h2>
 <p>Redis服务器的初始化过程中包括了对事件处理器的初始化。<br>
 1、服务器启动期间初始化事件处理器<br>
@@ -471,24 +452,6 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
 <li><code>FileEvents</code>：socket文件的IO事件，比如上面的监听连接的事件就是文件事件。</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 事件处理器的主循环</span><br><span class="line"> */</span><br><span class="line">void aeMain(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    eventLoop-&gt;stop = 0;</span><br><span class="line"></span><br><span class="line">    while (!eventLoop-&gt;stop) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果有需要在事件处理前执行的函数，那么运行它</span><br><span class="line">        if (eventLoop-&gt;beforesleep != NULL)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        // 开始处理事件</span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 1、看是否有事件到达了执行时间</span><br><span class="line">// 2、如果有，则执行这些事件</span><br><span class="line">/* Process every pending time event, then every pending file event</span><br><span class="line"> * (that may be registered by time event callbacks just processed).</span><br><span class="line"> *</span><br><span class="line"> * 处理所有已到达的时间事件，以及所有已就绪的文件事件。</span><br><span class="line"> *</span><br><span class="line"> * Without special flags the function sleeps until some file event</span><br><span class="line"> * fires, or when the next time event occurs (if any).</span><br><span class="line"> *</span><br><span class="line"> * 如果不传入特殊 flags 的话，那么函数睡眠直到文件事件就绪，</span><br><span class="line"> * 或者下个时间事件到达（如果有的话）。</span><br><span class="line"> *</span><br><span class="line"> * If flags is 0, the function does nothing and returns.</span><br><span class="line"> * 如果 flags 为 0 ，那么函数不作动作，直接返回。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_ALL_EVENTS set, all the kind of events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_ALL_EVENTS ，所有类型的事件都会被处理。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_FILE_EVENTS set, file events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_FILE_EVENTS ，那么处理文件事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_TIME_EVENTS set, time events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_TIME_EVENTS ，那么处理时间事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_DONT_WAIT set the function returns ASAP until all</span><br><span class="line"> * the events that&apos;s possible to process without to wait are processed.</span><br><span class="line"> * 如果 flags 包含 AE_DONT_WAIT ，</span><br><span class="line"> * 那么函数在处理完所有不许阻塞的事件之后，即刻返回。</span><br><span class="line"> *</span><br><span class="line"> * The function returns the number of events processed. </span><br><span class="line"> * 函数的返回值为已处理事件的数量</span><br><span class="line"> */</span><br><span class="line">int aeProcessEvents(aeEventLoop *eventLoop, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    int processed = 0, numevents;</span><br><span class="line"></span><br><span class="line">    /* Nothing to do? return ASAP */</span><br><span class="line">    if (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) return 0;</span><br><span class="line"></span><br><span class="line">    /* Note that we want call select() even if there are no</span><br><span class="line">     * file events to process as long as we want to process time</span><br><span class="line">     * events, in order to sleep until the next time event is ready</span><br><span class="line">     * to fire.</span><br><span class="line">     */</span><br><span class="line">    if (eventLoop-&gt;maxfd != -1 ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        int j;</span><br><span class="line">        aeTimeEvent *shortest = NULL;</span><br><span class="line">        struct timeval tv, *tvp;</span><br><span class="line"></span><br><span class="line">        // 获取最近的时间事件</span><br><span class="line">        if (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            shortest = aeSearchNearestTimer(eventLoop);</span><br><span class="line">        if (shortest) &#123;</span><br><span class="line">            // 如果时间事件存在的话</span><br><span class="line">            // 那么根据最近可执行时间事件和现在时间的时间差来决定文件事件的阻塞时间</span><br><span class="line">            long now_sec, now_ms;</span><br><span class="line"></span><br><span class="line">            /* Calculate the time missing for the nearest</span><br><span class="line">             * timer to fire. */</span><br><span class="line">            // 计算距今最近的时间事件还要多久才能达到</span><br><span class="line">            // 并将该时间距保存在 tv 结构中</span><br><span class="line">            aeGetTime(&amp;now_sec, &amp;now_ms);</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">            tvp-&gt;tv_sec = shortest-&gt;when_sec - now_sec;</span><br><span class="line">            if (shortest-&gt;when_ms &lt; now_ms) &#123;</span><br><span class="line">                tvp-&gt;tv_usec = ((shortest-&gt;when_ms+1000) - now_ms)*1000;</span><br><span class="line">                tvp-&gt;tv_sec --;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                tvp-&gt;tv_usec = (shortest-&gt;when_ms - now_ms)*1000;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            // 时间差小于 0 ，说明事件已经可以执行了，将秒和毫秒设为 0 （不阻塞）</span><br><span class="line">            if (tvp-&gt;tv_sec &lt; 0) tvp-&gt;tv_sec = 0;</span><br><span class="line">            if (tvp-&gt;tv_usec &lt; 0) tvp-&gt;tv_usec = 0;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            </span><br><span class="line">            // 执行到这一步，说明没有时间事件</span><br><span class="line">            // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span><br><span class="line"></span><br><span class="line">            /* If we have to check for events but need to return</span><br><span class="line">             * ASAP because of AE_DONT_WAIT we need to set the timeout</span><br><span class="line">             * to zero */</span><br><span class="line">            if (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                // 设置文件事件不阻塞</span><br><span class="line">                tv.tv_sec = tv.tv_usec = 0;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                /* Otherwise we can block */</span><br><span class="line">                // 文件事件可以阻塞直到有事件到达为止</span><br><span class="line">                tvp = NULL; /* wait forever */</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 处理文件事件，阻塞时间由 tvp 决定</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line">        for (j = 0; j &lt; numevents; j++) &#123;</span><br><span class="line">            // 从已就绪数组中获取事件</span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line"></span><br><span class="line">            int mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            int fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            int rfired = 0;</span><br><span class="line"></span><br><span class="line">           /* note the fe-&gt;mask &amp; mask &amp; ... code: maybe an already processed</span><br><span class="line">             * event removed an element that fired and we still didn&apos;t</span><br><span class="line">             * processed, so we check if the event is still valid. */</span><br><span class="line">            // 读事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                // rfired 确保读/写事件只能执行其中一个</span><br><span class="line">                rfired = 1;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line">            // 写事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                if (!rfired || fe-&gt;wfileProc != fe-&gt;rfileProc)</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Check time events */</span><br><span class="line">    // 执行时间事件</span><br><span class="line">    if (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line"></span><br><span class="line">    return processed; /* return the number of processed file/time events */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="如果redis变慢-可能是什么导致的？"><a class="header-anchor" href="#如果redis变慢-可能是什么导致的？">¶</a>如果Redis变慢，可能是什么导致的？</h3>
-<ol>
-<li>Redis是单线程模型，如果前面有请求执行比较慢，后面的都要排队等着；<br>
-耗时的操作包括：
-<ul>
-<li>操作bigkey：写入一个bigkey在分配内存时需要消耗更多的时间，同样，删除bigkey释放内存同样会产生耗时；</li>
-<li>使用复杂度过高的命令：例如SORT/SUNION/ZUNIONSTORE，或者O(N)命令，但是N很大，例如lrange key 0 -1一次查询全量数据；</li>
-<li>大量key集中过期：Redis的过期机制也是在主线程中执行的，大量key集中过期会导致处理一个请求时，耗时都在删除过期key，耗时变长；</li>
-<li>淘汰策略：淘汰策略也是在主线程执行的，当内存超过Redis内存上限后，每次写入都需要淘汰一些key，也会造成耗时变长；</li>
-<li>AOF刷盘开启always机制：每次写入都需要把这个操作刷到磁盘，写磁盘的速度远比写内存慢，会拖慢Redis的性能；</li>
-<li>主从全量同步生成RDB：虽然采用fork子进程生成数据快照，但fork这一瞬间也是会阻塞整个线程的，实例越大，阻塞时间越久；<br>
-对此，需要业务人员主动规避上述可能导致超时的情况；</li>
-</ul>
-</li>
-<li>并发非常大，单线程读写客户端IO数据存在性能瓶颈，虽然采用IO多路复用机制，但是读写客户端数据依旧是同步IO，只能单线程依次读取客户端的数据，无法利用到CPU多核。<br>
-对此，Redis6.0推出了多线程，可以在高并发场景下利用CPU多核多线程读写客户端数据。</li>
-</ol>
 
       
     </div>
@@ -529,8 +492,8 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/d368c702.html" rel="prev" title="Redis高可用方案Sentinel">
-                Redis高可用方案Sentinel <i class="fa fa-chevron-right"></i>
+              <a href="/df2941e1.html" rel="prev" title="Redis 概述">
+                Redis 概述 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -613,7 +576,7 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">120</span>
+                  <span class="site-state-item-count">122</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -624,7 +587,7 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-count">13</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -635,7 +598,7 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">57</span>
+                  <span class="site-state-item-count">59</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -670,7 +633,7 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么-redis-这么快"><span class="nav-number">1.</span> <span class="nav-text">¶为什么 Redis 这么快</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一些常见的进程模型"><span class="nav-number">2.</span> <span class="nav-text">¶一些常见的进程模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么是-nio"><span class="nav-number">3.</span> <span class="nav-text">¶为什么是 NIO</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#大-key-问题"><span class="nav-number">4.</span> <span class="nav-text">¶大 Key 问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis单线程多路复用io模型实现-事件注册"><span class="nav-number">5.</span> <span class="nav-text">¶Redis单线程多路复用IO模型实现 - 事件注册</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis单线程多路复用io模型实现-事件循环-处理"><span class="nav-number">6.</span> <span class="nav-text">¶Redis单线程多路复用IO模型实现 - 事件循环（处理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">7.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如果redis变慢-可能是什么导致的？"><span class="nav-number">7.1.</span> <span class="nav-text">¶如果Redis变慢，可能是什么导致的？</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么-redis-这么快"><span class="nav-number">1.</span> <span class="nav-text">¶为什么 Redis 这么快</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一些常见的进程模型"><span class="nav-number">2.</span> <span class="nav-text">¶一些常见的进程模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么是-nio"><span class="nav-number">3.</span> <span class="nav-text">¶为什么是 NIO</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis单线程多路复用io模型实现-事件注册"><span class="nav-number">4.</span> <span class="nav-text">¶Redis单线程多路复用IO模型实现 - 事件注册</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis单线程多路复用io模型实现-事件循环-处理"><span class="nav-number">5.</span> <span class="nav-text">¶Redis单线程多路复用IO模型实现 - 事件循环（处理）</span></a></li></ol></div>
             
 
           </div>

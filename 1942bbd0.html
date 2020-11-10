@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="缓存系统,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
+<meta name="keywords" content="缓存系统">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis事务和Lua">
+<meta property="og:url" content="https://tallate.github.io/1942bbd0.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png">
+<meta property="og:updated_time" content="2020-11-10T08:45:19.737Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis事务和Lua">
+<meta name="twitter:description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/1942bbd0.html">
+
+
+
+
+
+
+
+  <title>Redis事务和Lua | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1942bbd0.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis事务和Lua</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-11-09T22:42:14+08:00">
+                2020-11-09
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">Redis</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  4.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  16 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="缓存系统如何工作"><a class="header-anchor" href="#缓存系统如何工作">¶</a>缓存系统如何工作</h2>
+<h3 id="缓存的两个特征"><a class="header-anchor" href="#缓存的两个特征">¶</a>缓存的两个特征</h3>
+<ol>
+<li>在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。</li>
+<li>缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。</li>
+</ol>
+<h3 id="redis作为旁路缓存"><a class="header-anchor" href="#redis作为旁路缓存">¶</a>Redis作为旁路缓存</h3>
+<p>作为缓存，我们在访问数据时可能会：</p>
+<ul>
+<li>命中：直接将缓存中的数据返回；</li>
+<li>miss：缓存缺失，回源到MySQL读取数据，加载到缓存中；</li>
+</ul>
+<p>这种情况下，Redis就作为旁路缓存使用，读取缓存、读取数据库和更新缓存的操作都需要在应用程序中来完成。</p>
+<h2 id="缓存满了怎么办？"><a class="header-anchor" href="#缓存满了怎么办？">¶</a>缓存满了怎么办？</h2>
+<h3 id="缓存淘汰-缓存失效策略和主键失效机制"><a class="header-anchor" href="#缓存淘汰-缓存失效策略和主键失效机制">¶</a>缓存淘汰（缓存失效策略和主键失效机制）</h3>
+<p>作为缓存系统都要定期清理无效数据，就需要一个主键失效和淘汰策略，比如 Redis 只能存 5G 数据，可是你写了 10G，那多出来的 5G 数据怎么删？你的数据已经设置了过期时间，但是时间到了，内存占用率还是比较高？这就需要深入到 Redis 的主键失效和淘汰策略中去了。</p>
+<h4 id="key-的过期时间控制"><a class="header-anchor" href="#key-的过期时间控制">¶</a>key 的过期时间控制</h4>
+<p>在 Redis 当中，有生存期的 key 被称为 volatile。在创建缓存时，要为给定的 key 设置生存期，当 key 过期的时候（生存期为 0），它可能会被删除。</p>
+<ol>
+<li>影响生存时间的一些操作<br>
+生存时间可以通过使用 DEL 命令来删除整个 key 来移除，或者被 SET 和 GETSET 命令覆盖原来的数据，也就是说，修改 key 对应的 value 和使用另外相同的 key 和 value 来覆盖以后，当前数据的生存时间不同。<br>
+比如说，对一个 key 执行 INCR 命令，对一个列表进行 LPUSH 命令，或者对一个哈希表执行 HSET 命令，这类操作都不会修改 key 本身的生存时间。另一方面，如果使用 RENAME 对一个 key 进行改名，那么改名后的 key 的生存时间和改名前一样。<br>
+RENAME 命令的另一种可能是，尝试将一个带生存时间的 key 改名成另一个带生存时间的 another_key ，这时旧的 another_key (以及它的生存时间)会被删除，然后旧的 key 会改名为 another_key ，因此，新的 another_key 的生存时间也和原本的 key 一样。使用 PERSIST 命令可以在不删除 key 的情况下，移除 key 的生存时间，让 key 重新成为一个 persistent key 。</li>
+<li>如何更新生存时间<br>
+可以对一个已经带有生存时间的 key 执行 EXPIRE 命令，新指定的生存时间会取代旧的生存时间。过期时间的精度已经被控制在 1ms 之内，主键失效的时间复杂度是 O（1），<br>
+EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间。设置成功返回 1；当 key 不存在或者不能为 key 设置生存时间时，返回 0 。</li>
+<li>最大缓存配置<br>
+在 redis 中，允许用户设置最大使用内存大小 <code>server.maxmemory</code><br>
+默认为 0，没有指定最大缓存，如果有新的数据添加，超过最大内存，则会使 redis 崩溃，所以一定要设置。redis 内存数据集大小上升到一定大小的时候，就会实行数据淘汰策略。</li>
+</ol>
+<h4 id="key-的删除策略"><a class="header-anchor" href="#key-的删除策略">¶</a>key 的删除策略</h4>
+<p>redis 采用的是定期删除+惰性删除策略。</p>
+<ol>
+<li>为什么不用定时删除策略?<br>
+定时删除,用一个定时器来负责监视 key,过期则自动删除。虽然内存及时释放，但是十分消耗 CPU 资源。在大并发请求下，CPU 要将时间应用在处理请求，而不是删除 key,因此没有采用这一策略.</li>
+<li>定期删除+惰性删除是如何工作的呢?<br>
+定期删除，redis 默认每个 100ms 检查，是否有过期的 key,有过期 key 则删除。需要说明的是，redis 不是每个 100ms 将所有的 key 检查一次，而是随机抽取进行检查(如果每隔 100ms,全部 key 进行检查，redis 岂不是卡死)。因此，如果只采用定期删除策略，会导致很多 key 到时间没有删除。<br>
+于是，惰性删除派上用场。也就是说在你获取某个 key 的时候，redis 会检查一下，这个 key 如果设置了过期时间那么是否过期了？如果过期了此时就会删除。</li>
+<li>采用定期删除+惰性删除就没其他问题了么?<br>
+不是的，如果定期删除没删除 key。然后你也没即时去请求 key，也就是说惰性删除也没生效。这样，redis 的内存会越来越高。那么就应该采用内存淘汰机制。</li>
+</ol>
+<h4 id="redis-的数据淘汰策略"><a class="header-anchor" href="#redis-的数据淘汰策略">¶</a>Redis 的数据淘汰策略</h4>
+<p>在 redis.conf 中有一行配置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># maxmemory-policy volatile-lru</span><br></pre></td></tr></table></figure>
+<p>redis 提供 6种数据淘汰策略：</p>
+<ol>
+<li>no-enviction（驱逐）：禁止驱逐数据，当内存不足以容纳新写入数据时，新写入操作会报错（应该没人用）</li>
+<li>volatile-lru：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰（这种情况一般是把 redis 既当缓存，又做持久化存储的时候才用。不推荐）</li>
+<li>volatile-ttl：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰（不推荐）</li>
+<li>volatile-random：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰（不推荐）</li>
+<li>allkeys-lru：当内存不足以容纳新写入数据时，从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰（推荐）</li>
+<li>allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰</li>
+</ol>
+<p>注意这里的 6 种机制：</p>
+<ul>
+<li>volatile 和 allkeys 规定了是对已设置过期时间的数据集淘汰数据还是从全部数据集淘汰数据；</li>
+<li>lru、ttl 以及 random 是三种不同的淘汰策略，ttl 和 random 比较容易理解、实现也会比较简单，lru 会对 key 按失效时间排序，然后取最先失效的 key 进行淘汰。</li>
+<li>如果没有设置 expire 的 key, 不满足先决条件(prerequisites); 那么 volatile-lru, volatile-random 和 volatile-ttl 策略的行为, 和 noeviction(不删除) 基本上一致。</li>
+</ul>
+<p><strong>使用策略规则</strong></p>
+<ol>
+<li>如果数据呈现幂律分布，也就是一部分数据访问频率高，一部分数据访问频率低，则使用 allkeys-lru</li>
+<li>如果数据呈现平等分布，也就是所有的数据访问频率都相同，则使用 allkeys-random</li>
+</ol>
+<h4 id="自定义缓存淘汰策略"><a class="header-anchor" href="#自定义缓存淘汰策略">¶</a>自定义缓存淘汰策略</h4>
+<p>除了缓存服务器自带的缓存失效策略之外（Redis 默认有 6 种策略可选），我们还可以根据具体的业务需求自定义缓存淘汰策略，常见的策略有两种：</p>
+<ol>
+<li>定时去清除过期的缓存；</li>
+<li>当有用户请求过来时，再判断这个请求所用到的缓存是否过期，过期的话就去底层系统得到新数据并更新缓存；</li>
+</ol>
+<p>两种策略各有优劣，第一种的缺点是维护大量缓存的 key 是比较麻烦的，第二种的缺点是每次用户请求过来都要判断缓存失效，逻辑相对比较复杂。需要根据应用场景的特点来权衡选择。</p>
+<h4 id="缓存淘汰的实现"><a class="header-anchor" href="#缓存淘汰的实现">¶</a>缓存淘汰的实现</h4>
+<ol>
+<li>设置过期时间<br>
+过期时间到了后，Redis 会在读的时候判断是否过期并清除，或者由一个定时任务执行清除操作。</li>
+<li>超过 maxmemory 回收<br>
+可以设置淘汰机制，比如 LRU、LFU。</li>
+</ol>
+<p>LRU 算法的一种简单实现<br>
+简单版本的 LRU 算法分两个部分：</p>
+<ol>
+<li>一个链表记录 key 的最终访问次序，比如最新访问的在链表头部，最久没访问的在链表末尾，LRU 淘汰机制就是删除链表末尾的节点；</li>
+<li>一个散列表记录某个 key 是否存在，并可以找到其在链表中的位置；</li>
+</ol>
+<p>Redis 中的 LRU<br>
+<img src="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"><br>
+代码位置：evict.c/freeMemoryIfNeeded<br>
+Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU 链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
+<ol>
+<li>每次从缓存对象集合中随机取出一部分样本（20个key），进行下面的过期检测；</li>
+<li>按 LRU 算法排序；</li>
+<li>取 idle 值（评分）最小的淘汰。</li>
+<li>如果有多于25%的key是过期了的，则重复步骤1。</li>
+</ol>
+<h2 id="缓存系统中存在的问题"><a class="header-anchor" href="#缓存系统中存在的问题">¶</a>缓存系统中存在的问题</h2>
+<h3 id="缓存穿透"><a class="header-anchor" href="#缓存穿透">¶</a>缓存穿透</h3>
+<p>缓存穿透即即黑客故意去请求缓存中不存在的数据，导致所有的请求都怼到数据库上，从而数据库连接异常。这也是经常提的缓存命中率问题。<br>
+应付大规模缓存穿透的方案如下：</p>
+<ol>
+<li>
+<p>利用互斥锁，缓存失效的时候，先去获得锁，得到锁了，再去请求数据库。没得到锁，则休眠一段时间重试</p>
+</li>
+<li>
+<p>采用异步更新策略，无论 key 是否取到值，都直接返回。value 值中维护一个缓存失效时间，缓存如果过期，异步起一个线程去读数据库，更新缓存。需要做<strong>缓存预热</strong>(项目启动前，先加载缓存)操作。</p>
+</li>
+<li>
+<p>提供一个能迅速判断请求是否有效的拦截机制，比如，利用<strong>布隆过滤器</strong>，内部维护一系列合法有效的 key，将这些数据 hash 到一个足够大的 bitmap 中。迅速判断出，请求所携带的 Key 是否合法有效。如果不合法，则直接返回。</p>
+</li>
+<li>
+<p>如果一个查询返回的数据为空（不管是数据不存在，还是系统故障），我们仍然把这个空结果进行缓存，但它的过期时间会很短，最长不超过 5 分钟，通过这个直接设置的默认值存放到缓存，这样第二次到缓存中获取就有值了，而不会继续访问数据库，这种办法最简单粗暴。</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">public Object queryProduct() &#123;</span><br><span class="line">    int cacheTime = 30;</span><br><span class="line">    String cacheKey = &quot;product&quot;;</span><br><span class="line">    </span><br><span class="line">    String cacheValue = getFromRedis(cacheKey);</span><br><span class="line">    if (cacheValue != null) &#123;</span><br><span class="line">        return cacheValue;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 击穿到db</span><br><span class="line">        cacheValue = getFromDB();</span><br><span class="line">        if (cacheValue == null) &#123;</span><br><span class="line">            // 如果发现为空，则缓存个默认值</span><br><span class="line">            cacheValue = &quot;&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">        putToRedis(cacheKey, cacheValue, cacheTime);</span><br><span class="line">        return cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>把空结果也给缓存起来，这样下次同样的请求就可以直接返回空了，即可以避免当查询的值为空时引起的缓存穿透。同时也可以单独设置一个缓存区域存储空值，对要查询的key进行进行预先校验，然后再放行给后面的正常缓存处理逻辑。</p>
+</li>
+</ol>
+<h3 id="缓存雪崩"><a class="header-anchor" href="#缓存雪崩">¶</a>缓存雪崩</h3>
+<p>缓存雪崩即缓存同一时间大面积的失效（例如：我们设置缓存时采用了相同的过期时间，在同一时刻出现大面积的缓存过期），这个时候又来了一波请求，结果请求都怼到数据库上，而对数据库 CPU 和内存造成巨大压力，从而导致数据库连接异常，严重的会造成数据库宕机，从而形成一系列连锁反应，造成整个系统崩溃。<br>
+缓存雪崩的解决方案如下：</p>
+<ol>
+<li>
+<p>使用互斥锁，但是该方案吞吐量明显下降了，适用于并发量不是特别多的情况下。具体地来说，使用最多的方案是加锁排队，伪代码如下：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">public Object queryProduct() &#123;</span><br><span class="line">    int cacheTime = 30;</span><br><span class="line">    String cacheKey = &quot;product&quot;;</span><br><span class="line">    String lockKey = cacheKey;</span><br><span class="line">    </span><br><span class="line">    String cacheValue = getFromRedis(cacheKey);</span><br><span class="line">    if (cacheValue != null) &#123;</span><br><span class="line">        return cacheValue;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        synchronized (lockKey) &#123;</span><br><span class="line">            cacheValue = getFromRedis(cacheKey);</span><br><span class="line">            if (cacheValue != null) &#123;</span><br><span class="line">                return cacheValue;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                cacheValue = getFromDB();</span><br><span class="line">                putToRedis(cacheKey, cacheValue, cacheTime);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>加锁排队只是为了减轻数据库的压力，并没有提高系统吞吐量。假设在高并发下，缓存重建期间key是锁着的，这时过来1000个请求、999个都在阻塞，同样会导致用户等待超时，属于治标不治本的方案，而且还需要解决分布式锁的问题。</p>
+</li>
+<li>
+<p>设置过期标志更新缓存。给每一个缓存数据增加相应的缓存标记，记录缓存是否失效，如果缓存标记失效，则更新数据缓存，实现伪代码如下所示：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">public Object queryProduct() &#123;</span><br><span class="line">    int cacheTime = 30;</span><br><span class="line">    String cacheKey = &quot;product&quot;;</span><br><span class="line">    // 缓存标记</span><br><span class="line">    String signKey = cacheKey + &quot;_sign&quot;;</span><br><span class="line"></span><br><span class="line">    String signValue = getFromRedis(signKey);</span><br><span class="line">    String cacheValue = getFromRedis(cacheKey);</span><br><span class="line">    if (signValue != null) &#123;</span><br><span class="line">        return cacheValue;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        putToRedis(signKey, &quot;1&quot;, cacheTime);</span><br><span class="line">        threadPool.submit(() -&gt; &#123;</span><br><span class="line">            cacheValue = getFromDB();</span><br><span class="line">            putToRedis(cacheKey, cacheValue, cacheTime * 2);</span><br><span class="line">        &#125;);</span><br><span class="line">        return cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>缓存标记记录缓存数据是否过期，如果过期会触发通知另外的线程在后台去更新实际 key 的缓存。<br>
+缓存数据的过期时间比缓存标记的时间延长 1 倍，例如：标记缓存时间 30 分钟，数据缓存 60 分钟，这样，当缓存标记 key 过期后，实际缓存还能把旧数据返回给调用端，直到另外的线程在后台更新完成后，才会返回新缓存。</p>
+</li>
+<li>
+<p>给缓存的失效时间，加上一个随机值，避免集体失效。</p>
+</li>
+<li>
+<p>双缓存。我们有两个缓存，缓存 A 和缓存 B。缓存 A 的失效时间为 20 分钟，缓存 B 不设失效时间。自己做缓存预热操作。然后细分以下几个小点：</p>
+<ol>
+<li>从缓存 A 读数据库，有则直接返回</li>
+<li>A 没有数据，直接从 B 读数据，直接返回，并且异步启动一个更新线程。</li>
+<li>更新线程同时更新缓存 A 和缓存 B。</li>
+</ol>
+</li>
+</ol>
+<h3 id="缓存预热"><a class="header-anchor" href="#缓存预热">¶</a>缓存预热</h3>
+<p>缓存预热就是系统上线后，提前将相关的缓存数据直接加载到缓存系统，避免在用户请求的时候，先查询数据库，然后再将数据缓存的问题，用户可以直接查询事先被预热的缓存数据。常见的缓存预热方案包括：</p>
+<ol>
+<li>直接写个缓存刷新页面，上线时手工操作下；</li>
+<li>数据量不大，可以在项目启动的时候自动进行加载；</li>
+<li>定时刷新缓存。</li>
+</ol>
+<h3 id="redis-和数据库双写一致性问题"><a class="header-anchor" href="#redis-和数据库双写一致性问题">¶</a>Redis 和数据库双写一致性问题</h3>
+<p>一致性问题是分布式常见问题，讨论比较多的是最终一致性和强一致性。数据库和缓存双写，就必然会存在不一致的问题。<br>
+在回答这个问题前，必须先强调一个前提，就是<strong>如果对数据有强一致性要求，不能放缓存</strong>。我们所做的一切，只能保证最终一致性，从根本上来说，只是降低不一致发生的概率，无法完全避免，因此，我们说有强一致性要求的数据，不能放缓存。</p>
+<ul>
+<li>首先，采取正确更新策略，先更新数据库，再删缓存。</li>
+<li>其次，因为可能存在删除缓存失败的问题，提供一个补偿措施即可，例如利用<strong>消息队列</strong>。</li>
+</ul>
+<p>具体的设计方案和优缺点可以参考：<a href="https://www.cnblogs.com/rjzheng/p/9041659.html" target="_blank" rel="noopener">【原创】分布式之数据库和缓存双写一致性方案解析</a></p>
+<h3 id="如何解决-redis-的并发竞争-key-问题"><a class="header-anchor" href="#如何解决-redis-的并发竞争-key-问题">¶</a>如何解决 redis 的并发竞争 key 问题</h3>
+<p>这个问题大致就是，同时有多个子系统去 set 一个 key。这个时候要注意什么呢？大家思考过么。百度上的答案基本都是推荐用 redis 事务机制，但这里<strong>不推荐使用 redis 的事务机制</strong>。因为我们的生产环境，基本都是 redis 集群环境，做了数据分片操作，你一个事务中有涉及到多个 key 操作的时候，这多个 key 不一定都存储在同一个 redis-server 上。因此，<strong>Redis 的事务机制，十分鸡肋</strong>。</p>
+<ol>
+<li>如果对这个 key 操作，<strong>不要求顺序</strong><br>
+这种情况下，准备一个分布式锁，大家去抢锁，抢到锁就做 set 操作即可，比较简单。</li>
+<li>如果对这个 key 操作，<strong>要求顺序</strong><br>
+假设有一个 key1,系统 A 需要将 key1 设置为 valueA,系统 B 需要将 key1 设置为 valueB,系统 C 需要将 key1 设置为 valueC.<br>
+期望按照 key1 的 value 值按照 valueA–&gt;valueB–&gt;valueC 的顺序变化。这种时候我们在数据写入数据库的时候，需要保存一个时间戳。假设时间戳如下<br>
+系统 A key 1 {valueA 3:00}<br>
+系统 B key 1 {valueB 3:05}<br>
+系统 C key 1 {valueC 3:10}<br>
+那么，假设这会系统 B 先抢到锁，将 key1 设置为{valueB 3:05}。接下来系统 A 抢到锁，发现自己的 valueA 的时间戳早于缓存中的时间戳，那就不做 set 操作了。以此类推。<br>
+其他方法，比如利用队列，将 set 方法变成串行访问也可以。</li>
+</ol>
+<h3 id="缓存降级"><a class="header-anchor" href="#缓存降级">¶</a>缓存降级</h3>
+<p>当访问量剧增、服务出现问题（如响应时间慢或不响应）或非核心服务影响到核心流程的性能时，仍然需要保证服务还是可用的，即使是有损服务。系统可以根据一些关键数据进行自动降级，也可以配置开关实现人工降级。<br>
+降级的最终目的是保证核心服务可用，即使是有损的。而且有些服务是无法降级的（如加入购物车、结算）。<br>
+在进行降级之前要对系统进行梳理，看看哪些服务是必须誓死保护的、哪些是可降级的。比如可以参考日志级别设置预案：</p>
+<ol>
+<li>一般：比如有些服务偶尔因为网络抖动或者服务正在上线而超时，可以自动降级；</li>
+<li>警告：有些服务在一段时间内成功率有波动（如在 95~100%之间），可以自动降级或人工降级，并发送告警；</li>
+<li>错误：比如可用率低于 90%，或者数据库连接池被打爆了，或者访问量突然猛增到系统能承受的最大阀值，此时可以根据情况自动降级或者人工降级；</li>
+<li>严重错误：比如因为特殊原因数据错误了，此时需要紧急人工降级。</li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/缓存系统/" rel="tag"># 缓存系统</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/b4105807.html" rel="next" title="《设计数据密集型应用》">
+                <i class="fa fa-chevron-left"></i> 《设计数据密集型应用》
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/abe4b1f3.html" rel="prev" title="Redis 原理总结">
+                Redis 原理总结 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存系统如何工作"><span class="nav-number">1.</span> <span class="nav-text">¶缓存系统如何工作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存的两个特征"><span class="nav-number">1.1.</span> <span class="nav-text">¶缓存的两个特征</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis作为旁路缓存"><span class="nav-number">1.2.</span> <span class="nav-text">¶Redis作为旁路缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存满了怎么办？"><span class="nav-number">2.</span> <span class="nav-text">¶缓存满了怎么办？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存淘汰-缓存失效策略和主键失效机制"><span class="nav-number">2.1.</span> <span class="nav-text">¶缓存淘汰（缓存失效策略和主键失效机制）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的过期时间控制"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶key 的过期时间控制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的删除策略"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶key 的删除策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#redis-的数据淘汰策略"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶Redis 的数据淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#自定义缓存淘汰策略"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶自定义缓存淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存淘汰的实现"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶缓存淘汰的实现</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存系统中存在的问题"><span class="nav-number">3.</span> <span class="nav-text">¶缓存系统中存在的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">3.1.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">3.2.</span> <span class="nav-text">¶缓存雪崩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存预热"><span class="nav-number">3.3.</span> <span class="nav-text">¶缓存预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-和数据库双写一致性问题"><span class="nav-number">3.4.</span> <span class="nav-text">¶Redis 和数据库双写一致性问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决-redis-的并发竞争-key-问题"><span class="nav-number">3.5.</span> <span class="nav-text">¶如何解决 redis 的并发竞争 key 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存降级"><span class="nav-number">3.6.</span> <span class="nav-text">¶缓存降级</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>
