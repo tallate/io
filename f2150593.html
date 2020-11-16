@@ -92,7 +92,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/Netty/ByteBuf%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Netty/%E7%B2%98%E5%8C%85%E5%92%8C%E5%8D%8A%E5%8C%85%E9%97%AE%E9%A2%98.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Netty/pipeline%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F.png">
-<meta property="og:updated_time" content="2020-10-12T05:07:07.728Z">
+<meta property="og:updated_time" content="2020-11-10T11:52:08.670Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Netty 原理总结">
 <meta name="twitter:description" content="为什么使用 Netty  实现协议的局限性 今天，我们使用通用的应用程序或者类库来实现互相通讯，比如，我们经常使用一个 HTTP 客户端库来从 web 服务器上获取信息，或者通过 web 服务来执行一个远程的调用。 然而，有时候一个通用的协议或他的实现并没有很好的满足需求。比如我们无法使用一个通用的 HTTP 服务器来处理大文件、电子邮件以及近实时消息，比如金融信息和多人游戏数据。我们需要一个高">
@@ -328,8 +328,8 @@
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
+                  <a href="/categories/Netty/" itemprop="url" rel="index">
+                    <span itemprop="name">Netty</span>
                   </a>
                 </span>
 
@@ -720,7 +720,7 @@ TODO: 什么时候刷新buffer队列？</li>
 <h1>自定义数据处理逻辑</h1>
 <h2 id="基于拦截链模式的事件模型-pipeline"><a class="header-anchor" href="#基于拦截链模式的事件模型-pipeline">¶</a>基于拦截链模式的事件模型 - pipeline</h2>
 <p>一个定义良好并具有扩展能力的事件模型是事件驱动开发的必要条件。Netty 具有定义良好的 I/O 事件模型。由于严格的层次结构区分了不同的事件类型，因此 Netty 也允许你在不破坏现有代码的情况下实现自己的事件类型。这是与其他框架相比另一个不同的地方。很多 NIO 框架没有或者仅有有限的事件模型概念；在你试图添加一个新的事件类型的时候常常需要修改已有的代码，或者根本就不允许你进行这种扩展。<br>
-在 Netty 中一条连接对应一个 Channel，该 Channel 的所有处理逻辑都在一个 ChannelPipeline 对象内，ChannelPipeline 是一个双向链表结构，在一个 ChannelPipeline 内部一个 <a href=".">ChannelEvent</a> 被一组 ChannelHandler 处理。这个管道是 Intercepting Filter (拦截过滤器)模式的一种高级形式的实现，因此对于一个事件如何被处理以及管道内部处理器间的交互过程，你都将拥有绝对的控制力。例如，你可以定义一个从 socket 读取到数据后的操作：</p>
+在 Netty 中一条连接对应一个 Channel，该 Channel 的所有处理逻辑都在一个 ChannelPipeline 对象内，ChannelPipeline 是一个双向链表结构，在一个 ChannelPipeline 内部一个 <a href="../%E6%8A%80%E6%9C%AF%E7%82%B9%E6%80%BB%E7%BB%93">ChannelEvent</a> 被一组 ChannelHandler 处理。这个管道是 Intercepting Filter (拦截过滤器)模式的一种高级形式的实现，因此对于一个事件如何被处理以及管道内部处理器间的交互过程，你都将拥有绝对的控制力。例如，你可以定义一个从 socket 读取到数据后的操作：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public class MyReadHandler implements SimpleChannelHandler &#123;</span><br><span class="line">     public void messageReceived(ChannelHandlerContext ctx, MessageEvent evt) &#123;</span><br><span class="line">         Object message = evt.getMessage();</span><br><span class="line">         // Do something with the received message.</span><br><span class="line">            ...</span><br><span class="line">         // And forward the event to the next handler.</span><br><span class="line">         ctx.sendUpstream(evt);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>同时你也可以定义一种操作响应其他处理器的写操作请求：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public class MyWriteHandler implements SimpleChannelHandler &#123;</span><br><span class="line">    public void writeRequested(ChannelHandlerContext ctx, MessageEvent evt) &#123;</span><br><span class="line">        Object message = evt.getMessage();</span><br><span class="line">        // Do something with the message to be written.</span><br><span class="line">            ...</span><br><span class="line">        // And forward the event to the next handler.</span><br><span class="line">        ctx.sendDownstream(evt);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -954,7 +954,7 @@ Netty 已经实现了 WebSocket 和一些老版本的规范：<a href="http://ne
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -965,7 +965,7 @@ Netty 已经实现了 WebSocket 和一些老版本的规范：<a href="http://ne
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-count">60</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

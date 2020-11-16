@@ -88,7 +88,7 @@
 <meta property="og:description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png">
-<meta property="og:updated_time" content="2020-11-10T08:45:19.737Z">
+<meta property="og:updated_time" content="2020-11-10T11:44:18.779Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis事务和Lua">
 <meta name="twitter:description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.7k 字
+                  4.8k 字
                 </span>
               
 
@@ -376,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  17 分钟
                 </span>
               
             </div>
@@ -410,6 +410,10 @@
 <li>miss：缓存缺失，回源到MySQL读取数据，加载到缓存中；</li>
 </ul>
 <p>这种情况下，Redis就作为旁路缓存使用，读取缓存、读取数据库和更新缓存的操作都需要在应用程序中来完成。</p>
+<ul>
+<li>如果是只读缓存，那么上述的旁路缓存设计就足够了；</li>
+<li>如果是读写缓存，还有同步直写（写缓存的同时写DB）和异步写回（写缓存后异步写DB）这两种策略，各有优缺点。</li>
+</ul>
 <h2 id="缓存满了怎么办？"><a class="header-anchor" href="#缓存满了怎么办？">¶</a>缓存满了怎么办？</h2>
 <h3 id="缓存淘汰-缓存失效策略和主键失效机制"><a class="header-anchor" href="#缓存淘汰-缓存失效策略和主键失效机制">¶</a>缓存淘汰（缓存失效策略和主键失效机制）</h3>
 <p>作为缓存系统都要定期清理无效数据，就需要一个主键失效和淘汰策略，比如 Redis 只能存 5G 数据，可是你写了 10G，那多出来的 5G 数据怎么删？你的数据已经设置了过期时间，但是时间到了，内存占用率还是比较高？这就需要深入到 Redis 的主键失效和淘汰策略中去了。</p>
@@ -445,7 +449,8 @@ EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间�
 <ol>
 <li>no-enviction（驱逐）：禁止驱逐数据，当内存不足以容纳新写入数据时，新写入操作会报错（应该没人用）</li>
 <li>volatile-lru：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰（这种情况一般是把 redis 既当缓存，又做持久化存储的时候才用。不推荐）</li>
-<li>volatile-ttl：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰（不推荐）</li>
+<li>volatile-ttl：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰（不推荐）<br>
+可以在一些需要“置顶”的业务场景里采用，比如一些新闻、视频需要置顶，这些数据不需要设置过期时间，<code>volatile-ttl</code>就不会删除它们。</li>
 <li>volatile-random：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰（不推荐）</li>
 <li>allkeys-lru：当内存不足以容纳新写入数据时，从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰（推荐）</li>
 <li>allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰</li>
@@ -483,12 +488,12 @@ EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间�
 </ol>
 <p>Redis 中的 LRU<br>
 <img src="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"><br>
-代码位置：evict.c/freeMemoryIfNeeded<br>
-Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU 链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
+代码位置：<code>evict.c/freeMemoryIfNeeded</code><br>
+Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
 <ol>
 <li>每次从缓存对象集合中随机取出一部分样本（20个key），进行下面的过期检测；</li>
 <li>按 LRU 算法排序；</li>
-<li>取 idle 值（评分）最小的淘汰。</li>
+<li>取 idle 值（评分）最小的淘汰；</li>
 <li>如果有多于25%的key是过期了的，则重复步骤1。</li>
 </ol>
 <h2 id="缓存系统中存在的问题"><a class="header-anchor" href="#缓存系统中存在的问题">¶</a>缓存系统中存在的问题</h2>
@@ -712,7 +717,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -723,7 +728,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-count">60</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

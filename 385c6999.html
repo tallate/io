@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="Sentinel vs Hystrix Sentinel 与 Hystrix 的对比">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-11-10T08:11:51.649Z">
+<meta property="og:updated_time" content="2020-11-11T04:36:30.707Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Sentinel原理总结">
 <meta name="twitter:description" content="Sentinel vs Hystrix Sentinel 与 Hystrix 的对比">
@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  919 字
+                  1.2k 字
                 </span>
               
 
@@ -374,7 +374,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  4 分钟
+                  5 分钟
                 </span>
               
             </div>
@@ -398,6 +398,20 @@
         <h1>Sentinel vs Hystrix</h1>
 <p><a href="https://github.com/alibaba/Sentinel/wiki/Sentinel-%E4%B8%8E-Hystrix-%E7%9A%84%E5%AF%B9%E6%AF%94" target="_blank" rel="noopener">Sentinel 与 Hystrix 的对比</a></p>
 <a id="more"></a>
+<h1>Sentinel概述</h1>
+<ol>
+<li>资源（Resource）<br>
+用户需要将业务抽象为资源，用于限流规则的配置。<br>
+Sentinel中需要在代码中埋点，表示这些地方需要通过某个规则访问上面定义的业务资源：<br>
+<code>try-catch</code> 方式（通过 <code>SphU.entry(...)</code>），用户在 catch 块中执行异常处理 / fallback<br>
+<code>if-else</code> 方式（通过 <code>SphO.entry(...)</code>），当返回 false 时执行异常处理 / fallback<br>
+源码：<code>ResourceWrapper</code></li>
+<li>插槽（Slot）<br>
+多个插槽会组成一个“责任链”，表示对不同资源的不同处理逻辑。<br>
+源码：自定义Slot<code>SlotChainBuilder</code>，创建位置<code>CtSph#lookProcessChain()</code></li>
+<li>上下文（Context）<br>
+维护当前调用链的元数据</li>
+</ol>
 <h1>开始使用Sentinel</h1>
 <p>Sentinel主要分为客户端和控制台两个部分。</p>
 <h2 id="直接使用"><a class="header-anchor" href="#直接使用">¶</a>直接使用</h2>
@@ -429,6 +443,18 @@
 <h2 id="客户端拦截请求"><a class="header-anchor" href="#客户端拦截请求">¶</a>客户端拦截请求</h2>
 <p>如果是SpringMVC，一般来说是将Sentinel提供的拦截器注册到SpringMVC容器的拦截器链表里：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">public class SpringMvcConfiguration implements WebMvcConfigurer &#123;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void addInterceptors(InterceptorRegistry registry) &#123;</span><br><span class="line">        // Add Sentinel interceptor</span><br><span class="line">//        addSentinelWebTotalInterceptor(registry);</span><br><span class="line">        addSentinelWebInterceptor(registry);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void addSentinelWebInterceptor(InterceptorRegistry registry) &#123;</span><br><span class="line">        // &lt;1.1&gt; 创建 SentinelWebMvcConfig 对象</span><br><span class="line">        SentinelWebMvcConfig config = new SentinelWebMvcConfig();</span><br><span class="line">        config.setHttpMethodSpecify(true); // &lt;1.2&gt; 是否包含请求方法。即基于 URL 创建的资源，是否包含 Method。</span><br><span class="line">        // config.setBlockExceptionHandler(new DefaultBlockExceptionHandler()); // &lt;1.3&gt; 设置 BlockException 处理器。</span><br><span class="line"></span><br><span class="line">        // &lt;2&gt; 添加 SentinelWebInterceptor 拦截器</span><br><span class="line">        registry.addInterceptor(new SentinelWebInterceptor(config)).addPathPatterns(&quot;/**&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当请求进来时，会先被上面定义的拦截器拦截，最终还是调用了<code>SphU.entry</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">public abstract class AbstractSentinelInterceptor implements HandlerInterceptor &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)</span><br><span class="line">        throws Exception &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            // 获取资源名</span><br><span class="line">            String resourceName = getResourceName(request);</span><br><span class="line"></span><br><span class="line">            if (StringUtil.isNotEmpty(resourceName)) &#123;</span><br><span class="line">                // Parse the request origin using registered origin parser.</span><br><span class="line">                String origin = parseOrigin(request);</span><br><span class="line">                ContextUtil.enter(SENTINEL_SPRING_WEB_CONTEXT_NAME, origin);</span><br><span class="line">                // 访问资源</span><br><span class="line">                Entry entry = SphU.entry(resourceName, ResourceTypeConstants.COMMON_WEB, EntryType.IN);</span><br><span class="line"></span><br><span class="line">                setEntryInRequest(request, baseWebMvcConfig.getRequestAttributeName(), entry);</span><br><span class="line">            &#125;</span><br><span class="line">            return true;</span><br><span class="line">        &#125; catch (BlockException e) &#123;</span><br><span class="line">            handleBlockException(request, response, e);</span><br><span class="line">            return false;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="获取资源"><a class="header-anchor" href="#获取资源">¶</a>获取资源</h2>
+<p>Sentinel中，资源有以下几种：</p>
+<ol>
+<li>ParamFlowSlot：</li>
+<li>SystemSlot：</li>
+<li>StatisticSlot：</li>
+<li>NodeSelectorSlot</li>
+<li>ClusterBuilderSlot</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
 <h1>参考</h1>
 <ol>
 <li><a href="http://www.iocoder.cn/Sentinel/houyi/Learn-about-the-concept-entities-in-the-sentinel/" target="_blank" rel="noopener">Sentinel 中的概念介绍</a></li>
@@ -570,7 +596,7 @@
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -581,7 +607,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-count">60</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -616,7 +642,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">Sentinel vs Hystrix</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">开始使用Sentinel</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#直接使用"><span class="nav-number">2.1.</span> <span class="nav-text">¶直接使用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#接入springboot"><span class="nav-number">2.2.</span> <span class="nav-text">¶接入SpringBoot</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#搭建控制台"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶搭建控制台</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#流量控制"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶流量控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#热点参数限流"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶热点参数限流</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">原理分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端感知最新配置"><span class="nav-number">3.1.</span> <span class="nav-text">¶客户端感知最新配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端拦截请求"><span class="nav-number">3.2.</span> <span class="nav-text">¶客户端拦截请求</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">Sentinel vs Hystrix</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">Sentinel概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">开始使用Sentinel</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#直接使用"><span class="nav-number">3.1.</span> <span class="nav-text">¶直接使用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#接入springboot"><span class="nav-number">3.2.</span> <span class="nav-text">¶接入SpringBoot</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#搭建控制台"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶搭建控制台</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#流量控制"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶流量控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#热点参数限流"><span class="nav-number">3.2.3.</span> <span class="nav-text">¶热点参数限流</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">原理分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端感知最新配置"><span class="nav-number">4.1.</span> <span class="nav-text">¶客户端感知最新配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端拦截请求"><span class="nav-number">4.2.</span> <span class="nav-text">¶客户端拦截请求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#获取资源"><span class="nav-number">4.3.</span> <span class="nav-text">¶获取资源</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>

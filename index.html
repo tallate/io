@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4k 字
+                  4.9k 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  14 分钟
+                  18 分钟
                 </span>
               
             </div>
@@ -399,17 +399,14 @@
 <li>主从节点：主库生成、传输 RDB 文件，从库接收 RDB 文件、清空数据库、加载 RDB 文件；</li>
 <li>切片集群实例：向其他实例传输哈希槽信息，数据迁移。</li>
 </ul>
-<h2 id="如何检测redis是否变慢？"><a class="header-anchor" href="#如何检测redis是否变慢？">¶</a>如何检测Redis是否变慢？</h2>
-<p>如何排查Redis是否真的变慢，一个直接的方法是查看Redis的<strong>响应延迟</strong>，但是响应延迟多长算慢呢？不同硬件性能不同，这个值的判断也是不同的，并没有绝对的标准。<br>
-另一种方法是测算当前环境下的 Redis <strong>基线性能</strong>，也就是一个系统在低压力、无干扰下的基本性能，这个性能只由当前的软硬件配置决定。<br>
-从 2.8.7 版本开始，<code>redis-cli</code> 命令提供了<code>–intrinsic-latency</code> 选项，可以用来监测和统计测试期间内的最大延迟，这个延迟可以作为 Redis 的基线性能。<br>
-一般我们可以把Redis基线性能和响应延迟结合起来判断Redis是否变慢了，如果观察到Redis延迟是其基线性能的2倍以上，就可以认定Redis变慢了。</p>
 <h2 id="如果redis变慢-可能是什么导致的？"><a class="header-anchor" href="#如果redis变慢-可能是什么导致的？">¶</a>如果Redis变慢，可能是什么导致的？</h2>
 <ol>
 <li>Redis是单线程模型，如果前面有请求执行比较慢，后面的都要排队等着；<br>
 耗时的操作包括：
 <ul>
-<li>操作bigkey：写入一个bigkey在分配内存时需要消耗更多的时间，同样，删除bigkey释放内存同样会产生耗时；</li>
+<li>集合全量查询和聚合操作：比如HGETALL、SMEMBERS</li>
+<li>操作bigkey：写入一个bigkey在分配内存时需要消耗更多的时间，同样，删除bigkey释放内存同样会产生耗时；<br>
+特别是删除大key时需要释放内存，操作系统需要将释放掉的内存块插入到一个空闲内存块的链表，以便后续进行管理和再分配（指malloc/free）。</li>
 <li>使用复杂度过高的命令：例如SORT/SUNION/ZUNIONSTORE，或者O(N)命令，但是N很大，例如lrange key 0 -1一次查询全量数据；</li>
 <li>大量key集中过期：Redis的过期机制也是在主线程中执行的，大量key集中过期会导致处理一个请求时，耗时都在删除过期key，耗时变长；</li>
 <li>淘汰策略：淘汰策略也是在主线程执行的，当内存超过Redis内存上限后，每次写入都需要淘汰一些key，也会造成耗时变长；</li>
@@ -421,6 +418,11 @@
 <li>并发非常大，单线程读写客户端IO数据存在性能瓶颈，虽然采用IO多路复用机制，但是读写客户端数据依旧是同步IO，只能单线程依次读取客户端的数据，无法利用到CPU多核。<br>
 对此，Redis6.0推出了多线程，可以在高并发场景下利用CPU多核多线程读写客户端数据。</li>
 </ol>
+<h2 id="如何检测redis是否变慢？"><a class="header-anchor" href="#如何检测redis是否变慢？">¶</a>如何检测Redis是否变慢？</h2>
+<p>如何排查Redis是否真的变慢，一个直接的方法是查看Redis的<strong>响应延迟</strong>，但是响应延迟多长算慢呢？不同硬件性能不同，这个值的判断也是不同的，并没有绝对的标准。<br>
+另一种方法是测算当前环境下的 Redis <strong>基线性能</strong>，也就是一个系统在低压力、无干扰下的基本性能，这个性能只由当前的软硬件配置决定。<br>
+从 2.8.7 版本开始，<code>redis-cli</code> 命令提供了<code>–intrinsic-latency</code> 选项，可以用来监测和统计测试期间内的最大延迟，这个延迟可以作为 Redis 的基线性能。<br>
+一般我们可以把Redis基线性能和响应延迟结合起来判断Redis是否变慢了，如果观察到Redis延迟是其基线性能的2倍以上，就可以认定Redis变慢了。</p>
 <h1>Redis性能优化</h1>
 <h2 id="内存优化"><a class="header-anchor" href="#内存优化">¶</a>内存优化</h2>
 <ol>
@@ -436,6 +438,22 @@ set-max-intset-entries 512<br>
 <li>尽量使用散列表<br>
 小散列表占用的内存非常小</li>
 </ol>
+<h2 id="慢查询命令"><a class="header-anchor" href="#慢查询命令">¶</a>慢查询命令</h2>
+<p>使用Redis前必须先了解各种指令的复杂度，比如get、set是O(1)的，set的smembers是O(N)的。<br>
+当发现性能变慢时，可以通过：</p>
+<ol>
+<li>Redis日志查询变慢的请求；</li>
+<li>latency monitor工具查询变慢请求；</li>
+</ol>
+<p>如果确实有大量满查询命令，可以：</p>
+<ol>
+<li>用其他高效命令代替；</li>
+<li>sort、sunion、sinter这些复杂操作可以将逻辑转移到客户端完成。<br>
+如果业务逻辑就是得用慢查询命令完成，那可以考虑采用性能更好的CPU，从而更快地完成查询命令。</li>
+</ol>
+<h2 id="过期key操作"><a class="header-anchor" href="#过期key操作">¶</a>过期key操作</h2>
+<p>Redis4.0之前，淘汰key的机制中，删除操作是阻塞的，而淘汰机制会不断抽样，直到过期的key只占不到25%的比例，因此淘汰很有可能会影响主线程；在Redis4.0之后采用异步线程机制来减少阻塞影响）。<br>
+比如同一时间有很多key设置了相同的过期时间，就会导致这种情况。</p>
 <h2 id="批量请求优化"><a class="header-anchor" href="#批量请求优化">¶</a>批量请求优化</h2>
 <p>使用管道Pipelineing：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ (printf &quot;PING\r\nPING\r\nPING\r\n&quot;; sleep 1) | nc localhost 6379</span><br></pre></td></tr></table></figure>
@@ -478,6 +496,27 @@ set-max-intset-entries 512<br>
 比如以下代码将属于一个大 hash 内的 field 分散到 10000 个拆分后的小 hash 内：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure>
 <p>对于一些需要考虑顺序的场景，比如 lpop、zrange，需要在 hash 函数上做些文章，比如按照时间来拆分。</p>
+<h2 id="redis与cpu的关系"><a class="header-anchor" href="#redis与cpu的关系">¶</a>Redis与CPU的关系</h2>
+<p>在现代CPU架构中，每个物理核心都会有一个私有的L1 cache和L2 cache，不同核之间共用一个L3缓存，尽可能避免访问主存。<br>
+应用程序会被分配到一个CPU上执行，但是进程调度机制可能会将Redis进程调度到另一个核心上，导致之前加载的缓存都白费了。<br>
+可以通过taskset命令将Redis进程绑定在一个核上运行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># -c 用于设置要绑定的核编号</span><br><span class="line">taskset -c 0 ./redis-server</span><br></pre></td></tr></table></figure>
+<h2 id="内存碎片"><a class="header-anchor" href="#内存碎片">¶</a>内存碎片</h2>
+<p>Redis底层分配内存函数是jmalloc，它分配的内存大小总是2的幂倍数，如果分配的内存大小比实际使用的要多一些，就会产生内存碎片，内存碎片多了后就会有很多内存的浪费情况，特别是<strong>分配键值对的大小不一的情况下，内存碎片会尤其严重</strong>。</p>
+<h3 id="查看内存碎片"><a class="header-anchor" href="#查看内存碎片">¶</a>查看内存碎片</h3>
+<p>查看内存碎片情况很容易，可以直接使用<code>info</code>命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">10.32.140.14:6211&gt; info memory</span><br><span class="line"># Memory</span><br><span class="line">used_memory:1441123632</span><br><span class="line">used_memory_human:1.34G</span><br><span class="line">used_memory_rss:1853603840</span><br><span class="line">used_memory_rss_human:1.73G</span><br><span class="line">...</span><br><span class="line">mem_fragmentation_ratio:1.29</span><br></pre></td></tr></table></figure>
+<p>其中<code>mem_fragmentation_ratio</code>这个指标就是Redis当前的内存碎片率，它的值其实就是<code>used_memory_rss</code>和<code>used_memory</code>相除的结果（<code>used_memory_rss/used_memory</code>），前者是OS分配给Redis的内存空间，包含碎片，后者不包含碎片。</p>
+<ul>
+<li><code>mem_fragmentation_ratio</code>在<code>[1,1.5]</code>范围内是合理的，因为内存碎片无法完全避免</li>
+<li><code>mem_fragmentation_ratio</code>大于1.5则需要采取一些措施来减小内存碎片率。</li>
+</ul>
+<h3 id="处理内存碎片"><a class="header-anchor" href="#处理内存碎片">¶</a>处理内存碎片</h3>
+<ul>
+<li>重启Redis实例。这是最简单的方法，但是重启后Redis内存中的数据会全部丢失，除非进行了持久化，但恢复也是需要不少时间的。</li>
+<li>从Redis4.0-RC3后，Redis自身提供了内存碎片清理的功能，也即将内存数据拷贝到一块新的内存位置，可以设置参数控制碎片清理的开始、结束时机、占用的内存比例等：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 开启内存碎片清理功能</span><br><span class="line">config set activedefrag yes</span><br><span class="line"># 表示内存碎片达到100MB时开始清理</span><br><span class="line">active-defrag-ignore-bytes 100mb</span><br><span class="line"># 表示内存碎片空间占Redis总空间大小的10%时</span><br><span class="line">tive-defrag-threshold-lower 10</span><br><span class="line"># 控制清理过程占用CPU时间比例不低于25%，保证清理能正常</span><br><span class="line">adtive-defrag-cycle-min 25</span><br><span class="line"># 控制清理过程占用CPU时间比例不高于75%，尽量不要影响主线程</span><br><span class="line">active-defrag-cycle-max 75</span><br></pre></td></tr></table></figure>
 <h2 id="其他优化点"><a class="header-anchor" href="#其他优化点">¶</a>其他优化点</h2>
 <ul>
 <li>单进程单线程，无法充分发挥服务器多核 cpu 的性能；大流量下造成 IO 阻塞，同样是由于单进程单线程, cpu 在处理业务逻辑的时候,网络 IO 被阻塞住, 造成无法处理更多的请求.<br>
@@ -685,7 +724,7 @@ redis.conf：</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.7k 字
+                  4.8k 字
                 </span>
               
 
@@ -701,7 +740,7 @@ redis.conf：</p>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  17 分钟
                 </span>
               
             </div>
@@ -737,6 +776,10 @@ redis.conf：</p>
 <li>miss：缓存缺失，回源到MySQL读取数据，加载到缓存中；</li>
 </ul>
 <p>这种情况下，Redis就作为旁路缓存使用，读取缓存、读取数据库和更新缓存的操作都需要在应用程序中来完成。</p>
+<ul>
+<li>如果是只读缓存，那么上述的旁路缓存设计就足够了；</li>
+<li>如果是读写缓存，还有同步直写（写缓存的同时写DB）和异步写回（写缓存后异步写DB）这两种策略，各有优缺点。</li>
+</ul>
 <h2 id="缓存满了怎么办？"><a class="header-anchor" href="#缓存满了怎么办？">¶</a>缓存满了怎么办？</h2>
 <h3 id="缓存淘汰-缓存失效策略和主键失效机制"><a class="header-anchor" href="#缓存淘汰-缓存失效策略和主键失效机制">¶</a>缓存淘汰（缓存失效策略和主键失效机制）</h3>
 <p>作为缓存系统都要定期清理无效数据，就需要一个主键失效和淘汰策略，比如 Redis 只能存 5G 数据，可是你写了 10G，那多出来的 5G 数据怎么删？你的数据已经设置了过期时间，但是时间到了，内存占用率还是比较高？这就需要深入到 Redis 的主键失效和淘汰策略中去了。</p>
@@ -772,7 +815,8 @@ EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间�
 <ol>
 <li>no-enviction（驱逐）：禁止驱逐数据，当内存不足以容纳新写入数据时，新写入操作会报错（应该没人用）</li>
 <li>volatile-lru：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰（这种情况一般是把 redis 既当缓存，又做持久化存储的时候才用。不推荐）</li>
-<li>volatile-ttl：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰（不推荐）</li>
+<li>volatile-ttl：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰（不推荐）<br>
+可以在一些需要“置顶”的业务场景里采用，比如一些新闻、视频需要置顶，这些数据不需要设置过期时间，<code>volatile-ttl</code>就不会删除它们。</li>
 <li>volatile-random：当内存不足以容纳新写入数据时，从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰（不推荐）</li>
 <li>allkeys-lru：当内存不足以容纳新写入数据时，从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰（推荐）</li>
 <li>allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰</li>
@@ -810,12 +854,12 @@ EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间�
 </ol>
 <p>Redis 中的 LRU<br>
 <img src="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"><br>
-代码位置：evict.c/freeMemoryIfNeeded<br>
-Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU 链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
+代码位置：<code>evict.c/freeMemoryIfNeeded</code><br>
+Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
 <ol>
 <li>每次从缓存对象集合中随机取出一部分样本（20个key），进行下面的过期检测；</li>
 <li>按 LRU 算法排序；</li>
-<li>取 idle 值（评分）最小的淘汰。</li>
+<li>取 idle 值（评分）最小的淘汰；</li>
 <li>如果有多于25%的key是过期了的，则重复步骤1。</li>
 </ol>
 <h2 id="缓存系统中存在的问题"><a class="header-anchor" href="#缓存系统中存在的问题">¶</a>缓存系统中存在的问题</h2>
@@ -1037,7 +1081,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  807 字
+                  905 字
                 </span>
               
 
@@ -1053,7 +1097,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  2 分钟
+                  3 分钟
                 </span>
               
             </div>
@@ -1109,7 +1153,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
 <li>多主（multi-leader）</li>
 <li>无主（leaderless）</li>
 </ol>
-<h2 id="单主"><a class="header-anchor" href="#单主">¶</a>单主</h2>
+<h2 id="主从复制"><a class="header-anchor" href="#主从复制">¶</a>主从复制</h2>
 <p>可以通过主从复制来保证数据被保存到了所有的副本上：</p>
 <blockquote>
 <p>leader和master、follower和slave这里是同义词</p>
@@ -1167,6 +1211,11 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护 LRU �
 <li>逻辑日志<br>
 如MySQL里的binlog</li>
 </ul>
+<h2 id="复制延迟-replication-lag"><a class="header-anchor" href="#复制延迟-replication-lag">¶</a>复制延迟（Replication Lag）</h2>
+<p>数据被拷贝到从服务器期间，主从是不一致的，一般情况下这个间隔时间是很短的，但是如果网络出现了问题就有可能会变得比较严重了。<br>
+TODO：我需要先研究下MySQL中是怎么处理这种延迟的。</p>
+<h2 id="多主复制-multi-leader-replication"><a class="header-anchor" href="#多主复制-multi-leader-replication">¶</a>多主复制（Multi-Leader Replication）</h2>
+<h2 id="无主复制-leaderless-replication"><a class="header-anchor" href="#无主复制-leaderless-replication">¶</a>无主复制（Leaderless Replication）</h2>
 <h1>分区</h1>
 <h1>事务</h1>
 <h1>分布式系统的挑战</h1>
@@ -1666,184 +1715,6 @@ Config Service会从消息中获取配置发布的AppId+Cluster+Namespace，然�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6ac7e753.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/6ac7e753.html" itemprop="url">将Spring项目迁移到SpringBoot（10%）</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-10-05T22:32:50+08:00">
-                2020-10-05
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/项目总结/" itemprop="url" rel="index">
-                    <span itemprop="name">项目总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  79 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  1 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <h1>为什么要做迁移</h1>
-<h2 id="none"><a class="header-anchor" href="#none">¶</a></h2>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/6ac7e753.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/80b748be.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2206,6 +2077,10 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
 <h1>系统评估方法</h1>
 <h2 id="sar"><a class="header-anchor" href="#sar">¶</a>sar</h2>
 <h2 id="吞吐量"><a class="header-anchor" href="#吞吐量">¶</a>吞吐量</h2>
+<h1>参考</h1>
+<ol>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzUxOTc4NjEyMw==&amp;mid=2247494740&amp;idx=2&amp;sn=a65616f74cc28b65642cac7e10f94a23&amp;chksm=f9f6f7b0ce817ea60ef1758d1ab364a0313e8538dbb7c484c9abf5ee943a6c3e363d5ee32fde&amp;xtrack=1&amp;scene=90&amp;subscene=93&amp;sessionid=1603082511&amp;clicktime=1603082518&amp;enterid=1603082518&amp;ascene=56&amp;devicetype=android-29&amp;version=27001351&amp;nettype=cmnet&amp;abtest_cookie=AAACAA%3D%3D&amp;lang=zh_CN&amp;exportkey=A3kezWOvK0nmNF22gC%2BdnJ0%3D&amp;pass_ticket=Iu8tssRxUTo%2FEOoQqbr3DDEA1jlkkPWpFpGx20bUbiKmwUgKMSfXOAlbrPEXElM%2F&amp;wx_header=0" target="_blank" rel="noopener">如何设计订单系统？</a></li>
+</ol>
 
           
         
@@ -2339,7 +2214,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  919 字
+                  1.2k 字
                 </span>
               
 
@@ -2355,7 +2230,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  4 分钟
+                  5 分钟
                 </span>
               
             </div>
@@ -2495,7 +2370,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  469 字
+                  681 字
                 </span>
               
 
@@ -2511,7 +2386,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1 分钟
+                  2 分钟
                 </span>
               
             </div>
@@ -2534,8 +2409,8 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
       
         
           
-            <h1>嗯</h1>
-<h2 id="1"><a class="header-anchor" href="#1">¶</a>1</h2>
+            <h1>面字节的经历</h1>
+<h2 id="第一次"><a class="header-anchor" href="#第一次">¶</a>第一次</h2>
 <ol>
 <li>
 <p>编程问题：多叉树的层序遍历<br>
@@ -2569,7 +2444,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
 <p>编程问题：二叉树的镜像</p>
 </li>
 </ol>
-<h2 id="2"><a class="header-anchor" href="#2">¶</a>2</h2>
+<h2 id="第二次"><a class="header-anchor" href="#第二次">¶</a>第二次</h2>
 <ol>
 <li>
 <p>自我介绍</p>
@@ -2627,6 +2502,21 @@ Set实现的什么接口？Map OR Collection？<br>
 <p>编程问题：链表去重<br>
 <a href="https://leetcode.com/problems/remove-duplicates-from-sorted-list/" target="_blank" rel="noopener">https://leetcode.com/problems/remove-duplicates-from-sorted-list/</a></p>
 </li>
+<li>
+<p>为什么想换工作？不稳定的原因？</p>
+</li>
+<li>
+<p>说下最擅长的业务项目和技术项目各一个。</p>
+</li>
+<li>
+<p>编程问题：交替打印两个序列。</p>
+</li>
+</ol>
+<h2 id="review"><a class="header-anchor" href="#review">¶</a>review</h2>
+<p>时隔两年的再次面试，字节的面试体验良好，认清了自己的很多优点，但同时也暴露出了自己的很多薄弱点：</p>
+<ol>
+<li>许多中间件的原理，很多都看了源码，理解的比较深刻，但是广度不够，比如理解了RMQ的情况下，最好和Kafka比较一下优缺点；</li>
+<li>对自己的经历总结的比较全面，但是对系统设计方面理解欠佳，比如订单系统是如何设计的我可以按流程解释一遍，但是为什么这么做、有什么取代方案没有说；</li>
 </ol>
 
           
@@ -2842,6 +2732,183 @@ Set实现的什么接口？Map OR Collection？<br>
 
 
     
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/2582d3b8.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2582d3b8.html" itemprop="url">架构设计</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-09-06T23:12:18+08:00">
+                2020-09-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/设计/" itemprop="url" rel="index">
+                    <span itemprop="name">设计</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  667 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  2 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>和朋友交流的一些开放性设计问题的记录，因为是开放性问题，所以肯定是没有唯一答案的，这里只是记录我们讨论时认为比较好的回答。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2582d3b8.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
   </section>
 
   
@@ -2903,7 +2970,7 @@ Set实现的什么接口？Map OR Collection？<br>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -2914,7 +2981,7 @@ Set实现的什么接口？Map OR Collection？<br>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-count">60</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

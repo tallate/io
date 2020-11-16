@@ -266,652 +266,6 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b7a6e835.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/b7a6e835.html" itemprop="url">MySQL 中的查询</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-05-27T10:18:28+08:00">
-                2020-05-27
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/MySQL/" itemprop="url" rel="index">
-                    <span itemprop="name">MySQL</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  10.1k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  38 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>查询缓存</h1>
-<p>缓存失效的情况：</p>
-<ol>
-<li>如果两个查询请求<strong>在任何字符上的不同</strong>（例如：空格、注释、大小写），都会导致缓存不会命中</li>
-<li>如果查询请求中<strong>包含某些系统函数、用户自定义变量和函数、一些系统表</strong>，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存</li>
-<li>MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表使用了 INSERT、 UPDATE、DELETE、TRUNCATE TABLE、ALTER TABLE、DROP TABLE 或 DROP DATABASE 语句，那使用该表的所有高速缓存查询都将变为无效并从高速缓存中删除。</li>
-</ol>
-<p>查询缓存的维护开销大、且容易引起数据一致性问题，因此在 MySQL8.0 中已经被删除。</p>
-<h1>查询 - 单表查询方法</h1>
-<p>MySQL 查询优化器会解析 SQL 得到执行计划，然后按照执行计划中的顺序调用 InnoDB 的接口来执行查询。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE `single_table` (</span><br><span class="line">  `id` int(11) NOT NULL AUTO_INCREMENT,</span><br><span class="line">  `key1` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key2` int(11) DEFAULT NULL,</span><br><span class="line">  `key3` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part1` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part2` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part3` varchar(100) DEFAULT NULL,</span><br><span class="line">  `common_field` varchar(100) DEFAULT NULL,</span><br><span class="line">  PRIMARY KEY (`id`),</span><br><span class="line">  UNIQUE KEY `idx_key2` (`key2`),</span><br><span class="line">  KEY `idx_key1` (`key1`),</span><br><span class="line">  KEY `idx_key3` (`key3`),</span><br><span class="line">  KEY `idx_key_part` (`key_part1`,`key_part2`,`key_part3`)</span><br><span class="line">) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8;</span><br></pre></td></tr></table></figure>
-<h2 id="索引查询方法"><a class="header-anchor" href="#索引查询方法">¶</a>索引查询方法</h2>
-<p>根据优化器的结果不同，可能会生成多种查询方法，可以使用 explain 来查看一个 SQL 使用了哪种查询方法。</p>
-<h3 id="const"><a class="header-anchor" href="#const">¶</a>const</h3>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e05c8e33?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
-例子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE id = 1438;</span><br></pre></td></tr></table></figure>
-<p>这种查询因为命中了聚簇索引，所以会直接用主键到聚簇索引中去查找。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 = 3841;</span><br></pre></td></tr></table></figure>
-<p>这种通过**唯一(unique)**二级索引直接定位某几条数据的查询语句同样是非常快的，因此被称为 const。<br>
-但是等值的查询还有一个例外，如果查询的是 NULL 值的记录，则可能访问到多条记录而导致无法使用 const 查询方法：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 IS NULL;</span><br></pre></td></tr></table></figure>
-<h3 id="ref"><a class="header-anchor" href="#ref">¶</a>ref</h3>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e5e227f1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
-普通二级索引不限制索引列的唯一性，因此可能会检索到多条记录，然后再回表得到具体数据，这种情况相对 const 来说会稍微耗时一些，因此被称为 ref。<br>
-注意：<br>
-1、就算是唯一索引，NULL 值的匹配仍可能会匹配到多条，因此 key is null 这种形式的搜索会采用 ref 的访问方式。<br>
-2、如果查询中包含范围查询则不是 ref：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key_part1 = &apos;god like&apos; AND key_part2 &gt; &apos;legendary&apos;;</span><br></pre></td></tr></table></figure>
-<h3 id="ref-or-null"><a class="header-anchor" href="#ref-or-null">¶</a>ref_or_null</h3>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e8927bee?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
-当使用二级索引而且既查某个常数又查 NULL 值记录时，会采用 ref_or_null 查询方式。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;abc&apos; OR key1 IS NULL;</span><br></pre></td></tr></table></figure>
-<h3 id="range"><a class="header-anchor" href="#range">¶</a>range</h3>
-<p>对索引进行范围查询：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 IN (1438, 6328) OR (key2 &gt;= 38 AND key2 &lt;= 79);</span><br></pre></td></tr></table></figure>
-<h3 id="index"><a class="header-anchor" href="#index">¶</a>index</h3>
-<p>要查询的列在二级索引内，但是又不是最左索引列，因此就算不能高效使用索引，InnoDB 也会优先从索引中遍历获取数据：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT key_part1, key_part2, key_part3 FROM single_table WHERE key_part2 = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
-<h3 id="all"><a class="header-anchor" href="#all">¶</a>all</h3>
-<p>扫描聚簇索引，即全表扫描。</p>
-<h2 id="确定范围区间"><a class="header-anchor" href="#确定范围区间">¶</a>确定范围区间</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 AND common_field = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
-<p>如上 SQL，因为 common_field 字段没有索引，因此确定范围时没有作用，优化器会先使用 idx_key2 索引确定范围，然后回表查到数据后再用<code>common_field = 'abc'</code>过滤。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 OR common_field = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
-<p>其中关联条件被我们改成了 OR，这会导致全表扫描。<br>
-为了直观地确定范围区间，我们可以把用不到索引的搜索条件直接替换成 TRUE：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 OR TRUE;</span><br></pre></td></tr></table></figure>
-<p>显然，这条语句会触发全表扫描。<br>
-这种方法也可以应用到一些比较复杂的查询语句中：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE </span><br><span class="line">        (key1 &gt; &apos;xyz&apos; AND key2 = 748 ) OR</span><br><span class="line">        (key1 &lt; &apos;abc&apos; AND key1 &gt; &apos;lmn&apos;) OR</span><br><span class="line">        (key1 LIKE &apos;%suf&apos; AND key1 &gt; &apos;zzz&apos; AND (key2 &lt; 8000 OR common_field = &apos;abc&apos;)) ;</span><br></pre></td></tr></table></figure>
-<p>1、因为 where 语句中 key1、key2 都可以命中索引，因此候选的索引包括 idx_key1 和 idx_key2<br>
-2、假设使用 idx_key1 执行查询，将不涉及该索引的条件都化简：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &gt; &apos;xyz&apos;;</span><br></pre></td></tr></table></figure>
-<p>3、假设使用 idx_key2 执行查询，同理可化简：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE TRUE;</span><br></pre></td></tr></table></figure>
-<p>因此优化器最终会采用 idx_key1。</p>
-<h2 id="索引合并"><a class="header-anchor" href="#索引合并">¶</a>索引合并</h2>
-<p>使用到多个索引来完成一次查询的执行方法被称为<strong>index merge</strong>，分 3 种情况：</p>
-<h3 id="intersection-合并"><a class="header-anchor" href="#intersection-合并">¶</a>Intersection 合并</h3>
-<p>某个查询可以使用多个二级索引，将从多个二级索引中查询到的结果取交集。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;a&apos; AND key3 = &apos;b&apos;;</span><br></pre></td></tr></table></figure>
-<p>为什么使用 2 个索引查询 merge 而不是一个查完后再过滤其他条件？主要是因为二级索引的操作是<strong>顺序 I/O</strong>，而回表操作是<strong>随机 I/O</strong>，所以如果只读取一个二级索引时需要回表的记录数特别多，而读取多个二级索引之后取交集的记录数相对更少，因此当节省的因为回表而造成的性能损耗比访问多个二级索引带来的性能损耗更高时，读取多个二级索引后取交集比只读取一个二级索引的成本更低。<br>
-发生 Intersection 合并的条件：<br>
-1、针对主键的范围查询；<br>
-2、针对二级索引的等值匹配；<br>
-为什么范围查询不行？因为二级索引中是按索引列排序的，只有等值匹配时结果才会按 id 列排序，而求并集时<br>
-3、单独使用某个二级索引获取到的记录数太多，导致回表开销太大。</p>
-<h3 id="union-合并"><a class="header-anchor" href="#union-合并">¶</a>Union 合并</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;a&apos; OR key3 = &apos;b&apos;</span><br></pre></td></tr></table></figure>
-<p>OR 相连的不同查询条件可能会使用到不同的索引，这种情况可能会使用到 Union 索引合并，具体的还分以下几种情况：<br>
-1、二级索引列是等值匹配的情况，对于联合索引来说，在联合索引中的每个列都必须等值匹配，不能出现只出现匹配部分列的情况。<br>
-比如范围查询就无法使用 Union 合并。<br>
-2、主键列可以是范围匹配；<br>
-3、使用 Intersection 索引合并的搜索条件</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key_part1 = &apos;a&apos; AND key_part2 = &apos;b&apos; AND key_part3 = &apos;c&apos; OR (key1 = &apos;a&apos; AND key3 = &apos;b&apos;);</span><br></pre></td></tr></table></figure>
-<p>Intersection 索引合并得到的是一个主键的集合，Union 合并可以将多个这样的主键集合取交集。</p>
-<h3 id="sort-union"><a class="header-anchor" href="#sort-union">¶</a>Sort-Union</h3>
-<p>Union 合并的条件比较苛刻，要求全部查询条件都是等值查询，比如下面的查询语句就无法使用 Union 索引合并：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &lt; &apos;a&apos; OR key3 &gt; &apos;z&apos;;</span><br></pre></td></tr></table></figure>
-<p>因为按照两种查询条件得到的主键值并不是有序的，如果这两批主键值数量并不大，InnoDB 会再对这两批主键值进行排序，最后按照 Union 合并的方式进行合并。</p>
-<h3 id="联合索引"><a class="header-anchor" href="#联合索引">¶</a>联合索引</h3>
-<p>上面这个例子中，key1 和 key3 分别属于两个索引，如果把这两个列合一块搞一个联合索引，效率会更高。</p>
-<h1>count</h1>
-<h2 id="count-的实现方式"><a class="header-anchor" href="#count-的实现方式">¶</a>count(*) 的实现方式</h2>
-<p>不同引擎对<code>count(*)</code>有不同的实现方式：</p>
-<ul>
-<li>MyISAM 引擎把一个表的总行数存在了磁盘上，因此执行 count(*) 的时候会直接返回这个数，效率很高；</li>
-<li>而 InnoDB 引擎就麻烦了，它执行 count(*) 的时候，需要把数据一行一行地从引擎里面读出来，然后累积计数。</li>
-</ul>
-<h3 id="为什么-innodb-不把数字存起来？"><a class="header-anchor" href="#为什么-innodb-不把数字存起来？">¶</a>为什么 InnoDB 不把数字存起来？</h3>
-<p>因为<strong>MVCC</strong>的存在，对每个事务来说返回多少行都是不确定的。</p>
-<h3 id="innodb对count-的优化"><a class="header-anchor" href="#innodb对count-的优化">¶</a>InnoDB对count(*)的优化</h3>
-<p>普通索引树比主键索引树小很多，因此对于<code>count(*)</code>这样的操作，MySQL更倾向于找到最小的那棵树来遍历。</p>
-<h3 id="table-rows能替代count-吗？"><a class="header-anchor" href="#table-rows能替代count-吗？">¶</a>table_rows能替代count(*)吗？</h3>
-<p><code>show table status</code>命令结果里也有一个table_rows用于显示这个表当前有多少行，但是这个值其实只是一个估计值，并不准。</p>
-<h3 id="有什么办法能替代count-？"><a class="header-anchor" href="#有什么办法能替代count-？">¶</a>有什么办法能替代count(*)？</h3>
-<p>为了替代<code>count(*)</code>，我们只能自己计数，也就是找一个地方存储表的行数。</p>
-<ol>
-<li>用缓存计数<br>
-优点是速度快，但是缺点是缓存系统可能会丢失更新，比如两个事务都读了一遍Redis的值，然后在操作后将最新的值覆盖上，但是先写入的事务所做的更新会被后来的事务覆盖，也就是说发生了丢失更新。<br>
-而且，Redis的重启、宕机都是不可避免的，发生这种情况后，怎么保证计数不丢失呢？<br>
-一般来说需要将数据再持久化到DB上，但是如果写DB成功、同步Redis失败了，又会导致二者的不一致。这种情况当然是有解决的办法，比如Redis异常重启后就到数据库里面单独执行一次<code>count(*)</code>获取真实的行数，再把这个值写回到Redis里就可以了。<br>
-总而言之，因为与数据库并不在一个事务内，不能保证Redis与数据库的绝对一致，因此Redis并不能提供精确的计数，只能供粗略的计数。</li>
-<li>用数据库计数<br>
-不同于Redis，只要保证计数和插入/删除数据命令处于同一条SQL内，基于数据库的计数就是精确的。</li>
-</ol>
-<h2 id="不同count的区别"><a class="header-anchor" href="#不同count的区别">¶</a>不同count的区别</h2>
-<ol>
-<li><code>count(*)</code><br>
-<code>count(*)</code>并不会把全部字段取出来，而是专门做了优化，不取值，因为<code>count(*)</code>肯定不是null，直接按行累加即可。</li>
-<li><code>count(主键ID)</code><br>
-InnoDB 引擎会遍历整张表，把每一行的 id 值都取出来，返回给 server 层。server 层拿到 id 后，判断是不可能为空的，就按行累加。</li>
-<li><code>count(1)</code><br>
-InnoDB 引擎遍历整张表，但不取值。server 层对于返回的每一行，放一个数字“1”进去，判断是不可能为空的，按行累加。</li>
-<li><code>count(字段)</code><br>
-表示返回满足条件的数据行里面，参数<code>字段</code>不为NULL的总个数。<br>
-如果<code>字段</code>被定义成了<code>null</code>，则这个操作相对<code>count(主键ID)</code>会更慢一些，因为server层还需要一行一行判断值是否为null，只有不是null的才累加。</li>
-</ol>
-<p>所以结论是：按照效率排序的话，<code>count(字段)</code> &lt; <code>count(主键 id)</code> &lt; <code>count(1)</code> ≈ <code>count(*)</code>，所以建议尽量使用 <code>count(*)</code>。</p>
-<h1>连接（Join）</h1>
-<h2 id="连接查询的大致执行过程"><a class="header-anchor" href="#连接查询的大致执行过程">¶</a>连接查询的大致执行过程</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM t1, t2 WHERE t1.m1 &gt; 1 AND t1.m1 = t2.m2 AND t2.n2 &lt; &apos;d&apos;;</span><br></pre></td></tr></table></figure>
-<p>这个查询语句包含 3 个过滤条件，大致执行过程如下：<br>
-1、确定第一个需要查询的表，称之为<strong>驱动表</strong>，InnoDB 会选取代价最小的方法去执行查询（从 const、ref、ref_or_null、range、index、all 这些执行方法中选取代价最小的去执行查询）；<br>
-2、针对从驱动表中查询出的每一条记录，<strong>分别</strong>到其他表中查询匹配的记录，这些表称为<strong>被驱动表</strong>。<br>
-因此，驱动表只会被查询一次，而被驱动表则会被查询多次。</p>
-<h2 id="内连接和外连接"><a class="header-anchor" href="#内连接和外连接">¶</a>内连接和外连接</h2>
-<p>内连接<br>
-左连接（左外连接）：左侧的表为驱动表。<br>
-右连接（右外连接）：右侧的表为驱动表。</p>
-<p>对于外连接来说，由于驱动表中的记录即使在被驱动表中找不到符合 ON 子句条件的记录时也会被加入到结果集，所以左连接和右连接的驱动表和被驱动表的位置不能轻易互换。</p>
-<h2 id="连接的原理"><a class="header-anchor" href="#连接的原理">¶</a>连接的原理</h2>
-<h3 id="嵌套循环连接-nested-loop-join"><a class="header-anchor" href="#嵌套循环连接-nested-loop-join">¶</a>嵌套循环连接（Nested-Loop Join）</h3>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-NestedLoopJoin%E7%AE%97%E6%B3%95.png" alt="MySQL-NestedLoopJoin算法" title="MySQL-NestedLoopJoin算法"><br>
-驱动表中查询到的每条记录都需要分别到被驱动表中查找匹配的记录，当有 3 张表进行连接时，上一步得到的结果集就会成为新的驱动表，第 3 张表则成为了新的被驱动表，重复这个过程。<br>
-这个过程就像是一个嵌套的循环，所以这种驱动表只访问一次，但被驱动表却可能被多次访问，访问次数取决于对驱动表执行单表查询后的结果集中的记录条数的连接执行方式称之为<strong>嵌套循环连接（Nested-Loop Join）</strong>。</p>
-<h3 id="simple-nested-loop-join"><a class="header-anchor" href="#simple-nested-loop-join">¶</a>Simple Nested-Loop Join</h3>
-<p>到被驱动表上查询的时候没有命中索引，导致每次查询都是全表扫描，时间复杂度退化为<code>N * M</code>。<br>
-实际上，MySQL 并没有使用这么简单粗暴的算法，而是<code>Block Nested-Loop Join</code>。</p>
-<h3 id="基于块的嵌套循环连接-block-nested-loop-join"><a class="header-anchor" href="#基于块的嵌套循环连接-block-nested-loop-join">¶</a>基于块的嵌套循环连接（Block Nested-Loop Join）</h3>
-<p>因为嵌套循环连接中，被驱动表可能被访问非常多次（现实中单表的数据量是非常大的），这个过程中涉及到随机磁盘扫描，因此效率并不高，为了减少这个 IO 代价，所以我们应该尽量减少访问被驱动表的次数。<br>
-当被驱动表中的数据非常多时，每次访问被驱动表，被驱动表的记录会被加载到内存中，在内存中的每一条记录只会和驱动表结果集的一条记录做匹配，之后就会被从内存中清除掉。然后再从驱动表结果集中拿出另一条记录，再一次把被驱动表的记录加载到内存中一遍，周而复始，驱动表结果集中有多少条记录，就得把被驱动表从磁盘上加载到内存中多少次。<br>
-优化方法是在把被驱动表的记录加载到内存的时候，一次性和多条驱动表中的记录做匹配，这样就可以大大减少重复从磁盘上加载被驱动表的代价了。<strong>join buffer</strong>就是执行连接查询前申请的一块固定大小的内存，先把若干条驱动表结果集中的记录装在这个 join buffer 中，然后开始扫描被驱动表，每一条被驱动表的记录一次性和 join buffer 中的多条驱动表记录做匹配，因为匹配的过程都是在内存中完成的，所以这样可以显著减少被驱动表的 I/O 代价。<br>
-<img src="https://user-gold-cdn.xitu.io/2018/12/25/167e43ab3e5fa2f6?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
-这种加入了 join buffer 的嵌套循环连接算法被称为<strong>基于块的嵌套循环连接（Block Nested-Loop Join）</strong>。</p>
-<ul>
-<li>另外需要注意的是，驱动表的记录并不是所有列都会被放到 join buffer 中，只有查询列表中的列和过滤条件中的列才会被放到 join buffer 中，所以最好不要把*作为查询列表。</li>
-<li>相对<code>Simple Nested-Loop Join</code>来说，<code>Block Nested-Loop Join</code>在时间复杂度上并没有提高，但是由于所有匹配操作都是内存操作，速度会快很多，性能也更好。</li>
-<li>join buffer 的空间是有限的，如果放不下所有数据，则每次只放入一批，匹配完后清空 join buffer，再放另一批。</li>
-</ul>
-<h3 id="连接优化"><a class="header-anchor" href="#连接优化">¶</a>连接优化</h3>
-<ol>
-<li>索引<br>
-对每一步得到的结果集（第一步时，这个结果集就是第一张驱动表），到被驱动表中匹配记录时，相当于执行等值查询，因此我们可以在被驱动表上的这个被关联字段上加索引来提高效率。这种在连接查询中对被驱动表使用主键值或者唯一二级索引列的值进行等值查找的查询执行方式称之为：<strong>eq_ref</strong>。</li>
-<li>用小表作驱动表（能命中索引的情况下）<br>
-假设驱动表的行数是 N，则遍历驱动表时间复杂度为<code>N</code>，假设被驱动表的行数是 M，则在被驱动表上查一行数据的时间复杂度是<code>2 * log2(M)</code>（这里假设索引树的基为 2，<code>2 *</code>是因为要先从二级索引找到记录的主键，然后再用主键从聚簇索引找到记录的其他字段），因此，join 查询的近似复杂度为<code>N + N*2*log2M</code>。<br>
-显然，N 对扫描行数的影响更大，因此最好使用小表作为驱动表。</li>
-<li>用小表作驱动表（不能命中索引，即 Block Nested-Loop Join 的情况）<br>
-驱动表会被放入 join_buffer 中和被驱动表匹配，总的时间复杂度仍为<code>N * M</code>，N 被分成 K 段，K 与 N 成正比，可以表示为<code>K = λ * N</code>，因此，这个算法的扫描行数是<code>N + λ * N * M</code>，由于<code>N * M</code>的值不变，因此 N 越小这个算式的结果也会越小，所以，应该用小表作为驱动表。</li>
-</ol>
-<blockquote>
-<p>小表的定义：各表按查询条件过滤，最终得到的总数据量中较小的那个。</p>
-</blockquote>
-<ol>
-<li>调大<code>join_buffer_size</code><br>
-上式中，除了 N 外，<code>λ</code>也是关键，这里<code>λ</code>其实主要与<code>join_buffer_size</code>有关，<code>join_buffer_size</code>越大，一次性放入 join_buffer 的行数越大，分成的段数也越少，对被驱动表的全表扫描次数也越少。</li>
-</ol>
-<h3 id="什么情况下可以使用-join"><a class="header-anchor" href="#什么情况下可以使用-join">¶</a>什么情况下可以使用 join</h3>
-<p>查看 explain 结果里 Extra 字段里有没有出现<code>Block Nested Loop</code>：</p>
-<ul>
-<li>如果出现，则该 join 查询属于<code>Block Nested-Loop Join</code>，扫描行数过多，会占用大量资源，因此这种 join 尽量不要使用；</li>
-<li>如果没有出现，说明该 join 查询属于<code>Index Nested-Loop Join</code>，这种 join 查询是没有问题的。</li>
-</ul>
-<h3 id="join-的进一步优化"><a class="header-anchor" href="#join-的进一步优化">¶</a>join 的进一步优化</h3>
-<ol>
-<li>
-<p>MRR（Multi-Range Read）<br>
-普通回表过程是一行一行地查数据——普通索引上定位到主键 id、然后从主键索引上查到整行数据，一般来说这个过程是随机读磁盘的，性能比较差。<br>
-MRR 的核心思路是将 id 先保存到<code>read_rnd_buffer</code>，批量、按顺序地回表，这样排序后能达到接近顺序读磁盘的效果。</p>
-</li>
-<li>
-<p>BKA（Batched Key Access）<br>
-BKA 是对 NLJ 的优化。<br>
-类似 MRR，从驱动表取值到被驱动表上执行 join 时，BKA 会先将驱动表上的记录先放到<code>join_buffer</code>，然后批量到执行 join 操作。<br>
-如果要使用 BKA 优化算法的话，你需要在执行 SQL 语句之前，先设置：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set optimizer_switch=&apos;mrr=on,mrr_cost_based=off,batched_key_access=on&apos;;</span><br></pre></td></tr></table></figure>
-<p>其中前两个参数的作用是要启用 MRR。这么做的原因是，BKA 算法的优化要依赖于 MRR。</p>
-</li>
-</ol>
-<h1>基于成本的优化</h1>
-<p>MySQL 的查询优化器会比较多种查询方案，得到成本最低的方案，即所谓<strong>执行计划</strong>，之后才会调用存储引擎提供的接口来执行查询，这个过程大致如下：<br>
-1、根据搜索条件，找出所有可能使用的索引（<strong>possible keys</strong>）；<br>
-2、计算全表扫描的代价；<br>
-3、计算使用不同索引执行查询的代价；<br>
-4、对比各种执行方案的代价，找出成本最低的那一个。</p>
-<h2 id="计算代价"><a class="header-anchor" href="#计算代价">¶</a>计算代价</h2>
-<p>1、全表扫描的代价<br>
-全表扫描需要将聚簇索引所有页面加载到内存然后一一匹配，对全表扫描的性能统计涉及到聚簇索引占用的页面数和该表中的记录数，可以使用<code>SHOW TABLE STATUS</code>来统计这个信息。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW TABLE STATUS LIKE &apos;ad_content&apos;;</span><br></pre></td></tr></table></figure>
-<p>结果中的<strong>Rows</strong>表示记录条数，在 MyISAM 中是准确的，而在 InnoDB 中则是一个估计值。因为全表扫描时需要判断每条记录是否满足条件，因此该值能粗略代表对该表执行全表扫描所需的<strong>CPU 成本</strong>。<br>
-<strong>Data_length</strong>表示表占用的存储空间字节数，对于 MyISAM 来说就是数据文件的大小，对于 InnoDB 来说就是聚簇索引占用的存储空间大小。因为默认页面大小为 16KB，因此可以推导出聚簇索引的页面数量是<code>Data_length / 16 / 1024</code>，实际上可以粗略代表对该表执行全表扫描所需的<strong>IO 成本</strong>。<br>
-2、二级索引的代价<br>
-从二级索引中定位数据的 ID，<strong>回表</strong>（到聚簇索引）根据上一步的 ID 值找到完整的记录。<br>
-另外，统计记录数量时，还会用到一个<strong>index dive</strong>的方法（MySQL 自创的一个方法），比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 IN (&apos;aa1&apos;, &apos;aa2&apos;, &apos;aa3&apos;, ... , &apos;zzz&apos;);</span><br></pre></td></tr></table></figure>
-<p>由于 idx_key1 并不是唯一（unique）索引，因此<code>key1='aa1'</code>这些条件并不一定能唯一确定一条记录，查询优化器会先获取索引对应的 B+树的<strong>区间最左记录</strong>和<strong>区间最右记录</strong>，然后估算这两条记录之间有多少条记录，这种方式被称为<strong>index dive</strong>。<br>
-当然<strong>index dive</strong>并不是一定会生效，如果 in 条件中的参数超过了<strong>阈值</strong>就不能生效，这个阈值可以通过<code>SHOW VARIABLES LIKE '%dive%';</code>查到。<br>
-如果因为超过阈值（默认 200）而无法生效，则需要改用所谓的索引统计数据来进行估算，MySQL 也会为表中的每一个索引维护一份统计数据，可以使用<code>show index from 表名</code>来查看，其中有一个比较关键的字段<code>Cardinality</code>表示基数，即索引列中不重复值的个数，计算平均一个值重复次数即<code>Rows / Cardinality</code>，比如表里现在有 100 行数据，表基数为 2，则最终计算出的每个值会有的记录条数就是 50，对于上面那条 sql，如果<code>IN</code>条件中有 10000 个参数，则统计结果约需要回表的记录数就是<code>50 * 10000 = 500000</code>，不过这种方式相对<code>index dive</code>来说虽然简单，但是并不精确。<br>
-3、多个二级索引的代价（索引合并 Index Merge）<br>
-将多个搜索条件用 AND 连接之后，查询优化器还需要判断一下是否满足 Intersection 索引合并的条件，简而言之，如果查询出的记录都是按主键排序的，则可以采用 Intersection 索引合并。<br>
-4、对比多种执行方案，找出成本最低的一种<br>
-查询优化器在统计每种查询方式的代价时都会给一个<strong>代价常量</strong>，用于计算每一种方式的代价值，最后比较选取代价最小的那个。</p>
-<h2 id="连接查询的成本"><a class="header-anchor" href="#连接查询的成本">¶</a>连接查询的成本</h2>
-<h3 id="单表连接"><a class="header-anchor" href="#单表连接">¶</a>单表连接</h3>
-<p>对两表的连接查询来说，查询成本主要包括：<br>
-1、单次查询驱动表的成本；<br>
-2、根据第一步查出的结果（称为<strong>扇出</strong>）多次查询被驱动表的成本。</p>
-<p>所以，判断连接查询成本的方法是计算扇出值的大小：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">连接查询总成本 = 单次访问驱动表的成本 + 驱动表扇出数 x 单次访问被驱动表的成本</span><br></pre></td></tr></table></figure>
-<p>当连接方式为外连接，则驱动表是固定的，因此查询时只要为驱动表和被驱动表选择最优访问方式即可，但是如果是内连接，驱动表和被驱动表的位置是可以互换的，那么优化器会使用索引统计数据来进行比较选择。</p>
-<h3 id="多表连接"><a class="header-anchor" href="#多表连接">¶</a>多表连接</h3>
-<p>如果是 n 张表的内连接，计算的时间复杂度将是单表连接的 n!倍，当然优化器并不是老老实实地这么做：<br>
-1、预先设定最小连接成本，只要少于这个值就采用这种连接方式；<br>
-2、只对<code>optimizer_search_depth</code>张表执行连接顺序成本的分析，这个值是一个系统变量，显然越大则成本分析越精确；<br>
-3、启发式规则：如果满足一些规则则直接不分析，这些规则被称为启发式规则。</p>
-<h2 id="成本调节"><a class="header-anchor" href="#成本调节">¶</a>成本调节</h2>
-<p>TODO</p>
-<h1>基于规则的优化</h1>
-<p>优化器的优化规则<br>
-<a href="https://juejin.im/book/5bffcbc9f265da614b11b731/section/5c061b4a51882518805ae8d6" target="_blank" rel="noopener">https://juejin.im/book/5bffcbc9f265da614b11b731/section/5c061b4a51882518805ae8d6</a></p>
-<h1>Explain</h1>
-<h2 id="explain-各列的含义"><a class="header-anchor" href="#explain-各列的含义">¶</a>Explain 各列的含义</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; explain select * from auth_user;</span><br><span class="line"></span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |</span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">| 1 | SIMPLE | auth_user | NULL | ALL | NULL | NULL | NULL | NULL | 1 | 100.00 | NULL |</span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">1 row in set, 1 warning (0.00 sec)</span><br></pre></td></tr></table></figure>
-<p>列名	描述<br>
-id	在一个大的查询语句中每个 SELECT 关键字都对应一个唯一的 id<br>
-select_type	SELECT 关键字对应的那个查询的类型<br>
-table	表名<br>
-partitions	匹配的分区信息<br>
-type	针对单表的访问方法<br>
-possible_keys	可能用到的索引<br>
-key	实际上使用的索引<br>
-key_len	实际使用到的索引长度<br>
-ref	当使用索引列等值查询时，与索引列进行等值匹配的对象信息<br>
-rows	预估的需要读取的记录条数<br>
-filtered	某个表经过搜索条件过滤后剩余记录条数的百分比<br>
-Extra	一些额外的信息</p>
-<h2 id="explain-各列描述"><a class="header-anchor" href="#explain-各列描述">¶</a>Explain 各列描述</h2>
-<h3 id="table"><a class="header-anchor" href="#table">¶</a>table</h3>
-<p>表示该查询的目标表，当涉及到连接时会有多行分别表示对各张表的访问方式。</p>
-<h3 id="id"><a class="header-anchor" href="#id">¶</a>id</h3>
-<p>查询语句中每有一个 select 关键字，MySQL 就会为其分配一个唯一的 id 值，如果 select 中包含多张表的连接，则每张表都会有一条记录、且这些记录中的 id 值都是相同的。</p>
-<h3 id="select-type"><a class="header-anchor" href="#select-type">¶</a>select_type</h3>
-<ul>
-<li>SIMPLE<br>
-查询语句中不包含 UNION 或者子查询的查询都算作是 SIMPLE 类型。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1;</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>PRIMARY<br>
-对于包含 UNION、UNION ALL 或者子查询的大查询来说，它是由几个小查询组成的，其中最左边的那个查询的 select_type 值就是 PRIMARY。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 UNION SELECT * FROM s2;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>UNION<br>
-对于包含 UNION 或者 UNION ALL 的大查询来说，它是由几个小查询组成的，其中除了最左边的那个小查询以外，其余的小查询的 select_type 值就是 UNION。</li>
-<li>UNION RESULT<br>
-MySQL 选择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。</li>
-<li>SUBQUERY<br>
-如果包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是不相关子查询，并且查询优化器决定采用将该子查询物化的方案来执行该子查询时，该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 SUBQUERY。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>DEPENDENT SUBQUERY<br>
-如果包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是相关子查询，则该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 DEPENDENT SUBQUERY。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2 WHERE s1.key2 = s2.key2) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>DEPENDENT UNION<br>
-在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2 WHERE key1 = &apos;a&apos; UNION SELECT key1 FROM s1 WHERE key1 = &apos;b&apos;);</span><br></pre></td></tr></table></figure>
-<p>其中<code>SELECT key1 FROM s2 WHERE key1 = 'a'</code>这个查询是 DEPENDENT SUBQUERY，而<code>UNION</code>后面的那个查询就是 DEPENDENT UNION。</p>
-<ul>
-<li>DERIVED<br>
-对于采用物化的方式执行的包含派生表的查询，该派生表对应的子查询的 select_type 就是 DERIVED。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM (SELECT key1, count(*) as c FROM s1 GROUP BY key1) AS derived_s1 where c &gt; 1;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>MATERIALIZED<br>
-当查询优化器在执行包含子查询的语句时，选择将子查询物化之后与外层查询进行连接查询时，该子查询对应的 select_type 属性就是 MATERIALIZED。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2);</span><br></pre></td></tr></table></figure>
-<ul>
-<li>UNCACHEABLE SUBQUERY<br>
-不常用</li>
-<li>UNCACHEABLE UNION<br>
-不常用</li>
-</ul>
-<h3 id="partitions"><a class="header-anchor" href="#partitions">¶</a>partitions</h3>
-<p>分区，一般查询计划中的该字段都是 NULL。</p>
-<h3 id="type"><a class="header-anchor" href="#type">¶</a>type</h3>
-<p>对某张表执行查询时的访问方法。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<p>由于 idx_key1 二级索引的存在，因此这个等值查询的 type 列的值为 ref。具体的访问方法如下所示：</p>
-<ul>
-<li>system<br>
-当表中只有一条记录并且该表使用的存储引擎的统计数据是精确的，比如<strong>MyISAM</strong>、<strong>Memory</strong>，那么对该表的访问方法就是 system。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM t;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>const<br>
-当我们根据主键或者唯一二级索引列与常数进行等值匹配时，对单表的访问方法就是 const。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE id = 5;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>eq_ref<br>
-在连接查询时，如果被驱动表是通过主键或者唯一二级索引列等值匹配的方式进行访问的（如果该主键或者唯一二级索引是联合索引的话，所有的索引列都必须进行等值比较），则对该被驱动表的访问方法就是 eq_ref。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.id = s2.id;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>ref<br>
-当通过普通的二级索引列与常量进行等值匹配时来查询某个表，那么对该表的访问方法就可能是 ref。</li>
-<li>fulltext<br>
-全文索引。</li>
-<li>ref_or_null<br>
-当对普通二级索引进行等值匹配查询，该索引列的值也可以是 NULL 值时，那么对该表的访问方法就可能是 ref_or_null。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; OR key1 IS NULL;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>index_merge<br>
-包括 Intersection、Union、Sort-Union 这三种索引合并方式</li>
-<li>unique_subquery<br>
-类似于两表连接中被驱动表的 eq_ref 访问方法，unique_subquery 是针对在一些包含 IN 子查询的查询语句中，如果查询优化器决定将 IN 子查询转换为 EXISTS 子查询，而且子查询可以使用到主键进行等值匹配的话，那么该子查询执行计划的 type 列的值就是 unique_subquery，比如下边的这个查询语句：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key2 IN (SELECT id FROM s2 where s1.key1 = s2.key1) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>index_subquery<br>
-index_subquery 与 unique_subquery 类似，只不过访问子查询中的表时使用的是普通的索引</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field IN (SELECT key3 FROM s2 where s1.key1 = s2.key1) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>range<br>
-如果使用索引获取某些范围区间的记录，那么就可能使用到 range 访问方法。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (&apos;a&apos;, &apos;b&apos;, &apos;c&apos;);</span><br><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 &gt; &apos;a&apos; AND key1 &lt; &apos;b&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>index<br>
-当我们可以使用索引覆盖，但需要扫描全部的索引记录时，该表的访问方法就是 index。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT key_part2 FROM s1 WHERE key_part3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>ALL<br>
-全表扫描。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1;</span><br></pre></td></tr></table></figure>
-<h3 id="possible-keys-和-key"><a class="header-anchor" href="#possible-keys-和-key">¶</a>possible_keys 和 key</h3>
-<p>possible_keys 列表示在某个查询语句中，对某个表执行单表查询时可能用到的索引有哪些，key 列表示实际用到的索引有哪些。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<p>上面这条 sql，因为 key1 和 key3 分别可以命中 idx_key1 和 idx_key3 这两个索引，因此 possible_keys 列的值包含这二者。</p>
-<h3 id="key-len"><a class="header-anchor" href="#key-len">¶</a>key_len</h3>
-<p>key_len 列表示当优化器决定使用某个索引执行查询时，该索引记录的最大长度。</p>
-<h3 id="ref-v2"><a class="header-anchor" href="#ref-v2">¶</a>ref</h3>
-<p>当使用索引列等值匹配的条件去执行查询时，也就是在访问方法是 const、eq_ref、ref、ref_or_null、unique_subquery、index_subquery 其中之一时，ref 列表示与索引列进行匹配的目标类型：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">-- 因为与key1进行匹配的&apos;a&apos;是常量，因此ref列的值为const</span><br><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos;;</span><br><span class="line">-- 与id列比较，ref值为对应库.对应表.id</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.id = s2.id;</span><br><span class="line">-- 与函数进行比较，ref值为func</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s2.key1 = UPPER(s1.key1);</span><br></pre></td></tr></table></figure>
-<h3 id="rows"><a class="header-anchor" href="#rows">¶</a>rows</h3>
-<p>如果查询优化器决定使用全表扫描的方式对某个表执行查询时，执行计划的 rows 列就代表预计需要扫描的行数，如果使用索引来执行查询时，执行计划的 rows 列就代表预计扫描的索引记录行数。</p>
-<h3 id="filtered"><a class="header-anchor" href="#filtered">¶</a>filtered</h3>
-<p>优化器估算 rows 中满足搜索条件的记录的百分比。</p>
-<h3 id="extra"><a class="header-anchor" href="#extra">¶</a>Extra</h3>
-<p>额外信息的种类比较多：</p>
-<ul>
-<li>No tables used<br>
-当查询语句的没有 FROM 子句时将会提示该额外信息</li>
-<li>Impossible WHERE<br>
-查询语句的 WHERE 子句永远为 FALSE 时将会提示该额外信息：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE 1 != 1;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>No matching min/max row<br>
-当查询列表处有 MIN 或者 MAX 聚集函数，但是并没有符合 WHERE 子句中的搜索条件的记录时，将会提示该额外信息</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT MIN(key1) FROM s1 WHERE key1 = &apos;abcdefg&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Using index<br>
-当我们的查询列表以及搜索条件中只包含属于某个索引的列，也就是在可以使用<strong>索引覆盖</strong>的情况下，在 Extra 列将会提示该额外信息。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT key1 FROM s1 WHERE key1 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Using index condition<br>
-有些搜索条件中虽然出现了索引列，但却不能使用到索引</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key1 LIKE &apos;%a&apos;;</span><br></pre></td></tr></table></figure>
-<p>上面这个条件中，优化器会先根据<code>key1 &gt; 'z'</code>从二级索引<code>idx_key1</code>中定位到符合的二级索引记录，但是不会直接回表，而是先根据<code>key1 LIKE '%a'</code>找到匹配的记录再回表，这被称为<strong>索引条件下推</strong>。<br>
-索引下推应用于多条件查询上，5.6之前，查了一个条件后就会尝试回表得到结果，然后再对结果过滤其他字段，比如上面查完<code>key1 &gt; 'z'</code>后就会回表；而5.6之后，如果有多个条件会先尝试在联合索引上进行过滤再回表，比如上面先根据<code>key1 &gt; 'z'</code>查询，再使用<code>key1 LIKE '%a'</code>过滤，最后才回表。</p>
-<ul>
-<li>Using Where<br>
-当我们使用全表扫描来执行对某个表的查询，并且该语句的 WHERE 子句中有针对该表的搜索条件时，在 Extra 列中会提示上述额外信息。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<p>当使用索引访问来执行对某个表的查询，并且该语句的 WHERE 子句中有除了该索引包含的列之外的其他搜索条件时，在 Extra 列中也会提示上述额外信息。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; AND common_field = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Using join buffer (Block Nested Loop)<br>
-在连接查询执行过程中，当被驱动表不能有效的利用索引加快访问速度，MySQL 一般会为其分配一块名叫<strong>join buffer</strong>的内存块来加快查询速度，也就是我们所讲的<strong>基于块的嵌套循环算法</strong></li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.common_field = s2.common_field;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Not exists<br>
-当我们使用左（外）连接时，如果 WHERE 子句中包含要求被驱动表的某个列等于 NULL 值的搜索条件，而且那个列又是不允许存储 NULL 值的，那么在该表的执行计划的 Extra 列就会提示 Not exists 额外信息。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 LEFT JOIN s2 ON s1.key1 = s2.key1 WHERE s2.id IS NULL;</span><br></pre></td></tr></table></figure>
-<p>左外连接时如果被驱动表中匹配不到驱动表的某条记录，则该条记录对应的 <a href="http://s2.id" target="_blank" rel="noopener">s2.id</a> 就为 NULL。</p>
-<ul>
-<li>Using intersect(…)、Using union(…)和 Using sort_union(…)<br>
-如果执行计划的 Extra 列出现了 Using intersect(…)提示，说明准备使用 Intersect 索引合并的方式执行查询，括号中的…表示需要进行索引合并的索引名称；如果出现了 Using union(…)提示，说明准备使用 Union 索引合并的方式执行查询；出现了 Using sort_union(…)提示，说明准备使用 Sort-Union 索引合并的方式执行查询。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; AND key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Zero limit<br>
-当我们的 LIMIT 子句的参数为 0 时，表示压根儿不打算从表中读出任何记录，将会提示该额外信息</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 LIMIT 0;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Using filesort<br>
-有一些情况下对结果集中的记录进行排序是可以使用到索引的。但是很多情况下排序操作无法使用到索引，只能在内存中（记录较少的时候）或者磁盘中（记录较多的时候）进行排序，这种在内存中或者磁盘上进行排序的方式统称为文件排序（filesort）。如果某个查询需要使用<strong>文件排序</strong>的方式执行查询，就会在执行计划的 Extra 列中显示 Using filesort 提示</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 ORDER BY key1 LIMIT 10;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Using temporary<br>
-在许多查询的执行过程中，MySQL 可能会借助临时表来完成一些功能，比如去重、排序之类的，比如我们在执行许多包含 DISTINCT、GROUP BY、UNION 等子句的查询过程中，如果不能有效利用索引来完成查询，MySQL 很有可能寻求通过建立内部的<strong>临时表</strong>来执行查询。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT DISTINCT common_field FROM s1;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>Start temporary, End temporary<br>
-我们前边唠叨子查询的时候说过，查询优化器会优先尝试将 IN 子查询转换成 semi-join，而 semi-join 又有好多种执行策略，当执行策略为 DuplicateWeedout 时，也就是通过建立临时表来实现为外层查询中的记录进行去重操作时，驱动表查询执行计划的 Extra 列将显示 Start temporary 提示，被驱动表查询执行计划的 Extra 列将显示 End temporary 提示</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key3 FROM s2 WHERE common_field = &apos;a&apos;);</span><br></pre></td></tr></table></figure>
-<ul>
-<li>LooseScan<br>
-在将 In 子查询转为 semi-join 时，如果采用的是 LooseScan 执行策略，则在驱动表执行计划的 Extra 列就是显示 LooseScan 提示</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key3 IN (SELECT key1 FROM s2 WHERE key1 &gt; &apos;z&apos;);</span><br></pre></td></tr></table></figure>
-<ul>
-<li>FirstMatch(tbl_name)<br>
-在将 In 子查询转为 semi-join 时，如果采用的是 FirstMatch 执行策略，则在被驱动表执行计划的 Extra 列就是显示 FirstMatch(tbl_name)提示</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field IN (SELECT key1 FROM s2 where s1.key3 = s2.key3);</span><br></pre></td></tr></table></figure>
-<h2 id="optimizer-trace"><a class="header-anchor" href="#optimizer-trace">¶</a>optimizer trace</h2>
-<p>查看优化器生成执行计划的整个过程，这个功能的开启与关闭由系统变量 optimizer_trace 决定：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW VARIABLES LIKE &apos;optimizer_trace&apos;;</span><br></pre></td></tr></table></figure>
-<p>这个 optimizer_trace 表中有 4 个列：</p>
-<ul>
-<li>QUERY：表示我们的查询语句。</li>
-<li>TRACE：表示优化过程的 JSON 格式文本。</li>
-<li>MISSING_BYTES_BEYOND_MAX_MEM_SIZE：由于优化过程可能会输出很多，如果超过某个限制时，多余的文本将不会被显示，这个字段展示了被忽略的文本字节数。</li>
-<li>INSUFFICIENT_PRIVILEGES：表示是否没有权限查看优化过程，默认值是 0，只有某些特殊情况下才会是 1，我们暂时不关心这个字段的值。</li>
-</ul>
-<p>optimizer trace 使用步骤如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># 1. 打开optimizer trace功能 (默认情况下它是关闭的):</span><br><span class="line">SET optimizer_trace=&quot;enabled=on&quot;;</span><br><span class="line"></span><br><span class="line"># 2. 这里输入你自己的查询语句</span><br><span class="line">SELECT ...; </span><br><span class="line"></span><br><span class="line"># 3. 从OPTIMIZER_TRACE表中查看上一个查询的优化过程</span><br><span class="line">SELECT * FROM information_schema.OPTIMIZER_TRACE;</span><br><span class="line"></span><br><span class="line"># 4. 可能你还要观察其他语句执行的优化过程，重复上边的第2、3步</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"># 5. 当你停止查看语句的优化过程时，把optimizer trace功能关闭</span><br><span class="line">SET optimizer_trace=&quot;enabled=off&quot;;</span><br></pre></td></tr></table></figure>
-<p>优化过程大致分为了三个阶段：<br>
-1、prepare 阶段<br>
-2、optimize 阶段<br>
-单表查询需要重点关注 rows_estimation 这个过程，因为分析了对单表查询的各种执行方案的成本；<br>
-对于夺标连接查询，更多的需要关注 considered_execution_plans 这个过程，因为这个过程里会写明各种不同的连接方式所对应的成本。<br>
-3、execute 阶段</p>
-<h1>QA</h1>
-<h2 id="什么时候会发生文件排序？如何优化"><a class="header-anchor" href="#什么时候会发生文件排序？如何优化">¶</a>什么时候会发生文件排序？如何优化</h2>
-<p>如果没有用到索引，InnoDB 排序前一般会先将数据加载到内存的<strong>sort_buffer</strong>中，或者由于数据量太大需要借助磁盘空间来存放中间结果，排序完后再将结果集返回给客户端，在 MySQL 中，这种在内存或磁盘上进行排序的方式被称为<strong>文件排序（filesort）</strong>。<br>
-order by 语句最好能使用到覆盖索引，因为索引本身就对记录进行了排序，并且需要注意索引字段的顺序。</p>
-<h2 id="什么是索引下推"><a class="header-anchor" href="#什么是索引下推">¶</a>什么是索引下推</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key1 LIKE &apos;%a&apos;;</span><br></pre></td></tr></table></figure>
-<p>上面这个条件中，优化器会先根据<code>key1 &gt; 'z'</code>从二级索引<code>idx_key1</code>中定位到符合的二级索引记录，但是不会直接回表，而是先根据<code>key1 LIKE '%a'</code>找到匹配的记录再回表，这被称为<strong>索引条件下推</strong>。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/937fe6d5.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -3266,7 +2620,7 @@ ERR Client sent AUTH, but no password is set<br>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -3285,7 +2639,7 @@ ERR Client sent AUTH, but no password is set<br>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
+                <a class="post-title-link" href="/abe4b1f3.html" itemprop="url">SpringBoot原理总结</a></h1>
         
 
         <div class="post-meta">
@@ -3351,7 +2705,7 @@ ERR Client sent AUTH, but no password is set<br>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.4k 字
+                  4k 字
                 </span>
               
 
@@ -3367,7 +2721,7 @@ ERR Client sent AUTH, but no password is set<br>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  5 分钟
+                  16 分钟
                 </span>
               
             </div>
@@ -3391,362 +2745,265 @@ ERR Client sent AUTH, but no password is set<br>
         
           
             <a id="more"></a>
-<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
-<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
-<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
+<h1>开始使用 SpringBoot</h1>
+<h2 id="使用-sdkman-搭建环境"><a class="header-anchor" href="#使用-sdkman-搭建环境">¶</a>使用 sdkman 搭建环境</h2>
+<h3 id="介绍"><a class="header-anchor" href="#介绍">¶</a>介绍</h3>
 <ol>
-<li>超时降级<br>
-配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
-<li>失败次数降级<br>
-失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
-<li>故障降级<br>
-如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
-和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
-<li>限流降级<br>
-单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
+<li>sdkman<br>
+工具包管理器，可以用于管理 Spring Boot CLI。</li>
+<li>Spring Boot CLI<br>
+命令行工具。</li>
+<li>groovy<br>
+一种可以运行在 JVM 上的语言，和 Java 的编译器不同（语法、语义不同）。</li>
 </ol>
-<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
-<p>降级后，在代码层面，可以进行的处理策略如下：</p>
+<h3 id="安装"><a class="header-anchor" href="#安装">¶</a>安装</h3>
 <ol>
-<li>抛异常</li>
-<li>返回 NULL</li>
-<li>调用 Mock 数据</li>
-<li>调用 Fallback 处理逻辑</li>
+<li>
+<p>安装 sdkman<br>
+按下面链接中的步骤来，可能需要连接 VPN：<br>
+<a href="http://sdkman.io/install.html" target="_blank" rel="noopener">http://sdkman.io/install.html</a></p>
+</li>
+<li>
+<p>安装 Spring Boot CLI<br>
+默认安装最新版本的（安装位置在$HOME/.sdkman 下）：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk install springboot</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>切换 Spring Boot CLI 版本</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sdk list springboot</span><br><span class="line">sdk install springboot XXX.RELEASE</span><br><span class="line">sdk use springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>设置默认版本</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk default springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>使用本地编译的 springboot</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sdk install springboot dev /path/to/spring-boot/spring-boot-cli/target/spring-boot-cli-2.0.0.BUILD-SNAPSHOT-bin/spring-2.0.0.BUILD-SNAPSHOT/</span><br><span class="line">$ sdk default springboot dev</span><br><span class="line">$ spring --version</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
-<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
-<p><img src="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
-<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
+<h3 id="第一个-springboot-应用"><a class="header-anchor" href="#第一个-springboot-应用">¶</a>第一个 SpringBoot 应用</h3>
+<ol>
+<li>创建一个 app.groovy 文件：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">class ThisWillActuallyRun &#123;</span><br><span class="line">    @RequestMapping(&quot;/&quot;)</span><br><span class="line">    String home() &#123;</span><br><span class="line">        &quot;Hello World!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>执行</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring run app.groovy</span><br></pre></td></tr></table></figure>
+<ol>
+<li>访问</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">localhost:8080</span><br></pre></td></tr></table></figure>
+<h2 id="idea-下搭建-springboot-项目"><a class="header-anchor" href="#idea-下搭建-springboot-项目">¶</a>IDEA 下搭建 SpringBoot 项目</h2>
+<h3 id="创建一个简单的-web-项目"><a class="header-anchor" href="#创建一个简单的-web-项目">¶</a>创建一个简单的 Web 项目</h3>
+<ol>
+<li>
+<p>创建项目<br>
+new Projects… -&gt; Spring Initializr（这里可能需要连接 VPN） -&gt; 设置项目元数据 -&gt; 添加 Web 组件（对于这个例子来说足够了）</p>
+</li>
+<li>
+<p>添加控制器<br>
+创建 controller.HelloController：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">    @RequestMapping(&quot;/hello&quot;)</span><br><span class="line">    public String hello() &#123;</span><br><span class="line">        System.out.println(&quot;Hello&quot;);</span><br><span class="line">        return &quot;hello&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>执行 XxxApplication.main()</p>
+</li>
+<li>
+<p>访问<br>
+localhost:8080</p>
+</li>
+</ol>
+<h3 id="添加-jpa-支持"><a class="header-anchor" href="#添加-jpa-支持">¶</a>添加 Jpa 支持</h3>
+<ol>
+<li>添加依赖</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">spring.datasource.driver-class-name=com.mysql.jdbc.Driver</span><br><span class="line">spring.datasource.url=jdbc:mysql://localhost:3306/test</span><br><span class="line">spring.datasource.username=root</span><br><span class="line">spring.datasource.password=85382855</span><br><span class="line">   </span><br><span class="line">spring.jpa.hibernate.ddl-auto=create</span><br><span class="line">spring.jpa.show-sql=true</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建实体类</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Entity</span><br><span class="line">public class User &#123;</span><br><span class="line">    @Id</span><br><span class="line">    @GeneratedValue</span><br><span class="line">    private Integer id;</span><br><span class="line">    private String username;</span><br><span class="line">    private String password;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>创建 Dao 接口</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public interface UserDao extends JpaRepository&lt;User, Integer&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>注入 Dao 接口</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">@Autowired</span><br><span class="line">private UserDao userDao;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@RunWith(SpringRunner.class)</span><br><span class="line">@SpringBootTest</span><br><span class="line">public class HelloTest &#123;</span><br><span class="line"></span><br><span class="line">    private MockMvc mockMvc;</span><br><span class="line">    @Before</span><br><span class="line">    public void setUp() throws Exception &#123;</span><br><span class="line">        //测试 HelloWorldController</span><br><span class="line">        mockMvc = MockMvcBuilders.standaloneSetup(new HelloWorldController()).build();</span><br><span class="line">    &#125;</span><br><span class="line">    @Test</span><br><span class="line">    public void getHello() throws Exception &#123;</span><br><span class="line">        mockMvc.perform(MockMvcRequestBuilders.post(&quot;/hello?name=小明&quot;)</span><br><span class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)).andDo(print());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1>SpringBoot 原理分析</h1>
+<h2 id="核心思想"><a class="header-anchor" href="#核心思想">¶</a>核心思想</h2>
+<ol>
+<li>约定优于配置（convention over configuration）<br>
+传统 Spring 项目配置繁琐是 SpringBoot 主要解决的痛点之一，autoconfigure 模块会在启动时为自动注入的 Bean 设置默认配置。</li>
+<li>模块化<br>
+类似于 maven 管理项目的依赖、git 管理代码的版本，SpringBoot 提供了对一些常用组件的模块化管理，只要添加依赖几乎就可以马上使用，展现出一种插件化的效果。</li>
+</ol>
+<h2 id="spring-boot-load-模块"><a class="header-anchor" href="#spring-boot-load-模块">¶</a>spring-boot-load 模块</h2>
+<p>正常情况下一个类加载器只能找到加载路径的 jar 包里当前目录或者文件类里面的 *.class 文件，SpringBoot 允许我们使用 java -jar archive.jar 运行包含嵌套依赖 jar 的 jar 或者 war 文件。</p>
+<h3 id="传统类加载器的局限"><a class="header-anchor" href="#传统类加载器的局限">¶</a>传统类加载器的局限</h3>
+<p>传统类加载器无法加载 jar 包中嵌套的 jar 包。比如项目打包后包含如下这些类和 jar 包，则 c.jar 中的类无法被加载：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a1.class</span><br><span class="line">a2.class</span><br><span class="line">b.jar</span><br><span class="line">    b1.class</span><br><span class="line">    b2.class</span><br><span class="line">    c.jar</span><br></pre></td></tr></table></figure>
+<p>为了能够加载嵌套 jar 里面的资源，之前的做法都是把嵌套 jar 里面的 class 文件和应用的 class 文件打包为一个 jar，这样就不存在嵌套 jar 了，但是这样做就不能很清晰的知道哪些是应用自己的，哪些是应用依赖的，另外多个嵌套 jar 里面的 class 文件可能内容不一样但是文件名却一样时候又会引发新的问题。</p>
+<h3 id="加载嵌套-jar-包中的-class-文件"><a class="header-anchor" href="#加载嵌套-jar-包中的-class-文件">¶</a>加载嵌套 jar 包中的 class 文件</h3>
+<p>在 Java 中，AppClassLoader 和 ExtClassLoader 都继承自 URLClassLoader，并通过构造函数来传递需要加载的 class 文件所在的目录。<br>
+<strong>那么只要将 jar 包中嵌套的 jar 包所在的路径作为 URLClassLoader 的扫描路径，就可以实现对嵌套 jar 包的扫描了。</strong><br>
+但是默认情况下 Java 使用 AppClassLoader 加载使用命令启动时指定的 classpath 下的类和 jar 包，那么如何使用自定义的 URLClassLoader 来加载这些类和 jar 包呢？具体做法是加一个中间层。<br>
+原来是直接使用 AppClassLoader 来加载应用：AppClassLoader -&gt; Application。<br>
+现在先加载一个自定义的启动类 <strong>Launcher</strong>，其中自定义 URLClassLoader，再使用该 URLClassLoader 来加载我们真正的 main 函数：AppClassLoader -&gt; Launcher -&gt; URLClassLoader -&gt; Application。</p>
+<h3 id="spring-boot-load-提供的启动器-launcher"><a class="header-anchor" href="#spring-boot-load-提供的启动器-launcher">¶</a>spring-boot-load 提供的启动器 Launcher</h3>
+<p>spring-boot-load 模块允许我们加载嵌套 jar 包中的 class 文件，它包含三种类启动器：</p>
+<ol>
+<li>JarLauncher</li>
+<li>WarLauncher</li>
+<li>PropertiesLauncher</li>
+</ol>
+<h3 id="spring-boot-maven-plugin-打包插件及-springboot-指定的包结构"><a class="header-anchor" href="#spring-boot-maven-plugin-打包插件及-springboot-指定的包结构">¶</a>spring-boot-maven-plugin 打包插件及 SpringBoot 指定的包结构</h3>
+<p>为了为 SpringBoot 应用打包，需要引入如下 Maven 插件：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">      &lt;version&gt;1.5.9.RELEASE&lt;/version&gt;</span><br><span class="line">      &lt;executions&gt;</span><br><span class="line">        &lt;execution&gt;</span><br><span class="line">          &lt;goals&gt;</span><br><span class="line">            &lt;goal&gt;repackage&lt;/goal&gt;</span><br><span class="line">          &lt;/goals&gt;</span><br><span class="line">        &lt;/execution&gt;</span><br><span class="line">      &lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
+<p>SpringBoot项目打包后的jar包结构如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">archive.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF（1）</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org（2）</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-com（3）</span><br><span class="line"> |  +-mycompany</span><br><span class="line"> |     + project</span><br><span class="line"> |        +-YouClasses.class</span><br><span class="line"> +-lib（4）</span><br><span class="line">    +-dependency1.jar</span><br><span class="line">    +-dependency2.jar</span><br></pre></td></tr></table></figure>
+<p>目录（1）是 jar 文件中 MANIFEST.MF 文件的存放处。<br>
+目录（2）是 Spring-boot-loader 本身需要的 class 放置处。<br>
+目录（3）是应用本身的文件资源放置处。<br>
+目录（4）是应用依赖的 jar 固定放置处，即 lib 目录。</p>
+<p>打包按如下顺序进行：</p>
+<ol>
+<li>执行<code>mvn clean package</code>按原流程进行打包生成 jar 文件；</li>
+<li>spring-boot-maven-plugin 插件对 jar 包进行重写。
+<ol>
+<li>改写 MANIFEST.MF 文件：<code>Main-Class: org.springframework.boot.loader.JarLauncher</code>、<code>Start-Class: com.abc.MyApplication</code>，这里的 MyApplication 即项目中被<code>@SpringBootApplication</code>注解了的那个类，指定主类后 AppClassLoader 就会先加载 JarLauncher 并执行其中的 main 方法了；</li>
+<li>写入应用依赖的 jar 包到 lib 目录；</li>
+<li>拷贝 spring-boot-load 包里的 class 文件到 jar 包的目录（2）处。</li>
+</ol>
+<blockquote>
+<p>为什么要拷贝到目录（2）的位置？因为后面启动流程中<code>LaunchedURLClassLoader</code>位于spring-boot-loader.jar包内，AppClassLoader无法加载嵌套的jar中的文件。</p>
+</blockquote>
+</li>
+</ol>
+<p>启动顺序如下，以 JarLauncher 为例，假设 SpringBoot 项目打包后的 jar 包名为 test.jar：<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/JarLauncher%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="JarLauncher执行时序图" title="JarLauncher执行时序图"></p>
+<ol>
+<li>使用 AppClassLoader 加载 JarLauncher，执行其 main 函数；</li>
+<li>查找 test.jar 中的嵌套 jar 后生成一个列表<code>List&lt;Archive&gt;</code>，每个<code>Archive</code>包含了一个嵌套 jar 的信息，对应 jar 包 Archive 的子类是 <code>JarFileArchive</code>。</li>
+<li>将 test.jar 本身构造成的 Archive 插入<code>List&lt;Archive&gt;</code>列表的第一个位置；</li>
+<li>将这个列表作为参数构建<code>LaunchedURLClassLoader</code>类加载器，这个类加载器继承自 URLClassLoader；</li>
+<li>使用 LaunchedURLClassLoader 加载并实例化 MyApplication 的一个对象，并通过反射调用 main 函数，这时候 SpringBoot 才正式开始初始化 SpringBoot 的环境，并创建容器。</li>
+</ol>
+<h2 id="spring-boot-autoconfigure-模块"><a class="header-anchor" href="#spring-boot-autoconfigure-模块">¶</a>spring-boot-autoconfigure 模块</h2>
+<p>Spring 的出现给我们管理 Bean 的依赖注入提供了便捷，但是当我们需要使用通过 pom 引入的 jar 里面的一个 Bean 时候，还是需要手动在 XML 配置文件里面配置。<br>
+spring-boot-autoconfigure 思路类似 <strong>SPI(Service Provider Interface)</strong>，都是不同的实现类实现了定义的接口，加载时候去查找 classpath 下的实现类，不同在于前者使用 <strong>autoconfigure</strong> 实现，后者使用的是 <strong>ServiceLoader</strong>。<br>
+autoconfigure 模块的主要功能如下：</p>
+<ol>
+<li>可以依据 classpath 里面的依赖内容自动配置 Bean 到 Spring 容器，并为默认化属性配置。</li>
+<li>尝试推断哪些 Beans 是用户可能会需要的。比如如果 HSQLDB 包在当前 classpath 下，并且用户并没有配置其他数据库链接，这时候 Auto-configuration 功能会自动注入一个基于内存的数据库连接到应用的 IOC 容器。再比如当我们在 pom 引入了 Tomcat 的 start 后，如果当前还没 Web 容器被注入到应用 IOC，那么 SpringBoot 就会为我们自动创建并启动一个内嵌 Tomcat 容器来服务。</li>
+</ol>
+<h3 id="enableautoconfiguration"><a class="header-anchor" href="#enableautoconfiguration">¶</a>EnableAutoConfiguration</h3>
+<p>核心注解<code>@EnableAutoConfiguration</code>的定义如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Inherited</span><br><span class="line">@AutoConfigurationPackage</span><br><span class="line">@Import(&#123;AutoConfigurationImportSelector.class&#125;)</span><br><span class="line">public @interface EnableAutoConfiguration &#123;</span><br><span class="line">    String ENABLED_OVERRIDE_PROPERTY = &quot;spring.boot.enableautoconfiguration&quot;;</span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] exclude() default &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    String[] excludeName() default &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>EnableAutoConfiguration</code> 注解主要作用是通过 <code>@Import</code> 注入 <code>EnableAutoConfigurationImportSelector</code> 实例，后者是实现 AutoConfiguration 功能的核心类。<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/EnableAutoConfigurationImportSelector%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="EnableAutoConfigurationImportSelector时序图" title="EnableAutoConfigurationImportSelector时序图"><br>
+<code>EnableAutoConfigurationImportSelector</code> 类实现了 <code>DeferredImportSelector</code> 接口的 <code>String[] selectImports(AnnotationMetadata metadata)</code> 方法，当 Spring 框架解析 <code>@Import</code> 注解时候会调用该方法。<br>
+代码<code>EnableAutoConfigurationImportSelector#getCandidateConfigurations</code>和<code>loadFactoryNames</code>的作用是扫描 classpath 下含有 <code>Meta-INF/spring.factories</code> 文件的 jar，并解析文件中名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项。<br>
+getCandidateConfigurations会返回名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项的值的一个列表并且对列表内容进行去重处理。</p>
+<blockquote>
+<p>正常情况下，去重后的列表里面的类都会被自动注入到 Spring IOC 容器，除非指定不自动注入某些功能，比如若要排除自动创建数据源和事务管理的功能可以：<code>@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class})</code>，getExclusions 就是读取 EnableAutoConfiguration 注解里面的 excludeName 和 exclude 配置项，然后从去重后的列名列表里面剔除。这样在自动注入时候就不会对排除掉的自动配置功能进行注入了。</p>
+</blockquote>
+<p>这个列表中的每个元素就是一个自动配置功能，比如 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration 是 Web 容器自动注入的功能类（比如这个类可以自动扫描 Tomcat 的 start 并创建一个 Tomcat 容器）。</p>
+<h3 id="例子-注入-web-容器"><a class="header-anchor" href="#例子-注入-web-容器">¶</a>例子 - 注入 Web 容器</h3>
+<p>ServletWebServerFactoryAutoConfiguration 的部分核心代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)</span><br><span class="line">@ConditionalOnClass(ServletRequest.class)</span><br><span class="line">@ConditionalOnWebApplication(type = Type.SERVLET)</span><br><span class="line">@EnableConfigurationProperties(ServerProperties.class)</span><br><span class="line">@Import(&#123; ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedTomcat.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedJetty.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedUndertow.class &#125;)</span><br><span class="line">public class ServletWebServerFactoryAutoConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public ServletWebServerFactoryCustomizer servletWebServerFactoryCustomizer(ServerProperties serverProperties) &#123;</span><br><span class="line">		return new ServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@ConditionalOnClass(name = &quot;org.apache.catalina.startup.Tomcat&quot;)</span><br><span class="line">	public TomcatServletWebServerFactoryCustomizer tomcatServletWebServerFactoryCustomizer(</span><br><span class="line">			ServerProperties serverProperties) &#123;</span><br><span class="line">		return new TomcatServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Registers a &#123;@link WebServerFactoryCustomizerBeanPostProcessor&#125;. Registered via</span><br><span class="line">	 * &#123;@link ImportBeanDefinitionRegistrar&#125; for early registration.</span><br><span class="line">	 */</span><br><span class="line">	public static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware &#123;</span><br><span class="line"></span><br><span class="line">		private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void setBeanFactory(BeanFactory beanFactory) throws BeansException &#123;</span><br><span class="line">			if (beanFactory instanceof ConfigurableListableBeanFactory) &#123;</span><br><span class="line">				this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,</span><br><span class="line">				BeanDefinitionRegistry registry) &#123;</span><br><span class="line">			if (this.beanFactory == null) &#123;</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;webServerFactoryCustomizerBeanPostProcessor&quot;,</span><br><span class="line">					WebServerFactoryCustomizerBeanPostProcessor.class);</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;errorPageRegistrarBeanPostProcessor&quot;,</span><br><span class="line">					ErrorPageRegistrarBeanPostProcessor.class);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		private void registerSyntheticBeanIfMissing(BeanDefinitionRegistry registry, String name, Class&lt;?&gt; beanClass) &#123;</span><br><span class="line">			if (ObjectUtils.isEmpty(this.beanFactory.getBeanNamesForType(beanClass, true, false))) &#123;</span><br><span class="line">				RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);</span><br><span class="line">				beanDefinition.setSynthetic(true);</span><br><span class="line">				registry.registerBeanDefinition(name, beanDefinition);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>ServletWebServerFactoryAutoConfiguration 类是 Web 容器自动注入的 Auto-configuration 类。</p>
 <ul>
-<li>toObservable()<br>
-最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
-<li>observe()<br>
-调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
-<li>queue()<br>
-调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
-<li>execute()<br>
-调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
+<li>@ConditionalOnWebApplication 说明当前是 Web 环境上下文时候才注入本类到 IOC。</li>
+<li>@Import 注解导入了另一个配置<code>ServletWebServerFactoryConfiguration.EmbeddedTomcat.class</code>，这里包含了真正的注入 Tomcat 实例的逻辑：</li>
 </ul>
-<p>HystrixCommand.execute<br>
--&gt; HystrixCommand.queue<br>
--&gt; AbstractCommand.toObservable</p>
-<p>AbstractCommand.observe<br>
--&gt; AbstractCommand.toObservable</p>
-<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
-<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
-开启配置：<br>
-HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
-HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
--&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
-<p>实施信号量隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
-<p>实施线程隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; AbstractCommand.executeCommandAndObserve<br>
--&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
--&gt; AbstractCommand.getUserExecutionObservable<br>
--&gt; HystrixCommand.getExecutionObservable</p>
-<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
-<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
-当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
-Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">class ServletWebServerFactoryConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Configuration</span><br><span class="line">	@ConditionalOnClass(&#123; Servlet.class, Tomcat.class, UpgradeProtocol.class &#125;)</span><br><span class="line">	@ConditionalOnMissingBean(value = ServletWebServerFactory.class, search = SearchStrategy.CURRENT)</span><br><span class="line">	public static class EmbeddedTomcat &#123;</span><br><span class="line"></span><br><span class="line">		@Bean</span><br><span class="line">		public TomcatServletWebServerFactory tomcatServletWebServerFactory() &#123;</span><br><span class="line">			return new TomcatServletWebServerFactory();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<ul>
+<li>@ConditionalOnClass：只有在 classpath 下存在指定的类的时候 Bean 才能被创建。</li>
+<li>@ConditionalOnMissingBean：只有对应的 Bean 在系统中都没有被创建，它修饰的初始化代码块才会执行，【用户自己手动创建的 Bean 优先】。</li>
+</ul>
+<p>当应用引入 spring-boot-starter-web 时候默认引入的是 Tomcat 的 starter，所以会发现 classpath 下存在 Servlet.class、 Tomcat.class 这两个类，并且 IOC 里面没有 TomcatEmbeddedServletContainerFactory 的实例，因此会创建其实例到 IOC 容器中，最终会创建一个 Tomcat 容器。<br>
+当然，如果需要使用 Jetty 则需要在引用 spring-boot-starter-web 的时候排除掉 Tomcat 的 start，然后在引入 Jetty 的 start 即可。</p>
+<h3 id="总结"><a class="header-anchor" href="#总结">¶</a>总结</h3>
+<p>总而言之，自动配置的生效步骤可以概括如下：</p>
 <ol>
-<li>熔断关闭状态（Closed）<br>
-服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
-<li>熔断开启状态（Open）<br>
-在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
-<li>半熔断状态（Half-Open）<br>
-在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
+<li>Spring Boot 在启动时会去依赖的 Starter 包中寻找 resources/META-INF/spring.factories 文件，然后根据文件中配置的 Jar 包去扫描项目所依赖的 Jar 包。</li>
+<li>根据 spring.factories 配置加载 AutoConfigure 类</li>
+<li>根据 @Conditional 注解的条件，进行自动配置并将 Bean 注入 Spring Context</li>
 </ol>
-<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
-<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
-<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
+<h2 id="spring-boot-模块"><a class="header-anchor" href="#spring-boot-模块">¶</a>spring-boot 模块</h2>
+<p>提供了一些特性用来支持 SpringBoot 中其它模块，这些特性包括：</p>
 <ol>
-<li>run()方法抛出非 HystrixBadRequestException 异常<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
-HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
-<li>run()方法调用超时<br>
-对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
--&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
--&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
-可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
-<li>熔断器开启拦截调用<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution</li>
-<li>线程池/队列/信号量是否跑满<br>
-在《隔离》那一节中已经说明了代码的位置。</li>
-<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
-HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
+<li>SpringApplication 类提供了静态方法以便于写一个独立了 Spring 应用程序，该类的主要职责是 create 和 refresh 一个合适的 Spring 应用程序上下文（ApplicationContext）。</li>
+<li>一流的外部配置的支持（application.properties）。</li>
+<li>提供了便捷的应用程序上下文（ApplicationContext）的初始化器，以便在 ApplicationContext 使用前对其进行用户定制。</li>
+<li>给 Web 应用提供了一个可选的 Web 容器（目前有 Tomcat 或 Jetty）。</li>
 </ol>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
-结果缓存这个功能我觉得应该由幂等框架来做。</p>
+<h3 id="springapplication-的执行流程"><a class="header-anchor" href="#springapplication-的执行流程">¶</a>SpringApplication 的执行流程</h3>
+<p>一般的 SpringBoot 项目都会有一个如下所示的 Application 类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class Web1Application &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(Web1Application.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>JarLauncher</code>启动过后里面实际上就是调用了 SpringApplication#run 方法，SpringApplication 的执行流程如下：<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/SpringApplication%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="SpringApplication执行时序图" title="SpringApplication执行时序图"></p>
+<ol>
+<li>SpringApplication 的构造函数里面会调用 initialize 方法在 classpath 的 jar 包里面查找 META-INF/spring.factories，如果找到则看里面是否有配置 <code>ApplicationContextInitializer</code> 类型的 Bean，有则加载到 SpringApplication 的变量 <code>initializers</code> 里面存放，比如 spring-boot.jar 里面。<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/ApplicationContextInitializer%E9%85%8D%E7%BD%AE.png" alt="ApplicationContextInitializer配置" title="ApplicationContextInitializer配置"></li>
+<li>createAndRefreshContext 做了这几件事情：
+<ol>
+<li>设置环境，加载 application.properties 等配置文件；</li>
+<li>根据 classpath 的 jar 里面是否有 ConfigurableWebEnvironment 判断当前是否需要创建 Web 应用程序上下文还是创建一个非 Web 应用程序上下文；</li>
+<li>使用前面加载的应用程序初始化器对创建的应用程序上下文进行初始化；</li>
+<li>刷新应用程序上下文解析 Bean 定义到应用程序上下文里面的 IOC 容器，在刷新过程的 invokeBeanFactoryPostProcessors 过程中(10)(11)会去解析类上面标注的 @import 注解，然后就会调用所有的 ImportSelector 的 selectImports 方法，这也是第二部分时序图开始执行的地方。</li>
+</ol>
+</li>
+</ol>
+<h3 id="web-容器的创建"><a class="header-anchor" href="#web-容器的创建">¶</a>Web 容器的创建</h3>
+<p>通过自动配置将 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 的实例注入 IOC 容器后，我们就可以使用 Web 容器来提供 Web 服务了。<br>
+具体的 Web 容器的创建是在容器刷新过程的 onRefresh 阶段进行的（这个阶段是在刷新过程的 invokeBeanFactoryPostProcessors 阶段的后面）：<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/Web%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B.png" alt="Web容器创建过程" title="Web容器创建过程"></p>
+<ul>
+<li>getBeanNamesForType 获取了 IOC 容器中的 EmbeddedServletContainerFactory 类型的 Bean 的 name 集合，如果 name 集合为空或者多个则抛出异常。还记得 Web 容器工厂是通过自动配置注入到 IOC 的吧，并且 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 都是实现了 EmbeddedServletContainerFactory 接口。</li>
+<li>如果 IOC 里面只有一个 Web 容器工厂 Bean 则获取该 Bean 的实例，然后调用该 Bean 的 getEmbeddedServletContainer 获取 Web 容器，这里假设 Web 容器工厂为 Tomcat ，则创建 Tomcat 容器并进行初始化。</li>
+</ul>
+<h2 id="actuator-模块"><a class="header-anchor" href="#actuator-模块">¶</a>Actuator 模块</h2>
+<p><img src="http://47.88.24.11/imgs/SpringBoot/Actuator%E7%B1%BB%E5%9B%BE.png" alt="Actuator类图" title="Actuator类图"><br>
+Actuator 模块提供了一些组件用于检查应用或中间件的健康状况：</p>
+<ol>
+<li>Inspect：检测应用或中间件的健康状况；</li>
+<li>Aggregate：聚合所有结果。</li>
+</ol>
+<p>基于 Actuator 模块，我们可以开发一个服务探活系统：</p>
+<ol>
+<li>Actuator 为业务服务器暴露出一个探活端口<code>healthcheck</code>，借助 Spring 容器获取到中间件的客户端实例；</li>
+<li>探活服务<code>HealthCheck-Task</code>定时轮询所有服务，统计单位时间内请求出现问题的次数，从而发送报警短信提醒研发同学。</li>
+</ol>
+<p>服务的轮询探活将是这个系统的主要瓶颈，有一些措施可以作为参考：</p>
+<ol>
+<li>灵活使用<code>CompletableFuture</code>这些并发编排组件，因为探活请求一般都是比较&quot;慢&quot;的，因此可以通过并行化来提高效率；</li>
+<li>探活不能占用太多系统资源，合理设置探活超时时间，很多客户端的默认超时时间达到 1 分钟甚至更长，必须额外设置探活请求的超时时间，避免服务器挂掉时所有线程都被<code>hang</code>死，导致服务雪崩。</li>
+</ol>
+<blockquote>
+<p>探活不能和业务代码共用线程池，做到线程池隔离，即使出问题也只影响到<code>HealthCheck-Task</code>。</p>
+</blockquote>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
 <ol>
-<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
-<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
-<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
-<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
-<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
+<li><a href="https://www.jianshu.com/p/bbf439c8a203" target="_blank" rel="noopener">从零开始开发一个Spring Boot Starter</a></li>
+<li><a href="https://www.jianshu.com/p/87f101d8ec41" target="_blank" rel="noopener">SpringBoot启动流程解析</a></li>
 </ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  760 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  3 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>事务</h1>
-<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
-<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
-<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
-<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
-<h1>源码</h1>
-<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
+<h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
 <ol>
-<li>数据源元数据信息和表元数据信息的收集</li>
-<li>表分库分表策略和算法的配置信息收集</li>
-</ol>
-<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
--&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
-<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
-<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
-org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
--&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
--&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
--&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
--&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
-<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; ShardingPreparedStatement#shard<br>
--&gt; BaseShardingEngine#shard<br>
--&gt; PreparedQueryShardingEngine#route<br>
--&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
--&gt; ParsingSQLRouter#parse<br>
--&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
--&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
--&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
--&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
--&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
--&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
--&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
--&gt; ParsingSQLRouter#route<br>
--&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
--&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
--&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
--&gt; BaseShardingEngine#rewriteAndConvert<br>
--&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
-<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
--&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
--&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
--&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
--&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
--&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
--&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
--&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
--&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
--&gt; AbstractStatementExecutor#executeCallback<br>
--&gt; SQLExecuteTemplate#executeGroup<br>
--&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
--&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
-<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
--&gt; AbstractStatementExecutor#getResultSets<br>
--&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
--&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
-<h1>参考</h1>
-<ol>
-<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
-<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
-<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
-<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
-</ol>
-<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
-<ol>
-<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
+<li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
 </ol>
 
           
@@ -4308,7 +3565,7 @@ feign.hystrix.enabled=true</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -4327,7 +3584,7 @@ feign.hystrix.enabled=true</p>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/abe4b1f3.html" itemprop="url">SpringBoot原理总结</a></h1>
+                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
         
 
         <div class="post-meta">
@@ -4393,7 +3650,7 @@ feign.hystrix.enabled=true</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4k 字
+                  1.4k 字
                 </span>
               
 
@@ -4409,7 +3666,7 @@ feign.hystrix.enabled=true</p>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  5 分钟
                 </span>
               
             </div>
@@ -4433,265 +3690,571 @@ feign.hystrix.enabled=true</p>
         
           
             <a id="more"></a>
-<h1>开始使用 SpringBoot</h1>
-<h2 id="使用-sdkman-搭建环境"><a class="header-anchor" href="#使用-sdkman-搭建环境">¶</a>使用 sdkman 搭建环境</h2>
-<h3 id="介绍"><a class="header-anchor" href="#介绍">¶</a>介绍</h3>
+<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
+<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
+<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
 <ol>
-<li>sdkman<br>
-工具包管理器，可以用于管理 Spring Boot CLI。</li>
-<li>Spring Boot CLI<br>
-命令行工具。</li>
-<li>groovy<br>
-一种可以运行在 JVM 上的语言，和 Java 的编译器不同（语法、语义不同）。</li>
+<li>超时降级<br>
+配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
+<li>失败次数降级<br>
+失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
+<li>故障降级<br>
+如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
+和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
+<li>限流降级<br>
+单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
 </ol>
-<h3 id="安装"><a class="header-anchor" href="#安装">¶</a>安装</h3>
+<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
+<p>降级后，在代码层面，可以进行的处理策略如下：</p>
 <ol>
-<li>
-<p>安装 sdkman<br>
-按下面链接中的步骤来，可能需要连接 VPN：<br>
-<a href="http://sdkman.io/install.html" target="_blank" rel="noopener">http://sdkman.io/install.html</a></p>
-</li>
-<li>
-<p>安装 Spring Boot CLI<br>
-默认安装最新版本的（安装位置在$HOME/.sdkman 下）：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk install springboot</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>切换 Spring Boot CLI 版本</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sdk list springboot</span><br><span class="line">sdk install springboot XXX.RELEASE</span><br><span class="line">sdk use springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>设置默认版本</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk default springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>使用本地编译的 springboot</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sdk install springboot dev /path/to/spring-boot/spring-boot-cli/target/spring-boot-cli-2.0.0.BUILD-SNAPSHOT-bin/spring-2.0.0.BUILD-SNAPSHOT/</span><br><span class="line">$ sdk default springboot dev</span><br><span class="line">$ spring --version</span><br></pre></td></tr></table></figure>
-</li>
+<li>抛异常</li>
+<li>返回 NULL</li>
+<li>调用 Mock 数据</li>
+<li>调用 Fallback 处理逻辑</li>
 </ol>
-<h3 id="第一个-springboot-应用"><a class="header-anchor" href="#第一个-springboot-应用">¶</a>第一个 SpringBoot 应用</h3>
-<ol>
-<li>创建一个 app.groovy 文件：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">class ThisWillActuallyRun &#123;</span><br><span class="line">    @RequestMapping(&quot;/&quot;)</span><br><span class="line">    String home() &#123;</span><br><span class="line">        &quot;Hello World!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>执行</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring run app.groovy</span><br></pre></td></tr></table></figure>
-<ol>
-<li>访问</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">localhost:8080</span><br></pre></td></tr></table></figure>
-<h2 id="idea-下搭建-springboot-项目"><a class="header-anchor" href="#idea-下搭建-springboot-项目">¶</a>IDEA 下搭建 SpringBoot 项目</h2>
-<h3 id="创建一个简单的-web-项目"><a class="header-anchor" href="#创建一个简单的-web-项目">¶</a>创建一个简单的 Web 项目</h3>
-<ol>
-<li>
-<p>创建项目<br>
-new Projects… -&gt; Spring Initializr（这里可能需要连接 VPN） -&gt; 设置项目元数据 -&gt; 添加 Web 组件（对于这个例子来说足够了）</p>
-</li>
-<li>
-<p>添加控制器<br>
-创建 controller.HelloController：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">    @RequestMapping(&quot;/hello&quot;)</span><br><span class="line">    public String hello() &#123;</span><br><span class="line">        System.out.println(&quot;Hello&quot;);</span><br><span class="line">        return &quot;hello&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>执行 XxxApplication.main()</p>
-</li>
-<li>
-<p>访问<br>
-localhost:8080</p>
-</li>
-</ol>
-<h3 id="添加-jpa-支持"><a class="header-anchor" href="#添加-jpa-支持">¶</a>添加 Jpa 支持</h3>
-<ol>
-<li>添加依赖</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>添加配置</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">spring.datasource.driver-class-name=com.mysql.jdbc.Driver</span><br><span class="line">spring.datasource.url=jdbc:mysql://localhost:3306/test</span><br><span class="line">spring.datasource.username=root</span><br><span class="line">spring.datasource.password=85382855</span><br><span class="line">   </span><br><span class="line">spring.jpa.hibernate.ddl-auto=create</span><br><span class="line">spring.jpa.show-sql=true</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>创建实体类</p>
-</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Entity</span><br><span class="line">public class User &#123;</span><br><span class="line">    @Id</span><br><span class="line">    @GeneratedValue</span><br><span class="line">    private Integer id;</span><br><span class="line">    private String username;</span><br><span class="line">    private String password;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>创建 Dao 接口</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public interface UserDao extends JpaRepository&lt;User, Integer&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>注入 Dao 接口</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">@Autowired</span><br><span class="line">private UserDao userDao;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@RunWith(SpringRunner.class)</span><br><span class="line">@SpringBootTest</span><br><span class="line">public class HelloTest &#123;</span><br><span class="line"></span><br><span class="line">    private MockMvc mockMvc;</span><br><span class="line">    @Before</span><br><span class="line">    public void setUp() throws Exception &#123;</span><br><span class="line">        //测试 HelloWorldController</span><br><span class="line">        mockMvc = MockMvcBuilders.standaloneSetup(new HelloWorldController()).build();</span><br><span class="line">    &#125;</span><br><span class="line">    @Test</span><br><span class="line">    public void getHello() throws Exception &#123;</span><br><span class="line">        mockMvc.perform(MockMvcRequestBuilders.post(&quot;/hello?name=小明&quot;)</span><br><span class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)).andDo(print());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h1>SpringBoot 原理分析</h1>
-<h2 id="核心思想"><a class="header-anchor" href="#核心思想">¶</a>核心思想</h2>
-<ol>
-<li>约定优于配置（convention over configuration）<br>
-传统 Spring 项目配置繁琐是 SpringBoot 主要解决的痛点之一，autoconfigure 模块会在启动时为自动注入的 Bean 设置默认配置。</li>
-<li>模块化<br>
-类似于 maven 管理项目的依赖、git 管理代码的版本，SpringBoot 提供了对一些常用组件的模块化管理，只要添加依赖几乎就可以马上使用，展现出一种插件化的效果。</li>
-</ol>
-<h2 id="spring-boot-load-模块"><a class="header-anchor" href="#spring-boot-load-模块">¶</a>spring-boot-load 模块</h2>
-<p>正常情况下一个类加载器只能找到加载路径的 jar 包里当前目录或者文件类里面的 *.class 文件，SpringBoot 允许我们使用 java -jar archive.jar 运行包含嵌套依赖 jar 的 jar 或者 war 文件。</p>
-<h3 id="传统类加载器的局限"><a class="header-anchor" href="#传统类加载器的局限">¶</a>传统类加载器的局限</h3>
-<p>传统类加载器无法加载 jar 包中嵌套的 jar 包。比如项目打包后包含如下这些类和 jar 包，则 c.jar 中的类无法被加载：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a1.class</span><br><span class="line">a2.class</span><br><span class="line">b.jar</span><br><span class="line">    b1.class</span><br><span class="line">    b2.class</span><br><span class="line">    c.jar</span><br></pre></td></tr></table></figure>
-<p>为了能够加载嵌套 jar 里面的资源，之前的做法都是把嵌套 jar 里面的 class 文件和应用的 class 文件打包为一个 jar，这样就不存在嵌套 jar 了，但是这样做就不能很清晰的知道哪些是应用自己的，哪些是应用依赖的，另外多个嵌套 jar 里面的 class 文件可能内容不一样但是文件名却一样时候又会引发新的问题。</p>
-<h3 id="加载嵌套-jar-包中的-class-文件"><a class="header-anchor" href="#加载嵌套-jar-包中的-class-文件">¶</a>加载嵌套 jar 包中的 class 文件</h3>
-<p>在 Java 中，AppClassLoader 和 ExtClassLoader 都继承自 URLClassLoader，并通过构造函数来传递需要加载的 class 文件所在的目录。<br>
-<strong>那么只要将 jar 包中嵌套的 jar 包所在的路径作为 URLClassLoader 的扫描路径，就可以实现对嵌套 jar 包的扫描了。</strong><br>
-但是默认情况下 Java 使用 AppClassLoader 加载使用命令启动时指定的 classpath 下的类和 jar 包，那么如何使用自定义的 URLClassLoader 来加载这些类和 jar 包呢？具体做法是加一个中间层。<br>
-原来是直接使用 AppClassLoader 来加载应用：AppClassLoader -&gt; Application。<br>
-现在先加载一个自定义的启动类 <strong>Launcher</strong>，其中自定义 URLClassLoader，再使用该 URLClassLoader 来加载我们真正的 main 函数：AppClassLoader -&gt; Launcher -&gt; URLClassLoader -&gt; Application。</p>
-<h3 id="spring-boot-load-提供的启动器-launcher"><a class="header-anchor" href="#spring-boot-load-提供的启动器-launcher">¶</a>spring-boot-load 提供的启动器 Launcher</h3>
-<p>spring-boot-load 模块允许我们加载嵌套 jar 包中的 class 文件，它包含三种类启动器：</p>
-<ol>
-<li>JarLauncher</li>
-<li>WarLauncher</li>
-<li>PropertiesLauncher</li>
-</ol>
-<h3 id="spring-boot-maven-plugin-打包插件及-springboot-指定的包结构"><a class="header-anchor" href="#spring-boot-maven-plugin-打包插件及-springboot-指定的包结构">¶</a>spring-boot-maven-plugin 打包插件及 SpringBoot 指定的包结构</h3>
-<p>为了为 SpringBoot 应用打包，需要引入如下 Maven 插件：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">      &lt;version&gt;1.5.9.RELEASE&lt;/version&gt;</span><br><span class="line">      &lt;executions&gt;</span><br><span class="line">        &lt;execution&gt;</span><br><span class="line">          &lt;goals&gt;</span><br><span class="line">            &lt;goal&gt;repackage&lt;/goal&gt;</span><br><span class="line">          &lt;/goals&gt;</span><br><span class="line">        &lt;/execution&gt;</span><br><span class="line">      &lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
-<p>SpringBoot项目打包后的jar包结构如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">archive.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF（1）</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org（2）</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-com（3）</span><br><span class="line"> |  +-mycompany</span><br><span class="line"> |     + project</span><br><span class="line"> |        +-YouClasses.class</span><br><span class="line"> +-lib（4）</span><br><span class="line">    +-dependency1.jar</span><br><span class="line">    +-dependency2.jar</span><br></pre></td></tr></table></figure>
-<p>目录（1）是 jar 文件中 MANIFEST.MF 文件的存放处。<br>
-目录（2）是 Spring-boot-loader 本身需要的 class 放置处。<br>
-目录（3）是应用本身的文件资源放置处。<br>
-目录（4）是应用依赖的 jar 固定放置处，即 lib 目录。</p>
-<p>打包按如下顺序进行：</p>
-<ol>
-<li>执行<code>mvn clean package</code>按原流程进行打包生成 jar 文件；</li>
-<li>spring-boot-maven-plugin 插件对 jar 包进行重写。
-<ol>
-<li>改写 MANIFEST.MF 文件：<code>Main-Class: org.springframework.boot.loader.JarLauncher</code>、<code>Start-Class: com.abc.MyApplication</code>，这里的 MyApplication 即项目中被<code>@SpringBootApplication</code>注解了的那个类，指定主类后 AppClassLoader 就会先加载 JarLauncher 并执行其中的 main 方法了；</li>
-<li>写入应用依赖的 jar 包到 lib 目录；</li>
-<li>拷贝 spring-boot-load 包里的 class 文件到 jar 包的目录（2）处。</li>
-</ol>
-<blockquote>
-<p>为什么要拷贝到目录（2）的位置？因为后面启动流程中<code>LaunchedURLClassLoader</code>位于spring-boot-loader.jar包内，AppClassLoader无法加载嵌套的jar中的文件。</p>
-</blockquote>
-</li>
-</ol>
-<p>启动顺序如下，以 JarLauncher 为例，假设 SpringBoot 项目打包后的 jar 包名为 test.jar：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/JarLauncher%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="JarLauncher执行时序图" title="JarLauncher执行时序图"></p>
-<ol>
-<li>使用 AppClassLoader 加载 JarLauncher，执行其 main 函数；</li>
-<li>查找 test.jar 中的嵌套 jar 后生成一个列表<code>List&lt;Archive&gt;</code>，每个<code>Archive</code>包含了一个嵌套 jar 的信息，对应 jar 包 Archive 的子类是 <code>JarFileArchive</code>。</li>
-<li>将 test.jar 本身构造成的 Archive 插入<code>List&lt;Archive&gt;</code>列表的第一个位置；</li>
-<li>将这个列表作为参数构建<code>LaunchedURLClassLoader</code>类加载器，这个类加载器继承自 URLClassLoader；</li>
-<li>使用 LaunchedURLClassLoader 加载并实例化 MyApplication 的一个对象，并通过反射调用 main 函数，这时候 SpringBoot 才正式开始初始化 SpringBoot 的环境，并创建容器。</li>
-</ol>
-<h2 id="spring-boot-autoconfigure-模块"><a class="header-anchor" href="#spring-boot-autoconfigure-模块">¶</a>spring-boot-autoconfigure 模块</h2>
-<p>Spring 的出现给我们管理 Bean 的依赖注入提供了便捷，但是当我们需要使用通过 pom 引入的 jar 里面的一个 Bean 时候，还是需要手动在 XML 配置文件里面配置。<br>
-spring-boot-autoconfigure 思路类似 <strong>SPI(Service Provider Interface)</strong>，都是不同的实现类实现了定义的接口，加载时候去查找 classpath 下的实现类，不同在于前者使用 <strong>autoconfigure</strong> 实现，后者使用的是 <strong>ServiceLoader</strong>。<br>
-autoconfigure 模块的主要功能如下：</p>
-<ol>
-<li>可以依据 classpath 里面的依赖内容自动配置 Bean 到 Spring 容器，并为默认化属性配置。</li>
-<li>尝试推断哪些 Beans 是用户可能会需要的。比如如果 HSQLDB 包在当前 classpath 下，并且用户并没有配置其他数据库链接，这时候 Auto-configuration 功能会自动注入一个基于内存的数据库连接到应用的 IOC 容器。再比如当我们在 pom 引入了 Tomcat 的 start 后，如果当前还没 Web 容器被注入到应用 IOC，那么 SpringBoot 就会为我们自动创建并启动一个内嵌 Tomcat 容器来服务。</li>
-</ol>
-<h3 id="enableautoconfiguration"><a class="header-anchor" href="#enableautoconfiguration">¶</a>EnableAutoConfiguration</h3>
-<p>核心注解<code>@EnableAutoConfiguration</code>的定义如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Inherited</span><br><span class="line">@AutoConfigurationPackage</span><br><span class="line">@Import(&#123;AutoConfigurationImportSelector.class&#125;)</span><br><span class="line">public @interface EnableAutoConfiguration &#123;</span><br><span class="line">    String ENABLED_OVERRIDE_PROPERTY = &quot;spring.boot.enableautoconfiguration&quot;;</span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] exclude() default &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    String[] excludeName() default &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><code>EnableAutoConfiguration</code> 注解主要作用是通过 <code>@Import</code> 注入 <code>EnableAutoConfigurationImportSelector</code> 实例，后者是实现 AutoConfiguration 功能的核心类。<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/EnableAutoConfigurationImportSelector%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="EnableAutoConfigurationImportSelector时序图" title="EnableAutoConfigurationImportSelector时序图"><br>
-<code>EnableAutoConfigurationImportSelector</code> 类实现了 <code>DeferredImportSelector</code> 接口的 <code>String[] selectImports(AnnotationMetadata metadata)</code> 方法，当 Spring 框架解析 <code>@Import</code> 注解时候会调用该方法。<br>
-代码<code>EnableAutoConfigurationImportSelector#getCandidateConfigurations</code>和<code>loadFactoryNames</code>的作用是扫描 classpath 下含有 <code>Meta-INF/spring.factories</code> 文件的 jar，并解析文件中名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项。<br>
-getCandidateConfigurations会返回名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项的值的一个列表并且对列表内容进行去重处理。</p>
-<blockquote>
-<p>正常情况下，去重后的列表里面的类都会被自动注入到 Spring IOC 容器，除非指定不自动注入某些功能，比如若要排除自动创建数据源和事务管理的功能可以：<code>@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class})</code>，getExclusions 就是读取 EnableAutoConfiguration 注解里面的 excludeName 和 exclude 配置项，然后从去重后的列名列表里面剔除。这样在自动注入时候就不会对排除掉的自动配置功能进行注入了。</p>
-</blockquote>
-<p>这个列表中的每个元素就是一个自动配置功能，比如 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration 是 Web 容器自动注入的功能类（比如这个类可以自动扫描 Tomcat 的 start 并创建一个 Tomcat 容器）。</p>
-<h3 id="例子-注入-web-容器"><a class="header-anchor" href="#例子-注入-web-容器">¶</a>例子 - 注入 Web 容器</h3>
-<p>ServletWebServerFactoryAutoConfiguration 的部分核心代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)</span><br><span class="line">@ConditionalOnClass(ServletRequest.class)</span><br><span class="line">@ConditionalOnWebApplication(type = Type.SERVLET)</span><br><span class="line">@EnableConfigurationProperties(ServerProperties.class)</span><br><span class="line">@Import(&#123; ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedTomcat.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedJetty.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedUndertow.class &#125;)</span><br><span class="line">public class ServletWebServerFactoryAutoConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public ServletWebServerFactoryCustomizer servletWebServerFactoryCustomizer(ServerProperties serverProperties) &#123;</span><br><span class="line">		return new ServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@ConditionalOnClass(name = &quot;org.apache.catalina.startup.Tomcat&quot;)</span><br><span class="line">	public TomcatServletWebServerFactoryCustomizer tomcatServletWebServerFactoryCustomizer(</span><br><span class="line">			ServerProperties serverProperties) &#123;</span><br><span class="line">		return new TomcatServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Registers a &#123;@link WebServerFactoryCustomizerBeanPostProcessor&#125;. Registered via</span><br><span class="line">	 * &#123;@link ImportBeanDefinitionRegistrar&#125; for early registration.</span><br><span class="line">	 */</span><br><span class="line">	public static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware &#123;</span><br><span class="line"></span><br><span class="line">		private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void setBeanFactory(BeanFactory beanFactory) throws BeansException &#123;</span><br><span class="line">			if (beanFactory instanceof ConfigurableListableBeanFactory) &#123;</span><br><span class="line">				this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,</span><br><span class="line">				BeanDefinitionRegistry registry) &#123;</span><br><span class="line">			if (this.beanFactory == null) &#123;</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;webServerFactoryCustomizerBeanPostProcessor&quot;,</span><br><span class="line">					WebServerFactoryCustomizerBeanPostProcessor.class);</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;errorPageRegistrarBeanPostProcessor&quot;,</span><br><span class="line">					ErrorPageRegistrarBeanPostProcessor.class);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		private void registerSyntheticBeanIfMissing(BeanDefinitionRegistry registry, String name, Class&lt;?&gt; beanClass) &#123;</span><br><span class="line">			if (ObjectUtils.isEmpty(this.beanFactory.getBeanNamesForType(beanClass, true, false))) &#123;</span><br><span class="line">				RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);</span><br><span class="line">				beanDefinition.setSynthetic(true);</span><br><span class="line">				registry.registerBeanDefinition(name, beanDefinition);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>ServletWebServerFactoryAutoConfiguration 类是 Web 容器自动注入的 Auto-configuration 类。</p>
+<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
+<p><img src="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
 <ul>
-<li>@ConditionalOnWebApplication 说明当前是 Web 环境上下文时候才注入本类到 IOC。</li>
-<li>@Import 注解导入了另一个配置<code>ServletWebServerFactoryConfiguration.EmbeddedTomcat.class</code>，这里包含了真正的注入 Tomcat 实例的逻辑：</li>
+<li>toObservable()<br>
+最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
+<li>observe()<br>
+调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
+<li>queue()<br>
+调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
+<li>execute()<br>
+调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
 </ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">class ServletWebServerFactoryConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Configuration</span><br><span class="line">	@ConditionalOnClass(&#123; Servlet.class, Tomcat.class, UpgradeProtocol.class &#125;)</span><br><span class="line">	@ConditionalOnMissingBean(value = ServletWebServerFactory.class, search = SearchStrategy.CURRENT)</span><br><span class="line">	public static class EmbeddedTomcat &#123;</span><br><span class="line"></span><br><span class="line">		@Bean</span><br><span class="line">		public TomcatServletWebServerFactory tomcatServletWebServerFactory() &#123;</span><br><span class="line">			return new TomcatServletWebServerFactory();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-<ul>
-<li>@ConditionalOnClass：只有在 classpath 下存在指定的类的时候 Bean 才能被创建。</li>
-<li>@ConditionalOnMissingBean：只有对应的 Bean 在系统中都没有被创建，它修饰的初始化代码块才会执行，【用户自己手动创建的 Bean 优先】。</li>
-</ul>
-<p>当应用引入 spring-boot-starter-web 时候默认引入的是 Tomcat 的 starter，所以会发现 classpath 下存在 Servlet.class、 Tomcat.class 这两个类，并且 IOC 里面没有 TomcatEmbeddedServletContainerFactory 的实例，因此会创建其实例到 IOC 容器中，最终会创建一个 Tomcat 容器。<br>
-当然，如果需要使用 Jetty 则需要在引用 spring-boot-starter-web 的时候排除掉 Tomcat 的 start，然后在引入 Jetty 的 start 即可。</p>
-<h3 id="总结"><a class="header-anchor" href="#总结">¶</a>总结</h3>
-<p>总而言之，自动配置的生效步骤可以概括如下：</p>
+<p>HystrixCommand.execute<br>
+-&gt; HystrixCommand.queue<br>
+-&gt; AbstractCommand.toObservable</p>
+<p>AbstractCommand.observe<br>
+-&gt; AbstractCommand.toObservable</p>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
+开启配置：<br>
+HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
+HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
+-&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
+<p>实施信号量隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
+<p>实施线程隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; AbstractCommand.executeCommandAndObserve<br>
+-&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
+-&gt; AbstractCommand.getUserExecutionObservable<br>
+-&gt; HystrixCommand.getExecutionObservable</p>
+<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
+<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
+当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
+Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
+<img src="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
 <ol>
-<li>Spring Boot 在启动时会去依赖的 Starter 包中寻找 resources/META-INF/spring.factories 文件，然后根据文件中配置的 Jar 包去扫描项目所依赖的 Jar 包。</li>
-<li>根据 spring.factories 配置加载 AutoConfigure 类</li>
-<li>根据 @Conditional 注解的条件，进行自动配置并将 Bean 注入 Spring Context</li>
+<li>熔断关闭状态（Closed）<br>
+服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
+<li>熔断开启状态（Open）<br>
+在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
+<li>半熔断状态（Half-Open）<br>
+在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
 </ol>
-<h2 id="spring-boot-模块"><a class="header-anchor" href="#spring-boot-模块">¶</a>spring-boot 模块</h2>
-<p>提供了一些特性用来支持 SpringBoot 中其它模块，这些特性包括：</p>
+<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
+<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
+<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
 <ol>
-<li>SpringApplication 类提供了静态方法以便于写一个独立了 Spring 应用程序，该类的主要职责是 create 和 refresh 一个合适的 Spring 应用程序上下文（ApplicationContext）。</li>
-<li>一流的外部配置的支持（application.properties）。</li>
-<li>提供了便捷的应用程序上下文（ApplicationContext）的初始化器，以便在 ApplicationContext 使用前对其进行用户定制。</li>
-<li>给 Web 应用提供了一个可选的 Web 容器（目前有 Tomcat 或 Jetty）。</li>
+<li>run()方法抛出非 HystrixBadRequestException 异常<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
+HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
+<li>run()方法调用超时<br>
+对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
+-&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
+-&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
+可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
+<li>熔断器开启拦截调用<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution</li>
+<li>线程池/队列/信号量是否跑满<br>
+在《隔离》那一节中已经说明了代码的位置。</li>
+<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
+HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
 </ol>
-<h3 id="springapplication-的执行流程"><a class="header-anchor" href="#springapplication-的执行流程">¶</a>SpringApplication 的执行流程</h3>
-<p>一般的 SpringBoot 项目都会有一个如下所示的 Application 类：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class Web1Application &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(Web1Application.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在<code>JarLauncher</code>启动过后里面实际上就是调用了 SpringApplication#run 方法，SpringApplication 的执行流程如下：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/SpringApplication%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="SpringApplication执行时序图" title="SpringApplication执行时序图"></p>
-<ol>
-<li>SpringApplication 的构造函数里面会调用 initialize 方法在 classpath 的 jar 包里面查找 META-INF/spring.factories，如果找到则看里面是否有配置 <code>ApplicationContextInitializer</code> 类型的 Bean，有则加载到 SpringApplication 的变量 <code>initializers</code> 里面存放，比如 spring-boot.jar 里面。<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/ApplicationContextInitializer%E9%85%8D%E7%BD%AE.png" alt="ApplicationContextInitializer配置" title="ApplicationContextInitializer配置"></li>
-<li>createAndRefreshContext 做了这几件事情：
-<ol>
-<li>设置环境，加载 application.properties 等配置文件；</li>
-<li>根据 classpath 的 jar 里面是否有 ConfigurableWebEnvironment 判断当前是否需要创建 Web 应用程序上下文还是创建一个非 Web 应用程序上下文；</li>
-<li>使用前面加载的应用程序初始化器对创建的应用程序上下文进行初始化；</li>
-<li>刷新应用程序上下文解析 Bean 定义到应用程序上下文里面的 IOC 容器，在刷新过程的 invokeBeanFactoryPostProcessors 过程中(10)(11)会去解析类上面标注的 @import 注解，然后就会调用所有的 ImportSelector 的 selectImports 方法，这也是第二部分时序图开始执行的地方。</li>
-</ol>
-</li>
-</ol>
-<h3 id="web-容器的创建"><a class="header-anchor" href="#web-容器的创建">¶</a>Web 容器的创建</h3>
-<p>通过自动配置将 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 的实例注入 IOC 容器后，我们就可以使用 Web 容器来提供 Web 服务了。<br>
-具体的 Web 容器的创建是在容器刷新过程的 onRefresh 阶段进行的（这个阶段是在刷新过程的 invokeBeanFactoryPostProcessors 阶段的后面）：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/Web%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B.png" alt="Web容器创建过程" title="Web容器创建过程"></p>
-<ul>
-<li>getBeanNamesForType 获取了 IOC 容器中的 EmbeddedServletContainerFactory 类型的 Bean 的 name 集合，如果 name 集合为空或者多个则抛出异常。还记得 Web 容器工厂是通过自动配置注入到 IOC 的吧，并且 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 都是实现了 EmbeddedServletContainerFactory 接口。</li>
-<li>如果 IOC 里面只有一个 Web 容器工厂 Bean 则获取该 Bean 的实例，然后调用该 Bean 的 getEmbeddedServletContainer 获取 Web 容器，这里假设 Web 容器工厂为 Tomcat ，则创建 Tomcat 容器并进行初始化。</li>
-</ul>
-<h2 id="actuator-模块"><a class="header-anchor" href="#actuator-模块">¶</a>Actuator 模块</h2>
-<p><img src="http://47.88.24.11/imgs/SpringBoot/Actuator%E7%B1%BB%E5%9B%BE.png" alt="Actuator类图" title="Actuator类图"><br>
-Actuator 模块提供了一些组件用于检查应用或中间件的健康状况：</p>
-<ol>
-<li>Inspect：检测应用或中间件的健康状况；</li>
-<li>Aggregate：聚合所有结果。</li>
-</ol>
-<p>基于 Actuator 模块，我们可以开发一个服务探活系统：</p>
-<ol>
-<li>Actuator 为业务服务器暴露出一个探活端口<code>healthcheck</code>，借助 Spring 容器获取到中间件的客户端实例；</li>
-<li>探活服务<code>HealthCheck-Task</code>定时轮询所有服务，统计单位时间内请求出现问题的次数，从而发送报警短信提醒研发同学。</li>
-</ol>
-<p>服务的轮询探活将是这个系统的主要瓶颈，有一些措施可以作为参考：</p>
-<ol>
-<li>灵活使用<code>CompletableFuture</code>这些并发编排组件，因为探活请求一般都是比较&quot;慢&quot;的，因此可以通过并行化来提高效率；</li>
-<li>探活不能占用太多系统资源，合理设置探活超时时间，很多客户端的默认超时时间达到 1 分钟甚至更长，必须额外设置探活请求的超时时间，避免服务器挂掉时所有线程都被<code>hang</code>死，导致服务雪崩。</li>
-</ol>
-<blockquote>
-<p>探活不能和业务代码共用线程池，做到线程池隔离，即使出问题也只影响到<code>HealthCheck-Task</code>。</p>
-</blockquote>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
+结果缓存这个功能我觉得应该由幂等框架来做。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
 <ol>
-<li><a href="https://www.jianshu.com/p/bbf439c8a203" target="_blank" rel="noopener">从零开始开发一个Spring Boot Starter</a></li>
-<li><a href="https://www.jianshu.com/p/87f101d8ec41" target="_blank" rel="noopener">SpringBoot启动流程解析</a></li>
+<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
+<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
+<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
+<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
+<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
 </ol>
-<h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  760 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  3 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>事务</h1>
+<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
+<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
+<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
+<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
+<h1>源码</h1>
+<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
 <ol>
-<li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
+<li>数据源元数据信息和表元数据信息的收集</li>
+<li>表分库分表策略和算法的配置信息收集</li>
+</ol>
+<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
+-&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
+<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
+<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
+org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
+-&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
+-&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
+-&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
+-&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
+<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; ShardingPreparedStatement#shard<br>
+-&gt; BaseShardingEngine#shard<br>
+-&gt; PreparedQueryShardingEngine#route<br>
+-&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
+-&gt; ParsingSQLRouter#parse<br>
+-&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
+-&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
+-&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
+-&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
+-&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
+-&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
+-&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
+-&gt; ParsingSQLRouter#route<br>
+-&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
+-&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
+-&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
+-&gt; BaseShardingEngine#rewriteAndConvert<br>
+-&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
+<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; …<br>
+-&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
+-&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
+-&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
+-&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
+-&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
+-&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
+-&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
+-&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
+-&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
+-&gt; AbstractStatementExecutor#executeCallback<br>
+-&gt; SQLExecuteTemplate#executeGroup<br>
+-&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
+-&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
+<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; …<br>
+-&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
+-&gt; AbstractStatementExecutor#getResultSets<br>
+-&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
+-&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
+<h1>参考</h1>
+<ol>
+<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
+<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
+<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
+<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
+</ol>
+<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
+<ol>
+<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  765 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  2 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
+<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
+<img src="http://47.88.24.11/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
+<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
+<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
+Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
+<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
+<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
+此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
+<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
+<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
+<ul>
+<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
+<li>检查变量使用前是否已声明；</li>
+<li>推导泛型方法的类型参数；</li>
+<li>检查类型匹配性；</li>
+<li>进行常量折叠；</li>
+<li>检查所有语句都可到达；</li>
+<li>检查所有 checked exception 都被捕获或抛出；</li>
+<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
+<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
+<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
+<li>等…</li>
+</ul>
+<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
+<ul>
+<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
+<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
+<li>最后从符号表生成 class 文件。</li>
+</ul>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
 </ol>
 
           
@@ -4789,7 +4352,7 @@ Actuator 模块提供了一些组件用于检查应用或中间件的健康状�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -4800,7 +4363,7 @@ Actuator 模块提供了一些组件用于检查应用或中间件的健康状�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-count">60</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
