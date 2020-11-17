@@ -2115,8 +2115,8 @@ JVM 的指令都是基于栈的，比如<code>iadd</code>表示弹出栈顶的�
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Redis/" itemprop="url" rel="index">
-                    <span itemprop="name">Redis</span>
+                  <a href="/categories/缓存/" itemprop="url" rel="index">
+                    <span itemprop="name">缓存</span>
                   </a>
                 </span>
 
@@ -3233,7 +3233,7 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/df2941e1.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/edd4cfac.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -3252,7 +3252,7 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/df2941e1.html" itemprop="url">Redis 概述</a></h1>
+                <a class="post-title-link" href="/edd4cfac.html" itemprop="url">Redis 复制</a></h1>
         
 
         <div class="post-meta">
@@ -3287,8 +3287,8 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Redis/" itemprop="url" rel="index">
-                    <span itemprop="name">Redis</span>
+                  <a href="/categories/缓存/" itemprop="url" rel="index">
+                    <span itemprop="name">缓存</span>
                   </a>
                 </span>
 
@@ -3318,7 +3318,7 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.5k 字
+                  5.8k 字
                 </span>
               
 
@@ -3334,7 +3334,7 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  21 分钟
                 </span>
               
             </div>
@@ -3357,245 +3357,205 @@ xxl-job 和 elastic-job 在设计上的本质区别是中心化还是去中心�
       
         
           
-            <a id="more"></a>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis%E6%9E%B6%E6%9E%84%E5%9B%BE.jpg" alt="Redis架构图" title="Redis架构图"><br>
-<img src="http://47.88.24.11/imgs/Redis/Redis%E7%9F%A5%E8%AF%86%E6%A1%86%E6%9E%B6.jpeg" alt="Redis知识框架" title="Redis知识框架"><br>
-<img src="http://47.88.24.11/imgs/Redis/Redis%E9%97%AE%E9%A2%98%E7%94%BB%E5%83%8F.jpg" alt="Redis问题画像" title="Redis问题画像"></p>
+            <h2 id="使用主从复制"><a class="header-anchor" href="#使用主从复制">¶</a>使用主从复制</h2>
+<ol>
+<li>
+<p>运行 Master<br>
+调整 Master 内存中保存的缓冲积压部分（replication backlog），以便执行部分重同步。</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 缓冲区越大，可断开连接再重连执行部分重同步的时间越长，缓冲区会在每次连接时分配。</span><br><span class="line">repl-backlog-size 1mb</span><br><span class="line">repl-backlog-ttl 3600</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>运行 Slave<br>
+先在配置文件中设置 Master 和 logfile 路径再运行</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">slaveof 172.16.205.141 6379</span><br><span class="line">logfile &quot;/usr/redis/log/slave.log&quot;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>级联复制（从从复制）<br>
+之前是所有 Slave 连到一个 Master 上，这是一种中心化的办法，对 Master 的负担较大，事实上我们完全可以不全部连到 Master 上，而是 Master-&gt;Slave1-&gt;Slave2 这样传递。<br>
+实现级联复制也较简单，只用修改 Slave2 配置文件的<code>slaveof</code>属性即可。</p>
+</li>
+<li>
+<p>Master write，Slave read<br>
+通过程序（客户端）实现数据的读写分离，即在程序中判断请求是读是写，让 Master 负责处理写请求，Slave 负责处理读请求；通过扩展 Slave 处理更多的并发请求，减轻 Master 端的负载。</p>
+</li>
+</ol>
+<h2 id="同步复制和异步复制"><a class="header-anchor" href="#同步复制和异步复制">¶</a>同步复制和异步复制</h2>
+<p>Redis 使用默认的<strong>异步复制</strong>，其特点是低延迟和高性能，不会影响 Redis 主线程的响应效率。</p>
+<ul>
+<li>Redis 复制在 master 侧是非阻塞的。这意味着 master 在一个或多个 slave 进行初次同步或者是部分重同步时，可以继续处理查询请求。</li>
+<li>复制在 slave 侧大部分也是非阻塞的。当 slave 进行初次同步时，它可以使用旧数据集处理查询请求，假设你在 redis.conf 中配置了让 Redis 这样做的话。否则，你可以配置如果复制流断开， Redis slave 会返回一个 error 给客户端。但是，在初次同步之后，旧数据集必须被删除，同时加载新的数据集。 slave 在这个短暂的时间窗口内（如果数据集很大，会持续较长时间），会阻塞到来的连接请求。自 Redis 4.0 开始，可以配置 Redis 使删除旧数据集的操作在另一个不同的线程中进行，但是，加载新数据集的操作依然需要在主线程中进行并且会阻塞 slave 。</li>
+</ul>
 <blockquote>
-<p>以上图片来自极客时间的《Redis核心技术与实战》。<br>
-对原理的分析都是基于Redis3.0版本的代码，现在最新的版本应该是6.0，很多功能都是后面的版本引入的，因此这篇里不会描述多线程这些功能。</p>
+<p>Redis 虽然声称是单线程模型，但是很多功能仍然是采用多线程实现的。</p>
 </blockquote>
-<h2 id="为什么使用-redis"><a class="header-anchor" href="#为什么使用-redis">¶</a>为什么使用 Redis</h2>
-<h3 id="redis-的缺点-优点"><a class="header-anchor" href="#redis-的缺点-优点">¶</a>Redis 的缺点 &amp; 优点</h3>
-<p>特性及优势：</p>
+<h2 id="什么时候触发复制"><a class="header-anchor" href="#什么时候触发复制">¶</a>什么时候触发复制</h2>
+<ul>
+<li>当一个 Master 和一个 Slave 实例连接正常时，Master 通过向 Slave 发送命令流来<strong>增量同步</strong>自身数据集的改变情况，包括客户端的写入、key 的过期等；</li>
+<li>Master 与 Slave 之间因为网络问题或宕机，之后 Slave 重新连上 Master 时会尝试进行<strong>部分重同步</strong>，即只获取在断开连接期间内丢失的命令流；<br>
+为此，slave 会记住旧 master 的旧 replication ID 和复制偏移量，因此即使询问旧的 replication ID，其也可以将部分复制缓冲提供给连接的 slave 。</li>
+<li>当无法进行部分重同步时，Slave 会请求进行全量重同步。Master 需要创建所有数据的快照，将之发送给 Slave，之后在数据集发生更改时持续发送命令流到 Slave。</li>
+</ul>
+<h2 id="主从复制执行过程-slave怎么与master建立连接"><a class="header-anchor" href="#主从复制执行过程-slave怎么与master建立连接">¶</a>主从复制执行过程 - Slave怎么与Master建立连接</h2>
+<p><img src="http://47.88.24.11/imgs/Redis/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6.png" alt="主从复制" title="主从复制"><br>
+1、Slave Redis实例上配置<code>slaveof xxx</code>，表示将成为另一台Redis实例的从服务器，启动 Slave时，需要设置当前节点的Master信息，并开始主从同步过程；<br>
+代码位置：<code>replication.c/slaveofCommand()</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 进入连接状态（重点）</span><br><span class="line">server.repl_state = REDIS_REPL_CONNECT;</span><br><span class="line">server.master_repl_offset = 0;</span><br><span class="line">server.repl_down_since = 0;</span><br></pre></td></tr></table></figure>
+<p>2、上边设置复制信息成功后，Redis服务器会有一个cron任务（<code>serverCron</code>）定时判断需要进行同步操作，向Master建立连接，也就是一个握手的过程；<br>
+代码位置：<code>replication.c/replicationCron()</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (server.repl_state == REPL_STATE_CONNECT) &#123;</span><br><span class="line">   if (connectWithMaster() == C_OK) &#123;</span><br><span class="line">       serverLog(LL_NOTICE,&quot;MASTER &lt;-&gt; SLAVE sync started&quot;);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>serverCron是Redis的主事件循环，负责超多的任务，包括过期key处理、rehash、备份RDB文件、AOF重写等等。</p>
+</blockquote>
+<p>3、确定连接后，接下来，cron任务里还有比较关键的一项是确定复制方案，<br>
+会先向 Master 发送一个 PSYNC Command，Master会返回复制方案，也就是下面的全量、增量及不支持这3种情况：<br>
+代码位置：<code>replication.c/syncWithMaster()</code><br>
+<code>replication.c/slaveTryPartialResynchronization()</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 向主服务器发送 PSYNC 命令</span><br><span class="line">reply = sendSynchronousCommand(fd,&quot;PSYNC&quot;,psync_runid,psync_offset,NULL);</span><br><span class="line"></span><br><span class="line">// 全量复制</span><br><span class="line">if (!strncmp(reply,&quot;+FULLRESYNC&quot;,11)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 增量复制</span><br><span class="line">if (!strncmp(reply,&quot;+CONTINUE&quot;,9)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 错误，目前master不支持PSYNC</span><br><span class="line">if (strncmp(reply,&quot;-ERR&quot;,4)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意PSYNC命令的两个参数：</p>
+<ul>
+<li>主库的runID：每个Redis实例启动时都会自动生成的一个随机ID，用来唯一标识这个实例。<br>
+当从库和主库第一次复制时，因为不知道主库的runID，因此会将runID设为&quot;?&quot;。</li>
+<li>复制进度offset：设为-1表示第一次复制。</li>
+</ul>
+<h2 id="主从复制执行过程-master如何处理psync命令"><a class="header-anchor" href="#主从复制执行过程-master如何处理psync命令">¶</a>主从复制执行过程 - Master如何处理PSYNC命令</h2>
+<p>1、无论是第一次连接还是重新连接，Master 都会启动一个后台进程（fork），将<strong>数据快照</strong>保存到数据文件中，同时 Master 会记录<strong>所有修改数据的命令</strong>并缓存在数据文件中（持久化），Master会将文件内容加载到内存中，等之后回传给Slave（复制）；<br>
+2、Master端与Slave端完成握手后，需要判断是需要进行全量还是增量复制（也就是上面的返回<code>+FULLRESYNC</code>还是<code>+CONTINUE</code><br>
+处理Slave的<code>PSYNC</code>命令的代码位置：<code>replication.c/syncCommand()</code><br>
+判断是否需要执行全量复制的代码位置：<code>replication.c/masterTryPartialResynchronization()</code><br>
+执行全量复制的条件如下代码所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">// 检查 master id 是否和 runid 一致，只有一致的情况下才考虑执行psync</span><br><span class="line">if (strcasecmp(master_runid, server.runid)) &#123;</span><br><span class="line">    /* Run id &quot;?&quot; is used by slaves that want to force a full resync. */</span><br><span class="line">    // 从服务器提供的 run id 和服务器的 run id 不一致</span><br><span class="line">    if (master_runid[0] != &apos;?&apos;) &#123;</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Partial resynchronization not accepted: &quot;</span><br><span class="line">            &quot;Runid mismatch (Client asked for runid &apos;%s&apos;, my runid is &apos;%s&apos;)&quot;,</span><br><span class="line">            master_runid, server.runid);</span><br><span class="line">    // 从服务器提供的 run id 为 &apos;?&apos; ，表示强制 FULL RESYNC</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Full resync requested by slave.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    // 需要 full resync</span><br><span class="line">    goto need_full_resync;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 判断当前Slave带来的offset在Master的backlog中是否还能找到，找不到则执行全量复制</span><br><span class="line">if (getLongLongFromObjectOrReply(c,c-&gt;argv[2],&amp;psync_offset,NULL) !=</span><br><span class="line">       REDIS_OK) goto need_full_resync;</span><br><span class="line"></span><br><span class="line">// 如果没有backlog</span><br><span class="line">if (!server.repl_backlog ||</span><br><span class="line">    // 或者 psync_offset 小于 server.repl_backlog_off</span><br><span class="line">    // （想要恢复的那部分数据已经被覆盖）</span><br><span class="line">    psync_offset &lt; server.repl_backlog_off ||</span><br><span class="line">    // psync offset 大于 backlog 所保存的数据的偏移量</span><br><span class="line">    psync_offset &gt; (server.repl_backlog_off + server.repl_backlog_histlen))</span><br><span class="line">&#123;</span><br><span class="line">    // 执行 FULL RESYNC</span><br><span class="line">    redisLog(REDIS_NOTICE,</span><br><span class="line">        &quot;Unable to partial resync with the slave for lack of backlog (Slave request was: %lld).&quot;, psync_offset);</span><br><span class="line">    if (psync_offset &gt; server.master_repl_offset) &#123;</span><br><span class="line">        redisLog(REDIS_WARNING,</span><br><span class="line">            &quot;Warning: slave tried to PSYNC with an offset that is greater than the master replication offset.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    goto need_full_resync;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>3、如果是部分复制<br>
+Master会向Slave发送 backlog 中从 offset 到 backlog 尾部之间的数据<br>
+代码：<code>replication.c/addReplyReplicationBacklog()</code><br>
+4、如果是全量复制<br>
+这种情况下，Master并不会直接将RDB文件传给Slave，而是先发给Slave<code>+FULLRESYNC</code>，；<br>
+代码：<code>replication.c/masterTryPartialResynchronization()</code>的末尾<br>
+什么时候Master会将RDB文件传给Slave呢？如果当前已经有可用的RDB文件，则直接将RDB文件传输给Slave；如果当前RDB正在备份过程中，Master会在每次RDB文件备份完毕后执行一次传输任务。<br>
+syncCommand末尾Master判断RDB当前的备份状态，如果是可用的就直接传给Slave：<code>replication.c/syncCommand()</code><br>
+主事件循环中发RDB文件的代码见：<code>replication.c/sendBulkToSlave()</code></p>
+<h2 id="主从复制执行过程-slave如何接收复制数据"><a class="header-anchor" href="#主从复制执行过程-slave如何接收复制数据">¶</a>主从复制执行过程 - Slave如何接收复制数据</h2>
+<p>1、如果是全量复制<br>
+Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayload</code>处理器，用于读取从Master发送过来的RDB文件。<br>
+2、Slave 将数据文件保存到磁盘上，然后再加载到内存中；<br>
+从库接收到RDB文件后，会先清空当前数据库，然后加载RDB文件，这是因为从库在开始和主库同步前可能保存了其他数据，为了避免之前数据的影响，从库需要先把当前数据库清空。<br>
+3、同步过程中主库产生的新数据也要同步给从库<br>
+主库同步数据给从库的过程中，主库不会被阻塞，仍然可以正常接收请求（否则Redis服务不就中断了？），但是这些请求中的写操作并没有记录到刚刚生成的RDB文件中，为了保证主从库的数据一致性，主库会在内存中用专门的<strong>replication buffer（代码中对应</strong>repl_backlog_buffer**）**记录RDB文件生成后收到的所有写操作。<br>
+<code>repl_backlog_buffer</code>是一个环形缓冲区，主库会记录自己写到的位置，而从库则会记录自己已经读到的位置，可以使用<code>repl_backlog_size</code>来配置这个缓冲区的大小，如果配得过小，可能会导致增量复制阶段从库复制进度赶不上主库，进而导致从库重新进行全量复制。<br>
+在Master端定义的offset是<code>master_repl_offset</code>，在Slave端定义的offset是<code>slave_repl_offset</code>，正常情况下这两个偏移量是基本相等的。<br>
+增量同步期间，从库在发送psync的同时，会把自己当前的slave_repl_offset发给主库，主库判断自己的master_repl_offset和slave_repl_offset之间的差距，如果断连了，master_repl_offset可能会超过slave_repl_offset，那么将这超过的部分发给slave就可以恢复同步了。</p>
+<h2 id="主从复制原理"><a class="header-anchor" href="#主从复制原理">¶</a>主从复制原理</h2>
+<p>当用户往 Master 端写入数据时，通过<code>Redis Sync</code>机制将数据文件发送至 Slave，Slave 也会执行相同的操作确保数据一致。</p>
 <ol>
-<li>内存数据库，吞吐率不受磁盘影响；</li>
-<li>每秒可以处理超过 10 万次读写操作；</li>
-<li>多数据结构支持，包括 string、hash、list、set、zset、Bitmaps、Hyperloglog、Geo、Pub/Sub、Redis Module、BloomFilter、RedisSearch、Redis-ML 等，支持绝大多数应用场景；</li>
-<li>Replication（复制）；</li>
-<li>lua（支持服务端执行复杂的业务逻辑）；</li>
-<li>LRU eviction（缓存淘汰）；</li>
-<li>Transactions；</li>
-<li>Persistence（持久化），包括 rdb（快照）和 AOF 两种；</li>
-<li>Sentinel（哨兵）；</li>
-<li>Cluster（分区）。</li>
+<li>同一个 Master 可以拥有多个 Slaves。Master 下的 Slave 还可以接受同一架构中其它 Slave 的链接与同步请求，实现数据的<strong>级联复制</strong>，即 Master-&gt;Slave-&gt;Slave 模式；<br>
+<code>repl-diskless-sync-delay</code>参数可以延迟启动数据传输，目的可以在第一个 slave 就绪后，等待更多的 slave 就绪。<br>
+<strong>主从复制最好配置成级联复制，因为这样更容易解决单点问题，避免Master承受过大的复制压力</strong>。</li>
+<li>Master 以<strong>非阻塞</strong>的方式同步数据至 slave，这将意味着 Master 会继续处理一个或多个 slave 的读写请求；</li>
+<li>Slave 端同步数据也可以修改为非阻塞的方式，当 slave 在执行新的同步时，它仍可以用旧的数据信息来提供查询；否则，当 slave 与 master 失去联系时，slave 会返回一个错误给客户端；</li>
+<li>主从复制可以做到<strong>读写分离</strong>，保证了可扩展性，即多个 slave 专门提供只读查询与数据的冗余，Master 端专门提供写操作；</li>
+<li>通过配置禁用 Master 数据持久化机制，将其数据持久化操作交给 Slaves 完成，避免在 Master 中要有独立的进程来完成此操作。</li>
+<li>Redis 主从复制的性能问题，为了主从复制的速度和连接的稳定性，Slave 和 Master 最好在同一个局域网内。</li>
 </ol>
-<p>但是也不能忽略 Redis 本身的一些缺点：</p>
+<p>标识同步进程：</p>
 <ol>
-<li>数据库容量受到物理内存的限制，不能用作海量数据的高性能读写，因此 Redis 适合的场景主要局限在较小数据量的高性能操作和运算上；</li>
-<li>缓存和数据库双写一致性问题；</li>
-<li>缓存雪崩问题；</li>
-<li>缓存击穿问题；</li>
-<li>缓存的并发竞争问题。</li>
+<li>每个 Master 都有一个<code>Replication ID</code>：这是一个较大的伪随机字符串，标记了一个给定的数据集。</li>
+<li>每个 Master 持有一个偏移量<code>offset</code>，Master 将自己产生的复制流发送给 slave 时，发送多少个字节的数据，自身的偏移量就会增加多少，目的是当有新的操作修改自己的数据集时，它可以以此更新 Slave 的状态。即使没有 Slave 连接到 Master，offset 也会自增，所以基本上每一对 <code>&lt;Replication ID, offset&gt;</code> 都会标识一个 Master 数据集的确切版本。</li>
+<li>Slave 也维护了一个复制偏移量<code>offset</code>，代表从库同步的字节数，从库每收到主节点传来的 N 个字节数据时，从库的 offset 增加 N。<br>
+Master 和 Slave 的<code>offset</code>总是不断增大，这也是判断主从数据是否同步的标志，若主从的 offset 相同则表示数据同步量，不通则表示数据不同步。</li>
 </ol>
-<h3 id="redis-memcached"><a class="header-anchor" href="#redis-memcached">¶</a>Redis &amp; Memcached</h3>
-<p>Redis 相对 Memcached 来说有以下优点：</p>
+<p>复制积压缓冲区<br>
+主节点(master)响应写命令时，不但会把命名发送给从节点，还会写入复制积压缓冲区，用于复制命令丢失的数据补救。<br>
+Slave 连接中断时主节点仍然可以响应命令，但因复制连接中断命令无法发送给 Slave。之后，当 Slave 重启并触发部分复制时，Master 可以将复制积压缓冲区的内容同步给 Slave，从而提高复制效率；</p>
+<p>部分重同步过程：</p>
 <ol>
-<li>memcached 所有的值均是简单的字符串，redis 作为其替代者，支持更为丰富的数据类型</li>
-<li>redis 的速度比 memcached 快很多</li>
-<li>redis 可以持久化其数据</li>
+<li>当 Slave 连接到 Master，发送一个<code>PSYNC</code>命令表明自己记录的旧的 Master <code>Replication ID</code>和它们至今为止处理的偏移量<code>offset</code>；</li>
+<li>Master 仅发送 Slave 所需的增量部分的命令流，即上次同步偏移量<code>offset</code>之后执行的写命令；</li>
+<li>但是如果 master 的缓冲区中没有足够的命令积压缓冲记录，或者如果 slave 引用了不再知道的历史记录（replication ID），则会转而进行一个全量重同步：在这种情况下， slave 会得到一个完整的数据集副本，从头开始。</li>
 </ol>
-<p>Redis 和 Memcached 之间存在以下区别：</p>
+<p>全量同步（完整重同步）：</p>
 <ol>
-<li>存储方式 Memecache 把数据全部存在内存之中，断电后会挂掉，数据不能超过内存大小。 Redis 有部份存在硬盘上，这样能保证数据的持久性。</li>
-<li>数据支持类型 Memcache 对数据类型支持相对简单。 Redis 有复杂的数据类型。</li>
-<li>使用底层模型不同 它们之间底层实现方式 以及与客户端之间通信的应用协议不一样。 Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求。</li>
+<li>Slave 向 Master 发送<code>PSYNC</code>命令；</li>
+<li>Master 执行<code>BGSAVE</code>命令，开启一个后台进程用于生成一个 RDB 文件；</li>
+<li>同时它开始缓冲所有从客户端接收到的新的写入命令；</li>
+<li>当后台保存完成时， master 将数据集文件传输给 slave， slave 将之保存在磁盘上，然后加载文件到内存；</li>
+<li>再然后 master 会将所有缓冲的写命令发给 slave，这个过程以指令流的形式完成并且和 Redis 协议本身的格式相同。</li>
 </ol>
-<h3 id="应用场景"><a class="header-anchor" href="#应用场景">¶</a>应用场景</h3>
+<blockquote>
+<p>可以通过<code>telnet</code>连接到 Redis 服务器上然后发送<code>SYNC</code>命令来模拟这个过程，但是因为<code>SYNC</code>功能有限（比如不支持部分重同步），现在的版本用<code>PSYNC</code>作为代替。<br>
+正常情况下，全量同步会先在磁盘上创建一个 RDB 文件，传输时将其加载进内存，然后 Slave 对此进行数据的同步，如果磁盘性能很低，这个过程压力会比较大，<code>Redis 2.8.18</code>之后支持直接传输 RDB 文件，可以使用<code>repl-diskless-sync</code>配置参数配置。</p>
+</blockquote>
+<p>全量同步完成以后，在此后的时间里主从维护着心跳检查来确认对方是否在线，每隔一段时间（默认 10 秒，通过<code>repl-ping-slave-period</code>参数指定）主节点向从节点发送 PING 命令判断从节点是否在线，而从节点每秒 1 次向主节点发送 REPLCONF ACK 命令，命令格式为：<code>REPLCONF ACK {offset}</code>，其中 offset 指的是从节点保存的复制偏移量，作用是：</p>
 <ol>
-<li>会话缓存（Session Cache）<br>
-最常用的一种使用 Redis 的情景是会话缓存（session cache）。用 Redis 缓存会话比其他存储（如 Memcached）的优势在于：Redis 提供持久化。当维护一个不是严格要求一致性的缓存时，如果用户的购物车信息全部丢失，大部分人都会不高兴的，现在，他们还会这样吗？<br>
-幸运的是，随着 Redis 这些年的改进，很容易找到怎么恰当的使用 Redis 来缓存会话的文档。甚至广为人知的商业平台 Magento 也提供 Redis 的插件。</li>
-<li>全页缓存（FPC）<br>
-除基本的会话 token 之外，Redis 还提供很简便的 FPC 平台。回到一致性问题，即使重启了 Redis 实例，因为有磁盘的持久化，用户也不会看到页面加载速度的下降，这是一个极大改进，类似 PHP 本地 FPC。<br>
-再次以 Magento 为例，Magento 提供一个插件来使用 Redis 作为全页缓存后端。<br>
-此外，对 WordPress 的用户来说，Pantheon 有一个非常好的插件 wp-redis，这个插件能帮助你以最快速度加载你曾浏览过的页面。</li>
-<li>队列<br>
-Reids 在内存存储引擎领域的一大优点是提供 list 和 set 操作，这使得 Redis 能作为一个很好的消息队列平台来使用。Redis 作为队列使用的操作，就类似于本地程序语言（如 Python）对 list 的 push/pop 操作。<br>
-当然要将 Redis 作为消息队列投入生产环境还有很多设计要点，比如采用 sleep 一段时间重试还是 blpop 阻塞、主题订阅、如何应对消费者下线导致的消息丢失问题（如何保证消息一定能被消费）等。<br>
-Redis 作为消息队列坑比较多，如果希望少点麻烦且对服务质量有一定要求，最好还是采用 RocketMQ 这些比较成熟的方案。</li>
-<li>延时队列<br>
-使用 zset，时间戳作为 score，消费者用 zrangebyscore 指令获取 N 秒之前的数据轮询进行处理，这种思路和 JDK 中的 ScheduledThreadPoolExecutor 有点像。</li>
-<li>排行榜/计数器<br>
-Redis 在内存中对数字进行递增或递减的操作实现的非常好。集合（Set）和有序集合（Sorted Set）也使得我们在执行这些操作的时候变的非常简单，Redis 只是正好提供了这两种数据结构。所以，我们要从排序集合中获取到排名最靠前的 10 个用户–我们<br>
-称之为“user_scores”，我们只需要像下面一样执行即可：<br>
-当然，这是假定你是根据你用户的分数做递增的排序。如果你想返回用户及用户的分数，你需要这样执行：<br>
-ZRANGE user_scores 0 10 WITHSCORES<br>
-Agora Games 就是一个很好的例子，用 Ruby 实现的，它的排行榜就是使用 Redis 来存储数据的，你可以在这里看到。</li>
-<li>发布/订阅<br>
-最后（但肯定不是最不重要的）是 Redis 的发布/订阅功能。发布/订阅的使用场景确实非常多。我已看见人们在社交网络连接中使用，还可作为基于发布/订阅的脚本触发器，甚至用 Redis 的发布/订阅功能来建立聊天系统！（不，这是真的，你可以去核实）。<br>
-Redis 提供的所有特性中，我感觉这个是喜欢的人最少的一个，虽然它为用户提供如果此多功能。</li>
-<li>分布式锁<br>
-不要用 setnx+expire，因为如果进程 crash 或重启这个锁就直接失效了。实际上 set 命令本身就包含超时和 cas 的设置。</li>
-<li>扫描<br>
-如果 Redis 中有 1 亿多个 key，其中有 10W+个 key 有固定的前缀（这种场景非常常见），如何将它们全部找出来？<br>
-由于 Redis 的单线程特性，使用 keys 可能会阻塞 Redis 进程，最好换成 scan 命令，不过可能提取出的部分 key 是重复的，需要客户端做去重。</li>
+<li>向主节点报告自己复制进度，主节点会对比复制偏移量向从节点发送未同步的命令；</li>
+<li>判断主节点是否在线。</li>
+</ol>
+<h2 id="主从库间网络断了怎么办？"><a class="header-anchor" href="#主从库间网络断了怎么办？">¶</a>主从库间网络断了怎么办？</h2>
+<p>Redis2.8之前，如果主从同步过程中出现了网络闪断，那么主从是会重新进行一次全量复制的，开销非常大。<br>
+Redis2.8之后，网络闪断后，主从会采取<strong>增量复制</strong>，将闪断期间的命令发给从库。</p>
+<h2 id="宕机恢复"><a class="header-anchor" href="#宕机恢复">¶</a>宕机恢复</h2>
+<p>因为 slave 顶多只负责处理读请求，slave 挂掉不会造成数据丢失的问题。<br>
+slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能力，并且能在重启后快速恢复：</p>
+<ol>
+<li>恢复正常后重新连接；</li>
+<li>Master 收到 Slave 的连接后，第一次同步时，主节点做一次 bgsave，并同时将后续修改操作记录到内存 buffer；</li>
+<li>Master 将其完整的 rdb 数据文件全量发送给 Slave；</li>
+<li>Slave 接收完成后将 rdb 镜像文件加载到内存，加载完成后，再通知 Master 将期间修改的操作记录同步到 Slave 节点进行重放就完成了同步过程；</li>
+<li>如果 Master 同时收到多个 Slave 发来的同步请求，Master 只会在后台启动一个进程保存数据文件，然后将其发送给所有的 Slave，确保 Slave 正常。</li>
+</ol>
+<p>主从复制无法应对 Master 挂掉的情况，实际上这种方案只能尽量保证数据不会丢失，不能保证服务的高可用性，为此，需要引入 Redis 的 Sentinel 机制。</p>
+<p>客户端可以使用 <code>WAIT</code> 命令来请求同步复制某些特定的数据。但是，WAIT 命令只能确保在其他 Redis 实例中有指定数量的已确认的副本：在故障转移期间，由于不同原因的故障转移或是由于 Redis 持久性的实际配置，故障转移期间确认的写入操作可能仍然会丢失。</p>
+<h2 id="是否可以关闭持久化"><a class="header-anchor" href="#是否可以关闭持久化">¶</a>是否可以关闭持久化</h2>
+<p>作为复制方案中的一环，可以考虑关闭 Master 或 Slave 的持久化功能，但是并不建议关掉它们，因为：</p>
+<ul>
+<li>如果关闭 Master 的持久化：重启（重启功能可以由一些只能运维工具来保证，比如 K8S）的 Master 将从一个空数据集开始，如果一个 Slave 试图与它同步，那么这个 Slave 也会被清空。</li>
+<li>如果关闭 Slave 的持久化：重启的 Slave 需要从 Master 全量同步数据。</li>
+</ul>
+<p>正如前所述，关闭了持久化并配置了自动重启的 Master 是危险的——会导致整个集群的数据全部被清空。<br>
+如果 Sentinel 集群用于需要高可用的场景、且 Master 被关闭掉了持久化功能，也是非常危险的：</p>
+<ul>
+<li>如果重启比较慢，Sentinel 的故障迁移机制重新选主，一个 Slave 会上升为 Master；</li>
+<li>如果重启得足够快，Sentinel 没有探测到故障，此时 Master 数据被清空了，而 Slave 仍从 Master 同步数据，这将引起上边提到的故障模式——数据将丢失。</li>
+</ul>
+<p>因此，如果考虑磁盘性能过慢会导致延迟、关掉了持久化，那么自动重启进程这项应该被禁用。</p>
+<h2 id="只读-slave"><a class="header-anchor" href="#只读-slave">¶</a>只读 Slave</h2>
+<p>Redis2.6 之后，Redis 支持只读模式，可以使用<code>slave-read-only</code>配置来控制这个行为。<br>
+只读模式下的 slave 将会拒绝所有写入命令，因此实践中不可能由于某种出错而将数据写入 slave 。但这并不意味着该特性旨在将一个 slave 实例暴露到 Internet ，或者更广泛地说，将之暴露在存在不可信客户端的网络，因为像 DEBUG 或者 CONFIG 这样的管理员命令仍在启用。但是，在 redis.conf 文件中使用 rename-command 指令可以禁用上述管理员命令以提高只读实例的安全性。</p>
+<h2 id="数据丢失窗口"><a class="header-anchor" href="#数据丢失窗口">¶</a>数据丢失窗口</h2>
+<p>由于 Redis 使用异步复制，无法保证 Slave 是否实际接收到给定的写命令，因此总会有一个<strong>数据丢失窗口</strong>。既然无法避免，那么只能退一步、控制影响范围了，Redis 可以保证：</p>
+<ol>
+<li>Redis slave 每秒钟都会 ping master，确认已处理的复制流的数量。</li>
+<li>Redis master 会记得上一次从每个 slave 都收到 ping 的时间。</li>
+<li>用户可以配置一个最小的 slave 数量，使得它滞后 &lt;= 最大秒数。</li>
+<li>如果至少有 N 个 slave ，并且滞后小于 M 秒，则写入将被接受。如果条件不满足，master 将会回复一个 error 并且写入将不被接受。</li>
+</ol>
+<p>对于给定的写入来说，不能保证一致性，但至少数据丢失的时间窗限制在给定的秒数内。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">min-slaves-to-write &lt;slave 数量&gt;</span><br><span class="line">min-slaves-max-lag &lt;秒数&gt;</span><br></pre></td></tr></table></figure>
+<h2 id="过期的-key"><a class="header-anchor" href="#过期的-key">¶</a>过期的 key</h2>
+<p>由于复制的异步特性，对 key 设置过期时间和写入操作很容易导致 race condition 及导致数据集不一致，比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(1) sadd x 1</span><br><span class="line">(2) expire x 100</span><br><span class="line">(3) sadd x 2</span><br></pre></td></tr></table></figure>
+<p>在 Master 上，命令(3)是在过期前执行的，而 Slave 上可能因为延后导致命令(3)执行前 x 就已经过期了，此时 x 是没有过期时间的（ttl x 得到-1 表示不过期），这就导致了数据的不一致。</p>
+<blockquote>
+<p>set 命令不会出现这个问题，因为 set 会将过期时间给覆盖成-1。当然情况比较复杂，也有可能是我没有想到。</p>
+</blockquote>
+<p>为了保证针对过期的 key 的复制能够正确工作，Redis 提供如下保证：</p>
+<ol>
+<li>slave 不会让 key 过期，而是等待 master 让 key 过期。当一个 master 让一个 key 到期（或由于 LRU 算法将之驱逐）时，它会合成一个 DEL 命令并传输到所有的 slave。一旦一个 slave 被提升为一个 master ，它将开始独立地过期 key，而不需要任何旧 master 的帮助。</li>
+<li>但是，由于这是 master 驱动的 key 过期行为，master 无法及时提供 DEL 命令，所以有时候 slave 的内存中仍然可能存在在逻辑上已经过期的 key 。为了处理这个问题，slave 使用它的逻辑时钟以报告只有在不违反数据集的一致性的读取操作（从主机的新命令到达）中才存在 key。用这种方法，slave 避免报告逻辑过期的 key 仍然存在。在实际应用中，使用 slave 程序进行缩放的 HTML 碎片缓存，将避免返回已经比期望的时间更早的数据项。</li>
+<li>在 Lua 脚本执行期间，不执行任何 key 过期操作。当一个 Lua 脚本运行时，从概念上讲，master 中的时间是被冻结的，这样脚本运行的时候，一个给定的键要么存在要么不存在。这可以防止 key 在脚本中间过期，保证将相同的脚本发送到 slave ，从而在二者的数据集中产生相同的效果。</li>
 </ol>
 <h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="redis与其他kv存储有何不同？"><a class="header-anchor" href="#redis与其他kv存储有何不同？">¶</a>Redis与其他KV存储有何不同？</h3>
-<ul>
-<li>更多复杂的数据结构，支持更多特殊的场景；</li>
-<li>Redis是内存数据库，但是支持持久化到磁盘。</li>
-</ul>
-<h3 id="有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？"><a class="header-anchor" href="#有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？">¶</a>有人说 Redis 只适合用来做缓存，当数据库来用并不合适，为什么？</h3>
-<p>Redis 的事务并不严格：<br>
-* A(原子性)：Redis 支持事务，所有命令会被保存到一个事务队列中，服务器接收到 exec 时才会被真正执行，注意如果中间出错，事务不会回滚，后面的指令还会继续执行；而且如果涉及到复杂的逻辑判断，则只能通过<strong>lua 脚本</strong>实现“伪原子性”，说它是“伪原子性”是因为虽然脚本可以一次性执行多条命令，如果中间某个命令出错还是会无法保证“要么全部执行，要么都不执行”的要求。<br>
-* I(隔离性)：Redis 是单线程模型，因此可以保证隔离性。<br>
-* D(持久性)：Redis 是内存数据库，服务器意外崩溃会导致内存中的数据丢失，除非开启 AOF，并且配置成每次写入都记日志，但是这样又会极大地影响效率，所以一般会配置成混合模式的持久化。</p>
-<h3 id="redis会占用多少内存空间？"><a class="header-anchor" href="#redis会占用多少内存空间？">¶</a>Redis会占用多少内存空间？</h3>
-<ul>
-<li>An empty instance uses ~ 3MB of memory.</li>
-<li>1 Million small Keys -&gt; String Value pairs use ~ 85MB of memory.<br>
-那么10亿个kv，大概就会占用85G的内存了。</li>
-<li>1 Million Keys -&gt; Hash value, representing an object with 5 fields, use ~ 160 MB of memory.</li>
-</ul>
-<p>64位机器会占用比32位机器更多的内存，因为指针在64位机器上占用更多空间，但同时64位机器也可以有更大的内存空间。</p>
-<h3 id="redis-的底层数据结构有哪些"><a class="header-anchor" href="#redis-的底层数据结构有哪些">¶</a>Redis 的底层数据结构有哪些</h3>
-<p>sds：string 使用，变长字符串，不够的情况下重新分配空间并将老字符串数据拷贝过去；<br>
-dict：字典应用很多，包括 Redis 数据库中保存所有 key-value、hash、set、zset。dict 类似 Java 中的 HashMap，将 key 散列到哈希桶数组中，每个哈希桶都是一个链表，插入就是插入到链表头部，当元素超过了容量的一半后会启动渐进式 rehash 进行扩容。<br>
-ziplist：相当于一个数组，查询时需要遍历一次，每次插入都需要 realloc 重新分配一个新的更大的数组，然后把老数组内容拷贝过去。<br>
-quicklist：由于 linkedlist 附加空间成本高且容易产生碎片，因此 Redis 里的 quicklist 设计成了 linkedlist 和 ziplist 的结合，它将 linkedlist 按段切分，每一段使用 ziplist 存储；<br>
-skiplist：skiplist 用于实现 zset 中按 score 排序的要求，插入时先自顶向下查位置，然后按概率计算该节点应该分配到几层。</p>
-<h3 id="存储数据选择-string-还是-hash？"><a class="header-anchor" href="#存储数据选择-string-还是-hash？">¶</a>存储数据选择 string 还是 hash？</h3>
-<p>从业务层面来看，如果要存好多字段的对象、而且这个对象的每个字段都会单独拿出来用，则可以考虑使用 hash，否则没有太多限制条件。<br>
-从性能角度来看，如果存的字段少，hash 会使用 ziplist 结构存储，性能多少受点影响，而且还要考虑转换结构和渐进式扩容对性能的损耗。<br>
-从节约空间的角度来看，string 的 key 一般都会加个前缀，一般会比 hash 占用更多的空间，不过差距不大。</p>
-<h3 id="设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前"><a class="header-anchor" href="#设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前">¶</a>设计 redis 排序，数据结构是金额+花钱的时间，金额越大，时间越早越靠前</h3>
-<p>用 zset 存，score 是金额拼上时间，金额放高位，MAX_INT 和时间作差放低位，查询时使用<code>ZREVRANGE</code>命令查询。</p>
-<h3 id="hash-中哈希冲突怎么解决的"><a class="header-anchor" href="#hash-中哈希冲突怎么解决的">¶</a>hash 中哈希冲突怎么解决的</h3>
-<p>分两种情况：hash 在数据量小时结构是 ziplist，这时插入不会做冲突检测，插入到目标位置后就向后统一移动数据，给新插入的数据项流出空间；在数据量大时结构是 dict，这种结构和 Java 中的 HashMap 类似，使用链表来处理冲突。</p>
+<h3 id="aof日志更全-为什么主从同步不使用aof而是rdb呢？"><a class="header-anchor" href="#aof日志更全-为什么主从同步不使用aof而是rdb呢？">¶</a>AOF日志更全，为什么主从同步不使用AOF而是RDB呢？</h3>
+<p>网络传输效率：RDB直接存储数据，而不是命令，数据量更小，传输更快。<br>
+恢复效率：因为使用AOF恢复数据库的话是需要将AOF中记录的命令再执行一次的，这个效率远不如直接将RDB中的数据直接加载到内存里。</p>
+<h3 id="主从切换过程中-客户端能正常进行请求吗？"><a class="header-anchor" href="#主从切换过程中-客户端能正常进行请求吗？">¶</a>主从切换过程中，客户端能正常进行请求吗？</h3>
+<p>主库故障后从库仍能正常接收读请求，但主库挂掉了所以无法处理写请求。</p>
+<h3 id="如果实现应用程序不感知服务器的中断？"><a class="header-anchor" href="#如果实现应用程序不感知服务器的中断？">¶</a>如果实现应用程序不感知服务器的中断？</h3>
 <ol>
-<li>说说 Redis 为什么那么快。<br>
-单线程模型-&gt;减少了线程间上下文切换的开销。<br>
-多路复用的 IO 模型-&gt;单线程监控多个连接。</li>
-<li>为什么 Redis 记录 AOF 日志是先执行指令然后再记录 AOF 日志？而不是像其他存储引擎一样反过来？<br>
-主要是因为 Redis 本身是缓存而不是 db，侧重点不同，db 先写日志是为了失败回滚，而 Redis 持久化是一个附加功能，只能保证数据不会完全丢失。</li>
+<li>客户端可以缓存写请求，因为使用Redis的场景同步写请求比较少，且一般都不会在应用程序的关键路径上，所以在不能立刻执行写请求的情况下，客户端完全可以先把请求缓存起来，给应用程序返回一个确认即可。</li>
+<li>另外，主从切换后，客户端要能及时和新主库重新建立连接。</li>
 </ol>
-<h3 id="redis-淘汰时-如果读取-会不会数据不完整"><a class="header-anchor" href="#redis-淘汰时-如果读取-会不会数据不完整">¶</a>Redis 淘汰时，如果读取，会不会数据不完整</h3>
-<p>redis 的淘汰分两种：</p>
-<ul>
-<li>一种是过期，这种不会导致这种问题，因为查询时会判断下过期时间，过期了就不返回；</li>
-<li>另一种是超过内存容量淘汰，比如 LRU，这种也不会导致这种问题，因为执行每个命令时都会检查下缓存是否超出了阈值，可见代码<code>server.c/processCommand</code>：<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis-%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4%E5%89%8D%E6%A3%80%E6%9F%A5%E7%BC%93%E5%AD%98%E6%98%AF%E5%90%A6%E6%BA%A2%E5%87%BA.jpeg" alt="Redis-执行命令前检查缓存是否溢出" title="Redis-执行命令前检查缓存是否溢出"></li>
-</ul>
-<h3 id="redis-的持久化原理是什么"><a class="header-anchor" href="#redis-的持久化原理是什么">¶</a>Redis 的持久化原理是什么</h3>
-<p>Redis 有两种持久化方式：RDB 和 AOF<br>
-RDB 是快照，AOF 记录了写操作，效率起见，一般 RDB 作为 checkpoint，checkpoint 后的数据通过 AOF 恢复。</p>
-<h3 id="rdb-和-aof-之间的区别"><a class="header-anchor" href="#rdb-和-aof-之间的区别">¶</a>RDB 和 AOF 之间的区别</h3>
-<p>RDB 二进制文件可以直接加载到内存速度较快；AOF 要重放命令，所以速度比较慢。<br>
-RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。</p>
-<h3 id="redis的复制原理是什么？"><a class="header-anchor" href="#redis的复制原理是什么？">¶</a>Redis的复制原理是什么？</h3>
-<p>master 会启动一个后台进程进行持久化（RDB or AOF），第一次连接时会将 RDB 文件发给 slave，slave 先保存到磁盘，之后加载到内存中；如果不是第一次连接，slave 连接 master 后通过 PSYNC 命令告知自己同步的起始位置，master 将增量部分 AOF 文件发送给 slave。</p>
-<h3 id="redis-持久化期间-主进程还能对外提供服务吗？为什么"><a class="header-anchor" href="#redis-持久化期间-主进程还能对外提供服务吗？为什么">¶</a>Redis 持久化期间，主进程还能对外提供服务吗？为什么</h3>
-<p>能。<br>
-因为 Redis 的复制是通过 fork 子进程实现的，父进程仍然可以接收请求。</p>
-<h3 id="持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？"><a class="header-anchor" href="#持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？">¶</a>持久化期间，Redis如何处理新写入的数据呢，这个数据也会直接进行持久化吗？</h3>
-<p>不会。<br>
-因为 Redis 复制是通过 fork 子进程实现的，由于 COW 机制，子进程只能看到老数据。</p>
-<h3 id="主从复制为什么会发生延迟？怎么解决"><a class="header-anchor" href="#主从复制为什么会发生延迟？怎么解决">¶</a>主从复制为什么会发生延迟？怎么解决</h3>
-<p>延迟无法避免，比如主从之间的网络抖动、slave 发生阻塞（如 IO）等情况。<br>
-解决办法有两种：</p>
-<ul>
-<li><code>min-slave-to-write N</code>和<code>min-slave-max-lag M</code>，控制 Master，只有在至少有 N 个 slave 正在工作，并且滞后时间均小于 M 秒的情况下，Master 将不接受写入请求；</li>
-<li><code>slave-serve-stale-data</code>，控制从库对主库失去响应或复制进行过程中从库的表现，为 yes 则从库会继续响应客户端的请求，为 no 则除去 INFO 和 SLAVOF 命令之外的任何请求都会返回一个错误<code>SYNC with master in progress</code>；</li>
-<li>编写外部监控程序，如果某个 slave 延迟较大，则通知 client 不要读这个 slave。</li>
-</ul>
-<h3 id="redis-怎么实现高可用"><a class="header-anchor" href="#redis-怎么实现高可用">¶</a>Redis 怎么实现高可用</h3>
-<p>从复制、Sentinel 到 Cluster</p>
-<h3 id="sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置"><a class="header-anchor" href="#sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置">¶</a>sentinel 中，使用客户端是怎么连接服务器的？（Redisson 配置）</h3>
-<p>见《Redis 客户端》。</p>
-<h3 id="哈希槽原理？和一致性哈希的区别？怎么落点"><a class="header-anchor" href="#哈希槽原理？和一致性哈希的区别？怎么落点">¶</a>哈希槽原理？和一致性哈希的区别？怎么落点</h3>
-<p>redis cluster 默认分配了 16384 个 slot，当我们 set 一个 key 时，会用<strong>CRC16</strong>算法来取模得到所属的 slot，然后将这个 key 分到哈希槽区间的节点上，具体算法就是：<code>CRC16(key) % 16384</code>。所以我们在测试的时候看到 set 和 get 的时候，直接跳转到了 7000 端口的节点。<br>
-哈希槽与一致性哈希的区别：哈希槽由客户端来重定向到目标 slot 所在节点，一致性哈希需要由服务器端重定向到目标节点，而且需要按顺时针方向一个一个节点递归地找。</p>
-<h3 id="redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决"><a class="header-anchor" href="#redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决">¶</a>Redis雪崩、击穿、穿透等现象是怎么出现的？怎么解决</h3>
-<ol>
-<li>缓存穿透<br>
-缓存穿透指查询一个不存在的数据，出于容错考虑这个查询会穿透到 DB 层，如果这种带穿透的查询特别多可能会把 DB 打挂掉。<br>
-解决办法：使用布隆过滤器，保存所有可能存在的数据到一个足够大的 bitmap 中，由于布隆过滤器的特性，一定不存在的数据在 bitmap 中一定找不到，从而可以很大程度上避免对底层存储系统的查询压力；还有一种更简单的方法，就是在查询返回结果为空时也把这个空结果缓存起来，但是它的过期时间会短一些，最长时间不超过 5 分钟。</li>
-<li>缓存雪崩<br>
-缓存雪崩指的是设置缓存时采用了相同的过期时间，导致缓存在同一时间同时失效，请求全部打到 DB，DB 瞬时压力过大导致雪崩。<br>
-解决办法：缓存失效时间随机化，在原有失效时间基础上加上一个随机值，可以使得过期时间的重复率降低；加锁并令请求排队，使得请求串行化，避免所有请求都查询数据库，不过这样会导致性能的降低。</li>
-<li>缓存击穿<br>
-缓存击穿指的是某个 key 在过期时正好有大量请求访问该 key，这些请求会同时回表，可能会瞬间将后端 DB 打挂。<br>
-解决办法：使用互斥锁，缓存失效时先加锁，避免并发回表；一些长时间不变的数据完全可以不设置过期时间，或者过期时间特别长。</li>
-</ol>
-<h3 id="主从复制的流程？传的是文件吗？"><a class="header-anchor" href="#主从复制的流程？传的是文件吗？">¶</a>主从复制的流程？传的是文件吗？</h3>
-<p>流程见《主从同步》。<br>
-如果是全量同步，同步时会先同步 RDB 文件，再同步增量写命令；<br>
-如果是部分重同步，则只同步增量写命令。</p>
-<h3 id="中间传输失败怎么办？中间传输不一致怎么办"><a class="header-anchor" href="#中间传输失败怎么办？中间传输不一致怎么办">¶</a>中间传输失败怎么办？中间传输不一致怎么办</h3>
-<p>如果上次传输中断，则下次同步时从中断位置开始执行部分重同步。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
-<li><a href="https://redis.io/topics/faq" target="_blank" rel="noopener">FAQ</a></li>
-<li><a href="https://www.cxc233.com/blog/e1d54234.html" target="_blank" rel="noopener">使用vscode(gdb)调试redis</a></li>
-</ol>
-<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
-<ol>
-<li><a href="https://stackoverflow.com/questions/16375188/redis-strings-vs-redis-hashes-to-represent-json-efficiency" target="_blank" rel="noopener">Redis strings vs Redis hashes to represent JSON: efficiency?</a></li>
-</ol>
-<h3 id="数据结构"><a class="header-anchor" href="#数据结构">¶</a>数据结构</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/4992bed65b22" target="_blank" rel="noopener">Redis 源码涉及 C 语言</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261203&amp;idx=1&amp;sn=f7ff61ce42e29b874a8026683875bbb1&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(1)——dict</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261213&amp;idx=1&amp;sn=0ddddf48929610a4155bd82794cad4fa&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(2)——sds</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261237&amp;idx=1&amp;sn=380d183332d41d24ea6f88a54f533fc3&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(3)——robj</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261265&amp;idx=1&amp;sn=e105c4b86a5640c5fc8212cd824f750b&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(4)——ziplist</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261335&amp;idx=1&amp;sn=053d72a348be2e78040f3847f4092d92&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(5)——quicklist</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261457&amp;idx=1&amp;sn=fe966f3825b81e9d50a2cf38dac9060c&amp;chksm=84479e48b330175ea07905e791856cca5fc50694db9fd4c3485ba5dc097443e69f5ed28a34b5&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 为什么用跳表而不用平衡树？</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261457&amp;idx=1&amp;sn=fe966f3825b81e9d50a2cf38dac9060c&amp;chksm=84479e48b330175ea07905e791856cca5fc50694db9fd4c3485ba5dc097443e69f5ed28a34b5&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 中的集合类型是怎么实现的？</a></li>
-</ol>
-<h3 id="persistence"><a class="header-anchor" href="#persistence">¶</a>Persistence</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/c210851d3558" target="_blank" rel="noopener">剖析 Redis RDB 文件</a></li>
-<li><a href="https://www.jianshu.com/p/131cf929a262" target="_blank" rel="noopener">Redis 源码分析–RDB 实现源码阅读</a></li>
-<li><a href="https://www.jianshu.com/p/90cdd28c5e92" target="_blank" rel="noopener">Redis 源码分析–AOF 文件全量重写源码阅读</a></li>
-<li><a href="https://www.jianshu.com/p/91cf48c8c082" target="_blank" rel="noopener">Redis 源码分析–AOF 文件增量追写源码阅读</a></li>
-</ol>
-<h3 id="客户端"><a class="header-anchor" href="#客户端">¶</a>客户端</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/clients.html" target="_blank" rel="noopener">Redis 如何处理客户端连接</a></li>
-<li><a href="https://www.jianshu.com/p/36a5935db85b" target="_blank" rel="noopener">剖析 Redis 协议</a></li>
-<li><a href="https://www.jianshu.com/p/78b94407f59c" target="_blank" rel="noopener">剖析 Redis 协议(续)</a></li>
-</ol>
-<h3 id="主从复制"><a class="header-anchor" href="#主从复制">¶</a>主从复制</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/replication.html" target="_blank" rel="noopener">复制</a></li>
-<li><a href="https://www.cnblogs.com/wdliu/p/9407179.html" target="_blank" rel="noopener">redis 系列–主从复制以及 redis 复制演进</a></li>
-</ol>
-<h3 id="sentinel-cluster"><a class="header-anchor" href="#sentinel-cluster">¶</a>Sentinel &amp; Cluster</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/partitioning.html" target="_blank" rel="noopener">分区：怎样将数据分布到多个 redis 实例</a></li>
-<li><a href="http://www.redis.cn/topics/sentinel.html" target="_blank" rel="noopener">Redis 的 Sentinel 文档</a></li>
-<li><a href="http://www.redis.cn/topics/cluster-tutorial.html" target="_blank" rel="noopener">Redis 集群教程</a></li>
-<li><a href="http://www.redis.cn/topics/cluster-spec.html" target="_blank" rel="noopener">Redis 集群规范</a></li>
-<li><a href="https://www.jianshu.com/p/4163916a2a8a" target="_blank" rel="noopener">一致性哈希和哈希槽对比</a></li>
-<li><a href="https://www.jianshu.com/p/145215dc3440" target="_blank" rel="noopener">Redis 集群扩容和缩容</a></li>
-</ol>
-<h3 id="架构迁移"><a class="header-anchor" href="#架构迁移">¶</a>架构迁移</h3>
-<ol>
-<li><a href="http://www.redis.cn/articles/20170830103.html" target="_blank" rel="noopener">Redis 集群迁移案例</a></li>
-<li><a href="https://github.com/vipshop/redis-migrate-tool" target="_blank" rel="noopener">redis-migrate-tool</a></li>
-<li><a href="https://github.com/CodisLabs/redis-port" target="_blank" rel="noopener">redis-port</a></li>
-<li>redis-migration<br>
-<a href="https://github.com/helifu/redis-migration" target="_blank" rel="noopener">redis-migration</a><br>
-<a href="https://mp.weixin.qq.com/s?__biz=MzAxNjc1MTk5Nw==&amp;mid=401404354&amp;idx=1&amp;sn=36225e1e72aa1402d2fb79928addadd9&amp;scene=1&amp;srcid=0304rSI42ziy0Qfb9wvNDzBi&amp;key=8dcebf9e179c9f3a6f34ddb7f5de1b77fe12f5078f6a2ac7bf9f7c0d8485989ab2d848694250dec6c20a3f96f42c0e09&amp;ascene=0&amp;uin=MzM4Njg2NDU1&amp;devicetype=iMac+MacBookPro12%2C1+OSX+OSX+10.10.3+build(14D136)&amp;version=11020201&amp;pass_ticket=MGWnMZAOg9KlbJTWgO9ARaZA3po2c%2BLDVDHD6Xtt9cZYpjpc9ygP%2BpjWQz3D6NBE" target="_blank" rel="noopener">redis-migration：独创的 redis 在线数据迁移工具</a></li>
-</ol>
-<h3 id="twemproxy"><a class="header-anchor" href="#twemproxy">¶</a>Twemproxy</h3>
-<ol>
-<li><a href="https://github.com/twitter/twemproxy" target="_blank" rel="noopener">Twemproxy</a></li>
-</ol>
-<h3 id="codis"><a class="header-anchor" href="#codis">¶</a>Codis</h3>
-<ol>
-<li><a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">Codis</a></li>
-</ol>
-<h3 id="redisson"><a class="header-anchor" href="#redisson">¶</a>Redisson</h3>
-<ol>
-<li><a href="https://github.com/redisson/redisson" target="_blank" rel="noopener">Redisson</a></li>
-</ol>
-<h3 id="系统优化"><a class="header-anchor" href="#系统优化">¶</a>系统优化</h3>
-<ol>
-<li><a href="https://www.oschina.net/translate/redis-latency-problems-troubleshooting?lang=chs&amp;p=1" target="_blank" rel="noopener">Redis 响应延迟问题排查</a></li>
+<li><a href="https://www.cnblogs.com/hongmoshui/p/10594639.html" target="_blank" rel="noopener">Redis复制实现原理</a></li>
 </ol>
 
           
@@ -3693,7 +3653,7 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">14</span>
+                  <span class="site-state-item-count">15</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -3704,7 +3664,7 @@ RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">60</span>
+                  <span class="site-state-item-count">59</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
