@@ -2344,8 +2344,8 @@ bin log 写完后 crash，由于 redo log 还没写，崩溃恢复后这个事�
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">Redis</span>
                   </a>
                 </span>
 
@@ -2620,7 +2620,7 @@ ERR Client sent AUTH, but no password is set<br>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -2639,7 +2639,7 @@ ERR Client sent AUTH, but no password is set<br>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/abe4b1f3.html" itemprop="url">SpringBoot原理总结</a></h1>
+                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
         
 
         <div class="post-meta">
@@ -2705,7 +2705,7 @@ ERR Client sent AUTH, but no password is set<br>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4k 字
+                  1.4k 字
                 </span>
               
 
@@ -2721,7 +2721,7 @@ ERR Client sent AUTH, but no password is set<br>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  5 分钟
                 </span>
               
             </div>
@@ -2745,265 +2745,115 @@ ERR Client sent AUTH, but no password is set<br>
         
           
             <a id="more"></a>
-<h1>开始使用 SpringBoot</h1>
-<h2 id="使用-sdkman-搭建环境"><a class="header-anchor" href="#使用-sdkman-搭建环境">¶</a>使用 sdkman 搭建环境</h2>
-<h3 id="介绍"><a class="header-anchor" href="#介绍">¶</a>介绍</h3>
+<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
+<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
+<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
 <ol>
-<li>sdkman<br>
-工具包管理器，可以用于管理 Spring Boot CLI。</li>
-<li>Spring Boot CLI<br>
-命令行工具。</li>
-<li>groovy<br>
-一种可以运行在 JVM 上的语言，和 Java 的编译器不同（语法、语义不同）。</li>
+<li>超时降级<br>
+配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
+<li>失败次数降级<br>
+失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
+<li>故障降级<br>
+如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
+和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
+<li>限流降级<br>
+单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
 </ol>
-<h3 id="安装"><a class="header-anchor" href="#安装">¶</a>安装</h3>
+<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
+<p>降级后，在代码层面，可以进行的处理策略如下：</p>
 <ol>
-<li>
-<p>安装 sdkman<br>
-按下面链接中的步骤来，可能需要连接 VPN：<br>
-<a href="http://sdkman.io/install.html" target="_blank" rel="noopener">http://sdkman.io/install.html</a></p>
-</li>
-<li>
-<p>安装 Spring Boot CLI<br>
-默认安装最新版本的（安装位置在$HOME/.sdkman 下）：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk install springboot</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>切换 Spring Boot CLI 版本</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sdk list springboot</span><br><span class="line">sdk install springboot XXX.RELEASE</span><br><span class="line">sdk use springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>设置默认版本</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk default springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>使用本地编译的 springboot</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sdk install springboot dev /path/to/spring-boot/spring-boot-cli/target/spring-boot-cli-2.0.0.BUILD-SNAPSHOT-bin/spring-2.0.0.BUILD-SNAPSHOT/</span><br><span class="line">$ sdk default springboot dev</span><br><span class="line">$ spring --version</span><br></pre></td></tr></table></figure>
-</li>
+<li>抛异常</li>
+<li>返回 NULL</li>
+<li>调用 Mock 数据</li>
+<li>调用 Fallback 处理逻辑</li>
 </ol>
-<h3 id="第一个-springboot-应用"><a class="header-anchor" href="#第一个-springboot-应用">¶</a>第一个 SpringBoot 应用</h3>
-<ol>
-<li>创建一个 app.groovy 文件：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">class ThisWillActuallyRun &#123;</span><br><span class="line">    @RequestMapping(&quot;/&quot;)</span><br><span class="line">    String home() &#123;</span><br><span class="line">        &quot;Hello World!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>执行</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring run app.groovy</span><br></pre></td></tr></table></figure>
-<ol>
-<li>访问</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">localhost:8080</span><br></pre></td></tr></table></figure>
-<h2 id="idea-下搭建-springboot-项目"><a class="header-anchor" href="#idea-下搭建-springboot-项目">¶</a>IDEA 下搭建 SpringBoot 项目</h2>
-<h3 id="创建一个简单的-web-项目"><a class="header-anchor" href="#创建一个简单的-web-项目">¶</a>创建一个简单的 Web 项目</h3>
-<ol>
-<li>
-<p>创建项目<br>
-new Projects… -&gt; Spring Initializr（这里可能需要连接 VPN） -&gt; 设置项目元数据 -&gt; 添加 Web 组件（对于这个例子来说足够了）</p>
-</li>
-<li>
-<p>添加控制器<br>
-创建 controller.HelloController：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">    @RequestMapping(&quot;/hello&quot;)</span><br><span class="line">    public String hello() &#123;</span><br><span class="line">        System.out.println(&quot;Hello&quot;);</span><br><span class="line">        return &quot;hello&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>执行 XxxApplication.main()</p>
-</li>
-<li>
-<p>访问<br>
-localhost:8080</p>
-</li>
-</ol>
-<h3 id="添加-jpa-支持"><a class="header-anchor" href="#添加-jpa-支持">¶</a>添加 Jpa 支持</h3>
-<ol>
-<li>添加依赖</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>添加配置</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">spring.datasource.driver-class-name=com.mysql.jdbc.Driver</span><br><span class="line">spring.datasource.url=jdbc:mysql://localhost:3306/test</span><br><span class="line">spring.datasource.username=root</span><br><span class="line">spring.datasource.password=85382855</span><br><span class="line">   </span><br><span class="line">spring.jpa.hibernate.ddl-auto=create</span><br><span class="line">spring.jpa.show-sql=true</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>创建实体类</p>
-</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Entity</span><br><span class="line">public class User &#123;</span><br><span class="line">    @Id</span><br><span class="line">    @GeneratedValue</span><br><span class="line">    private Integer id;</span><br><span class="line">    private String username;</span><br><span class="line">    private String password;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>创建 Dao 接口</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public interface UserDao extends JpaRepository&lt;User, Integer&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>注入 Dao 接口</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">@Autowired</span><br><span class="line">private UserDao userDao;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@RunWith(SpringRunner.class)</span><br><span class="line">@SpringBootTest</span><br><span class="line">public class HelloTest &#123;</span><br><span class="line"></span><br><span class="line">    private MockMvc mockMvc;</span><br><span class="line">    @Before</span><br><span class="line">    public void setUp() throws Exception &#123;</span><br><span class="line">        //测试 HelloWorldController</span><br><span class="line">        mockMvc = MockMvcBuilders.standaloneSetup(new HelloWorldController()).build();</span><br><span class="line">    &#125;</span><br><span class="line">    @Test</span><br><span class="line">    public void getHello() throws Exception &#123;</span><br><span class="line">        mockMvc.perform(MockMvcRequestBuilders.post(&quot;/hello?name=小明&quot;)</span><br><span class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)).andDo(print());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h1>SpringBoot 原理分析</h1>
-<h2 id="核心思想"><a class="header-anchor" href="#核心思想">¶</a>核心思想</h2>
-<ol>
-<li>约定优于配置（convention over configuration）<br>
-传统 Spring 项目配置繁琐是 SpringBoot 主要解决的痛点之一，autoconfigure 模块会在启动时为自动注入的 Bean 设置默认配置。</li>
-<li>模块化<br>
-类似于 maven 管理项目的依赖、git 管理代码的版本，SpringBoot 提供了对一些常用组件的模块化管理，只要添加依赖几乎就可以马上使用，展现出一种插件化的效果。</li>
-</ol>
-<h2 id="spring-boot-load-模块"><a class="header-anchor" href="#spring-boot-load-模块">¶</a>spring-boot-load 模块</h2>
-<p>正常情况下一个类加载器只能找到加载路径的 jar 包里当前目录或者文件类里面的 *.class 文件，SpringBoot 允许我们使用 java -jar archive.jar 运行包含嵌套依赖 jar 的 jar 或者 war 文件。</p>
-<h3 id="传统类加载器的局限"><a class="header-anchor" href="#传统类加载器的局限">¶</a>传统类加载器的局限</h3>
-<p>传统类加载器无法加载 jar 包中嵌套的 jar 包。比如项目打包后包含如下这些类和 jar 包，则 c.jar 中的类无法被加载：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a1.class</span><br><span class="line">a2.class</span><br><span class="line">b.jar</span><br><span class="line">    b1.class</span><br><span class="line">    b2.class</span><br><span class="line">    c.jar</span><br></pre></td></tr></table></figure>
-<p>为了能够加载嵌套 jar 里面的资源，之前的做法都是把嵌套 jar 里面的 class 文件和应用的 class 文件打包为一个 jar，这样就不存在嵌套 jar 了，但是这样做就不能很清晰的知道哪些是应用自己的，哪些是应用依赖的，另外多个嵌套 jar 里面的 class 文件可能内容不一样但是文件名却一样时候又会引发新的问题。</p>
-<h3 id="加载嵌套-jar-包中的-class-文件"><a class="header-anchor" href="#加载嵌套-jar-包中的-class-文件">¶</a>加载嵌套 jar 包中的 class 文件</h3>
-<p>在 Java 中，AppClassLoader 和 ExtClassLoader 都继承自 URLClassLoader，并通过构造函数来传递需要加载的 class 文件所在的目录。<br>
-<strong>那么只要将 jar 包中嵌套的 jar 包所在的路径作为 URLClassLoader 的扫描路径，就可以实现对嵌套 jar 包的扫描了。</strong><br>
-但是默认情况下 Java 使用 AppClassLoader 加载使用命令启动时指定的 classpath 下的类和 jar 包，那么如何使用自定义的 URLClassLoader 来加载这些类和 jar 包呢？具体做法是加一个中间层。<br>
-原来是直接使用 AppClassLoader 来加载应用：AppClassLoader -&gt; Application。<br>
-现在先加载一个自定义的启动类 <strong>Launcher</strong>，其中自定义 URLClassLoader，再使用该 URLClassLoader 来加载我们真正的 main 函数：AppClassLoader -&gt; Launcher -&gt; URLClassLoader -&gt; Application。</p>
-<h3 id="spring-boot-load-提供的启动器-launcher"><a class="header-anchor" href="#spring-boot-load-提供的启动器-launcher">¶</a>spring-boot-load 提供的启动器 Launcher</h3>
-<p>spring-boot-load 模块允许我们加载嵌套 jar 包中的 class 文件，它包含三种类启动器：</p>
-<ol>
-<li>JarLauncher</li>
-<li>WarLauncher</li>
-<li>PropertiesLauncher</li>
-</ol>
-<h3 id="spring-boot-maven-plugin-打包插件及-springboot-指定的包结构"><a class="header-anchor" href="#spring-boot-maven-plugin-打包插件及-springboot-指定的包结构">¶</a>spring-boot-maven-plugin 打包插件及 SpringBoot 指定的包结构</h3>
-<p>为了为 SpringBoot 应用打包，需要引入如下 Maven 插件：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">      &lt;version&gt;1.5.9.RELEASE&lt;/version&gt;</span><br><span class="line">      &lt;executions&gt;</span><br><span class="line">        &lt;execution&gt;</span><br><span class="line">          &lt;goals&gt;</span><br><span class="line">            &lt;goal&gt;repackage&lt;/goal&gt;</span><br><span class="line">          &lt;/goals&gt;</span><br><span class="line">        &lt;/execution&gt;</span><br><span class="line">      &lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
-<p>SpringBoot项目打包后的jar包结构如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">archive.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF（1）</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org（2）</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-com（3）</span><br><span class="line"> |  +-mycompany</span><br><span class="line"> |     + project</span><br><span class="line"> |        +-YouClasses.class</span><br><span class="line"> +-lib（4）</span><br><span class="line">    +-dependency1.jar</span><br><span class="line">    +-dependency2.jar</span><br></pre></td></tr></table></figure>
-<p>目录（1）是 jar 文件中 MANIFEST.MF 文件的存放处。<br>
-目录（2）是 Spring-boot-loader 本身需要的 class 放置处。<br>
-目录（3）是应用本身的文件资源放置处。<br>
-目录（4）是应用依赖的 jar 固定放置处，即 lib 目录。</p>
-<p>打包按如下顺序进行：</p>
-<ol>
-<li>执行<code>mvn clean package</code>按原流程进行打包生成 jar 文件；</li>
-<li>spring-boot-maven-plugin 插件对 jar 包进行重写。
-<ol>
-<li>改写 MANIFEST.MF 文件：<code>Main-Class: org.springframework.boot.loader.JarLauncher</code>、<code>Start-Class: com.abc.MyApplication</code>，这里的 MyApplication 即项目中被<code>@SpringBootApplication</code>注解了的那个类，指定主类后 AppClassLoader 就会先加载 JarLauncher 并执行其中的 main 方法了；</li>
-<li>写入应用依赖的 jar 包到 lib 目录；</li>
-<li>拷贝 spring-boot-load 包里的 class 文件到 jar 包的目录（2）处。</li>
-</ol>
-<blockquote>
-<p>为什么要拷贝到目录（2）的位置？因为后面启动流程中<code>LaunchedURLClassLoader</code>位于spring-boot-loader.jar包内，AppClassLoader无法加载嵌套的jar中的文件。</p>
-</blockquote>
-</li>
-</ol>
-<p>启动顺序如下，以 JarLauncher 为例，假设 SpringBoot 项目打包后的 jar 包名为 test.jar：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/JarLauncher%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="JarLauncher执行时序图" title="JarLauncher执行时序图"></p>
-<ol>
-<li>使用 AppClassLoader 加载 JarLauncher，执行其 main 函数；</li>
-<li>查找 test.jar 中的嵌套 jar 后生成一个列表<code>List&lt;Archive&gt;</code>，每个<code>Archive</code>包含了一个嵌套 jar 的信息，对应 jar 包 Archive 的子类是 <code>JarFileArchive</code>。</li>
-<li>将 test.jar 本身构造成的 Archive 插入<code>List&lt;Archive&gt;</code>列表的第一个位置；</li>
-<li>将这个列表作为参数构建<code>LaunchedURLClassLoader</code>类加载器，这个类加载器继承自 URLClassLoader；</li>
-<li>使用 LaunchedURLClassLoader 加载并实例化 MyApplication 的一个对象，并通过反射调用 main 函数，这时候 SpringBoot 才正式开始初始化 SpringBoot 的环境，并创建容器。</li>
-</ol>
-<h2 id="spring-boot-autoconfigure-模块"><a class="header-anchor" href="#spring-boot-autoconfigure-模块">¶</a>spring-boot-autoconfigure 模块</h2>
-<p>Spring 的出现给我们管理 Bean 的依赖注入提供了便捷，但是当我们需要使用通过 pom 引入的 jar 里面的一个 Bean 时候，还是需要手动在 XML 配置文件里面配置。<br>
-spring-boot-autoconfigure 思路类似 <strong>SPI(Service Provider Interface)</strong>，都是不同的实现类实现了定义的接口，加载时候去查找 classpath 下的实现类，不同在于前者使用 <strong>autoconfigure</strong> 实现，后者使用的是 <strong>ServiceLoader</strong>。<br>
-autoconfigure 模块的主要功能如下：</p>
-<ol>
-<li>可以依据 classpath 里面的依赖内容自动配置 Bean 到 Spring 容器，并为默认化属性配置。</li>
-<li>尝试推断哪些 Beans 是用户可能会需要的。比如如果 HSQLDB 包在当前 classpath 下，并且用户并没有配置其他数据库链接，这时候 Auto-configuration 功能会自动注入一个基于内存的数据库连接到应用的 IOC 容器。再比如当我们在 pom 引入了 Tomcat 的 start 后，如果当前还没 Web 容器被注入到应用 IOC，那么 SpringBoot 就会为我们自动创建并启动一个内嵌 Tomcat 容器来服务。</li>
-</ol>
-<h3 id="enableautoconfiguration"><a class="header-anchor" href="#enableautoconfiguration">¶</a>EnableAutoConfiguration</h3>
-<p>核心注解<code>@EnableAutoConfiguration</code>的定义如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Inherited</span><br><span class="line">@AutoConfigurationPackage</span><br><span class="line">@Import(&#123;AutoConfigurationImportSelector.class&#125;)</span><br><span class="line">public @interface EnableAutoConfiguration &#123;</span><br><span class="line">    String ENABLED_OVERRIDE_PROPERTY = &quot;spring.boot.enableautoconfiguration&quot;;</span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] exclude() default &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    String[] excludeName() default &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><code>EnableAutoConfiguration</code> 注解主要作用是通过 <code>@Import</code> 注入 <code>EnableAutoConfigurationImportSelector</code> 实例，后者是实现 AutoConfiguration 功能的核心类。<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/EnableAutoConfigurationImportSelector%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="EnableAutoConfigurationImportSelector时序图" title="EnableAutoConfigurationImportSelector时序图"><br>
-<code>EnableAutoConfigurationImportSelector</code> 类实现了 <code>DeferredImportSelector</code> 接口的 <code>String[] selectImports(AnnotationMetadata metadata)</code> 方法，当 Spring 框架解析 <code>@Import</code> 注解时候会调用该方法。<br>
-代码<code>EnableAutoConfigurationImportSelector#getCandidateConfigurations</code>和<code>loadFactoryNames</code>的作用是扫描 classpath 下含有 <code>Meta-INF/spring.factories</code> 文件的 jar，并解析文件中名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项。<br>
-getCandidateConfigurations会返回名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项的值的一个列表并且对列表内容进行去重处理。</p>
-<blockquote>
-<p>正常情况下，去重后的列表里面的类都会被自动注入到 Spring IOC 容器，除非指定不自动注入某些功能，比如若要排除自动创建数据源和事务管理的功能可以：<code>@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class})</code>，getExclusions 就是读取 EnableAutoConfiguration 注解里面的 excludeName 和 exclude 配置项，然后从去重后的列名列表里面剔除。这样在自动注入时候就不会对排除掉的自动配置功能进行注入了。</p>
-</blockquote>
-<p>这个列表中的每个元素就是一个自动配置功能，比如 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration 是 Web 容器自动注入的功能类（比如这个类可以自动扫描 Tomcat 的 start 并创建一个 Tomcat 容器）。</p>
-<h3 id="例子-注入-web-容器"><a class="header-anchor" href="#例子-注入-web-容器">¶</a>例子 - 注入 Web 容器</h3>
-<p>ServletWebServerFactoryAutoConfiguration 的部分核心代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)</span><br><span class="line">@ConditionalOnClass(ServletRequest.class)</span><br><span class="line">@ConditionalOnWebApplication(type = Type.SERVLET)</span><br><span class="line">@EnableConfigurationProperties(ServerProperties.class)</span><br><span class="line">@Import(&#123; ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedTomcat.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedJetty.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedUndertow.class &#125;)</span><br><span class="line">public class ServletWebServerFactoryAutoConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public ServletWebServerFactoryCustomizer servletWebServerFactoryCustomizer(ServerProperties serverProperties) &#123;</span><br><span class="line">		return new ServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@ConditionalOnClass(name = &quot;org.apache.catalina.startup.Tomcat&quot;)</span><br><span class="line">	public TomcatServletWebServerFactoryCustomizer tomcatServletWebServerFactoryCustomizer(</span><br><span class="line">			ServerProperties serverProperties) &#123;</span><br><span class="line">		return new TomcatServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Registers a &#123;@link WebServerFactoryCustomizerBeanPostProcessor&#125;. Registered via</span><br><span class="line">	 * &#123;@link ImportBeanDefinitionRegistrar&#125; for early registration.</span><br><span class="line">	 */</span><br><span class="line">	public static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware &#123;</span><br><span class="line"></span><br><span class="line">		private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void setBeanFactory(BeanFactory beanFactory) throws BeansException &#123;</span><br><span class="line">			if (beanFactory instanceof ConfigurableListableBeanFactory) &#123;</span><br><span class="line">				this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,</span><br><span class="line">				BeanDefinitionRegistry registry) &#123;</span><br><span class="line">			if (this.beanFactory == null) &#123;</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;webServerFactoryCustomizerBeanPostProcessor&quot;,</span><br><span class="line">					WebServerFactoryCustomizerBeanPostProcessor.class);</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;errorPageRegistrarBeanPostProcessor&quot;,</span><br><span class="line">					ErrorPageRegistrarBeanPostProcessor.class);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		private void registerSyntheticBeanIfMissing(BeanDefinitionRegistry registry, String name, Class&lt;?&gt; beanClass) &#123;</span><br><span class="line">			if (ObjectUtils.isEmpty(this.beanFactory.getBeanNamesForType(beanClass, true, false))) &#123;</span><br><span class="line">				RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);</span><br><span class="line">				beanDefinition.setSynthetic(true);</span><br><span class="line">				registry.registerBeanDefinition(name, beanDefinition);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>ServletWebServerFactoryAutoConfiguration 类是 Web 容器自动注入的 Auto-configuration 类。</p>
+<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
+<p><img src="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
 <ul>
-<li>@ConditionalOnWebApplication 说明当前是 Web 环境上下文时候才注入本类到 IOC。</li>
-<li>@Import 注解导入了另一个配置<code>ServletWebServerFactoryConfiguration.EmbeddedTomcat.class</code>，这里包含了真正的注入 Tomcat 实例的逻辑：</li>
+<li>toObservable()<br>
+最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
+<li>observe()<br>
+调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
+<li>queue()<br>
+调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
+<li>execute()<br>
+调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
 </ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">class ServletWebServerFactoryConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Configuration</span><br><span class="line">	@ConditionalOnClass(&#123; Servlet.class, Tomcat.class, UpgradeProtocol.class &#125;)</span><br><span class="line">	@ConditionalOnMissingBean(value = ServletWebServerFactory.class, search = SearchStrategy.CURRENT)</span><br><span class="line">	public static class EmbeddedTomcat &#123;</span><br><span class="line"></span><br><span class="line">		@Bean</span><br><span class="line">		public TomcatServletWebServerFactory tomcatServletWebServerFactory() &#123;</span><br><span class="line">			return new TomcatServletWebServerFactory();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-<ul>
-<li>@ConditionalOnClass：只有在 classpath 下存在指定的类的时候 Bean 才能被创建。</li>
-<li>@ConditionalOnMissingBean：只有对应的 Bean 在系统中都没有被创建，它修饰的初始化代码块才会执行，【用户自己手动创建的 Bean 优先】。</li>
-</ul>
-<p>当应用引入 spring-boot-starter-web 时候默认引入的是 Tomcat 的 starter，所以会发现 classpath 下存在 Servlet.class、 Tomcat.class 这两个类，并且 IOC 里面没有 TomcatEmbeddedServletContainerFactory 的实例，因此会创建其实例到 IOC 容器中，最终会创建一个 Tomcat 容器。<br>
-当然，如果需要使用 Jetty 则需要在引用 spring-boot-starter-web 的时候排除掉 Tomcat 的 start，然后在引入 Jetty 的 start 即可。</p>
-<h3 id="总结"><a class="header-anchor" href="#总结">¶</a>总结</h3>
-<p>总而言之，自动配置的生效步骤可以概括如下：</p>
+<p>HystrixCommand.execute<br>
+-&gt; HystrixCommand.queue<br>
+-&gt; AbstractCommand.toObservable</p>
+<p>AbstractCommand.observe<br>
+-&gt; AbstractCommand.toObservable</p>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
+开启配置：<br>
+HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
+HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
+-&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
+<p>实施信号量隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
+<p>实施线程隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; AbstractCommand.executeCommandAndObserve<br>
+-&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
+-&gt; AbstractCommand.getUserExecutionObservable<br>
+-&gt; HystrixCommand.getExecutionObservable</p>
+<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
+<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
+当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
+Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
+<img src="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
 <ol>
-<li>Spring Boot 在启动时会去依赖的 Starter 包中寻找 resources/META-INF/spring.factories 文件，然后根据文件中配置的 Jar 包去扫描项目所依赖的 Jar 包。</li>
-<li>根据 spring.factories 配置加载 AutoConfigure 类</li>
-<li>根据 @Conditional 注解的条件，进行自动配置并将 Bean 注入 Spring Context</li>
+<li>熔断关闭状态（Closed）<br>
+服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
+<li>熔断开启状态（Open）<br>
+在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
+<li>半熔断状态（Half-Open）<br>
+在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
 </ol>
-<h2 id="spring-boot-模块"><a class="header-anchor" href="#spring-boot-模块">¶</a>spring-boot 模块</h2>
-<p>提供了一些特性用来支持 SpringBoot 中其它模块，这些特性包括：</p>
+<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
+<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
+<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
 <ol>
-<li>SpringApplication 类提供了静态方法以便于写一个独立了 Spring 应用程序，该类的主要职责是 create 和 refresh 一个合适的 Spring 应用程序上下文（ApplicationContext）。</li>
-<li>一流的外部配置的支持（application.properties）。</li>
-<li>提供了便捷的应用程序上下文（ApplicationContext）的初始化器，以便在 ApplicationContext 使用前对其进行用户定制。</li>
-<li>给 Web 应用提供了一个可选的 Web 容器（目前有 Tomcat 或 Jetty）。</li>
+<li>run()方法抛出非 HystrixBadRequestException 异常<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
+HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
+<li>run()方法调用超时<br>
+对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
+-&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
+-&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
+可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
+<li>熔断器开启拦截调用<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution</li>
+<li>线程池/队列/信号量是否跑满<br>
+在《隔离》那一节中已经说明了代码的位置。</li>
+<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
+HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
 </ol>
-<h3 id="springapplication-的执行流程"><a class="header-anchor" href="#springapplication-的执行流程">¶</a>SpringApplication 的执行流程</h3>
-<p>一般的 SpringBoot 项目都会有一个如下所示的 Application 类：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class Web1Application &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(Web1Application.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在<code>JarLauncher</code>启动过后里面实际上就是调用了 SpringApplication#run 方法，SpringApplication 的执行流程如下：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/SpringApplication%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="SpringApplication执行时序图" title="SpringApplication执行时序图"></p>
-<ol>
-<li>SpringApplication 的构造函数里面会调用 initialize 方法在 classpath 的 jar 包里面查找 META-INF/spring.factories，如果找到则看里面是否有配置 <code>ApplicationContextInitializer</code> 类型的 Bean，有则加载到 SpringApplication 的变量 <code>initializers</code> 里面存放，比如 spring-boot.jar 里面。<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/ApplicationContextInitializer%E9%85%8D%E7%BD%AE.png" alt="ApplicationContextInitializer配置" title="ApplicationContextInitializer配置"></li>
-<li>createAndRefreshContext 做了这几件事情：
-<ol>
-<li>设置环境，加载 application.properties 等配置文件；</li>
-<li>根据 classpath 的 jar 里面是否有 ConfigurableWebEnvironment 判断当前是否需要创建 Web 应用程序上下文还是创建一个非 Web 应用程序上下文；</li>
-<li>使用前面加载的应用程序初始化器对创建的应用程序上下文进行初始化；</li>
-<li>刷新应用程序上下文解析 Bean 定义到应用程序上下文里面的 IOC 容器，在刷新过程的 invokeBeanFactoryPostProcessors 过程中(10)(11)会去解析类上面标注的 @import 注解，然后就会调用所有的 ImportSelector 的 selectImports 方法，这也是第二部分时序图开始执行的地方。</li>
-</ol>
-</li>
-</ol>
-<h3 id="web-容器的创建"><a class="header-anchor" href="#web-容器的创建">¶</a>Web 容器的创建</h3>
-<p>通过自动配置将 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 的实例注入 IOC 容器后，我们就可以使用 Web 容器来提供 Web 服务了。<br>
-具体的 Web 容器的创建是在容器刷新过程的 onRefresh 阶段进行的（这个阶段是在刷新过程的 invokeBeanFactoryPostProcessors 阶段的后面）：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/Web%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B.png" alt="Web容器创建过程" title="Web容器创建过程"></p>
-<ul>
-<li>getBeanNamesForType 获取了 IOC 容器中的 EmbeddedServletContainerFactory 类型的 Bean 的 name 集合，如果 name 集合为空或者多个则抛出异常。还记得 Web 容器工厂是通过自动配置注入到 IOC 的吧，并且 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 都是实现了 EmbeddedServletContainerFactory 接口。</li>
-<li>如果 IOC 里面只有一个 Web 容器工厂 Bean 则获取该 Bean 的实例，然后调用该 Bean 的 getEmbeddedServletContainer 获取 Web 容器，这里假设 Web 容器工厂为 Tomcat ，则创建 Tomcat 容器并进行初始化。</li>
-</ul>
-<h2 id="actuator-模块"><a class="header-anchor" href="#actuator-模块">¶</a>Actuator 模块</h2>
-<p><img src="http://47.88.24.11/imgs/SpringBoot/Actuator%E7%B1%BB%E5%9B%BE.png" alt="Actuator类图" title="Actuator类图"><br>
-Actuator 模块提供了一些组件用于检查应用或中间件的健康状况：</p>
-<ol>
-<li>Inspect：检测应用或中间件的健康状况；</li>
-<li>Aggregate：聚合所有结果。</li>
-</ol>
-<p>基于 Actuator 模块，我们可以开发一个服务探活系统：</p>
-<ol>
-<li>Actuator 为业务服务器暴露出一个探活端口<code>healthcheck</code>，借助 Spring 容器获取到中间件的客户端实例；</li>
-<li>探活服务<code>HealthCheck-Task</code>定时轮询所有服务，统计单位时间内请求出现问题的次数，从而发送报警短信提醒研发同学。</li>
-</ol>
-<p>服务的轮询探活将是这个系统的主要瓶颈，有一些措施可以作为参考：</p>
-<ol>
-<li>灵活使用<code>CompletableFuture</code>这些并发编排组件，因为探活请求一般都是比较&quot;慢&quot;的，因此可以通过并行化来提高效率；</li>
-<li>探活不能占用太多系统资源，合理设置探活超时时间，很多客户端的默认超时时间达到 1 分钟甚至更长，必须额外设置探活请求的超时时间，避免服务器挂掉时所有线程都被<code>hang</code>死，导致服务雪崩。</li>
-</ol>
-<blockquote>
-<p>探活不能和业务代码共用线程池，做到线程池隔离，即使出问题也只影响到<code>HealthCheck-Task</code>。</p>
-</blockquote>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
+结果缓存这个功能我觉得应该由幂等框架来做。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
 <ol>
-<li><a href="https://www.jianshu.com/p/bbf439c8a203" target="_blank" rel="noopener">从零开始开发一个Spring Boot Starter</a></li>
-<li><a href="https://www.jianshu.com/p/87f101d8ec41" target="_blank" rel="noopener">SpringBoot启动流程解析</a></li>
-</ol>
-<h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
-<ol>
-<li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
+<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
+<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
+<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
+<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
+<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
 </ol>
 
           
@@ -3565,7 +3415,7 @@ feign.hystrix.enabled=true</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -3584,7 +3434,7 @@ feign.hystrix.enabled=true</p>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
+                <a class="post-title-link" href="/abe4b1f3.html" itemprop="url">SpringBoot原理总结</a></h1>
         
 
         <div class="post-meta">
@@ -3650,7 +3500,7 @@ feign.hystrix.enabled=true</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.4k 字
+                  4k 字
                 </span>
               
 
@@ -3666,7 +3516,7 @@ feign.hystrix.enabled=true</p>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  5 分钟
+                  16 分钟
                 </span>
               
             </div>
@@ -3690,115 +3540,265 @@ feign.hystrix.enabled=true</p>
         
           
             <a id="more"></a>
-<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
-<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
-<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
+<h1>开始使用 SpringBoot</h1>
+<h2 id="使用-sdkman-搭建环境"><a class="header-anchor" href="#使用-sdkman-搭建环境">¶</a>使用 sdkman 搭建环境</h2>
+<h3 id="介绍"><a class="header-anchor" href="#介绍">¶</a>介绍</h3>
 <ol>
-<li>超时降级<br>
-配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
-<li>失败次数降级<br>
-失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
-<li>故障降级<br>
-如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
-和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
-<li>限流降级<br>
-单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
+<li>sdkman<br>
+工具包管理器，可以用于管理 Spring Boot CLI。</li>
+<li>Spring Boot CLI<br>
+命令行工具。</li>
+<li>groovy<br>
+一种可以运行在 JVM 上的语言，和 Java 的编译器不同（语法、语义不同）。</li>
 </ol>
-<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
-<p>降级后，在代码层面，可以进行的处理策略如下：</p>
+<h3 id="安装"><a class="header-anchor" href="#安装">¶</a>安装</h3>
 <ol>
-<li>抛异常</li>
-<li>返回 NULL</li>
-<li>调用 Mock 数据</li>
-<li>调用 Fallback 处理逻辑</li>
+<li>
+<p>安装 sdkman<br>
+按下面链接中的步骤来，可能需要连接 VPN：<br>
+<a href="http://sdkman.io/install.html" target="_blank" rel="noopener">http://sdkman.io/install.html</a></p>
+</li>
+<li>
+<p>安装 Spring Boot CLI<br>
+默认安装最新版本的（安装位置在$HOME/.sdkman 下）：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk install springboot</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>切换 Spring Boot CLI 版本</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sdk list springboot</span><br><span class="line">sdk install springboot XXX.RELEASE</span><br><span class="line">sdk use springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>设置默认版本</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk default springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>使用本地编译的 springboot</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sdk install springboot dev /path/to/spring-boot/spring-boot-cli/target/spring-boot-cli-2.0.0.BUILD-SNAPSHOT-bin/spring-2.0.0.BUILD-SNAPSHOT/</span><br><span class="line">$ sdk default springboot dev</span><br><span class="line">$ spring --version</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
-<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
-<p><img src="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
-<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
+<h3 id="第一个-springboot-应用"><a class="header-anchor" href="#第一个-springboot-应用">¶</a>第一个 SpringBoot 应用</h3>
+<ol>
+<li>创建一个 app.groovy 文件：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">class ThisWillActuallyRun &#123;</span><br><span class="line">    @RequestMapping(&quot;/&quot;)</span><br><span class="line">    String home() &#123;</span><br><span class="line">        &quot;Hello World!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>执行</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring run app.groovy</span><br></pre></td></tr></table></figure>
+<ol>
+<li>访问</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">localhost:8080</span><br></pre></td></tr></table></figure>
+<h2 id="idea-下搭建-springboot-项目"><a class="header-anchor" href="#idea-下搭建-springboot-项目">¶</a>IDEA 下搭建 SpringBoot 项目</h2>
+<h3 id="创建一个简单的-web-项目"><a class="header-anchor" href="#创建一个简单的-web-项目">¶</a>创建一个简单的 Web 项目</h3>
+<ol>
+<li>
+<p>创建项目<br>
+new Projects… -&gt; Spring Initializr（这里可能需要连接 VPN） -&gt; 设置项目元数据 -&gt; 添加 Web 组件（对于这个例子来说足够了）</p>
+</li>
+<li>
+<p>添加控制器<br>
+创建 controller.HelloController：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">    @RequestMapping(&quot;/hello&quot;)</span><br><span class="line">    public String hello() &#123;</span><br><span class="line">        System.out.println(&quot;Hello&quot;);</span><br><span class="line">        return &quot;hello&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>执行 XxxApplication.main()</p>
+</li>
+<li>
+<p>访问<br>
+localhost:8080</p>
+</li>
+</ol>
+<h3 id="添加-jpa-支持"><a class="header-anchor" href="#添加-jpa-支持">¶</a>添加 Jpa 支持</h3>
+<ol>
+<li>添加依赖</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">spring.datasource.driver-class-name=com.mysql.jdbc.Driver</span><br><span class="line">spring.datasource.url=jdbc:mysql://localhost:3306/test</span><br><span class="line">spring.datasource.username=root</span><br><span class="line">spring.datasource.password=85382855</span><br><span class="line">   </span><br><span class="line">spring.jpa.hibernate.ddl-auto=create</span><br><span class="line">spring.jpa.show-sql=true</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建实体类</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Entity</span><br><span class="line">public class User &#123;</span><br><span class="line">    @Id</span><br><span class="line">    @GeneratedValue</span><br><span class="line">    private Integer id;</span><br><span class="line">    private String username;</span><br><span class="line">    private String password;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>创建 Dao 接口</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public interface UserDao extends JpaRepository&lt;User, Integer&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>注入 Dao 接口</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">@Autowired</span><br><span class="line">private UserDao userDao;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@RunWith(SpringRunner.class)</span><br><span class="line">@SpringBootTest</span><br><span class="line">public class HelloTest &#123;</span><br><span class="line"></span><br><span class="line">    private MockMvc mockMvc;</span><br><span class="line">    @Before</span><br><span class="line">    public void setUp() throws Exception &#123;</span><br><span class="line">        //测试 HelloWorldController</span><br><span class="line">        mockMvc = MockMvcBuilders.standaloneSetup(new HelloWorldController()).build();</span><br><span class="line">    &#125;</span><br><span class="line">    @Test</span><br><span class="line">    public void getHello() throws Exception &#123;</span><br><span class="line">        mockMvc.perform(MockMvcRequestBuilders.post(&quot;/hello?name=小明&quot;)</span><br><span class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)).andDo(print());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1>SpringBoot 原理分析</h1>
+<h2 id="核心思想"><a class="header-anchor" href="#核心思想">¶</a>核心思想</h2>
+<ol>
+<li>约定优于配置（convention over configuration）<br>
+传统 Spring 项目配置繁琐是 SpringBoot 主要解决的痛点之一，autoconfigure 模块会在启动时为自动注入的 Bean 设置默认配置。</li>
+<li>模块化<br>
+类似于 maven 管理项目的依赖、git 管理代码的版本，SpringBoot 提供了对一些常用组件的模块化管理，只要添加依赖几乎就可以马上使用，展现出一种插件化的效果。</li>
+</ol>
+<h2 id="spring-boot-load-模块"><a class="header-anchor" href="#spring-boot-load-模块">¶</a>spring-boot-load 模块</h2>
+<p>正常情况下一个类加载器只能找到加载路径的 jar 包里当前目录或者文件类里面的 *.class 文件，SpringBoot 允许我们使用 java -jar archive.jar 运行包含嵌套依赖 jar 的 jar 或者 war 文件。</p>
+<h3 id="传统类加载器的局限"><a class="header-anchor" href="#传统类加载器的局限">¶</a>传统类加载器的局限</h3>
+<p>传统类加载器无法加载 jar 包中嵌套的 jar 包。比如项目打包后包含如下这些类和 jar 包，则 c.jar 中的类无法被加载：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a1.class</span><br><span class="line">a2.class</span><br><span class="line">b.jar</span><br><span class="line">    b1.class</span><br><span class="line">    b2.class</span><br><span class="line">    c.jar</span><br></pre></td></tr></table></figure>
+<p>为了能够加载嵌套 jar 里面的资源，之前的做法都是把嵌套 jar 里面的 class 文件和应用的 class 文件打包为一个 jar，这样就不存在嵌套 jar 了，但是这样做就不能很清晰的知道哪些是应用自己的，哪些是应用依赖的，另外多个嵌套 jar 里面的 class 文件可能内容不一样但是文件名却一样时候又会引发新的问题。</p>
+<h3 id="加载嵌套-jar-包中的-class-文件"><a class="header-anchor" href="#加载嵌套-jar-包中的-class-文件">¶</a>加载嵌套 jar 包中的 class 文件</h3>
+<p>在 Java 中，AppClassLoader 和 ExtClassLoader 都继承自 URLClassLoader，并通过构造函数来传递需要加载的 class 文件所在的目录。<br>
+<strong>那么只要将 jar 包中嵌套的 jar 包所在的路径作为 URLClassLoader 的扫描路径，就可以实现对嵌套 jar 包的扫描了。</strong><br>
+但是默认情况下 Java 使用 AppClassLoader 加载使用命令启动时指定的 classpath 下的类和 jar 包，那么如何使用自定义的 URLClassLoader 来加载这些类和 jar 包呢？具体做法是加一个中间层。<br>
+原来是直接使用 AppClassLoader 来加载应用：AppClassLoader -&gt; Application。<br>
+现在先加载一个自定义的启动类 <strong>Launcher</strong>，其中自定义 URLClassLoader，再使用该 URLClassLoader 来加载我们真正的 main 函数：AppClassLoader -&gt; Launcher -&gt; URLClassLoader -&gt; Application。</p>
+<h3 id="spring-boot-load-提供的启动器-launcher"><a class="header-anchor" href="#spring-boot-load-提供的启动器-launcher">¶</a>spring-boot-load 提供的启动器 Launcher</h3>
+<p>spring-boot-load 模块允许我们加载嵌套 jar 包中的 class 文件，它包含三种类启动器：</p>
+<ol>
+<li>JarLauncher</li>
+<li>WarLauncher</li>
+<li>PropertiesLauncher</li>
+</ol>
+<h3 id="spring-boot-maven-plugin-打包插件及-springboot-指定的包结构"><a class="header-anchor" href="#spring-boot-maven-plugin-打包插件及-springboot-指定的包结构">¶</a>spring-boot-maven-plugin 打包插件及 SpringBoot 指定的包结构</h3>
+<p>为了为 SpringBoot 应用打包，需要引入如下 Maven 插件：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">      &lt;version&gt;1.5.9.RELEASE&lt;/version&gt;</span><br><span class="line">      &lt;executions&gt;</span><br><span class="line">        &lt;execution&gt;</span><br><span class="line">          &lt;goals&gt;</span><br><span class="line">            &lt;goal&gt;repackage&lt;/goal&gt;</span><br><span class="line">          &lt;/goals&gt;</span><br><span class="line">        &lt;/execution&gt;</span><br><span class="line">      &lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
+<p>SpringBoot项目打包后的jar包结构如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">archive.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF（1）</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org（2）</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-com（3）</span><br><span class="line"> |  +-mycompany</span><br><span class="line"> |     + project</span><br><span class="line"> |        +-YouClasses.class</span><br><span class="line"> +-lib（4）</span><br><span class="line">    +-dependency1.jar</span><br><span class="line">    +-dependency2.jar</span><br></pre></td></tr></table></figure>
+<p>目录（1）是 jar 文件中 MANIFEST.MF 文件的存放处。<br>
+目录（2）是 Spring-boot-loader 本身需要的 class 放置处。<br>
+目录（3）是应用本身的文件资源放置处。<br>
+目录（4）是应用依赖的 jar 固定放置处，即 lib 目录。</p>
+<p>打包按如下顺序进行：</p>
+<ol>
+<li>执行<code>mvn clean package</code>按原流程进行打包生成 jar 文件；</li>
+<li>spring-boot-maven-plugin 插件对 jar 包进行重写。
+<ol>
+<li>改写 MANIFEST.MF 文件：<code>Main-Class: org.springframework.boot.loader.JarLauncher</code>、<code>Start-Class: com.abc.MyApplication</code>，这里的 MyApplication 即项目中被<code>@SpringBootApplication</code>注解了的那个类，指定主类后 AppClassLoader 就会先加载 JarLauncher 并执行其中的 main 方法了；</li>
+<li>写入应用依赖的 jar 包到 lib 目录；</li>
+<li>拷贝 spring-boot-load 包里的 class 文件到 jar 包的目录（2）处。</li>
+</ol>
+<blockquote>
+<p>为什么要拷贝到目录（2）的位置？因为后面启动流程中<code>LaunchedURLClassLoader</code>位于spring-boot-loader.jar包内，AppClassLoader无法加载嵌套的jar中的文件。</p>
+</blockquote>
+</li>
+</ol>
+<p>启动顺序如下，以 JarLauncher 为例，假设 SpringBoot 项目打包后的 jar 包名为 test.jar：<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/JarLauncher%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="JarLauncher执行时序图" title="JarLauncher执行时序图"></p>
+<ol>
+<li>使用 AppClassLoader 加载 JarLauncher，执行其 main 函数；</li>
+<li>查找 test.jar 中的嵌套 jar 后生成一个列表<code>List&lt;Archive&gt;</code>，每个<code>Archive</code>包含了一个嵌套 jar 的信息，对应 jar 包 Archive 的子类是 <code>JarFileArchive</code>。</li>
+<li>将 test.jar 本身构造成的 Archive 插入<code>List&lt;Archive&gt;</code>列表的第一个位置；</li>
+<li>将这个列表作为参数构建<code>LaunchedURLClassLoader</code>类加载器，这个类加载器继承自 URLClassLoader；</li>
+<li>使用 LaunchedURLClassLoader 加载并实例化 MyApplication 的一个对象，并通过反射调用 main 函数，这时候 SpringBoot 才正式开始初始化 SpringBoot 的环境，并创建容器。</li>
+</ol>
+<h2 id="spring-boot-autoconfigure-模块"><a class="header-anchor" href="#spring-boot-autoconfigure-模块">¶</a>spring-boot-autoconfigure 模块</h2>
+<p>Spring 的出现给我们管理 Bean 的依赖注入提供了便捷，但是当我们需要使用通过 pom 引入的 jar 里面的一个 Bean 时候，还是需要手动在 XML 配置文件里面配置。<br>
+spring-boot-autoconfigure 思路类似 <strong>SPI(Service Provider Interface)</strong>，都是不同的实现类实现了定义的接口，加载时候去查找 classpath 下的实现类，不同在于前者使用 <strong>autoconfigure</strong> 实现，后者使用的是 <strong>ServiceLoader</strong>。<br>
+autoconfigure 模块的主要功能如下：</p>
+<ol>
+<li>可以依据 classpath 里面的依赖内容自动配置 Bean 到 Spring 容器，并为默认化属性配置。</li>
+<li>尝试推断哪些 Beans 是用户可能会需要的。比如如果 HSQLDB 包在当前 classpath 下，并且用户并没有配置其他数据库链接，这时候 Auto-configuration 功能会自动注入一个基于内存的数据库连接到应用的 IOC 容器。再比如当我们在 pom 引入了 Tomcat 的 start 后，如果当前还没 Web 容器被注入到应用 IOC，那么 SpringBoot 就会为我们自动创建并启动一个内嵌 Tomcat 容器来服务。</li>
+</ol>
+<h3 id="enableautoconfiguration"><a class="header-anchor" href="#enableautoconfiguration">¶</a>EnableAutoConfiguration</h3>
+<p>核心注解<code>@EnableAutoConfiguration</code>的定义如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Inherited</span><br><span class="line">@AutoConfigurationPackage</span><br><span class="line">@Import(&#123;AutoConfigurationImportSelector.class&#125;)</span><br><span class="line">public @interface EnableAutoConfiguration &#123;</span><br><span class="line">    String ENABLED_OVERRIDE_PROPERTY = &quot;spring.boot.enableautoconfiguration&quot;;</span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] exclude() default &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    String[] excludeName() default &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>EnableAutoConfiguration</code> 注解主要作用是通过 <code>@Import</code> 注入 <code>EnableAutoConfigurationImportSelector</code> 实例，后者是实现 AutoConfiguration 功能的核心类。<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/EnableAutoConfigurationImportSelector%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="EnableAutoConfigurationImportSelector时序图" title="EnableAutoConfigurationImportSelector时序图"><br>
+<code>EnableAutoConfigurationImportSelector</code> 类实现了 <code>DeferredImportSelector</code> 接口的 <code>String[] selectImports(AnnotationMetadata metadata)</code> 方法，当 Spring 框架解析 <code>@Import</code> 注解时候会调用该方法。<br>
+代码<code>EnableAutoConfigurationImportSelector#getCandidateConfigurations</code>和<code>loadFactoryNames</code>的作用是扫描 classpath 下含有 <code>Meta-INF/spring.factories</code> 文件的 jar，并解析文件中名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项。<br>
+getCandidateConfigurations会返回名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项的值的一个列表并且对列表内容进行去重处理。</p>
+<blockquote>
+<p>正常情况下，去重后的列表里面的类都会被自动注入到 Spring IOC 容器，除非指定不自动注入某些功能，比如若要排除自动创建数据源和事务管理的功能可以：<code>@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class})</code>，getExclusions 就是读取 EnableAutoConfiguration 注解里面的 excludeName 和 exclude 配置项，然后从去重后的列名列表里面剔除。这样在自动注入时候就不会对排除掉的自动配置功能进行注入了。</p>
+</blockquote>
+<p>这个列表中的每个元素就是一个自动配置功能，比如 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration 是 Web 容器自动注入的功能类（比如这个类可以自动扫描 Tomcat 的 start 并创建一个 Tomcat 容器）。</p>
+<h3 id="例子-注入-web-容器"><a class="header-anchor" href="#例子-注入-web-容器">¶</a>例子 - 注入 Web 容器</h3>
+<p>ServletWebServerFactoryAutoConfiguration 的部分核心代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)</span><br><span class="line">@ConditionalOnClass(ServletRequest.class)</span><br><span class="line">@ConditionalOnWebApplication(type = Type.SERVLET)</span><br><span class="line">@EnableConfigurationProperties(ServerProperties.class)</span><br><span class="line">@Import(&#123; ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedTomcat.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedJetty.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedUndertow.class &#125;)</span><br><span class="line">public class ServletWebServerFactoryAutoConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public ServletWebServerFactoryCustomizer servletWebServerFactoryCustomizer(ServerProperties serverProperties) &#123;</span><br><span class="line">		return new ServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@ConditionalOnClass(name = &quot;org.apache.catalina.startup.Tomcat&quot;)</span><br><span class="line">	public TomcatServletWebServerFactoryCustomizer tomcatServletWebServerFactoryCustomizer(</span><br><span class="line">			ServerProperties serverProperties) &#123;</span><br><span class="line">		return new TomcatServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Registers a &#123;@link WebServerFactoryCustomizerBeanPostProcessor&#125;. Registered via</span><br><span class="line">	 * &#123;@link ImportBeanDefinitionRegistrar&#125; for early registration.</span><br><span class="line">	 */</span><br><span class="line">	public static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware &#123;</span><br><span class="line"></span><br><span class="line">		private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void setBeanFactory(BeanFactory beanFactory) throws BeansException &#123;</span><br><span class="line">			if (beanFactory instanceof ConfigurableListableBeanFactory) &#123;</span><br><span class="line">				this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,</span><br><span class="line">				BeanDefinitionRegistry registry) &#123;</span><br><span class="line">			if (this.beanFactory == null) &#123;</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;webServerFactoryCustomizerBeanPostProcessor&quot;,</span><br><span class="line">					WebServerFactoryCustomizerBeanPostProcessor.class);</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;errorPageRegistrarBeanPostProcessor&quot;,</span><br><span class="line">					ErrorPageRegistrarBeanPostProcessor.class);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		private void registerSyntheticBeanIfMissing(BeanDefinitionRegistry registry, String name, Class&lt;?&gt; beanClass) &#123;</span><br><span class="line">			if (ObjectUtils.isEmpty(this.beanFactory.getBeanNamesForType(beanClass, true, false))) &#123;</span><br><span class="line">				RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);</span><br><span class="line">				beanDefinition.setSynthetic(true);</span><br><span class="line">				registry.registerBeanDefinition(name, beanDefinition);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>ServletWebServerFactoryAutoConfiguration 类是 Web 容器自动注入的 Auto-configuration 类。</p>
 <ul>
-<li>toObservable()<br>
-最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
-<li>observe()<br>
-调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
-<li>queue()<br>
-调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
-<li>execute()<br>
-调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
+<li>@ConditionalOnWebApplication 说明当前是 Web 环境上下文时候才注入本类到 IOC。</li>
+<li>@Import 注解导入了另一个配置<code>ServletWebServerFactoryConfiguration.EmbeddedTomcat.class</code>，这里包含了真正的注入 Tomcat 实例的逻辑：</li>
 </ul>
-<p>HystrixCommand.execute<br>
--&gt; HystrixCommand.queue<br>
--&gt; AbstractCommand.toObservable</p>
-<p>AbstractCommand.observe<br>
--&gt; AbstractCommand.toObservable</p>
-<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
-<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
-开启配置：<br>
-HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
-HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
--&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
-<p>实施信号量隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
-<p>实施线程隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; AbstractCommand.executeCommandAndObserve<br>
--&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
--&gt; AbstractCommand.getUserExecutionObservable<br>
--&gt; HystrixCommand.getExecutionObservable</p>
-<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
-<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
-当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
-Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">class ServletWebServerFactoryConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Configuration</span><br><span class="line">	@ConditionalOnClass(&#123; Servlet.class, Tomcat.class, UpgradeProtocol.class &#125;)</span><br><span class="line">	@ConditionalOnMissingBean(value = ServletWebServerFactory.class, search = SearchStrategy.CURRENT)</span><br><span class="line">	public static class EmbeddedTomcat &#123;</span><br><span class="line"></span><br><span class="line">		@Bean</span><br><span class="line">		public TomcatServletWebServerFactory tomcatServletWebServerFactory() &#123;</span><br><span class="line">			return new TomcatServletWebServerFactory();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<ul>
+<li>@ConditionalOnClass：只有在 classpath 下存在指定的类的时候 Bean 才能被创建。</li>
+<li>@ConditionalOnMissingBean：只有对应的 Bean 在系统中都没有被创建，它修饰的初始化代码块才会执行，【用户自己手动创建的 Bean 优先】。</li>
+</ul>
+<p>当应用引入 spring-boot-starter-web 时候默认引入的是 Tomcat 的 starter，所以会发现 classpath 下存在 Servlet.class、 Tomcat.class 这两个类，并且 IOC 里面没有 TomcatEmbeddedServletContainerFactory 的实例，因此会创建其实例到 IOC 容器中，最终会创建一个 Tomcat 容器。<br>
+当然，如果需要使用 Jetty 则需要在引用 spring-boot-starter-web 的时候排除掉 Tomcat 的 start，然后在引入 Jetty 的 start 即可。</p>
+<h3 id="总结"><a class="header-anchor" href="#总结">¶</a>总结</h3>
+<p>总而言之，自动配置的生效步骤可以概括如下：</p>
 <ol>
-<li>熔断关闭状态（Closed）<br>
-服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
-<li>熔断开启状态（Open）<br>
-在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
-<li>半熔断状态（Half-Open）<br>
-在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
+<li>Spring Boot 在启动时会去依赖的 Starter 包中寻找 resources/META-INF/spring.factories 文件，然后根据文件中配置的 Jar 包去扫描项目所依赖的 Jar 包。</li>
+<li>根据 spring.factories 配置加载 AutoConfigure 类</li>
+<li>根据 @Conditional 注解的条件，进行自动配置并将 Bean 注入 Spring Context</li>
 </ol>
-<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
-<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
-<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
+<h2 id="spring-boot-模块"><a class="header-anchor" href="#spring-boot-模块">¶</a>spring-boot 模块</h2>
+<p>提供了一些特性用来支持 SpringBoot 中其它模块，这些特性包括：</p>
 <ol>
-<li>run()方法抛出非 HystrixBadRequestException 异常<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
-HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
-<li>run()方法调用超时<br>
-对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
--&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
--&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
-可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
-<li>熔断器开启拦截调用<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution</li>
-<li>线程池/队列/信号量是否跑满<br>
-在《隔离》那一节中已经说明了代码的位置。</li>
-<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
-HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
+<li>SpringApplication 类提供了静态方法以便于写一个独立了 Spring 应用程序，该类的主要职责是 create 和 refresh 一个合适的 Spring 应用程序上下文（ApplicationContext）。</li>
+<li>一流的外部配置的支持（application.properties）。</li>
+<li>提供了便捷的应用程序上下文（ApplicationContext）的初始化器，以便在 ApplicationContext 使用前对其进行用户定制。</li>
+<li>给 Web 应用提供了一个可选的 Web 容器（目前有 Tomcat 或 Jetty）。</li>
 </ol>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
-结果缓存这个功能我觉得应该由幂等框架来做。</p>
+<h3 id="springapplication-的执行流程"><a class="header-anchor" href="#springapplication-的执行流程">¶</a>SpringApplication 的执行流程</h3>
+<p>一般的 SpringBoot 项目都会有一个如下所示的 Application 类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class Web1Application &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(Web1Application.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>JarLauncher</code>启动过后里面实际上就是调用了 SpringApplication#run 方法，SpringApplication 的执行流程如下：<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/SpringApplication%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="SpringApplication执行时序图" title="SpringApplication执行时序图"></p>
+<ol>
+<li>SpringApplication 的构造函数里面会调用 initialize 方法在 classpath 的 jar 包里面查找 META-INF/spring.factories，如果找到则看里面是否有配置 <code>ApplicationContextInitializer</code> 类型的 Bean，有则加载到 SpringApplication 的变量 <code>initializers</code> 里面存放，比如 spring-boot.jar 里面。<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/ApplicationContextInitializer%E9%85%8D%E7%BD%AE.png" alt="ApplicationContextInitializer配置" title="ApplicationContextInitializer配置"></li>
+<li>createAndRefreshContext 做了这几件事情：
+<ol>
+<li>设置环境，加载 application.properties 等配置文件；</li>
+<li>根据 classpath 的 jar 里面是否有 ConfigurableWebEnvironment 判断当前是否需要创建 Web 应用程序上下文还是创建一个非 Web 应用程序上下文；</li>
+<li>使用前面加载的应用程序初始化器对创建的应用程序上下文进行初始化；</li>
+<li>刷新应用程序上下文解析 Bean 定义到应用程序上下文里面的 IOC 容器，在刷新过程的 invokeBeanFactoryPostProcessors 过程中(10)(11)会去解析类上面标注的 @import 注解，然后就会调用所有的 ImportSelector 的 selectImports 方法，这也是第二部分时序图开始执行的地方。</li>
+</ol>
+</li>
+</ol>
+<h3 id="web-容器的创建"><a class="header-anchor" href="#web-容器的创建">¶</a>Web 容器的创建</h3>
+<p>通过自动配置将 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 的实例注入 IOC 容器后，我们就可以使用 Web 容器来提供 Web 服务了。<br>
+具体的 Web 容器的创建是在容器刷新过程的 onRefresh 阶段进行的（这个阶段是在刷新过程的 invokeBeanFactoryPostProcessors 阶段的后面）：<br>
+<img src="http://47.88.24.11/imgs/SpringBoot/Web%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B.png" alt="Web容器创建过程" title="Web容器创建过程"></p>
+<ul>
+<li>getBeanNamesForType 获取了 IOC 容器中的 EmbeddedServletContainerFactory 类型的 Bean 的 name 集合，如果 name 集合为空或者多个则抛出异常。还记得 Web 容器工厂是通过自动配置注入到 IOC 的吧，并且 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 都是实现了 EmbeddedServletContainerFactory 接口。</li>
+<li>如果 IOC 里面只有一个 Web 容器工厂 Bean 则获取该 Bean 的实例，然后调用该 Bean 的 getEmbeddedServletContainer 获取 Web 容器，这里假设 Web 容器工厂为 Tomcat ，则创建 Tomcat 容器并进行初始化。</li>
+</ul>
+<h2 id="actuator-模块"><a class="header-anchor" href="#actuator-模块">¶</a>Actuator 模块</h2>
+<p><img src="http://47.88.24.11/imgs/SpringBoot/Actuator%E7%B1%BB%E5%9B%BE.png" alt="Actuator类图" title="Actuator类图"><br>
+Actuator 模块提供了一些组件用于检查应用或中间件的健康状况：</p>
+<ol>
+<li>Inspect：检测应用或中间件的健康状况；</li>
+<li>Aggregate：聚合所有结果。</li>
+</ol>
+<p>基于 Actuator 模块，我们可以开发一个服务探活系统：</p>
+<ol>
+<li>Actuator 为业务服务器暴露出一个探活端口<code>healthcheck</code>，借助 Spring 容器获取到中间件的客户端实例；</li>
+<li>探活服务<code>HealthCheck-Task</code>定时轮询所有服务，统计单位时间内请求出现问题的次数，从而发送报警短信提醒研发同学。</li>
+</ol>
+<p>服务的轮询探活将是这个系统的主要瓶颈，有一些措施可以作为参考：</p>
+<ol>
+<li>灵活使用<code>CompletableFuture</code>这些并发编排组件，因为探活请求一般都是比较&quot;慢&quot;的，因此可以通过并行化来提高效率；</li>
+<li>探活不能占用太多系统资源，合理设置探活超时时间，很多客户端的默认超时时间达到 1 分钟甚至更长，必须额外设置探活请求的超时时间，避免服务器挂掉时所有线程都被<code>hang</code>死，导致服务雪崩。</li>
+</ol>
+<blockquote>
+<p>探活不能和业务代码共用线程池，做到线程池隔离，即使出问题也只影响到<code>HealthCheck-Task</code>。</p>
+</blockquote>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
 <ol>
-<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
-<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
-<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
-<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
-<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
+<li><a href="https://www.jianshu.com/p/bbf439c8a203" target="_blank" rel="noopener">从零开始开发一个Spring Boot Starter</a></li>
+<li><a href="https://www.jianshu.com/p/87f101d8ec41" target="_blank" rel="noopener">SpringBoot启动流程解析</a></li>
+</ol>
+<h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
+<ol>
+<li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
 </ol>
 
           
