@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Redis,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Redis 监控 这里把一些常见的监控命令总结一下，时不时都会用到。 ¶redis-cli 命令行客户端。 123456# 创建连接，可以用PING-PONG来检查连接是否OKredis-cli -h localhost -p 6379# 监控Redis的连接和读写操作redis-cli -h localhost -p 6379 monitor# Redis服务器的统计信息redis-cli -h">
+<meta name="keywords" content="Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 性能调优">
+<meta property="og:url" content="https://tallate.github.io/6a07ad6.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="Redis 监控 这里把一些常见的监控命令总结一下，时不时都会用到。 ¶redis-cli 命令行客户端。 123456# 创建连接，可以用PING-PONG来检查连接是否OKredis-cli -h localhost -p 6379# 监控Redis的连接和读写操作redis-cli -h localhost -p 6379 monitor# Redis服务器的统计信息redis-cli -h">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2020-11-17T11:43:14.738Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis 性能调优">
+<meta name="twitter:description" content="Redis 监控 这里把一些常见的监控命令总结一下，时不时都会用到。 ¶redis-cli 命令行客户端。 123456# 创建连接，可以用PING-PONG来检查连接是否OKredis-cli -h localhost -p 6379# 监控Redis的连接和读写操作redis-cli -h localhost -p 6379 monitor# Redis服务器的统计信息redis-cli -h">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/6a07ad6.html">
+
+
+
+
+
+
+
+  <title>Redis 性能调优 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6a07ad6.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis 性能调优</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-11-10T12:21:48+08:00">
+                2020-11-10
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/缓存/" itemprop="url" rel="index">
+                    <span itemprop="name">缓存</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  6.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  25 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1>Redis 监控</h1>
+<p>这里把一些常见的监控命令总结一下，时不时都会用到。</p>
+<h2 id="redis-cli"><a class="header-anchor" href="#redis-cli">¶</a>redis-cli</h2>
+<p>命令行客户端。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 创建连接，可以用PING-PONG来检查连接是否OK</span><br><span class="line">redis-cli -h localhost -p 6379</span><br><span class="line"># 监控Redis的连接和读写操作</span><br><span class="line">redis-cli -h localhost -p 6379 monitor</span><br><span class="line"># Redis服务器的统计信息</span><br><span class="line">redis-cli -h localhost -p 6379 info</span><br></pre></td></tr></table></figure>
+<ul>
+<li>内存使用<br>
+<code>Memory</code>下可以查看 Redis 内存使用情况。如果 Redis 使用的内存超出了可用的物理内存大小，那么 Redis 很可能系统会被杀掉。针对这一点，你可以通过 info 命令对 used_memory 和 used_memory_peak 进行监控，为使用内存量设定阀值，并设定相应的报警机制。当然，报警只是手段，重要的是你得预先计划好，当内存使用量过大后，你应该做些什么，是清除一些没用的冷数据，还是把 Redis 迁移到更强大的机器上去。</li>
+<li>持久化<br>
+<code>Persistence</code>下可以查看 RDB 和 AOF 的备份情况。如果因为你的机器或 Redis 本身的问题导致 Redis 崩溃了，那么你唯一的救命稻草可能就是 dump 出来的 rdb 文件了，所以，对 Redis dump 文件进行监控也是很重要的。可以通过对 rdb_last_save_time 进行监控，了解最近一次 dump 数据操作的时间，还可以通过对 rdb_changes_since_last_save 进行监控来获得如果这时候出现故障，会丢失（即已改变）多少数据。</li>
+<li>Keys<br>
+通过获取 Keyspace 中的结果得到各个数据库中 key 的数量</li>
+<li>QPS<br>
+即每分钟执行的命令个数，即：(total_commands_processed2-total_commands_processed1)/span，为了实时得到 QPS，可以设定脚本在后台运行，记录过去几分钟的 total_commands_processed。在计算 QPS 时，利用过去的信息和当前的信息得出 QPS 的估计值。</li>
+</ul>
+<h2 id="redis-stat"><a class="header-anchor" href="#redis-stat">¶</a>redis-stat</h2>
+<p>Redis 服务器的<strong>实时</strong>信息。<br>
+这个命令不是 Redis 官方提供的，而是一个三方用 ruby 写的监控程序，安装起来有点麻烦，这里就不说明了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># usage:redis-stat [HOST[:PORT] ...] [INTERVAL [COUNT]]</span><br><span class="line"># 每1s收集一次</span><br><span class="line">redis-stat 1</span><br><span class="line"># 指定主机和服务器端口，间隔为1s，收集10次</span><br><span class="line">redis-stat localhost:6379 1 10</span><br><span class="line"># 启动一个redis-stat服务进程，提供一个Dashboard来查看Redis服务器的状态，按如下启动，可以访问 `localhost:8080` 查看</span><br><span class="line">redis-stat localhost:6379 --server=8080 5 --daemon</span><br></pre></td></tr></table></figure>
+<p>-a, --auth=PASSWORD 密码<br>
+-v, --verbose       展示更多信息<br>
+–style=STYLE       输出样式：unicode|ascii<br>
+–no-color          去掉颜色<br>
+–csv[=CSV_FILE]    打印或将结果保存到 CSV 文件内<br>
+–es=ELASTICSEARCH_URL  将结果发送到 ElasticSearch：[http://]HOST[:PORT][/INDEX]<br>
+–server[=PORT]     启动 redis-stat 服务器（默认端口是 63790）<br>
+–daemon            启动 redis-stat 作为守护进程，必须和 --server 选项一起使用<br>
+–version           版本<br>
+–help              帮助信息</p>
+<h2 id="slowlog"><a class="header-anchor" href="#slowlog">¶</a>slowlog</h2>
+<p>慢查询日志。<br>
+可以在 redis.conf 中配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 记录执行时间超过5秒的查询</span><br><span class="line">config set slowlog-log-slower-than 5000</span><br><span class="line"># 最多保存25条日志</span><br><span class="line">config set slowlog-max-len 25</span><br></pre></td></tr></table></figure>
+<p>使用 redis-cli 登录查看慢查询日志：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 获取10条日志</span><br><span class="line">slowlog get 10</span><br></pre></td></tr></table></figure>
+<h2 id="redis-benchmark"><a class="header-anchor" href="#redis-benchmark">¶</a>redis-benchmark</h2>
+<p>redis-benchmark 是 Redis 官方提供的 Redis 服务器性能基准测试工具：<br>
+-t 选择你想测试的命令，比如 redis-benchmark -t set<br>
+-p 指定 port redis-benchmark -p 6379<br>
+-l 一直循环<br>
+-c 指定客户端数量<br>
+-n 指定 request 数量<br>
+-q Quiet，不显示额外信息（多少时间内完成了多少条之类的），只显示 query/sec 的值</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 测试并发连接性能，100个并发连接，总共发100000个请求</span><br><span class="line">redis-benchmark -h localhost -p 6379 -c 100 -n 100000</span><br><span class="line"># 测试大数据包读写性能</span><br><span class="line">redis-benchmark -h localhost -p 6379 -q -d 100</span><br><span class="line"># 只测试某些操作的性能</span><br><span class="line">redis-benchmark -h localhost -p 6379 -t set,lpush -n 100000 -q</span><br><span class="line"># 只测试某些数值存取的性能</span><br><span class="line">redis-benchmark -h localhost -p 6379 -q script load &quot;redis.call(&apos;set&apos;, &apos;foo&apos;, &apos;bar&apos;)&quot;</span><br></pre></td></tr></table></figure>
+<h2 id="rdb-文件分析"><a class="header-anchor" href="#rdb-文件分析">¶</a>RDB 文件分析</h2>
+<p>Redis 内存比较大的时候不容易查出是哪些 key 比较占空间，这时可以使用 <a href="https://github.com/sripathikrishnan/redis-rdb-tools" target="_blank" rel="noopener">redis-rdb-tools</a> 这种工具来查看报告。</p>
+<h1>Redis性能问题排查</h1>
+<h2 id="哪些场景会导致redis阻塞？"><a class="header-anchor" href="#哪些场景会导致redis阻塞？">¶</a>哪些场景会导致Redis阻塞？</h2>
+<p>Redis实例运行期间会和多种对象进行交互：</p>
+<ul>
+<li>客户端：网络 IO，键值对增删改查操作，数据库操作；</li>
+<li>磁盘：生成 RDB 快照，记录 AOF 日志，AOF 日志重写；</li>
+<li>主从节点：主库生成、传输 RDB 文件，从库接收 RDB 文件、清空数据库、加载 RDB 文件；</li>
+<li>切片集群实例：向其他实例传输哈希槽信息，数据迁移。</li>
+</ul>
+<h2 id="如果redis变慢-可能是什么导致的？"><a class="header-anchor" href="#如果redis变慢-可能是什么导致的？">¶</a>如果Redis变慢，可能是什么导致的？</h2>
+<ol>
+<li>Redis是单线程模型，如果前面有请求执行比较慢，后面的都要排队等着；<br>
+耗时的操作包括：
+<ul>
+<li>集合全量查询和聚合操作：比如HGETALL、SMEMBERS</li>
+<li>操作bigkey：写入一个bigkey在分配内存时需要消耗更多的时间，同样，删除bigkey释放内存同样会产生耗时；<br>
+特别是删除大key时需要释放内存，操作系统需要将释放掉的内存块插入到一个空闲内存块的链表，以便后续进行管理和再分配（指malloc/free）。</li>
+<li>使用复杂度过高的命令：例如SORT/SUNION/ZUNIONSTORE，或者O(N)命令，但是N很大，例如lrange key 0 -1一次查询全量数据；</li>
+<li>大量key集中过期：Redis的过期机制也是在主线程中执行的，大量key集中过期会导致处理一个请求时，耗时都在删除过期key，耗时变长；</li>
+<li>淘汰策略：淘汰策略也是在主线程执行的，当内存超过Redis内存上限后，每次写入都需要淘汰一些key，也会造成耗时变长；</li>
+<li>AOF刷盘开启always机制：每次写入都需要把这个操作刷到磁盘，写磁盘的速度远比写内存慢，会拖慢Redis的性能；</li>
+<li>主从全量同步生成RDB：虽然采用fork子进程生成数据快照，但fork这一瞬间也是会阻塞整个线程的，实例越大，阻塞时间越久；<br>
+对此，需要业务人员主动规避上述可能导致超时的情况；</li>
+</ul>
+</li>
+<li>并发非常大，单线程读写客户端IO数据存在性能瓶颈，虽然采用IO多路复用机制，但是读写客户端数据依旧是同步IO，只能单线程依次读取客户端的数据，无法利用到CPU多核。<br>
+对此，Redis6.0推出了多线程，可以在高并发场景下利用CPU多核多线程读写客户端数据。</li>
+</ol>
+<h2 id="如何检测redis是否变慢？"><a class="header-anchor" href="#如何检测redis是否变慢？">¶</a>如何检测Redis是否变慢？</h2>
+<p>如何排查Redis是否真的变慢，一个直接的方法是查看Redis的<strong>响应延迟</strong>，但是响应延迟多长算慢呢？不同硬件性能不同，这个值的判断也是不同的，并没有绝对的标准。<br>
+另一种方法是测算当前环境下的 Redis <strong>基线性能</strong>，也就是一个系统在低压力、无干扰下的基本性能，这个性能只由当前的软硬件配置决定。<br>
+从 2.8.7 版本开始，<code>redis-cli</code> 命令提供了<code>–intrinsic-latency</code> 选项，可以用来监测和统计测试期间内的最大延迟，这个延迟可以作为 Redis 的基线性能。<br>
+一般我们可以把Redis基线性能和响应延迟结合起来判断Redis是否变慢了，如果观察到Redis延迟是其基线性能的2倍以上，就可以认定Redis变慢了。</p>
+<h1>Redis性能优化</h1>
+<h2 id="内存优化"><a class="header-anchor" href="#内存优化">¶</a>内存优化</h2>
+<ol>
+<li>压缩的类型<br>
+在数据量比较少时，Redis会使用占用内存更少的数据类型，包括hash、list、set、zset均为如此，占用的内存大小甚至可以达到普通类型的1/5。<br>
+hash-max-ziplist-entries 512<br>
+hash-max-ziplist-value 64<br>
+zset-max-ziplist-entries 128<br>
+zset-max-ziplist-value 64<br>
+set-max-intset-entries 512<br>
+压缩的类型是“拿时间换空间”，因此效率肯定是比不上普通类型的，只是数据量比较小的情况下二者是差不多的，试想：虽然一个压缩类型对象并不能省多少空间，但是如果很多很多对象都经过压缩，那么最终总体上就能省很多空间了。<br>
+当对象占用内存超过配置的最大值，Redis会自动将其转换为普通类型。</li>
+<li>尽量使用散列表<br>
+小散列表占用的内存非常小</li>
+</ol>
+<h2 id="慢查询命令"><a class="header-anchor" href="#慢查询命令">¶</a>慢查询命令</h2>
+<p>使用Redis前必须先了解各种指令的复杂度，比如get、set是O(1)的，set的smembers是O(N)的。<br>
+当发现性能变慢时，可以通过：</p>
+<ol>
+<li>Redis日志查询变慢的请求；</li>
+<li>latency monitor工具查询变慢请求；</li>
+</ol>
+<p>如果确实有大量满查询命令，可以：</p>
+<ol>
+<li>用其他高效命令代替；</li>
+<li>sort、sunion、sinter这些复杂操作可以将逻辑转移到客户端完成。<br>
+如果业务逻辑就是得用慢查询命令完成，那可以考虑采用性能更好的CPU，从而更快地完成查询命令。</li>
+</ol>
+<h2 id="过期key操作"><a class="header-anchor" href="#过期key操作">¶</a>过期key操作</h2>
+<p>Redis4.0之前，淘汰key的机制中，删除操作是阻塞的，而淘汰机制会不断抽样，直到过期的key只占不到25%的比例，因此淘汰很有可能会影响主线程；在Redis4.0之后采用异步线程机制来减少阻塞影响）。<br>
+比如同一时间有很多key设置了相同的过期时间，就会导致这种情况。</p>
+<h2 id="批量请求优化"><a class="header-anchor" href="#批量请求优化">¶</a>批量请求优化</h2>
+<p>使用管道Pipelineing：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ (printf &quot;PING\r\nPING\r\nPING\r\n&quot;; sleep 1) | nc localhost 6379</span><br></pre></td></tr></table></figure>
+<p>优点：</p>
+<ol>
+<li>一次连接就可以执行多次请求；</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>使用管道发送命令时，服务器将被迫回复一个队列答复，占用很多内存。所以，如果你需要发送大量的命令，最好是把他们按照合理数量分批次的处理，例如10K的命令，读回复，然后再发送另一个10k的命令，等等。这样速度几乎是相同的，但是在回复这10k命令队列需要非常大量的内存用来组织返回数据内容。</li>
+</ol>
+<h2 id="大量数据插入"><a class="header-anchor" href="#大量数据插入">¶</a>大量数据插入</h2>
+<p>大量数据插入时会面临以下问题：</p>
+<ol>
+<li>一个一个插入的话会有很多时间浪费在请求的往返上，因此需要批量执行<br>
+批量执行可以是：管道、lua脚本</li>
+<li>批量插入的过程怎么保证所有key都能插入成功</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SET Key0 Value0</span><br><span class="line">SET Key1 Value1</span><br><span class="line">...</span><br><span class="line">SET KeyN ValueN</span><br></pre></td></tr></table></figure>
+<p>如果是如下的pipeline，其实并不可靠，因为执行过程中不能检查错误。<br>
+<code>(cat data.txt; sleep 10) | nc localhost 6379 &gt; /dev/null</code><br>
+一种更好的方式是使用redis-cli中的<strong>pipe mode</strong>，期间会把错误输出到终端：<br>
+<code>cat data.txt | redis-cli --pipe</code></p>
+<h2 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 Key 问题</h2>
+<blockquote>
+<p>也可以叫大 Value 问题。</p>
+</blockquote>
+<p>大 Key 有两种状况：</p>
+<ol>
+<li>Redis 中单个简单的 Key 存储的 value 很大</li>
+<li>hash、set、zset、list 中存储的元素过多（以万为单位）。</li>
+</ol>
+<p>由于 Redis 的单线程模型，读写大 Key 时服务器的耗时可能会比较长、甚至阻塞。</p>
+<p>解决方案一般是能拆则拆，对于单个大 Key 的情况：<br>
+1.1 将大 Key 进行分割，拆成几个小的 key-value，使用 multiGet 获取值。<br>
+这样分拆的意义是将单次操作的压力分摊到多个 Redis 实例上，降低对单个 Redis 的 IO 影响，而且大 Key 拆分之后每次只查询一部分，减小了 IO 阻塞的风险。<br>
+为了均匀分割，可以对 field 进行 hash 并通过质数 N 取余，将余数加到 key 上面。<br>
+1.2 将大 Key 拆分成多个 key-value，并将这些存储在一个 hash 中，每个 field 代表一个具体的属性，使用 hget、hmget 来获取部分的 value，使用 hset、hmset 来更新部分属性</p>
+<p>对于 hash、set、zset、list 中存储的元素过多的情况，可以控制将 field 分散到多个集合内。<br>
+比如以下代码将属于一个大 hash 内的 field 分散到 10000 个拆分后的小 hash 内：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">newHashKey = hashKey + (hash(field) % 10000)</span><br><span class="line">hset(newHashKey, field, value)</span><br><span class="line">hget(newHashKey, field)</span><br></pre></td></tr></table></figure>
+<p>对于一些需要考虑顺序的场景，比如 lpop、zrange，需要在 hash 函数上做些文章，比如按照时间来拆分。</p>
+<h2 id="redis与cpu的关系"><a class="header-anchor" href="#redis与cpu的关系">¶</a>Redis与CPU的关系</h2>
+<p>在现代CPU架构中，每个物理核心都会有一个私有的L1 cache和L2 cache，不同核之间共用一个L3缓存，尽可能避免访问主存。<br>
+应用程序会被分配到一个CPU上执行，但是进程调度机制可能会将Redis进程调度到另一个核心上，导致之前加载的缓存都白费了。<br>
+可以通过taskset命令将Redis进程绑定在一个核上运行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># -c 用于设置要绑定的核编号</span><br><span class="line">taskset -c 0 ./redis-server</span><br></pre></td></tr></table></figure>
+<h2 id="内存碎片"><a class="header-anchor" href="#内存碎片">¶</a>内存碎片</h2>
+<p>Redis底层分配内存函数是jmalloc，它分配的内存大小总是2的幂倍数，如果分配的内存大小比实际使用的要多一些，就会产生内存碎片，内存碎片多了后就会有很多内存的浪费情况，特别是<strong>分配键值对的大小不一的情况下，内存碎片会尤其严重</strong>。</p>
+<h3 id="查看内存碎片"><a class="header-anchor" href="#查看内存碎片">¶</a>查看内存碎片</h3>
+<p>查看内存碎片情况很容易，可以直接使用<code>info</code>命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">10.32.140.14:6211&gt; info memory</span><br><span class="line"># Memory</span><br><span class="line">used_memory:1441123632</span><br><span class="line">used_memory_human:1.34G</span><br><span class="line">used_memory_rss:1853603840</span><br><span class="line">used_memory_rss_human:1.73G</span><br><span class="line">...</span><br><span class="line">mem_fragmentation_ratio:1.29</span><br></pre></td></tr></table></figure>
+<p>其中<code>mem_fragmentation_ratio</code>这个指标就是Redis当前的内存碎片率，它的值其实就是<code>used_memory_rss</code>和<code>used_memory</code>相除的结果（<code>used_memory_rss/used_memory</code>），前者是OS分配给Redis的内存空间，包含碎片，后者不包含碎片。</p>
+<ul>
+<li><code>mem_fragmentation_ratio</code>在<code>[1,1.5]</code>范围内是合理的，因为内存碎片无法完全避免</li>
+<li><code>mem_fragmentation_ratio</code>大于1.5则需要采取一些措施来减小内存碎片率。</li>
+</ul>
+<h3 id="处理内存碎片"><a class="header-anchor" href="#处理内存碎片">¶</a>处理内存碎片</h3>
+<ul>
+<li>重启Redis实例。这是最简单的方法，但是重启后Redis内存中的数据会全部丢失，除非进行了持久化，但恢复也是需要不少时间的。</li>
+<li>从Redis4.0-RC3后，Redis自身提供了内存碎片清理的功能，也即将内存数据拷贝到一块新的内存位置，可以设置参数控制碎片清理的开始、结束时机、占用的内存比例等：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 开启内存碎片清理功能</span><br><span class="line">config set activedefrag yes</span><br><span class="line"># 表示内存碎片达到100MB时开始清理</span><br><span class="line">active-defrag-ignore-bytes 100mb</span><br><span class="line"># 表示内存碎片空间占Redis总空间大小的10%时</span><br><span class="line">tive-defrag-threshold-lower 10</span><br><span class="line"># 控制清理过程占用CPU时间比例不低于25%，保证清理能正常</span><br><span class="line">adtive-defrag-cycle-min 25</span><br><span class="line"># 控制清理过程占用CPU时间比例不高于75%，尽量不要影响主线程</span><br><span class="line">active-defrag-cycle-max 75</span><br></pre></td></tr></table></figure>
+<h2 id="其他优化点"><a class="header-anchor" href="#其他优化点">¶</a>其他优化点</h2>
+<ul>
+<li>单进程单线程，无法充分发挥服务器多核 cpu 的性能；大流量下造成 IO 阻塞，同样是由于单进程单线程, cpu 在处理业务逻辑的时候,网络 IO 被阻塞住, 造成无法处理更多的请求.<br>
+多线程 master + N<em>work 工作模式.master 线程负责监听网络事件, 在接收到一个新的连接后, master 会把新的 fd 注册到 worker 的 epoll 事件中, 交由 worker 处理这个 fd 的所有读写事件, 这样 master 线程就可以完全被释放出来接收更多的连接, 同时又不妨碍 worker 处理业务逻辑和 IO 读写.<br>
+采用这种 master + N</em>worker 的网络层事件模型,可以实现 redis 性能的平行扩展. 真正的让 redis 在面临高并发请求时可以丛容面对.</li>
+<li>维护成本高, 如果想要充分发挥服务器的所有资源包括 cpu, 网络 io 等, 就必须建立多个 instance, 但此时不可避免会增加维护成本. 拿 24 核服务器举例来讲, 如果部署 24 个单机版的 instance,理论上可以实现 10w*24core= 240wQPS 的总体性能.但是每个 instance 有各自独立的数据,占用资源如内存也会同比上升,反过来制约一台服务器又未必能支持这么多的 instance. 如果部署 24 个 Instance 来构成单机集群, 虽然可以共享数据，但是因为节点增加, redis 的状态通讯更加频繁和费时,性能也下会降很多. 并且两种方式都意味着要维护 24 个 Instance，运维成本都会成倍增加.</li>
+<li>持久化：redis 提供了两种 save 方式 1)save 触发. 2)bgsave. 当然也可以使用 3)aof 来实现持久化, 但是这 3 点都有弊端.
+<ul>
+<li>save: 由于是单进程单线程, redis 会阻塞住所有请求, 来遍历所有 redisDB, 把 key-val 写入 dump.rdb. 如果内存数据量过大, 会造成短时间几秒到几十秒甚至更长的时间停止服务, 这种方案对于 twitter, taobao 等大流量的网站, 显然是不可取的.</li>
+<li>bgsave: 在触发 bgsave 时, redis 会 fork 自身, child 进程会进入 1)的处理方式,这意味着服务器内存要有一半的冗余才可以, 如今内存已变得越来越廉价, 但是对于存储海量数据的情况,内存以及服务器的成本还是不容忽视的.</li>
+<li>aof: 说到持久化, redis 提供的 aof 算是最完美的方案了, 但是有得必有失, 严重影响性能! 因为 redis 每接收到一条请求, 就要把命令内容完整的写到磁盘文件, 且不说频繁读写会影响磁盘寿命,写磁盘的时间足以拖垮 redis 整体性能 . 当然熟悉 redis 的开发者会想到用 appendfsync 等参数来调整, 但都不是完美.即使使用 SSD，性能也只是略有提升，并且性价比不高。</li>
+</ul>
+</li>
+<li>优化 jemalloc, 采用大内存页. Redis 在使用内存方面可谓苛刻至极, 压缩, string 转 number 等, 能省就省, 但是在实际生产环境中, 为了追求性能, 对于内存的使用可以适度（不至于如 bgsave 般浪费）通融处理, 因此 AliRedis 对 jemalloc 做了微调, 通过调整 pagesize 来让一次 je_malloc 分配更多 run 空间来储备更多的用户态可用内存, 同时可以减轻换页表的负载, 降低 user sys 的切换频率, 来提高申请内存的性能, 对 jemalloc 有兴趣的开发者可以参考 jemalloc 源码中的 bin, run, chunk 数据结构进行分析.</li>
+</ul>
+<h1>Redis配置</h1>
+<h2 id="内存"><a class="header-anchor" href="#内存">¶</a>内存</h2>
+<p>因为系统的内存大小有限，所以我们在使用 Redis 的时候可以配置 Redis 能使用的最大的内存大小。<br>
+redis.conf：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># Redis最大占用内存大小</span><br><span class="line">maxmemory 100mb</span><br></pre></td></tr></table></figure>
+<p>通过命令修改</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; config set maxmemory 100mb</span><br><span class="line">127.0.0.1:6379&gt; config get maxmemory</span><br></pre></td></tr></table></figure>
+<p>如果不设置最大内存大小或设置最大内存大小为 0，在 64 位操作系统下不限制内存大小，在 32 位操作系统下最大使用 3GB 内存。</p>
+<h2 id="修改数据库配置"><a class="header-anchor" href="#修改数据库配置">¶</a>修改数据库配置</h2>
+<p>redis 默认创建 16 个数据库（类似一个数组），默认值对应在 redis.conf 配置文件中 database 的值。<br>
+默认使用 0 号库，可以使用 select 命令来选择其他库。</p>
+<h2 id="过期时间的设置"><a class="header-anchor" href="#过期时间的设置">¶</a>过期时间的设置</h2>
+<p>如果大量的 key 过期时间设置的过于集中，到过期的那个时间点，redis 可能会出现短暂的卡顿现象。一般需要在时间上加一个随机值，使得过期时间分散一些。</p>
+<h2 id="连接设置"><a class="header-anchor" href="#连接设置">¶</a>连接设置</h2>
+<h3 id="redis连接配置"><a class="header-anchor" href="#redis连接配置">¶</a>Redis连接配置</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>port 16371</td>
+<td>指定Redis监听端口，默认端口为6379</td>
+<td></td>
+</tr>
+<tr>
+<td>bind 10.56.50.164</td>
+<td>绑定的主机地址</td>
+<td></td>
+</tr>
+<tr>
+<td>timeout 2000</td>
+<td>当客户端闲置多长时间后关闭连接，如果指定为0，表示关闭该功能</td>
+<td>在压测时需要修改</td>
+</tr>
+<tr>
+<td>tcp-keepalive 0</td>
+<td>redis服务端主动向空闲的客户端发起ack请求，以判断连接是否有效，0表示未启用。定时向client发送tcp_ack包来探测client是否存活的。默认不探测，官方建议值为60秒</td>
+<td>建议开启，避免连接意外中断后，服务端不能释放</td>
+</tr>
+<tr>
+<td>maxclients 30000</td>
+<td>设置同一时间最大客户端连接数，默认无限制，Redis可以同时打开的客户端连接数为Redis进程可以打开的最大文件描述符数，如果设置 maxclients 0，表示不作限制。当客户端连接数到达限制时，Redis会关闭新的连接并向客户端返回max number of clients reached错误信息</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="修改最大tcp连接"><a class="header-anchor" href="#修改最大tcp连接">¶</a>修改最大TCP连接</h3>
+<p>1、编辑文件 sudo vim /etc/security/limits.conf ，添加如下内容</p>
+<ul>
+<li>soft nproc 60240</li>
+<li>hard nproc 60240</li>
+<li>soft nofile 65535</li>
+<li>hard nofile 65535<br>
+2、编辑文件 vi /etc/pam.d/login，在末尾添加如下内容<br>
+session required /usr/lib64/security/pam_limits.so<br>
+3、编辑文件 /etc/pam.d/system-auth ，添加如下内容<br>
+session required /lib/security/$ISA/pam_limits.so<br>
+4、重启虚机</li>
+</ul>
+<h3 id="修改tcp连接等待队列长度"><a class="header-anchor" href="#修改tcp连接等待队列长度">¶</a>修改TCP连接等待队列长度</h3>
+<p>编辑系统控制文件，加入tcp最长队列参数<br>
+1、编辑文件 vim /etc/sysctl.conf 添加如下内容<br>
+net.core.somaxconn=5120<br>
+2、查看修改<br>
+sudo sysctl -p<br>
+3、同步修改<br>
+sudo sysctl vm.overcommit_memory=1<br>
+4、关闭透明大页</p>
+<ul>
+<li>具有sudo权限的用户 （尝试过echo 命令 ，权限不允许）<br>
+sudo vim  /etc/grub2.cfg 文件尾加上<br>
+transparent_hugepage=never<br>
+【或者使用root用户执行 echo “transparent_hugepage=never”&gt;&gt; /etc/grub2.cfg 】</li>
+<li>root用户</li>
+</ul>
+<h1>echo never&gt;/sys/kernel/mm/transparent_hugepage/enabled</h1>
+<ul>
+<li>验证结果 返回 0 说明生效<br>
+$ grep -i HugePages_Total /proc/meminfo<br>
+HugePages_Total:       0<br>
+$ cat /proc/sys/vm/nr_hugepages<br>
+0</li>
+</ul>
+<h2 id="持久化"><a class="header-anchor" href="#持久化">¶</a>持久化</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">save 900 1</span><br><span class="line">save 300 10</span><br><span class="line">save 60 10000</span><br></pre></td></tr></table></figure>
+<p>指定在多长时间内，有多少次更新操作，就将数据同步到数据文件，可以多个条件配合<br>
+save <seconds> <changes><br>
+分别表示900秒（15分钟）内有1个更改，300秒（5分钟）内有10个更改以及60秒内有10000个更改。<br>
+建议值：</changes></seconds></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">save 900 20</span><br><span class="line">save 300 2000</span><br><span class="line">save 60 200000</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>stop-writes-on-bgsave-error yes</td>
+<td>配置项stop-writes-on-bgsave-error no （默认值为yes），即当bgsave快照操作出错时停止写数据到磁盘，这样后面写错做均会失败，为了不影响后续写操作，故需将该项值改为no。</td>
+<td>强制关闭Redis快照可能会导致不能持久化。MISCONF Redis is configured to save RDB snapshots, but is currently not able to persist on disk.</td>
+</tr>
+<tr>
+<td>rdbcompression yes</td>
+<td>指定存储至本地数据库时是否压缩数据，默认为yes，Redis采用LZF压缩，如果为了节省CPU时间，可以关闭该选项，但会导致数据库文件变的巨大</td>
+<td>开启压缩</td>
+</tr>
+<tr>
+<td>rdbchecksum yes</td>
+<td>(对rdb数据进行校验,耗费CPU资源,默认为yes)默认值是yes。在存储快照后，让redis使用CRC64算法来进行数据校验，但是这样做会增加大约10%的性能消耗，如果希望获取到最大的性能提升，可以关闭此功能。</td>
+<td>建议关闭</td>
+</tr>
+<tr>
+<td>appendfsync everysec	指定更新日志条件，共有3个可选值：no表示等操作系统进行数据缓存同步到磁盘（快）；always表示每次更新操作后手动调用fsync()将数据写到磁盘（慢，安全）；everysec表示每秒同步一次（折衷，默认值）</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>no-appendfsync-on-rewrite no</td>
+<td>是否在后台写时同步单写，默认值no(表示需要同步).这里的后台写，表示后台正在重写文件(包括bgsave和bgrewriteaof.bgrewriteaof网上很多资料都没有涉及到。其实关掉bgsave之后，主要的即是aof重写文件了).no表示新的主进程的set操作会被阻塞掉，而yes表示新的主进程的set不会被阻塞，待整个后台写完成之后再将这部分set操作同步到aof文件中。但这可能会存在数据丢失的风险(机率很小)，如果对性能有要求，可以设置为yes，仅在后台写时会异步处理命令.</td>
+<td>压测时建议修改成yes</td>
+</tr>
+<tr>
+<td>auto-aof-rewrite-percentage 100</td>
+<td>aof文件增长比例，指当前aof文件比上次重写的增长比例大小。aof重写即在aof文件在一定大小之后，重新将整个内存写到aof文件当中，以反映最新的状态(相当于bgsave)。这样就避免了，aof文件过大而实际内存数据小的问题(频繁修改数据问题).</td>
+<td></td>
+</tr>
+<tr>
+<td>auto-aof-rewrite-min-size 64mb</td>
+<td>aof文件重写最小的文件大小，即最开始aof文件必须要达到这个文件时才触发，后面的每次重写就不会根据这个变量了(根据上一次重写完成之后的大小).此变量仅初始化启动redis有效.如果是redis恢复时，则lastSize等于初始aof文件大小.</td>
+<td></td>
+</tr>
+<tr>
+<td>aof-load-truncated yes</td>
+<td>指redis在恢复时，会忽略最后一条可能存在问题的指令。默认值yes。即在aof写入时，可能存在指令写错的问题(突然断电，写了一半)，这种情况下，yes会log并继续，而no会直接恢复失败.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="主从配置"><a class="header-anchor" href="#主从配置">¶</a>主从配置</h2>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>slave-serve-stale-data yes</td>
+<td>slave-serve-stale-data参数设置成yes，主从复制中，从服务器可以响应客户端请求</td>
+<td></td>
+</tr>
+<tr>
+<td>slave-read-only yes</td>
+<td>如果为 yes，代表为只读状态，但并不表示客户端用集群方式以从节点为入口连入集群时，不可以进行 set 操作，且 set 操作的数据不会被放在从节点的槽上，会被放到某主节点的槽上</td>
+<td></td>
+</tr>
+<tr>
+<td>repl-diskless-sync no</td>
+<td>一个RDB文件从master端传到slave端，分为两种情况：1、支持disk：master端将RDB file写到disk，稍后再传送到slave端；2、无磁盘diskless：master端直接将RDB file传到slave socket，不需要与disk进行交互。</td>
+<td></td>
+</tr>
+<tr>
+<td>无磁盘diskless方式适合磁盘读写速度慢但网络带宽非常高的环境。repl-diskless-sync no 默认不使用diskless同步方式</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>repl-diskless-sync-delay 5</td>
+<td>无磁盘diskless方式在进行数据传递之前会有一个时间的延迟，以便slave端能够进行到待传送的目标队列中，这个时间默认是5秒</td>
+<td></td>
+</tr>
+<tr>
+<td>repl-disable-tcp-nodelay no</td>
+<td>是否启用TCP_NODELAY，如果启用则会使用少量的TCP包和带宽去进行数据传输到slave端，当然速度会比较慢；如果不启用则传输速度比较快，但是会占用比较多的带宽。</td>
+<td></td>
+</tr>
+<tr>
+<td>slave-priority 100</td>
+<td>slave端的优先级设置，值是一个整数，数字越小表示优先级越高。当master故障时将会按照优先级来选择slave端进行恢复，如果值设置为0，则表示该slave永远不会被选择。</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Redis/" rel="tag"># Redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/1942bbd0.html" rel="next" title="Redis事务和Lua">
+                <i class="fa fa-chevron-left"></i> Redis事务和Lua
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">121</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">14</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">Redis 监控</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-cli"><span class="nav-number">1.1.</span> <span class="nav-text">¶redis-cli</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-stat"><span class="nav-number">1.2.</span> <span class="nav-text">¶redis-stat</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#slowlog"><span class="nav-number">1.3.</span> <span class="nav-text">¶slowlog</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-benchmark"><span class="nav-number">1.4.</span> <span class="nav-text">¶redis-benchmark</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rdb-文件分析"><span class="nav-number">1.5.</span> <span class="nav-text">¶RDB 文件分析</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">Redis性能问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#哪些场景会导致redis阻塞？"><span class="nav-number">2.1.</span> <span class="nav-text">¶哪些场景会导致Redis阻塞？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如果redis变慢-可能是什么导致的？"><span class="nav-number">2.2.</span> <span class="nav-text">¶如果Redis变慢，可能是什么导致的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何检测redis是否变慢？"><span class="nav-number">2.3.</span> <span class="nav-text">¶如何检测Redis是否变慢？</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">Redis性能优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内存优化"><span class="nav-number">3.1.</span> <span class="nav-text">¶内存优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#慢查询命令"><span class="nav-number">3.2.</span> <span class="nav-text">¶慢查询命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#过期key操作"><span class="nav-number">3.3.</span> <span class="nav-text">¶过期key操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#批量请求优化"><span class="nav-number">3.4.</span> <span class="nav-text">¶批量请求优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#大量数据插入"><span class="nav-number">3.5.</span> <span class="nav-text">¶大量数据插入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#大-key-问题"><span class="nav-number">3.6.</span> <span class="nav-text">¶大 Key 问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis与cpu的关系"><span class="nav-number">3.7.</span> <span class="nav-text">¶Redis与CPU的关系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内存碎片"><span class="nav-number">3.8.</span> <span class="nav-text">¶内存碎片</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查看内存碎片"><span class="nav-number">3.8.1.</span> <span class="nav-text">¶查看内存碎片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#处理内存碎片"><span class="nav-number">3.8.2.</span> <span class="nav-text">¶处理内存碎片</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其他优化点"><span class="nav-number">3.9.</span> <span class="nav-text">¶其他优化点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">Redis配置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内存"><span class="nav-number">4.1.</span> <span class="nav-text">¶内存</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#修改数据库配置"><span class="nav-number">4.2.</span> <span class="nav-text">¶修改数据库配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#过期时间的设置"><span class="nav-number">4.3.</span> <span class="nav-text">¶过期时间的设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接设置"><span class="nav-number">4.4.</span> <span class="nav-text">¶连接设置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#redis连接配置"><span class="nav-number">4.4.1.</span> <span class="nav-text">¶Redis连接配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修改最大tcp连接"><span class="nav-number">4.4.2.</span> <span class="nav-text">¶修改最大TCP连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修改tcp连接等待队列长度"><span class="nav-number">4.4.3.</span> <span class="nav-text">¶修改TCP连接等待队列长度</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">echo never&gt;/sys/kernel/mm/transparent_hugepage/enabled</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#持久化"><span class="nav-number">5.1.</span> <span class="nav-text">¶持久化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从配置"><span class="nav-number">5.2.</span> <span class="nav-text">¶主从配置</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>
