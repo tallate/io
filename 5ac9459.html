@@ -89,7 +89,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98/%E5%A4%9A%E7%BA%A7%E6%95%B0%E6%8D%AE%E6%9D%A5%E6%BA%90.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/%E5%A4%9A%E7%BA%A7%E7%BC%93%E5%AD%98/cache-drawer-core.png">
-<meta property="og:updated_time" content="2020-11-17T09:17:45.052Z">
+<meta property="og:updated_time" content="2020-11-21T08:19:45.511Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="多级缓存原理">
 <meta name="twitter:description" content="¶本地缓存 ¶由线上缓存 bug 引起的对本地缓存的思考 LoadingCache 是 Guava 提供的一个本地缓存组件，但是我对它是又爱又恨，一方面因为 LoadingCache 比较完善，免去很多应用层缓存的细节问题（如何写出 GC 友好的缓存？），而另一方面如果对 LoadingCache 了解不够深入又容易出现奇奇怪怪的问题。下面就来描述一下之前碰到过的两个 LoadingCache">
@@ -361,7 +361,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  11k 字
+                  9.4k 字
                 </span>
               
 
@@ -377,7 +377,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  40 分钟
+                  34 分钟
                 </span>
               
             </div>
@@ -491,23 +491,6 @@
 <p>缓存一般分为本地缓存和分布式缓存两种。本地缓存指的是将数据存储在本机内存中，操作缓存数据的速度很快，但是缺点也很明显：第一，缓存数据的数量与大小受限于本地内存；第二，如果有多台应用服务器，可能所有应用服务器都要维护一份缓存，这样就占用了很多的内存。<br>
 分布式缓存正好解决了这两个问题。首先，数据存储在了另外的机器上，理论上由于可以不断添加缓存机器，所以缓存的数据的数量是无限的；其次，缓存集中设置在远程的缓存服务器上，应用服务器不需要耗费空间来维护缓存。但是，分布式缓存也是有缺点的，比如由于是远程操作，所以操作缓存数据的速度相较于本地缓存慢很多。<br>
 当前用得最多的本地缓存是 GoogleGuavache，用得最多的分布式缓存是 Memcached 和 Redis</p>
-<h3 id="编码和压缩"><a class="header-anchor" href="#编码和压缩">¶</a>编码和压缩</h3>
-<p>Redis 属于数据库家族中最简单的一类分支 - KV 数据库，它基本不能维护任何复杂的数据结构，也不能对值构建索引以供查询。为了提高操作效率，自然而然会想到对值进行压缩，额外的编码其实是为了调试时方便，能直接查看保存的数据的内容。除了这些之外，还和 Redis 本身对各对象类型的编码规则有关：</p>
-<p>但是对数据进行压缩并不是银弹，对特别大的数据执行压缩需要占用不菲的 CPU 时间，所以需要作一个权衡。<br>
-特别小、特别大的数据直接发，中间数据压缩再保存可以触发数据库使用更有效的结构来保存。</p>
-<p>压缩算法：</p>
-<ol>
-<li>ZIP</li>
-<li>GZIP（最常用）</li>
-<li>LZF</li>
-<li>zstd（Arch Linux）</li>
-<li>…</li>
-</ol>
-<p>TODO:</p>
-<h3 id="使用-watcher-实现-cas"><a class="header-anchor" href="#使用-watcher-实现-cas">¶</a>使用 Watcher 实现 CAS</h3>
-<p>TODO:</p>
-<h3 id="基于缓存的事务"><a class="header-anchor" href="#基于缓存的事务">¶</a>基于缓存的事务</h3>
-<p>TODO:</p>
 <h3 id="缓存穿透"><a class="header-anchor" href="#缓存穿透">¶</a>缓存穿透</h3>
 <p>概念及场景：缓存穿透是指查询一个一定不存在的数据，由于缓存是不命中时被动写的，并且出于容错考虑，如果从存储层查不到数据则不写入缓存，这将导致这个不存在的数据每次请求都要到存储层去查询，失去了缓存的意义。在流量大时，可能 DB 就挂掉了，要是有人利用不存在的 key 频繁攻击我们的应用，这就是漏洞。<br>
 解决方案：有很多种方法可以有效地解决缓存穿透问题，最常见的则是采用<strong>布隆过滤器</strong>，将所有可能存在的数据哈希到一个足够大的<strong>bitmap</strong>中，一个一定不存在的数据会被这个 bitmap 拦截掉，从而避免了对底层存储系统的查询压力。另外也有一个更为简单粗暴的方法，如果一个查询返回的数据为空（不管是数据不存在，还是系统故障），我们仍然把这个空结果进行缓存，但它的过期时间会很短，最长不超过五分钟。<br>
@@ -680,85 +663,6 @@ return value;<br>
 </tr>
 </tbody>
 </table>
-<h3 id="缓存失效-缓存更新"><a class="header-anchor" href="#缓存失效-缓存更新">¶</a>缓存失效 / 缓存更新</h3>
-<p>一个经典问题：由于初始化的时候某些缓存过期时间设置的都一样,一段时间以后缓存全部失效,在这一瞬间的会增大 DB 的压力<br>
-解决：在过期时间上加一个随机值;分析用户行为,尽量让失效时间均匀分布</p>
-<p>下面是其他的一些策略：</p>
-<h4 id="先失效缓存-后更新数据库数据"><a class="header-anchor" href="#先失效缓存-后更新数据库数据">¶</a>先失效缓存 -&gt; 后更新数据库数据</h4>
-<ol>
-<li>缺点<br>
-如果缓存失效失败,根据策略可能会影响后续的正常的数据更新操作<br>
-直接失效缓存会增加后续的一次缓存查询的 Miss</li>
-<li>优点<br>
-避免数据库更新成功,缓存失效失败,导致缓存中是旧数据</li>
-<li>场景<br>
-对缓存准确率要求比较高的业务</li>
-<li>异常情况<br>
-线程 A 需要更新数据库数据，失效缓存；<br>
-线程 B 发现缓存没有命中，查询数据库中取出旧的值；<br>
-线程 A 更新数据库数据，提交事务，线程 A 将数据放入缓存。</li>
-</ol>
-<h4 id="延时双删"><a class="header-anchor" href="#延时双删">¶</a>延时双删</h4>
-<p>在《先失效缓存 -&gt; 后更新数据库数据》这种方案的基础上，增加了一个延时过期的步骤。<br>
-即：过期Redis -&gt; 更新数据库 -&gt; 延迟一会再过期一次Redis<br>
-这样就可以缓解上边提到的脏读问题了。<br>
-但是缺点是过期两次，会占用更多的数据库资源。</p>
-<h4 id="先更新数据库数据-后失效缓存"><a class="header-anchor" href="#先更新数据库数据-后失效缓存">¶</a>先更新数据库数据 -&gt; 后失效缓存</h4>
-<ol>
-<li>缺点<br>
-如果数据更新成功,但是缓存失效失败,缓存中存放的是旧数据<br>
-直接失效缓存会增加一次缓存查询的 Miss</li>
-<li>优点<br>
-更新数据不会强依赖缓存,就算失效缓存失败,也不会影响数据库的更新</li>
-<li>场景<br>
-对缓存和数据库的一致性要求不是很高的场景</li>
-<li>异常情况<br>
-在更新数据库数据和失效缓存之前的所有查询,查询到的都是旧数据</li>
-</ol>
-<h4 id="更新数据库数据-更新缓存"><a class="header-anchor" href="#更新数据库数据-更新缓存">¶</a>更新数据库数据 -&gt; 更新缓存</h4>
-<ol>
-<li>优点<br>
-避免了一次额外的缓存查询 Miss<br>
-实时性比较高</li>
-<li>缺点<br>
-数据库更新成功，但是更新缓存失败，缓存中存储的是旧数据<br>
-选择同步还是异步来更新缓存呢？如果是同步更新，更新磁盘成功了，但是更新缓存失败了，你是不是要反复重试来保证更新成功？如果多次重试都失败，那这次更新是算成功还是失败呢？如果是异步更新缓存，怎么保证更新的时序？<br>
-比如，我先把一个文件中的某个数据设置成 0，然后又设为 1，这个时候文件中的数据肯定是 1，但是缓存中的数据可不一定就是 1 了。因为把缓存中的数据更新为 0，和更新为 1 是两个并发的异步操作，不一定谁会先执行。<br>
-这些问题都会导致缓存的数据和磁盘中的数据不一致，而且，在下次更新这条数据之前，这个不一致的问题它是一直存在的。当然，这些问题也不是不能解决的，比如，你可以使用分布式事务来解决，只是付出的性能、实现复杂度等代价比较大。</li>
-<li>场景<br>
-缓存粒度比较小,缓存的数据不需要经过计算(更新商品数据,但是缓存还需要用户数据)</li>
-<li>异常情况<br>
-A 线程查询缓存发现缓存中没有数据,查询数据库；<br>
-B 线程更新数据库并且更新了缓存；<br>
-A 再把查询的数据放入缓存,缓存中将会是旧数据</li>
-</ol>
-<h4 id="更新缓存-更新数据库数据"><a class="header-anchor" href="#更新缓存-更新数据库数据">¶</a>更新缓存 -&gt; 更新数据库数据</h4>
-<ol>
-<li>优点<br>
-避免了一次额外的缓存查询 Miss</li>
-<li>缺点<br>
-缓存更新成功,但是数据库更新失败,导致缓存数据是旧数据;<br>
-并且更新缓存失败,根据策略可能导致更新数据库失败。</li>
-<li>场景<br>
-缓存粒度比较小,缓存的数据不需要经过计算(更新商品数据,但是缓存还需要用户数据)</li>
-<li>异常情况<br>
-在更新缓存成功和更新数据库数据之前拿到的缓存是和数据库不一致的(不过这种情况造成的负面影响很小)</li>
-</ol>
-<h4 id="更新数据库数据-定时同步到缓存"><a class="header-anchor" href="#更新数据库数据-定时同步到缓存">¶</a>更新数据库数据 -&gt; 定时同步到缓存</h4>
-<ol>
-<li>优点<br>
-实现简单、鲁棒性高<br>
-就算某次同步过程中发生了错误，等到下一个同步周期也会自动把数据纠正过来。</li>
-<li>缺点<br>
-缓存更新不实时。<br>
-如果缓存的数据太大，更新速度慢到无法接受，可以选择增量更新，每次只更新从上次缓存同步至今这段时间内变化的数据，代价是实现起来会稍微有些复杂。</li>
-</ol>
-<h4 id="缓存更新总结"><a class="header-anchor" href="#缓存更新总结">¶</a>缓存更新总结</h4>
-<ul>
-<li>如果对一致性要求没有那么高，一般是先更新数据库然后删除缓存。</li>
-<li>如果对一致性要求比较高，那么在缓存删除失败后，需要把删除事件放到队列里消费。</li>
-<li>如果对一致性要求更高点，那么需要将更新数据库、更新缓存、查询缓存的操作放到一个队列里消费</li>
-</ul>
 <h3 id="设计总结"><a class="header-anchor" href="#设计总结">¶</a>设计总结</h3>
 <p>针对业务系统，永远都是具体情况具体分析，没有最好，只有最合适。<br>
 最后，对于缓存系统常见的缓存满了和数据丢失问题，需要根据具体业务分析，通常我们采用 LRU 策略处理溢出，Redis 的 RDB 和 AOF 持久化策略来保证一定情况下的数据安全。</p>
@@ -1071,8 +975,8 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/6e8a6bb7.html" rel="next" title="服务治理——限流">
-                <i class="fa fa-chevron-left"></i> 服务治理——限流
+              <a href="/cac7b0a4.html" rel="next" title="多级缓存原理">
+                <i class="fa fa-chevron-left"></i> 多级缓存原理
               </a>
             
           </div>
@@ -1081,8 +985,8 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/cac7b0a4.html" rel="prev" title="多级缓存原理">
-                多级缓存原理 <i class="fa fa-chevron-right"></i>
+              <a href="/8ada3a78.html" rel="prev" title="JMM 应用总结">
+                JMM 应用总结 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -1165,7 +1069,7 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-count">129</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1176,7 +1080,7 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -1222,7 +1126,7 @@ Web 缓存其实不仅仅指浏览器内的缓存，在剖析从客户端发送�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#本地缓存"><span class="nav-number">1.</span> <span class="nav-text">¶本地缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#由线上缓存-bug-引起的对本地缓存的思考"><span class="nav-number">1.1.</span> <span class="nav-text">¶由线上缓存 bug 引起的对本地缓存的思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存是什么"><span class="nav-number">1.2.</span> <span class="nav-text">¶本地缓存是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存的优点"><span class="nav-number">1.3.</span> <span class="nav-text">¶本地缓存的优点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存的缺点"><span class="nav-number">1.4.</span> <span class="nav-text">¶本地缓存的缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么时候需要本地缓存"><span class="nav-number">1.5.</span> <span class="nav-text">¶什么时候需要本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#避免过早优化"><span class="nav-number">1.6.</span> <span class="nav-text">¶避免过早优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#java-引用"><span class="nav-number">1.7.</span> <span class="nav-text">¶Java 引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用-失败次数统计"><span class="nav-number">1.8.</span> <span class="nav-text">¶应用 - 失败次数统计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#gc-友好的缓存"><span class="nav-number">1.9.</span> <span class="nav-text">¶GC 友好的缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现一个本地缓存-concurrenthashmap"><span class="nav-number">1.10.</span> <span class="nav-text">¶如何实现一个本地缓存 - ConcurrentHashMap</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式缓存"><span class="nav-number">2.</span> <span class="nav-text">¶分布式缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存和分布式缓存"><span class="nav-number">2.1.</span> <span class="nav-text">¶本地缓存和分布式缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#编码和压缩"><span class="nav-number">2.2.</span> <span class="nav-text">¶编码和压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-watcher-实现-cas"><span class="nav-number">2.3.</span> <span class="nav-text">¶使用 Watcher 实现 CAS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于缓存的事务"><span class="nav-number">2.4.</span> <span class="nav-text">¶基于缓存的事务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">2.5.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">2.6.</span> <span class="nav-text">¶缓存雪崩</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念及场景"><span class="nav-number">2.6.1.</span> <span class="nav-text">¶概念及场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案"><span class="nav-number">2.6.2.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存污染"><span class="nav-number">2.7.</span> <span class="nav-text">¶缓存污染</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念和场景"><span class="nav-number">2.7.1.</span> <span class="nav-text">¶概念和场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-v2"><span class="nav-number">2.7.2.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存首次上线"><span class="nav-number">2.8.</span> <span class="nav-text">¶缓存首次上线</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念及场景-v2"><span class="nav-number">2.8.1.</span> <span class="nav-text">¶概念及场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-v3"><span class="nav-number">2.8.2.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存击穿"><span class="nav-number">2.9.</span> <span class="nav-text">¶缓存击穿</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-v4"><span class="nav-number">2.9.1.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存失效-缓存更新"><span class="nav-number">2.10.</span> <span class="nav-text">¶缓存失效 / 缓存更新</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#先失效缓存-后更新数据库数据"><span class="nav-number">2.10.1.</span> <span class="nav-text">¶先失效缓存 -&gt; 后更新数据库数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#延时双删"><span class="nav-number">2.10.2.</span> <span class="nav-text">¶延时双删</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#先更新数据库数据-后失效缓存"><span class="nav-number">2.10.3.</span> <span class="nav-text">¶先更新数据库数据 -&gt; 后失效缓存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新数据库数据-更新缓存"><span class="nav-number">2.10.4.</span> <span class="nav-text">¶更新数据库数据 -&gt; 更新缓存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新缓存-更新数据库数据"><span class="nav-number">2.10.5.</span> <span class="nav-text">¶更新缓存 -&gt; 更新数据库数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新数据库数据-定时同步到缓存"><span class="nav-number">2.10.6.</span> <span class="nav-text">¶更新数据库数据 -&gt; 定时同步到缓存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存更新总结"><span class="nav-number">2.10.7.</span> <span class="nav-text">¶缓存更新总结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#设计总结"><span class="nav-number">2.11.</span> <span class="nav-text">¶设计总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现一个简单的多级缓存"><span class="nav-number">3.</span> <span class="nav-text">¶实现一个简单的多级缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存时机"><span class="nav-number">3.1.</span> <span class="nav-text">¶缓存时机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法-fifo"><span class="nav-number">3.2.</span> <span class="nav-text">¶算法 - FIFO</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法-lru"><span class="nav-number">3.3.</span> <span class="nav-text">¶算法 - LRU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法-lfu"><span class="nav-number">3.4.</span> <span class="nav-text">¶算法 - LFU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#回收策略"><span class="nav-number">3.5.</span> <span class="nav-text">¶回收策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存监控"><span class="nav-number">3.6.</span> <span class="nav-text">¶缓存监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过期时间"><span class="nav-number">3.7.</span> <span class="nav-text">¶过期时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sor-source-of-resource"><span class="nav-number">3.8.</span> <span class="nav-text">¶SoR（Source-of-Resource）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大-value"><span class="nav-number">3.9.</span> <span class="nav-text">¶大 Value</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#热点缓存"><span class="nav-number">3.10.</span> <span class="nav-text">¶热点缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存更新"><span class="nav-number">3.11.</span> <span class="nav-text">¶缓存更新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步写"><span class="nav-number">3.12.</span> <span class="nav-text">¶异步写</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#维度化与增量缓存"><span class="nav-number">3.13.</span> <span class="nav-text">¶维度化与增量缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-分区读"><span class="nav-number">3.14.</span> <span class="nav-text">¶缓存策略 - 分区读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-nullobj-防缓存击穿"><span class="nav-number">3.15.</span> <span class="nav-text">¶缓存策略 - nullobj 防缓存击穿</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-cache-aside-模式"><span class="nav-number">3.16.</span> <span class="nav-text">¶缓存策略 - Cache-aside 模式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#什么时候使用"><span class="nav-number">3.16.1.</span> <span class="nav-text">¶什么时候使用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#read-模式"><span class="nav-number">3.17.</span> <span class="nav-text">¶Read 模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#write-模式"><span class="nav-number">3.18.</span> <span class="nav-text">¶Write 模式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#读优化-一致性哈希"><span class="nav-number">3.18.1.</span> <span class="nav-text">¶读优化 - 一致性哈希</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写优化-使用-canal-订阅更新"><span class="nav-number">3.18.2.</span> <span class="nav-text">¶写优化 - 使用 Canal 订阅更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存数据的-存时间"><span class="nav-number">3.18.3.</span> <span class="nav-text">¶缓存数据的⽣存时间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#去除数据"><span class="nav-number">3.18.4.</span> <span class="nav-text">¶去除数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#一致性"><span class="nav-number">3.18.5.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#本地-内存-缓存"><span class="nav-number">3.18.6.</span> <span class="nav-text">¶本地（内存）缓存</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-cache-as-sor-模式"><span class="nav-number">3.19.</span> <span class="nav-text">¶缓存策略 - Cache-as-SoR 模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-read-through"><span class="nav-number">3.20.</span> <span class="nav-text">¶缓存策略 - Read-Through</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-write-through"><span class="nav-number">3.21.</span> <span class="nav-text">¶缓存策略 - Write-Through</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-write-behind"><span class="nav-number">3.22.</span> <span class="nav-text">¶缓存策略 - Write-Behind</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-copy-pattern"><span class="nav-number">3.23.</span> <span class="nav-text">¶缓存策略 - Copy-Pattern</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#多级缓存架构"><span class="nav-number">4.1.</span> <span class="nav-text">¶多级缓存架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存池"><span class="nav-number">4.2.</span> <span class="nav-text">¶内存池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存-v2"><span class="nav-number">4.3.</span> <span class="nav-text">¶本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式缓存-v2"><span class="nav-number">4.4.</span> <span class="nav-text">¶分布式缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#web-缓存"><span class="nav-number">4.5.</span> <span class="nav-text">¶Web 缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测试"><span class="nav-number">4.6.</span> <span class="nav-text">¶测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#运维"><span class="nav-number">4.7.</span> <span class="nav-text">¶运维</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他"><span class="nav-number">4.8.</span> <span class="nav-text">¶其他</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#本地缓存"><span class="nav-number">1.</span> <span class="nav-text">¶本地缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#由线上缓存-bug-引起的对本地缓存的思考"><span class="nav-number">1.1.</span> <span class="nav-text">¶由线上缓存 bug 引起的对本地缓存的思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存是什么"><span class="nav-number">1.2.</span> <span class="nav-text">¶本地缓存是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存的优点"><span class="nav-number">1.3.</span> <span class="nav-text">¶本地缓存的优点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存的缺点"><span class="nav-number">1.4.</span> <span class="nav-text">¶本地缓存的缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么时候需要本地缓存"><span class="nav-number">1.5.</span> <span class="nav-text">¶什么时候需要本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#避免过早优化"><span class="nav-number">1.6.</span> <span class="nav-text">¶避免过早优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#java-引用"><span class="nav-number">1.7.</span> <span class="nav-text">¶Java 引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用-失败次数统计"><span class="nav-number">1.8.</span> <span class="nav-text">¶应用 - 失败次数统计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#gc-友好的缓存"><span class="nav-number">1.9.</span> <span class="nav-text">¶GC 友好的缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现一个本地缓存-concurrenthashmap"><span class="nav-number">1.10.</span> <span class="nav-text">¶如何实现一个本地缓存 - ConcurrentHashMap</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式缓存"><span class="nav-number">2.</span> <span class="nav-text">¶分布式缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存和分布式缓存"><span class="nav-number">2.1.</span> <span class="nav-text">¶本地缓存和分布式缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">2.2.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">2.3.</span> <span class="nav-text">¶缓存雪崩</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念及场景"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶概念及场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案"><span class="nav-number">2.3.2.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存污染"><span class="nav-number">2.4.</span> <span class="nav-text">¶缓存污染</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念和场景"><span class="nav-number">2.4.1.</span> <span class="nav-text">¶概念和场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-v2"><span class="nav-number">2.4.2.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存首次上线"><span class="nav-number">2.5.</span> <span class="nav-text">¶缓存首次上线</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念及场景-v2"><span class="nav-number">2.5.1.</span> <span class="nav-text">¶概念及场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-v3"><span class="nav-number">2.5.2.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存击穿"><span class="nav-number">2.6.</span> <span class="nav-text">¶缓存击穿</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-v4"><span class="nav-number">2.6.1.</span> <span class="nav-text">¶解决方案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#设计总结"><span class="nav-number">2.7.</span> <span class="nav-text">¶设计总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现一个简单的多级缓存"><span class="nav-number">3.</span> <span class="nav-text">¶实现一个简单的多级缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存时机"><span class="nav-number">3.1.</span> <span class="nav-text">¶缓存时机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法-fifo"><span class="nav-number">3.2.</span> <span class="nav-text">¶算法 - FIFO</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法-lru"><span class="nav-number">3.3.</span> <span class="nav-text">¶算法 - LRU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法-lfu"><span class="nav-number">3.4.</span> <span class="nav-text">¶算法 - LFU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#回收策略"><span class="nav-number">3.5.</span> <span class="nav-text">¶回收策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存监控"><span class="nav-number">3.6.</span> <span class="nav-text">¶缓存监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过期时间"><span class="nav-number">3.7.</span> <span class="nav-text">¶过期时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sor-source-of-resource"><span class="nav-number">3.8.</span> <span class="nav-text">¶SoR（Source-of-Resource）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#大-value"><span class="nav-number">3.9.</span> <span class="nav-text">¶大 Value</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#热点缓存"><span class="nav-number">3.10.</span> <span class="nav-text">¶热点缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存更新"><span class="nav-number">3.11.</span> <span class="nav-text">¶缓存更新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步写"><span class="nav-number">3.12.</span> <span class="nav-text">¶异步写</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#维度化与增量缓存"><span class="nav-number">3.13.</span> <span class="nav-text">¶维度化与增量缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-分区读"><span class="nav-number">3.14.</span> <span class="nav-text">¶缓存策略 - 分区读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-nullobj-防缓存击穿"><span class="nav-number">3.15.</span> <span class="nav-text">¶缓存策略 - nullobj 防缓存击穿</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-cache-aside-模式"><span class="nav-number">3.16.</span> <span class="nav-text">¶缓存策略 - Cache-aside 模式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#什么时候使用"><span class="nav-number">3.16.1.</span> <span class="nav-text">¶什么时候使用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#read-模式"><span class="nav-number">3.17.</span> <span class="nav-text">¶Read 模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#write-模式"><span class="nav-number">3.18.</span> <span class="nav-text">¶Write 模式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#读优化-一致性哈希"><span class="nav-number">3.18.1.</span> <span class="nav-text">¶读优化 - 一致性哈希</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写优化-使用-canal-订阅更新"><span class="nav-number">3.18.2.</span> <span class="nav-text">¶写优化 - 使用 Canal 订阅更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存数据的-存时间"><span class="nav-number">3.18.3.</span> <span class="nav-text">¶缓存数据的⽣存时间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#去除数据"><span class="nav-number">3.18.4.</span> <span class="nav-text">¶去除数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#一致性"><span class="nav-number">3.18.5.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#本地-内存-缓存"><span class="nav-number">3.18.6.</span> <span class="nav-text">¶本地（内存）缓存</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-cache-as-sor-模式"><span class="nav-number">3.19.</span> <span class="nav-text">¶缓存策略 - Cache-as-SoR 模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-read-through"><span class="nav-number">3.20.</span> <span class="nav-text">¶缓存策略 - Read-Through</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-write-through"><span class="nav-number">3.21.</span> <span class="nav-text">¶缓存策略 - Write-Through</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-write-behind"><span class="nav-number">3.22.</span> <span class="nav-text">¶缓存策略 - Write-Behind</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存策略-copy-pattern"><span class="nav-number">3.23.</span> <span class="nav-text">¶缓存策略 - Copy-Pattern</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#多级缓存架构"><span class="nav-number">4.1.</span> <span class="nav-text">¶多级缓存架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存池"><span class="nav-number">4.2.</span> <span class="nav-text">¶内存池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#本地缓存-v2"><span class="nav-number">4.3.</span> <span class="nav-text">¶本地缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式缓存-v2"><span class="nav-number">4.4.</span> <span class="nav-text">¶分布式缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#web-缓存"><span class="nav-number">4.5.</span> <span class="nav-text">¶Web 缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测试"><span class="nav-number">4.6.</span> <span class="nav-text">¶测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#运维"><span class="nav-number">4.7.</span> <span class="nav-text">¶运维</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他"><span class="nav-number">4.8.</span> <span class="nav-text">¶其他</span></a></li></ol></li></ol></div>
             
 
           </div>

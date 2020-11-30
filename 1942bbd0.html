@@ -88,7 +88,9 @@
 <meta property="og:description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png">
-<meta property="og:updated_time" content="2020-11-17T09:17:45.076Z">
+<meta property="og:image" content="http://47.88.24.11/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E9%9B%AA%E5%B4%A9%E3%80%81%E5%87%BB%E7%A9%BF%E3%80%81%E7%A9%BF%E9%80%8F%E9%97%AE%E9%A2%98.jpg">
+<meta property="og:image" content="http://47.88.24.11/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E4%B8%8D%E4%B8%80%E8%87%B4%E9%97%AE%E9%A2%98.jpg">
+<meta property="og:updated_time" content="2020-11-21T14:23:06.650Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis事务和Lua">
 <meta name="twitter:description" content="¶缓存系统如何工作 ¶缓存的两个特征  在一个层次化的系统中，缓存一定是一个快速子系统，数据存在缓存中时，能避免每次从慢速子系统中存取数据。对应到互联网应用来说，Redis 就是快速子系统，而数据库就是慢速子系统了。 缓存系统的容量大小总是小于后端慢速系统的，我们不可能把所有数据都放在缓存系统中。  ¶Redis作为旁路缓存 作为缓存，我们在访问数据时可能会：  命中：直接将缓存中的数据返回； m">
@@ -360,7 +362,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.8k 字
+                  6.7k 字
                 </span>
               
 
@@ -376,7 +378,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  17 分钟
+                  23 分钟
                 </span>
               
             </div>
@@ -412,7 +414,9 @@
 <p>这种情况下，Redis就作为旁路缓存使用，读取缓存、读取数据库和更新缓存的操作都需要在应用程序中来完成。</p>
 <ul>
 <li>如果是只读缓存，那么上述的旁路缓存设计就足够了；</li>
-<li>如果是读写缓存，还有同步直写（写缓存的同时写DB）和异步写回（写缓存后异步写DB）这两种策略，各有优缺点。</li>
+<li>如果是读写缓存，还有同步直写（写缓存的同时写DB）和异步写回（写缓存后异步写DB）这两种策略，各有优缺点。<br>
+同步直写效率低，但是一致性高；<br>
+异步写回效率高，但是一致性低。</li>
 </ul>
 <h2 id="缓存满了怎么办？"><a class="header-anchor" href="#缓存满了怎么办？">¶</a>缓存满了怎么办？</h2>
 <h3 id="缓存淘汰-缓存失效策略和主键失效机制"><a class="header-anchor" href="#缓存淘汰-缓存失效策略和主键失效机制">¶</a>缓存淘汰（缓存失效策略和主键失效机制）</h3>
@@ -497,6 +501,8 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
 <li>如果有多于25%的key是过期了的，则重复步骤1。</li>
 </ol>
 <h2 id="缓存系统中存在的问题"><a class="header-anchor" href="#缓存系统中存在的问题">¶</a>缓存系统中存在的问题</h2>
+<p><img src="http://47.88.24.11/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E9%9B%AA%E5%B4%A9%E3%80%81%E5%87%BB%E7%A9%BF%E3%80%81%E7%A9%BF%E9%80%8F%E9%97%AE%E9%A2%98.jpg" alt="旁路缓存的雪崩、击穿、穿透问题" title="旁路缓存的雪崩、击穿、穿透问题"><br>
+<img src="http://47.88.24.11/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E4%B8%8D%E4%B8%80%E8%87%B4%E9%97%AE%E9%A2%98.jpg" alt="旁路缓存的不一致问题" title="旁路缓存的不一致问题"></p>
 <h3 id="缓存穿透"><a class="header-anchor" href="#缓存穿透">¶</a>缓存穿透</h3>
 <p>缓存穿透即即黑客故意去请求缓存中不存在的数据，导致所有的请求都怼到数据库上，从而数据库连接异常。这也是经常提的缓存命中率问题。<br>
 应付大规模缓存穿透的方案如下：</p>
@@ -550,7 +556,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
 <li>数据量不大，可以在项目启动的时候自动进行加载；</li>
 <li>定时刷新缓存。</li>
 </ol>
-<h3 id="redis-和数据库双写一致性问题"><a class="header-anchor" href="#redis-和数据库双写一致性问题">¶</a>Redis 和数据库双写一致性问题</h3>
+<h3 id="缓存和数据库双写一致性问题"><a class="header-anchor" href="#缓存和数据库双写一致性问题">¶</a>缓存和数据库双写一致性问题</h3>
 <p>一致性问题是分布式常见问题，讨论比较多的是最终一致性和强一致性。数据库和缓存双写，就必然会存在不一致的问题。<br>
 在回答这个问题前，必须先强调一个前提，就是<strong>如果对数据有强一致性要求，不能放缓存</strong>。我们所做的一切，只能保证最终一致性，从根本上来说，只是降低不一致发生的概率，无法完全避免，因此，我们说有强一致性要求的数据，不能放缓存。</p>
 <ul>
@@ -558,6 +564,82 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
 <li>其次，因为可能存在删除缓存失败的问题，提供一个补偿措施即可，例如利用<strong>消息队列</strong>。</li>
 </ul>
 <p>具体的设计方案和优缺点可以参考：<a href="https://www.cnblogs.com/rjzheng/p/9041659.html" target="_blank" rel="noopener">【原创】分布式之数据库和缓存双写一致性方案解析</a></p>
+<p>下面是对所有策略的分析：</p>
+<h4 id="先失效缓存-后更新数据库数据"><a class="header-anchor" href="#先失效缓存-后更新数据库数据">¶</a>先失效缓存 -&gt; 后更新数据库数据</h4>
+<ol>
+<li>缺点<br>
+如果缓存失效失败,根据策略可能会影响后续的正常的数据更新操作<br>
+直接失效缓存会增加后续的一次缓存查询的 Miss</li>
+<li>优点<br>
+避免数据库更新成功,缓存失效失败,导致缓存中是旧数据</li>
+<li>场景<br>
+对缓存准确率要求比较高的业务</li>
+<li>异常情况<br>
+线程 A 需要更新数据库数据，失效缓存；<br>
+线程 B 发现缓存没有命中，查询数据库中取出旧的值；<br>
+线程 A 更新数据库数据，提交事务，线程 A 将数据放入缓存。</li>
+</ol>
+<h4 id="延时双删"><a class="header-anchor" href="#延时双删">¶</a>延时双删</h4>
+<p>在《先失效缓存 -&gt; 后更新数据库数据》这种方案的基础上，增加了一个延时过期的步骤。<br>
+即：过期Redis -&gt; 更新数据库 -&gt; 延迟一会再过期一次Redis<br>
+这样就可以缓解上边提到的脏读问题了。<br>
+但是缺点是过期两次，会占用更多的数据库资源。</p>
+<h4 id="先更新数据库数据-后失效缓存"><a class="header-anchor" href="#先更新数据库数据-后失效缓存">¶</a>先更新数据库数据 -&gt; 后失效缓存</h4>
+<ol>
+<li>缺点<br>
+如果数据更新成功,但是缓存失效失败,缓存中存放的是旧数据<br>
+直接失效缓存会增加一次缓存查询的 Miss</li>
+<li>优点<br>
+更新数据不会强依赖缓存,就算失效缓存失败,也不会影响数据库的更新</li>
+<li>场景<br>
+对缓存和数据库的一致性要求不是很高的场景</li>
+<li>异常情况<br>
+在更新数据库数据和失效缓存之前的所有查询,查询到的都是旧数据</li>
+</ol>
+<h4 id="更新数据库数据-更新缓存"><a class="header-anchor" href="#更新数据库数据-更新缓存">¶</a>更新数据库数据 -&gt; 更新缓存</h4>
+<ol>
+<li>优点<br>
+避免了一次额外的缓存查询 Miss<br>
+实时性比较高</li>
+<li>缺点<br>
+数据库更新成功，但是更新缓存失败，缓存中存储的是旧数据<br>
+选择同步还是异步来更新缓存呢？如果是同步更新，更新磁盘成功了，但是更新缓存失败了，你是不是要反复重试来保证更新成功？如果多次重试都失败，那这次更新是算成功还是失败呢？如果是异步更新缓存，怎么保证更新的时序？<br>
+比如，我先把一个文件中的某个数据设置成 0，然后又设为 1，这个时候文件中的数据肯定是 1，但是缓存中的数据可不一定就是 1 了。因为把缓存中的数据更新为 0，和更新为 1 是两个并发的异步操作，不一定谁会先执行。<br>
+这些问题都会导致缓存的数据和磁盘中的数据不一致，而且，在下次更新这条数据之前，这个不一致的问题它是一直存在的。当然，这些问题也不是不能解决的，比如，你可以使用分布式事务来解决，只是付出的性能、实现复杂度等代价比较大。</li>
+<li>场景<br>
+缓存粒度比较小,缓存的数据不需要经过计算(更新商品数据,但是缓存还需要用户数据)</li>
+<li>异常情况<br>
+A 线程查询缓存发现缓存中没有数据,查询数据库；<br>
+B 线程更新数据库并且更新了缓存；<br>
+A 再把查询的数据放入缓存,缓存中将会是旧数据</li>
+</ol>
+<h4 id="更新缓存-更新数据库数据"><a class="header-anchor" href="#更新缓存-更新数据库数据">¶</a>更新缓存 -&gt; 更新数据库数据</h4>
+<ol>
+<li>优点<br>
+避免了一次额外的缓存查询 Miss</li>
+<li>缺点<br>
+缓存更新成功,但是数据库更新失败,导致缓存数据是旧数据;<br>
+并且更新缓存失败,根据策略可能导致更新数据库失败。</li>
+<li>场景<br>
+缓存粒度比较小,缓存的数据不需要经过计算(更新商品数据,但是缓存还需要用户数据)</li>
+<li>异常情况<br>
+在更新缓存成功和更新数据库数据之前拿到的缓存是和数据库不一致的(不过这种情况造成的负面影响很小)</li>
+</ol>
+<h4 id="更新数据库数据-定时同步到缓存"><a class="header-anchor" href="#更新数据库数据-定时同步到缓存">¶</a>更新数据库数据 -&gt; 定时同步到缓存</h4>
+<ol>
+<li>优点<br>
+实现简单、鲁棒性高<br>
+就算某次同步过程中发生了错误，等到下一个同步周期也会自动把数据纠正过来。</li>
+<li>缺点<br>
+缓存更新不实时。<br>
+如果缓存的数据太大，更新速度慢到无法接受，可以选择增量更新，每次只更新从上次缓存同步至今这段时间内变化的数据，代价是实现起来会稍微有些复杂。</li>
+</ol>
+<h4 id="缓存更新总结"><a class="header-anchor" href="#缓存更新总结">¶</a>缓存更新总结</h4>
+<ul>
+<li>如果对一致性要求没有那么高，一般是先更新数据库然后删除缓存。</li>
+<li>如果对一致性要求比较高，那么在缓存删除失败后，需要把删除事件放到队列里消费。</li>
+<li>如果对一致性要求更高点，那么需要将更新数据库、更新缓存、查询缓存的操作放到一个队列里消费</li>
+</ul>
 <h3 id="如何解决-redis-的并发竞争-key-问题"><a class="header-anchor" href="#如何解决-redis-的并发竞争-key-问题">¶</a>如何解决 redis 的并发竞争 key 问题</h3>
 <p>这个问题大致就是，同时有多个子系统去 set 一个 key。这个时候要注意什么呢？大家思考过么。百度上的答案基本都是推荐用 redis 事务机制，但这里<strong>不推荐使用 redis 的事务机制</strong>。因为我们的生产环境，基本都是 redis 集群环境，做了数据分片操作，你一个事务中有涉及到多个 key 操作的时候，这多个 key 不一定都存储在同一个 redis-server 上。因此，<strong>Redis 的事务机制，十分鸡肋</strong>。</p>
 <ol>
@@ -582,6 +664,21 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
 <li>错误：比如可用率低于 90%，或者数据库连接池被打爆了，或者访问量突然猛增到系统能承受的最大阀值，此时可以根据情况自动降级或者人工降级；</li>
 <li>严重错误：比如因为特殊原因数据错误了，此时需要紧急人工降级。</li>
 </ol>
+<h3 id="缓存污染"><a class="header-anchor" href="#缓存污染">¶</a>缓存污染</h3>
+<p>什么是缓存污染呢？在一些场景下，有些数据被访问的次数非常少，甚至只会被访问一次。当这些数据服务完访问请求后，如果还继续留存在缓存中的话，就只会白白占用缓存空间。这种情况，就是缓存污染。</p>
+<p>我们来看一下各种过期策略是否能解决缓存污染问题：</p>
+<ul>
+<li>allkeys-random：对所有key进行随机的淘汰，因为不确定之后同一个key是否还会被访问到，所以这个策略会导致缓存缺失问题。</li>
+<li>volatile-random：和allkeys-random类似。</li>
+<li>volatile-ttl：针对的是设置了过期时间的数据，把这些数据中剩余存活时间最短的筛选出来并淘汰掉，这种策略并不能直接反映数据被再次访问的情况，也有导致缓存缺失的问题。<br>
+一般业务会根据数据生效时间范围来决定数据的过期时间，因此过期时间短的很有可能就是用一下就不用的数据，所以这种情况下volatile-ttl是可以缓解缓存污染问题的。</li>
+<li>lru<br>
+把使用最少的淘汰掉。<br>
+但是使用LRU策略在处理扫描式单次查询操作时，无法解决缓存污染，因为这些key被扫描过一次后最近访问时间都是一样的。因为存在这种问题，因此Redis4.0增加了LRU淘汰策略。</li>
+<li>lfu<br>
+与 LRU 策略相比，LFU 策略中会从两个维度来筛选并淘汰数据：一是，数据访问的时效性（访问时间离当前时间的远近）；二是，数据的被访问次数。<br>
+LFU 缓存策略是在 LRU 策略基础上，为每个数据增加了一个计数器，来统计这个数据的访问次数。当使用 LFU 策略筛选淘汰数据时，首先会根据数据的访问次数进行筛选，把访问次数最低的数据淘汰出缓存。如果两个数据的访问次数相同，LFU 策略再比较这两个数据的访问时效性，把距离上一次访问时间更久的数据淘汰出缓存。</li>
+</ul>
 
       
     </div>
@@ -706,7 +803,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-count">129</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -717,7 +814,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -763,7 +860,7 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存系统如何工作"><span class="nav-number">1.</span> <span class="nav-text">¶缓存系统如何工作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存的两个特征"><span class="nav-number">1.1.</span> <span class="nav-text">¶缓存的两个特征</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis作为旁路缓存"><span class="nav-number">1.2.</span> <span class="nav-text">¶Redis作为旁路缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存满了怎么办？"><span class="nav-number">2.</span> <span class="nav-text">¶缓存满了怎么办？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存淘汰-缓存失效策略和主键失效机制"><span class="nav-number">2.1.</span> <span class="nav-text">¶缓存淘汰（缓存失效策略和主键失效机制）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的过期时间控制"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶key 的过期时间控制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的删除策略"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶key 的删除策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#redis-的数据淘汰策略"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶Redis 的数据淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#自定义缓存淘汰策略"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶自定义缓存淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存淘汰的实现"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶缓存淘汰的实现</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存系统中存在的问题"><span class="nav-number">3.</span> <span class="nav-text">¶缓存系统中存在的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">3.1.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">3.2.</span> <span class="nav-text">¶缓存雪崩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存预热"><span class="nav-number">3.3.</span> <span class="nav-text">¶缓存预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis-和数据库双写一致性问题"><span class="nav-number">3.4.</span> <span class="nav-text">¶Redis 和数据库双写一致性问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决-redis-的并发竞争-key-问题"><span class="nav-number">3.5.</span> <span class="nav-text">¶如何解决 redis 的并发竞争 key 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存降级"><span class="nav-number">3.6.</span> <span class="nav-text">¶缓存降级</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存系统如何工作"><span class="nav-number">1.</span> <span class="nav-text">¶缓存系统如何工作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存的两个特征"><span class="nav-number">1.1.</span> <span class="nav-text">¶缓存的两个特征</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#redis作为旁路缓存"><span class="nav-number">1.2.</span> <span class="nav-text">¶Redis作为旁路缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存满了怎么办？"><span class="nav-number">2.</span> <span class="nav-text">¶缓存满了怎么办？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存淘汰-缓存失效策略和主键失效机制"><span class="nav-number">2.1.</span> <span class="nav-text">¶缓存淘汰（缓存失效策略和主键失效机制）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的过期时间控制"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶key 的过期时间控制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#key-的删除策略"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶key 的删除策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#redis-的数据淘汰策略"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶Redis 的数据淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#自定义缓存淘汰策略"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶自定义缓存淘汰策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存淘汰的实现"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶缓存淘汰的实现</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存系统中存在的问题"><span class="nav-number">3.</span> <span class="nav-text">¶缓存系统中存在的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存穿透"><span class="nav-number">3.1.</span> <span class="nav-text">¶缓存穿透</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存雪崩"><span class="nav-number">3.2.</span> <span class="nav-text">¶缓存雪崩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存预热"><span class="nav-number">3.3.</span> <span class="nav-text">¶缓存预热</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存和数据库双写一致性问题"><span class="nav-number">3.4.</span> <span class="nav-text">¶缓存和数据库双写一致性问题</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#先失效缓存-后更新数据库数据"><span class="nav-number">3.4.1.</span> <span class="nav-text">¶先失效缓存 -&gt; 后更新数据库数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#延时双删"><span class="nav-number">3.4.2.</span> <span class="nav-text">¶延时双删</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#先更新数据库数据-后失效缓存"><span class="nav-number">3.4.3.</span> <span class="nav-text">¶先更新数据库数据 -&gt; 后失效缓存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新数据库数据-更新缓存"><span class="nav-number">3.4.4.</span> <span class="nav-text">¶更新数据库数据 -&gt; 更新缓存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新缓存-更新数据库数据"><span class="nav-number">3.4.5.</span> <span class="nav-text">¶更新缓存 -&gt; 更新数据库数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新数据库数据-定时同步到缓存"><span class="nav-number">3.4.6.</span> <span class="nav-text">¶更新数据库数据 -&gt; 定时同步到缓存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存更新总结"><span class="nav-number">3.4.7.</span> <span class="nav-text">¶缓存更新总结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决-redis-的并发竞争-key-问题"><span class="nav-number">3.5.</span> <span class="nav-text">¶如何解决 redis 的并发竞争 key 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存降级"><span class="nav-number">3.6.</span> <span class="nav-text">¶缓存降级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存污染"><span class="nav-number">3.7.</span> <span class="nav-text">¶缓存污染</span></a></li></ol></li></ol></div>
             
 
           </div>

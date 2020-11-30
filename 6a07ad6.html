@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="Redis 监控 这里把一些常见的监控命令总结一下，时不时都会用到。 ¶redis-cli 命令行客户端。 123456# 创建连接，可以用PING-PONG来检查连接是否OKredis-cli -h localhost -p 6379# 监控Redis的连接和读写操作redis-cli -h localhost -p 6379 monitor# Redis服务器的统计信息redis-cli -h">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-11-18T09:31:01.387Z">
+<meta property="og:updated_time" content="2020-11-27T02:31:59.976Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis 性能调优">
 <meta name="twitter:description" content="Redis 监控 这里把一些常见的监控命令总结一下，时不时都会用到。 ¶redis-cli 命令行客户端。 123456# 创建连接，可以用PING-PONG来检查连接是否OKredis-cli -h localhost -p 6379# 监控Redis的连接和读写操作redis-cli -h localhost -p 6379 monitor# Redis服务器的统计信息redis-cli -h">
@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  6.7k 字
+                  7k 字
                 </span>
               
 
@@ -374,7 +374,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  25 分钟
+                  26 分钟
                 </span>
               
             </div>
@@ -530,7 +530,7 @@ set-max-intset-entries 512<br>
 <code>cat data.txt | redis-cli --pipe</code></p>
 <h2 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 Key 问题</h2>
 <blockquote>
-<p>也可以叫大 Value 问题。</p>
+<p>大key大的是value。</p>
 </blockquote>
 <p>大 Key 有两种状况：</p>
 <ol>
@@ -538,6 +538,9 @@ set-max-intset-entries 512<br>
 <li>hash、set、zset、list 中存储的元素过多（以万为单位）。</li>
 </ol>
 <p>由于 Redis 的单线程模型，读写大 Key 时服务器的耗时可能会比较长、甚至阻塞。</p>
+<p>分析大key可以通过<code>--bigkeys</code>进行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">hgc@hgc-X555LD:~$ redis-cli -h 127.0.0.1 -p 6379 -n 0 --bigkeys</span><br><span class="line"></span><br><span class="line"># Scanning the entire keyspace to find biggest keys as well as</span><br><span class="line"># average sizes per key type.  You can use -i 0.1 to sleep 0.1 sec</span><br><span class="line"># per 100 SCAN commands (not usually needed).</span><br><span class="line"></span><br><span class="line">[00.00%] Biggest string found so far &apos;143&apos; with 35 bytes</span><br><span class="line">[00.00%] Biggest string found so far &apos;a&apos; with 184 bytes</span><br><span class="line">[73.33%] Biggest hash   found so far &apos;b&apos; with 1 fields</span><br><span class="line"></span><br><span class="line">-------- summary -------</span><br><span class="line"></span><br><span class="line">Sampled 15 keys in the keyspace!</span><br><span class="line">Total key length in bytes is 41 (avg len 2.73)</span><br><span class="line"></span><br><span class="line">Biggest   hash found &apos;b&apos; has 1 fields</span><br><span class="line">Biggest string found &apos;a&apos; has 184 bytes</span><br><span class="line"></span><br><span class="line">0 lists with 0 items (00.00% of keys, avg size 0.00)</span><br><span class="line">1 hashs with 1 fields (06.67% of keys, avg size 1.00)</span><br><span class="line">14 strings with 639 bytes (93.33% of keys, avg size 45.64)</span><br><span class="line">0 streams with 0 entries (00.00% of keys, avg size 0.00)</span><br><span class="line">0 sets with 0 members (00.00% of keys, avg size 0.00)</span><br><span class="line">0 zsets with 0 members (00.00% of keys, avg size 0.00)</span><br></pre></td></tr></table></figure>
+<p><code>bigkeys</code>是通过scan指令来实现的，所以并不会造成服务器长时间的阻塞，当然这种数据库全扫命令最好还是少用。</p>
 <p>解决方案一般是能拆则拆，对于单个大 Key 的情况：<br>
 1.1 将大 Key 进行分割，拆成几个小的 key-value，使用 multiGet 获取值。<br>
 这样分拆的意义是将单次操作的压力分摊到多个 Redis 实例上，降低对单个 Redis 的 IO 影响，而且大 Key 拆分之后每次只查询一部分，减小了 IO 阻塞的风险。<br>
@@ -900,7 +903,7 @@ save <seconds> <changes><br>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-count">129</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -911,7 +914,7 @@ save <seconds> <changes><br>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>

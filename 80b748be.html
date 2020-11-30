@@ -106,7 +106,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/bm/%E8%AE%A2%E5%8D%95%E4%B8%AD%E5%BF%83-ER%E5%9B%BE.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/bm/%E8%AE%A2%E5%8D%95%E4%B8%AD%E5%BF%83%E7%9A%84%E6%9F%A5%E8%AF%A2.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/bm/%E8%AE%A2%E5%8D%95%E4%B8%AD%E5%BF%83%E7%9A%84%E5%86%99%E5%85%A5.png">
-<meta property="og:updated_time" content="2020-11-19T11:53:34.164Z">
+<meta property="og:updated_time" content="2020-11-30T16:39:45.577Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="项目总结-bm">
 <meta name="twitter:description" content="业务背景 业务逻辑 收益 技术选型 服务器几台、QPS多少、存储、缓存、MQ等 架构图 规划 个人角色 / 做了什么 技术难点 遇到的问题 复盘 / 未来规划">
@@ -378,7 +378,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  7.4k 字
+                  9.2k 字
                 </span>
               
 
@@ -394,7 +394,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  26 分钟
+                  33 分钟
                 </span>
               
             </div>
@@ -478,15 +478,16 @@ MySQL存号源快照。</p>
 <li>订单存储成功后，维护订单缓存，并异步刷新ES以提供多维度查询；</li>
 <li>订单支付时，提交支付表单，跳转到支付页进行支付，支付完后回调通知业务，进行订单状态的转换。</li>
 </ol>
-<h2 id="轻问诊"><a class="header-anchor" href="#轻问诊">¶</a>轻问诊</h2>
-<p>主要就是答题，使用到了规则引擎，见：<a href="https://tallate.github.io/6ce879b3.html">《规则引擎》</a></p>
-<h2 id="订单的多级缓存"><a class="header-anchor" href="#订单的多级缓存">¶</a>订单的多级缓存</h2>
+<h3 id="订单的多级缓存"><a class="header-anchor" href="#订单的多级缓存">¶</a>订单的多级缓存</h3>
 <p>见《订单中心》。</p>
-<h2 id="如果失败怎么办？"><a class="header-anchor" href="#如果失败怎么办？">¶</a>如果失败怎么办？</h2>
+<h3 id="如果失败怎么办？"><a class="header-anchor" href="#如果失败怎么办？">¶</a>如果失败怎么办？</h3>
 <p>挂号操作的任务是扣减库存然后生成订单，显然，这两个操作并不是原子的，如果扣减库存成功，然后生成订单失败，那么库存不就浪费了吗？<br>
 实际上号源也是有状态的，刚开始，号源被占用一个后，仍然处于PREPARE状态，这个号只是被暂时占用了，被实际占用还要等到用户支付后，如果30分钟内用户不支付，那么这个库存会被自动释放掉。</p>
+<h2 id="轻问诊"><a class="header-anchor" href="#轻问诊">¶</a>轻问诊</h2>
+<p>主要就是答题，使用到了规则引擎，见：<a href="https://tallate.github.io/6ce879b3.html">《规则引擎》</a></p>
 <h2 id="多渠道订单同步"><a class="header-anchor" href="#多渠道订单同步">¶</a>多渠道订单同步</h2>
 <p><img src="http://47.88.24.11/imgs/bm/%E5%A4%9A%E6%B8%A0%E9%81%93%E8%AE%A2%E5%8D%95%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B.png" alt="多渠道订单同步流程" title="多渠道订单同步流程"></p>
+<h2 id="候补"><a class="header-anchor" href="#候补">¶</a>候补</h2>
 <h2 id="电子病历"><a class="header-anchor" href="#电子病历">¶</a>电子病历</h2>
 <p><img src="http://47.88.24.11/imgs/bm/%E7%94%B5%E5%AD%90%E7%97%85%E5%8E%86.png" alt="电子病历" title="电子病历"></p>
 <h2 id="缴费"><a class="header-anchor" href="#缴费">¶</a>缴费</h2>
@@ -564,6 +565,21 @@ MySQL存号源快照。</p>
 <li>发现服务日志中出现：<br>
 <code>RedisException: Master is currently unknown: ...</code></li>
 </ol>
+<p>故障review发现：Redis服务端因为网络抖动发生了主观下线，很快自动恢复了，但是客户端并没有恢复，主要是因为lettuce客户端版本相对比较老。<br>
+为此，我们所做的：</p>
+<ol>
+<li>探活，针对客户端无法恢复的情况，探活检查服务器挂掉的情况，实时通知开发；<br>
+探活实现了对Redis客户端及服务器可用性的检查，之后发现还可以检查长时间的FULLGC，这是运维的zabbix无法实现的。</li>
+<li>sentinel存在单点问题，而且容量已经不大够了且扩容困难，于是重建一套Redis Cluster；</li>
+<li>服务端从Sentinel迁移到Cluster，客户端也需要同时进行迁移，迁移过程中需要双写双读；<br>
+数据库的迁移（扩容）实际上一般也会采取双写双读，注意不能采取监听binlog的方式，因为监听binlog是异步的，数据的写入并不实时。</li>
+</ol>
+<blockquote>
+<p>数据库检查迁移的过程检测可以看阿里的愚公。</p>
+</blockquote>
+<ol>
+<li>新客户端采用Redisson，对分布式锁提供了更好的支持，刚开始我们这边采用的分布式锁是<code>setnx+ex</code>，后来采用<code>set nx ex</code>，之后引入Redisson后转为RedLock，提高了可靠性；</li>
+</ol>
 <h3 id="迁移流程"><a class="header-anchor" href="#迁移流程">¶</a>迁移流程</h3>
 <h4 id="客户端修改及增量同步"><a class="header-anchor" href="#客户端修改及增量同步">¶</a>客户端修改及增量同步</h4>
 <p>原Redis Sentinel集群是1主2从3哨兵，使用lettuce作为客户端。<br>
@@ -603,7 +619,8 @@ set会先设置新Redis，然后再设置老Redis，del同理。</li>
 <p>qmq大体流程是这样的：生产者在本地写数据库记录，调用qmq的服务端的dubbo接口，qmq的dubbo接口里是将消息存到数据库，写入redis，根据订阅qmq消息情况，从qmq的服务端发起dubbo接口调用，去调用consumer提供的dubbo接口。</p>
 <p>刚开始公司内所有老项目都是使用的QMQ，后来转到了RocketMQ，具体原因如下：</p>
 <ol>
-<li>qmq基于redis和mysql的存储，系统复杂性太高，稳定性风险较大。</li>
+<li>qmq基于redis和mysql的存储，系统复杂性太高，稳定性风险较大。<br>
+相较起来，RocketMQ是基于文件系统的，不需要维护数据库的索引，而且是顺序读的，CommitLog文件达到一定大小就会生成一个新文件，所以效率更高更稳定。</li>
 </ol>
 <blockquote>
 <p>出现过qmq连不上Redis，消息没被删掉，导致Redis内存几乎被打满的情况。当时排查出是qmq中的Redis客户端连不上服务器导致的，所以后来做了探活功能，并计划迁移到RocketMQ。</p>
@@ -641,6 +658,10 @@ set会先设置新Redis，然后再设置老Redis，del同理。</li>
 <h3 id="rocketmq架构"><a class="header-anchor" href="#rocketmq架构">¶</a>RocketMQ架构</h3>
 <p>公司内RocketMQ采用两主四从的集群架构，集群模式是DLedger。</p>
 <h3 id="rocketmq客户端接入"><a class="header-anchor" href="#rocketmq客户端接入">¶</a>RocketMQ客户端接入</h3>
+<p>我们定义一个类似下面这样的客户端Consumer注解：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Component</span><br><span class="line">public @interface RMQConsumer &#123;</span><br><span class="line">    String consumerGroup();</span><br><span class="line"></span><br><span class="line">    String topic();</span><br><span class="line"></span><br><span class="line">    String messageMode() default &quot;CLUSTERING&quot;;</span><br><span class="line"></span><br><span class="line">    String tag() default &quot;*&quot;;</span><br><span class="line"></span><br><span class="line">    String consumeFromWherec() default &quot;CONSUME_FROM_LAST_OFFSET&quot;;</span><br><span class="line"></span><br><span class="line">    int consumeThreadMax() default 20;</span><br><span class="line"></span><br><span class="line">    int consumeThreadMin() default 20;</span><br><span class="line"></span><br><span class="line">    int pullThresholdForQueue() default 1000;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>同时，会在应用启动期间把这个注解标记的类注册为消费者：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RMQConsumerRegisterContainer</span><br></pre></td></tr></table></figure>
 <h3 id="用量"><a class="header-anchor" href="#用量">¶</a>用量</h3>
 <p>最高的是抓取号源消息，达到百万级的数量，其他如订单更新、发送推送之类的消息也达到了近百万。<br>
 总消息量约10亿的量级。</p>
@@ -667,6 +688,14 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
 <li>排队：按等待时间排序，</li>
 </ol>
 <h2 id="qconfig-apollo"><a class="header-anchor" href="#qconfig-apollo">¶</a>QConfig -&gt; Apollo</h2>
+<h2 id="使用模板引擎实现问卷功能"><a class="header-anchor" href="#使用模板引擎实现问卷功能">¶</a>使用模板引擎实现问卷功能</h2>
+<p>背景：今年做的新功能，需要知道用户是否有患病的风险，所以做了个线上的问诊功能。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">1.您的孩子本次就诊的症状中是否有发热（体温≧37.2℃）？</span><br><span class="line">    □有   □无</span><br><span class="line">2.您的孩子本次就诊的症状中是否有咳嗽、流涕、咽痛？</span><br><span class="line">    □有   □无</span><br><span class="line">3.发病前14天内孩子或父母及其他看护人是否有武汉市及周边地区，或其他有病例报告社区的旅行史或居住史？</span><br><span class="line">    □有   □无</span><br><span class="line">4.发病前14天内孩子或父母及其他看护人是否与新型冠状病毒感染者（核酸检测阳性者）有接触史？</span><br><span class="line">    □有   □无</span><br><span class="line">5.发病前14天内孩子或父母及其他看护人是否曾接触过来自武汉市及周边地区，或来自有病例报告社区的发热或有呼吸道症状的患者？</span><br><span class="line">    □是    □否</span><br><span class="line">6.周围是否有2人及2人以上同时或先后出现发热或/和呼吸道症状？</span><br><span class="line">    □有   □否</span><br><span class="line">·“1”和“2”中只要有一项答“有”的患者，如果同时有“3”、“4”、“5”、“6”中的任意一项，直接挂“感染门诊（一级科室）”下的“感染门诊（二级科室）” </span><br><span class="line">·“1”和“2”中只要有一项答“有”的患者，如果“3”、“4”、“5”、“6”均答“无”的患者，挂“内科综合门诊”下任意二级科室的号，或“呼吸内科门诊（一级科室）”下的“呼吸内科门诊（二级科室）”任意号别的号</span><br><span class="line">·“1”和“2”中均答“无”的患者，如果“3”、“4”、“5”、“6”均答“无”的患者，正常挂号。</span><br><span class="line">·“1”和“2”中均答“无”的患者，如果“3”、“4”、“5”、“6”任意一项答“有”的患者，提示患者 “非急诊居家隔离14天，如果是急诊，建议到医院挂号就诊”并微信限制挂号。</span><br></pre></td></tr></table></figure>
+<p>刚开始思路就是做一个计算器，把表达式转成后缀表达式来计算结果。<br>
+后来发现用框架实现更直接，对比当时考虑的几种方式：</p>
+<ul>
+<li></li>
+</ul>
 <h2 id="订单中心的变迁"><a class="header-anchor" href="#订单中心的变迁">¶</a>订单中心的变迁</h2>
 <p><img src="http://47.88.24.11/imgs/bm/%E8%AE%A2%E5%8D%95%E4%B8%AD%E5%BF%83.png" alt="订单中心" title="订单中心"><br>
 <img src="http://47.88.24.11/imgs/bm/%E8%AE%A2%E5%8D%95%E4%B8%AD%E5%BF%83-ER%E5%9B%BE.png" alt="订单中心-ER图" title="订单中心-ER图"><br>
@@ -695,6 +724,44 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
 消费成功后，将messageId保存到Redis。<br>
 消费前需要检查Redis里是否已经保存了该messageId。<br>
 幂等是有状态的，消费失败意味着可以重试；消费成功意味着下次再来相同messageId的消费可以忽略掉；如果是消费中，可以考虑阻塞等待，但更多时候是直接抛出异常然后等消息队列重试它。</p>
+<h3 id="es索引"><a class="header-anchor" href="#es索引">¶</a>ES索引</h3>
+<p>订单中心除了将数据保存到数据库和缓存外，还会异步地将数据索引到ES，供多维度的查询。</p>
+<p>数据量：<br>
+总共60G的内存，其中20G分给JVM，40G分给LUA。</p>
+<h2 id="遇到了什么问题？"><a class="header-anchor" href="#遇到了什么问题？">¶</a>遇到了什么问题？</h2>
+<ol>
+<li>应用服务GC时间超长<br>
+半夜报警<br>
+用pinpoint观察发现GC时间特别长</li>
+<li>发现swap影响了GC时长<br>
+观察gc日志时间长<br>
+free看到空闲内存少、swap被占用<br>
+sar查看有swap交换<br>
+swap原理<br>
+隐患：速度慢、Linux会把进程杀了</li>
+<li>解决办法<br>
+怎么查到对象占用内存多的（dump内存），修改后怎么样了</li>
+</ol>
+<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
+<h3 id="有没有使用mq实现过削峰？"><a class="header-anchor" href="#有没有使用mq实现过削峰？">¶</a>有没有使用MQ实现过削峰？</h3>
+<p>MQ的3大功能：异步、解耦、削峰。<br>
+这个问题回答时容易把异步和削峰搞混，要知道削峰属于异步处理，但是异步并不都是削峰。<br>
+一般情况下我们要异步处理的主要目的是某个复合操作包含了好多耗时的接口调用，我们可以让这些耗时的操作被同时处理，甚至如果一些操作不重要的话也可以放到mq中处理。<br>
+我接触的削峰场景其实并发量并不高，只是三方接口承载量比较低，导致高峰期我们的业务也被拖垮了，所以把这些会调用失败的接口放到MQ中延迟处理。</p>
+<h3 id="ha网关怎么检查的超时-队列溢出-怎么看哪些接口出错了-怎么报警"><a class="header-anchor" href="#ha网关怎么检查的超时-队列溢出-怎么看哪些接口出错了-怎么报警">¶</a>ha网关怎么检查的超时、队列溢出，怎么看哪些接口出错了，怎么报警</h3>
+<p>超时的话是在每次重试时叠加的执行时间，然后在执行前查看是否达到了阈值，再报警；<br>
+队列溢出是通过一个AtomicLong实现的，和Semaphore同时操作，累加的是&lt;hos_code, interface&gt;，达到阈值后发报警。<br>
+报警通过falcon实现，发到微信里的。</p>
+<h3 id="为什么是redis而不是memcache"><a class="header-anchor" href="#为什么是redis而不是memcache">¶</a>为什么是Redis而不是Memcache</h3>
+<p>Memcache和Redis功能上是重复的，维护两套缓存系统会带来维护成本，Memcache在性能上相对Redis高一些，但是不支持复杂的数据结构、不支持持久化，虽然有高可用方案，但是是基于内存的，服务器挂掉数据就没了。<br>
+顺便主动介绍下Redis中的数据结构，和持久化、高可用方案。</p>
+<p>另外，对于获取号源这样的功能，还提供本地缓存。</p>
+<h3 id="为什么用rocketmq而不是qmq或kafka"><a class="header-anchor" href="#为什么用rocketmq而不是qmq或kafka">¶</a>为什么用RocketMQ而不是QMQ或Kafka</h3>
+<p>看上面对迁移的介绍。</p>
+<h3 id="为什么用es而不是-只用-mysql"><a class="header-anchor" href="#为什么用es而不是-只用-mysql">¶</a>为什么用ES而不是（只用）MySQL</h3>
+<p>首先需要强调的是，并不是所有订单都会建立ES索引，ES索引专门用于一些需要多维度查询的订单场景。<br>
+比如挂号前有很多限制规则，比如某个专家号在一周内一个用户只能挂出去3个号这种。<br>
+这样的规则是有很多的，如果要完全用MySQL的索引来实现，需要创建很多索引，且很多索引的长度都很长，会给MySQL带来比较大的负担。</p>
 <h1>参考</h1>
 <ol>
 <li><a href="https://blog.csdn.net/bonj2011/article/details/81842588" target="_blank" rel="noopener">库存系统设计</a></li>
@@ -824,7 +891,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-count">129</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -835,7 +902,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -881,7 +948,7 @@ HIS系统有一个非常鲜明的特征是：效率非常差。一般我们指�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">流程描述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#号源抓取"><span class="nav-number">1.1.</span> <span class="nav-text">¶号源抓取</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#号源抓取-放号提醒"><span class="nav-number">1.2.</span> <span class="nav-text">¶号源抓取 - 放号提醒</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锁号生成订单"><span class="nav-number">1.3.</span> <span class="nav-text">¶锁号生成订单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#轻问诊"><span class="nav-number">1.4.</span> <span class="nav-text">¶轻问诊</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#订单的多级缓存"><span class="nav-number">1.5.</span> <span class="nav-text">¶订单的多级缓存</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如果失败怎么办？"><span class="nav-number">1.6.</span> <span class="nav-text">¶如果失败怎么办？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多渠道订单同步"><span class="nav-number">1.7.</span> <span class="nav-text">¶多渠道订单同步</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#电子病历"><span class="nav-number">1.8.</span> <span class="nav-text">¶电子病历</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缴费"><span class="nav-number">1.9.</span> <span class="nav-text">¶缴费</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#线上医保分解"><span class="nav-number">1.10.</span> <span class="nav-text">¶线上医保分解</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#物流系统"><span class="nav-number">1.11.</span> <span class="nav-text">¶物流系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#共享轮椅"><span class="nav-number">1.12.</span> <span class="nav-text">¶共享轮椅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#支付中心"><span class="nav-number">1.13.</span> <span class="nav-text">¶支付中心</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">架构变迁、遇到的问题及解决方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#探活-healthcheck"><span class="nav-number">2.1.</span> <span class="nav-text">¶探活 - HealthCheck</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#解决方案"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶解决方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#收益"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶收益</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-cluster"><span class="nav-number">2.2.</span> <span class="nav-text">¶Sentinel -&gt; Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景-v2"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#迁移流程"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶迁移流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#客户端修改及增量同步"><span class="nav-number">2.2.2.1.</span> <span class="nav-text">¶客户端修改及增量同步</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#用量和性能"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶用量和性能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#扩容方式"><span class="nav-number">2.2.4.</span> <span class="nav-text">¶扩容方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多级缓存"><span class="nav-number">2.2.5.</span> <span class="nav-text">¶多级缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qmq-rocketmq"><span class="nav-number">2.3.</span> <span class="nav-text">¶QMQ -&gt; RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景-v3"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#平滑迁移步骤"><span class="nav-number">2.3.2.</span> <span class="nav-text">¶平滑迁移步骤</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq架构"><span class="nav-number">2.3.3.</span> <span class="nav-text">¶RocketMQ架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq客户端接入"><span class="nav-number">2.3.4.</span> <span class="nav-text">¶RocketMQ客户端接入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#用量"><span class="nav-number">2.3.5.</span> <span class="nav-text">¶用量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#平滑迁移"><span class="nav-number">2.3.6.</span> <span class="nav-text">¶平滑迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#扩容方式-v2"><span class="nav-number">2.3.7.</span> <span class="nav-text">¶扩容方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#示例用法"><span class="nav-number">2.3.8.</span> <span class="nav-text">¶示例用法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#医院网关-ha-hospital-adaptor"><span class="nav-number">2.4.</span> <span class="nav-text">¶医院网关（ha / hospital-adaptor）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#业务背景"><span class="nav-number">2.4.1.</span> <span class="nav-text">¶业务背景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qconfig-apollo"><span class="nav-number">2.5.</span> <span class="nav-text">¶QConfig -&gt; Apollo</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#订单中心的变迁"><span class="nav-number">2.6.</span> <span class="nav-text">¶订单中心的变迁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么查询缓存的同时还要查一次库？"><span class="nav-number">2.6.1.</span> <span class="nav-text">¶为什么查询缓存的同时还要查一次库？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#订单状态机"><span class="nav-number">2.6.2.</span> <span class="nav-text">¶订单状态机</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">流程描述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#号源抓取"><span class="nav-number">1.1.</span> <span class="nav-text">¶号源抓取</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#号源抓取-放号提醒"><span class="nav-number">1.2.</span> <span class="nav-text">¶号源抓取 - 放号提醒</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锁号生成订单"><span class="nav-number">1.3.</span> <span class="nav-text">¶锁号生成订单</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#订单的多级缓存"><span class="nav-number">1.3.1.</span> <span class="nav-text">¶订单的多级缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果失败怎么办？"><span class="nav-number">1.3.2.</span> <span class="nav-text">¶如果失败怎么办？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#轻问诊"><span class="nav-number">1.4.</span> <span class="nav-text">¶轻问诊</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多渠道订单同步"><span class="nav-number">1.5.</span> <span class="nav-text">¶多渠道订单同步</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#候补"><span class="nav-number">1.6.</span> <span class="nav-text">¶候补</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#电子病历"><span class="nav-number">1.7.</span> <span class="nav-text">¶电子病历</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缴费"><span class="nav-number">1.8.</span> <span class="nav-text">¶缴费</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#线上医保分解"><span class="nav-number">1.9.</span> <span class="nav-text">¶线上医保分解</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#物流系统"><span class="nav-number">1.10.</span> <span class="nav-text">¶物流系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#共享轮椅"><span class="nav-number">1.11.</span> <span class="nav-text">¶共享轮椅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#支付中心"><span class="nav-number">1.12.</span> <span class="nav-text">¶支付中心</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">架构变迁、遇到的问题及解决方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#探活-healthcheck"><span class="nav-number">2.1.</span> <span class="nav-text">¶探活 - HealthCheck</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#解决方案"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶解决方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#收益"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶收益</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-cluster"><span class="nav-number">2.2.</span> <span class="nav-text">¶Sentinel -&gt; Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景-v2"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#迁移流程"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶迁移流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#客户端修改及增量同步"><span class="nav-number">2.2.2.1.</span> <span class="nav-text">¶客户端修改及增量同步</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#用量和性能"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶用量和性能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#扩容方式"><span class="nav-number">2.2.4.</span> <span class="nav-text">¶扩容方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多级缓存"><span class="nav-number">2.2.5.</span> <span class="nav-text">¶多级缓存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qmq-rocketmq"><span class="nav-number">2.3.</span> <span class="nav-text">¶QMQ -&gt; RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景-v3"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#平滑迁移步骤"><span class="nav-number">2.3.2.</span> <span class="nav-text">¶平滑迁移步骤</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq架构"><span class="nav-number">2.3.3.</span> <span class="nav-text">¶RocketMQ架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rocketmq客户端接入"><span class="nav-number">2.3.4.</span> <span class="nav-text">¶RocketMQ客户端接入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#用量"><span class="nav-number">2.3.5.</span> <span class="nav-text">¶用量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#平滑迁移"><span class="nav-number">2.3.6.</span> <span class="nav-text">¶平滑迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#扩容方式-v2"><span class="nav-number">2.3.7.</span> <span class="nav-text">¶扩容方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#示例用法"><span class="nav-number">2.3.8.</span> <span class="nav-text">¶示例用法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#医院网关-ha-hospital-adaptor"><span class="nav-number">2.4.</span> <span class="nav-text">¶医院网关（ha / hospital-adaptor）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#业务背景"><span class="nav-number">2.4.1.</span> <span class="nav-text">¶业务背景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qconfig-apollo"><span class="nav-number">2.5.</span> <span class="nav-text">¶QConfig -&gt; Apollo</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用模板引擎实现问卷功能"><span class="nav-number">2.6.</span> <span class="nav-text">¶使用模板引擎实现问卷功能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#订单中心的变迁"><span class="nav-number">2.7.</span> <span class="nav-text">¶订单中心的变迁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么查询缓存的同时还要查一次库？"><span class="nav-number">2.7.1.</span> <span class="nav-text">¶为什么查询缓存的同时还要查一次库？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#订单状态机"><span class="nav-number">2.7.2.</span> <span class="nav-text">¶订单状态机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#es索引"><span class="nav-number">2.7.3.</span> <span class="nav-text">¶ES索引</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#遇到了什么问题？"><span class="nav-number">2.8.</span> <span class="nav-text">¶遇到了什么问题？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">2.9.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#有没有使用mq实现过削峰？"><span class="nav-number">2.9.1.</span> <span class="nav-text">¶有没有使用MQ实现过削峰？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ha网关怎么检查的超时-队列溢出-怎么看哪些接口出错了-怎么报警"><span class="nav-number">2.9.2.</span> <span class="nav-text">¶ha网关怎么检查的超时、队列溢出，怎么看哪些接口出错了，怎么报警</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么是redis而不是memcache"><span class="nav-number">2.9.3.</span> <span class="nav-text">¶为什么是Redis而不是Memcache</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么用rocketmq而不是qmq或kafka"><span class="nav-number">2.9.4.</span> <span class="nav-text">¶为什么用RocketMQ而不是QMQ或Kafka</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么用es而不是-只用-mysql"><span class="nav-number">2.9.5.</span> <span class="nav-text">¶为什么用ES而不是（只用）MySQL</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>

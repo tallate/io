@@ -89,11 +89,12 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Cluster.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E7%BD%91%E7%BB%9C%E5%88%86%E5%8C%BA.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/Redis/RedisCluster%E6%AF%94%E5%AF%B9Codis.jpg">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/ConsistentHashLoadBalance.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/RedisCluster%E6%95%85%E9%9A%9C%E5%8F%91%E7%8E%B01.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/RedisCluster%E6%95%85%E9%9A%9C%E5%8F%91%E7%8E%B02.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/RedisCluster%E6%95%85%E9%9A%9C%E5%8F%91%E7%8E%B03.png">
-<meta property="og:updated_time" content="2020-11-18T02:04:22.362Z">
+<meta property="og:updated_time" content="2020-11-28T18:20:45.163Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis高可用方案Cluster">
 <meta name="twitter:description" content="¶Redis Cluster介绍 ¶Cluster 优势  线性的可扩展性：扩容即迁移槽，已有很多迁移案例； 没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈； 写入安全（Write Safety）：只有在非常少见的 Maste">
@@ -365,7 +366,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  17.4k 字
+                  18.5k 字
                 </span>
               
 
@@ -381,7 +382,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  77 分钟
+                  81 分钟
                 </span>
               
             </div>
@@ -428,6 +429,44 @@ redis cluster在设计的时候，就考虑到了<strong>去中心化</strong>�
 <blockquote>
 <p>网络分区出现期间，客户端 Z1 可以向主节点 B 发送写命令的最大时间是有限制的， 这一时间限制称为节点超时时间（node timeout）， 是 Redis 集群的一个重要的配置选项。</p>
 </blockquote>
+<h3 id="cluster-vs-codis"><a class="header-anchor" href="#cluster-vs-codis">¶</a>Cluster VS Codis</h3>
+<p>Codis 集群中包含了 4 类关键组件。</p>
+<ul>
+<li>codis server：这是进行了二次开发的 Redis 实例，其中增加了额外的数据结构，支持数据迁移操作，主要负责处理具体的数据读写请求。</li>
+<li>codis proxy：接收客户端请求，并把请求转发给 codis server。</li>
+<li>Zookeeper 集群：保存集群元数据，例如数据位置信息和 codis proxy 信息。</li>
+<li>codis dashboard 和 codis fe：共同组成了集群管理工具。其中，codis dashboard 负责执行集群管理工作，包括增删 codis server、codis proxy 和进行数据迁移。而 codis fe 负责提供 dashboard 的 Web 操作界面，便于我们直接在 Web 界面上进行集群管理。</li>
+</ul>
+<p>Codis如何处理一次请求：</p>
+<ol>
+<li>客户端连接Codis Proxy，将请求发给Proxy；</li>
+<li>codis proxy 接收到请求，就会查询请求数据和 codis server 的映射关系，并把请求转发给相应的 codis server 进行处理</li>
+<li>当 codis server 处理完请求后，会把结果返回给 codis proxy，proxy 再把数据返回给客户端。</li>
+</ol>
+<p>以4个方面来讨论</p>
+<ul>
+<li>数据分布<br>
+和Cluster类似，Codis将数据保存到slot，集群一共有1024个slot，需要手动分配给Codis Server，或者由dashboard自动分配。<br>
+当客户端要读写数据时，会使用CRC32算法计算key的哈希值，并对1024取模，就可以知道对应的是哪个slot了。<br>
+这个路由规则需要先配置到dashboard，dashboard会把路由表发送给codis proxy，并同时保存到ZooKeeper。<br>
+而Cluster的数据路由表是由每个实例管理的，如果发生变化，这些实例会通过Gossip协议来互相传播，如果实例比较多，就会占用比较多的网络资源。</li>
+<li>集群扩容和数据迁移<br>
+如果要增加Codis Server来负载slot，需要配置要迁移的slot，Codis Server会将该slot中的数据<strong>一个一个</strong>地发送给目标Server。<br>
+增加Codis Proxy也是类似的流程。</li>
+<li>客户端兼容性<br>
+Codis客户端直接和Codis Proxy连接，codis proxy 是和单实例客户端兼容的，而集群相关的管理工作又都是由Codis Proxy和Codis dashboard这些组件来完成的，不需要客户端参与。</li>
+<li>可靠性保证<br>
+Codis Server保证可靠性：Codis Server本身是Redis实例，只是增加了集群相关的操作命令，可靠性是可以通过主从机制+哨兵来实现的。<br>
+Codis Proxy的可靠性：Proxy上的信息都来自ZooKeeper，例如路由表，只要ZooKeeper集群中实例半数以上可以正常工作，那么ZooKeeper集群就是正常的。</li>
+</ul>
+<p>比较：<br>
+<img src="http://47.88.24.11/imgs/Redis/RedisCluster%E6%AF%94%E5%AF%B9Codis.jpg" alt="RedisCluster比对Codis" title="RedisCluster比对Codis"></p>
+<ul>
+<li>从稳定性和成熟度来看，Codis 应用得比较早，在业界已经有了成熟的生产部署。虽然 Codis 引入了 proxy 和 Zookeeper，增加了集群复杂度，但是，proxy 的无状态设计和 Zookeeper 自身的稳定性，也给 Codis 的稳定使用提供了保证。而 Redis Cluster 的推出时间晚于 Codis，相对来说，成熟度要弱于 Codis，如果你想选择一个成熟稳定的方案，Codis 更加合适些。</li>
+<li>从业务应用客户端兼容性来看，连接单实例的客户端可以直接连接 codis proxy，而原本连接单实例的客户端要想连接 Redis Cluster 的话，就需要开发新功能。所以，如果你的业务应用中大量使用了单实例的客户端，而现在想应用切片集群的话，建议你选择 Codis，这样可以避免修改业务应用中的客户端。</li>
+<li>从使用 Redis 新命令和新特性来看，Codis server 是基于开源的 Redis 3.2.8 开发的，所以，Codis 并不支持 Redis 后续的开源版本中的新增命令和数据类型。另外，Codis 并没有实现开源 Redis 版本的所有命令，比如 BITOP、BLPOP、BRPOP，以及和与事务相关的 MUTLI、EXEC 等命令。Codis 官网上列出了不被支持的命令列表，你在使用时记得去核查一下。所以，如果你想使用开源 Redis 版本的新特性，Redis Cluster 是一个合适的选择。</li>
+<li>从数据迁移性能维度来看，Codis 能支持异步迁移，异步迁移对集群处理正常请求的性能影响要比使用同步迁移的小。所以，如果你在应用集群时，数据迁移比较频繁的话，Codis 是个更合适的选择。</li>
+</ul>
 <h2 id="数据分布-分区-和查询路由"><a class="header-anchor" href="#数据分布-分区-和查询路由">¶</a>数据分布（分区）和查询路由</h2>
 <h3 id="分区策略"><a class="header-anchor" href="#分区策略">¶</a>分区策略</h3>
 <p>分区将原来比较大的数据集分离存储到多个存储媒介上，分区后Redis可以管理更大的内存空间和计算能力，但同时多主机又会面临很多分布式集群的可用性、一致性等问题。<br>
@@ -662,8 +701,8 @@ B1唤醒后，会向其他所有节点发送拉票请求，即<code>CLUSTERMSG_T
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/7731e967.html" rel="next" title="发号器">
-                <i class="fa fa-chevron-left"></i> 发号器
+              <a href="/f1a5dd67.html" rel="next" title="Redis 数据结构">
+                <i class="fa fa-chevron-left"></i> Redis 数据结构
               </a>
             
           </div>
@@ -672,8 +711,8 @@ B1唤醒后，会向其他所有节点发送拉票请求，即<code>CLUSTERMSG_T
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/f1a5dd67.html" rel="prev" title="Redis 数据结构">
-                Redis 数据结构 <i class="fa fa-chevron-right"></i>
+              <a href="/df2941e1.html" rel="prev" title="Redis 概述">
+                Redis 概述 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -756,7 +795,7 @@ B1唤醒后，会向其他所有节点发送拉票请求，即<code>CLUSTERMSG_T
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-count">129</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -767,7 +806,7 @@ B1唤醒后，会向其他所有节点发送拉票请求，即<code>CLUSTERMSG_T
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -813,7 +852,7 @@ B1唤醒后，会向其他所有节点发送拉票请求，即<code>CLUSTERMSG_T
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-cluster介绍"><span class="nav-number">1.</span> <span class="nav-text">¶Redis Cluster介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-优势"><span class="nav-number">1.1.</span> <span class="nav-text">¶Cluster 优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-缺点"><span class="nav-number">1.2.</span> <span class="nav-text">¶Cluster 缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster的去中心化架构"><span class="nav-number">1.3.</span> <span class="nav-text">¶Cluster的去中心化架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一致性"><span class="nav-number">1.4.</span> <span class="nav-text">¶一致性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据分布-分区-和查询路由"><span class="nav-number">2.</span> <span class="nav-text">¶数据分布（分区）和查询路由</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分区策略"><span class="nav-number">2.1.</span> <span class="nav-text">¶分区策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的实现层次"><span class="nav-number">2.2.</span> <span class="nav-text">¶分区的实现层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的缺点"><span class="nav-number">2.3.</span> <span class="nav-text">¶分区的缺点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点通信"><span class="nav-number">3.</span> <span class="nav-text">¶节点通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#扩容-缩容"><span class="nav-number">4.</span> <span class="nav-text">¶扩容 / 缩容</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#新节点加入流程"><span class="nav-number">4.1.</span> <span class="nav-text">¶新节点加入流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#节点迁移过程"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶节点迁移过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#迁移过程中对新请求的响应"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶迁移过程中对新请求的响应</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#旧节点退出流程"><span class="nav-number">4.2.</span> <span class="nav-text">¶旧节点退出流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障恢复-容错"><span class="nav-number">5.</span> <span class="nav-text">¶故障恢复（容错）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#故障发现"><span class="nav-number">5.1.</span> <span class="nav-text">¶故障发现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#pfail"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶PFAIL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fail"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶FAIL</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#子节点选举-故障迁移"><span class="nav-number">5.2.</span> <span class="nav-text">¶子节点选举（故障迁移）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置更新"><span class="nav-number">5.3.</span> <span class="nav-text">¶配置更新</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">6.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-cluster介绍"><span class="nav-number">1.</span> <span class="nav-text">¶Redis Cluster介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-优势"><span class="nav-number">1.1.</span> <span class="nav-text">¶Cluster 优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-缺点"><span class="nav-number">1.2.</span> <span class="nav-text">¶Cluster 缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster的去中心化架构"><span class="nav-number">1.3.</span> <span class="nav-text">¶Cluster的去中心化架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一致性"><span class="nav-number">1.4.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-vs-codis"><span class="nav-number">1.5.</span> <span class="nav-text">¶Cluster VS Codis</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据分布-分区-和查询路由"><span class="nav-number">2.</span> <span class="nav-text">¶数据分布（分区）和查询路由</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分区策略"><span class="nav-number">2.1.</span> <span class="nav-text">¶分区策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的实现层次"><span class="nav-number">2.2.</span> <span class="nav-text">¶分区的实现层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的缺点"><span class="nav-number">2.3.</span> <span class="nav-text">¶分区的缺点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点通信"><span class="nav-number">3.</span> <span class="nav-text">¶节点通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#扩容-缩容"><span class="nav-number">4.</span> <span class="nav-text">¶扩容 / 缩容</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#新节点加入流程"><span class="nav-number">4.1.</span> <span class="nav-text">¶新节点加入流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#节点迁移过程"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶节点迁移过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#迁移过程中对新请求的响应"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶迁移过程中对新请求的响应</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#旧节点退出流程"><span class="nav-number">4.2.</span> <span class="nav-text">¶旧节点退出流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障恢复-容错"><span class="nav-number">5.</span> <span class="nav-text">¶故障恢复（容错）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#故障发现"><span class="nav-number">5.1.</span> <span class="nav-text">¶故障发现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#pfail"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶PFAIL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fail"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶FAIL</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#子节点选举-故障迁移"><span class="nav-number">5.2.</span> <span class="nav-text">¶子节点选举（故障迁移）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置更新"><span class="nav-number">5.3.</span> <span class="nav-text">¶配置更新</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">6.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>

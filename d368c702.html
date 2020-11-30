@@ -91,7 +91,7 @@
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/RedisSentinel%E4%BA%8B%E4%BB%B6.jpg">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg">
 <meta property="og:image" content="http://47.88.24.11/imgs/MySQL%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/RedisSentinel%E6%8A%95%E7%A5%A8.jpg">
-<meta property="og:updated_time" content="2020-11-17T09:17:45.108Z">
+<meta property="og:updated_time" content="2020-11-28T10:42:24.821Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis高可用方案Sentinel">
 <meta name="twitter:description" content="¶操作   Master TODO   Slave   Sentinel   获取集群信息  1redis-cli -p 26379 info Sentinel   获取 master 节点地址  1redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster   ¶客户端如何连接Sentinel集群  在 Sentinel 模式下，客户">
@@ -363,7 +363,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  5.6k 字
+                  5.8k 字
                 </span>
               
 
@@ -379,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  22 分钟
+                  23 分钟
                 </span>
               
             </div>
@@ -553,6 +553,19 @@ TODO</p>
 <p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
 <h2 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h2>
 <p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
+<h2 id="脑裂"><a class="header-anchor" href="#脑裂">¶</a>脑裂</h2>
+<p>虽然Sentinel利用Raft选举不会发生脑裂，但是在一些极端的情况下还是有可能会发生脑裂的，比如：</p>
+<ol>
+<li>原Master不能提供服务了，但是它本身并没有挂掉；</li>
+<li>Sentinel发现连不上Master，于是判定客观下线，并发起主从切换；</li>
+<li>原Master和新Master同时给Client提供服务，发生脑裂。</li>
+</ol>
+<p>这种脑裂并不会影响可用性，但是却破坏了数据的一致性，甚至会导致数据丢失：在Sentinel重连上原Master后，会将其归入到新Master的Slave，这时脑裂期间的数据就会被从新Master上复制过来的数据覆盖掉了，导致数据的丢失。</p>
+<p>脑裂的解决办法主要是以下两个配置参数：</p>
+<ul>
+<li>min-slaves-to-write：这个配置项设置了主库能进行数据同步的最少从库数量；</li>
+<li>min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时，从库给主库发送 ACK 消息的最大延迟（以秒为单位）。</li>
+</ul>
 <h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
 <h3 id="5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？"><a class="header-anchor" href="#5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？">¶</a>5个哨兵的集群，quorum设置为2，在运行过程中，有3个实例都发生了故障，这时主库也发生了故障，还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？</h3>
 <p>判断客户端下线是可以的，因为判断ODOWN的条件是有不少于quorum数量的Sentinel同意即可。<br>
@@ -597,8 +610,8 @@ TODO</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/edd4cfac.html" rel="next" title="Redis 复制">
-                <i class="fa fa-chevron-left"></i> Redis 复制
+              <a href="/7731e967.html" rel="next" title="发号器">
+                <i class="fa fa-chevron-left"></i> 发号器
               </a>
             
           </div>
@@ -607,8 +620,8 @@ TODO</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/a2b16944.html" rel="prev" title="Redis 持久化">
-                Redis 持久化 <i class="fa fa-chevron-right"></i>
+              <a href="/9dda6023.html" rel="prev" title="Redis 进程和 IO 模型">
+                Redis 进程和 IO 模型 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -691,7 +704,7 @@ TODO</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">122</span>
+                  <span class="site-state-item-count">129</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -702,7 +715,7 @@ TODO</p>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -748,7 +761,7 @@ TODO</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端如何连接sentinel集群"><span class="nav-number">2.</span> <span class="nav-text">¶客户端如何连接Sentinel集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-执行原理"><span class="nav-number">3.</span> <span class="nav-text">¶Sentinel 执行原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态感知-info"><span class="nav-number">4.</span> <span class="nav-text">¶状态感知（info）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#心跳检测-ping"><span class="nav-number">5.</span> <span class="nav-text">¶心跳检测（ping）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主观下线和客观下线"><span class="nav-number">6.</span> <span class="nav-text">¶主观下线和客观下线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障迁移-master-挂掉-sentinel选举新master"><span class="nav-number">7.</span> <span class="nav-text">¶故障迁移（Master 挂掉，Sentinel选举新Master）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#slave选举"><span class="nav-number">7.1.</span> <span class="nav-text">¶Slave选举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障转移"><span class="nav-number">7.2.</span> <span class="nav-text">¶故障转移</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-选举的安全性"><span class="nav-number">8.</span> <span class="nav-text">¶Sentinel 选举的安全性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tilt-模式"><span class="nav-number">9.</span> <span class="nav-text">¶TILT 模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#busy-状态"><span class="nav-number">10.</span> <span class="nav-text">¶BUSY 状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">11.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？"><span class="nav-number">11.1.</span> <span class="nav-text">¶5个哨兵的集群，quorum设置为2，在运行过程中，有3个实例都发生了故障，这时主库也发生了故障，还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#哨兵实例是不是越多越好？"><span class="nav-number">11.2.</span> <span class="nav-text">¶哨兵实例是不是越多越好？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调大down-after-milliseconds对减少误判是不是有好处？"><span class="nav-number">11.3.</span> <span class="nav-text">¶调大down-after-milliseconds对减少误判是不是有好处？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">12.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">1.</span> <span class="nav-text">¶操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#客户端如何连接sentinel集群"><span class="nav-number">2.</span> <span class="nav-text">¶客户端如何连接Sentinel集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-执行原理"><span class="nav-number">3.</span> <span class="nav-text">¶Sentinel 执行原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态感知-info"><span class="nav-number">4.</span> <span class="nav-text">¶状态感知（info）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#心跳检测-ping"><span class="nav-number">5.</span> <span class="nav-text">¶心跳检测（ping）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主观下线和客观下线"><span class="nav-number">6.</span> <span class="nav-text">¶主观下线和客观下线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障迁移-master-挂掉-sentinel选举新master"><span class="nav-number">7.</span> <span class="nav-text">¶故障迁移（Master 挂掉，Sentinel选举新Master）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#slave选举"><span class="nav-number">7.1.</span> <span class="nav-text">¶Slave选举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障转移"><span class="nav-number">7.2.</span> <span class="nav-text">¶故障转移</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-选举的安全性"><span class="nav-number">8.</span> <span class="nav-text">¶Sentinel 选举的安全性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tilt-模式"><span class="nav-number">9.</span> <span class="nav-text">¶TILT 模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#busy-状态"><span class="nav-number">10.</span> <span class="nav-text">¶BUSY 状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#脑裂"><span class="nav-number">11.</span> <span class="nav-text">¶脑裂</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">12.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？"><span class="nav-number">12.1.</span> <span class="nav-text">¶5个哨兵的集群，quorum设置为2，在运行过程中，有3个实例都发生了故障，这时主库也发生了故障，还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#哨兵实例是不是越多越好？"><span class="nav-number">12.2.</span> <span class="nav-text">¶哨兵实例是不是越多越好？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调大down-after-milliseconds对减少误判是不是有好处？"><span class="nav-number">12.3.</span> <span class="nav-text">¶调大down-after-milliseconds对减少误判是不是有好处？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">13.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>
