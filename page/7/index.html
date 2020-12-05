@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d368c702.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9dda6023.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/d368c702.html" itemprop="url">Redis高可用方案Sentinel</a></h1>
+                <a class="post-title-link" href="/9dda6023.html" itemprop="url">Redis 进程和 IO 模型</a></h1>
         
 
         <div class="post-meta">
@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  5.8k 字
+                  2.7k 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  23 分钟
+                  11 分钟
                 </span>
               
             </div>
@@ -390,186 +390,60 @@
       
         
           
-            <h2 id="操作"><a class="header-anchor" href="#操作">¶</a>操作</h2>
+            <h2 id="为什么-redis-这么快"><a class="header-anchor" href="#为什么-redis-这么快">¶</a>为什么 Redis 这么快</h2>
+<p>Redis 采用的是一种<strong>单线程工作模型</strong>，它能这么快主要归功于下面几个策略：</p>
 <ol>
-<li>
-<p>Master<br>
-TODO</p>
-</li>
-<li>
-<p>Slave</p>
-</li>
-<li>
-<p>Sentinel</p>
-</li>
-<li>
-<p>获取集群信息</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 info Sentinel</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>获取 master 节点地址</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
+<li>完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)；</li>
+<li>数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的；</li>
+<li>采用单线程，避免了不必要的上下文切换和竞争条件，也不存在多进程或者多线程导致的切换而消耗 CPU，不用去考虑各种锁的问题，不存在加锁释放锁操作，没有因为可能出现死锁而导致的性能消耗；</li>
+<li>使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；</li>
+<li>使用<strong>多路 I/O 复用</strong>模型，非阻塞 IO；<br>
+多路 I/O 复用模型是利用 select、poll、epoll 可以同时监察多个流的 I/O 事件的能力，在空闲的时候，会把当前线程阻塞掉，当有一个或多个流有 I/O 事件时，就从阻塞态中唤醒，于是程序就会轮询一遍所有的流（epoll 是只轮询那些真正发出了事件的流），并且只依次顺序的处理就绪的流，这种做法就避免了大量的无用操作。<br>
+Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，在服务端，有一段 I/O 多路复用程序，将其置入队列之中，然后，文件事件分派器依次去队列中取，转发到不同的事件处理器中（对这个 I/O 多路复用机制，Redis 还提供了 select、epoll、evport、kqueue 等多路复用函数库）。<br>
+这里“多路”指的是多个网络连接，“复用”指的是复用同一个线程。采用多路 I/O 复用技术可以让单个线程高效的处理多个连接请求（尽量减少网络 IO 的时间消耗），且 Redis 在内存中操作数据的速度非常快，也就是说内存内的操作不会成为影响 Redis 性能的瓶颈，主要由以上几点造就了 Redis 具有很高的吞吐量。<br>
+<img src="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg" alt="多路IO复用模型" title="多路IO复用模型"></li>
+</ol>
+<h2 id="一些常见的进程模型"><a class="header-anchor" href="#一些常见的进程模型">¶</a>一些常见的进程模型</h2>
+<ol>
+<li>单进程多线程模型：MySQL、Memcached、Oracle（Windows 版本）；</li>
+<li>多进程模型：Oracle（Linux 版本）；</li>
+<li>Nginx 有两类进程，一类称为 Master 进程(相当于管理进程)，另一类称为 Worker 进程（实际工作进程）。启动方式有两种：
+<ol>
+<li>单进程启动：此时系统中仅有一个进程，该进程既充当 Master 进程的角色，也充当 Worker 进程的角色。</li>
+<li>多进程启动：此时系统有且仅有一个 Master 进程，至少有一个 Worker 进程工作。</li>
+<li>Master 进程主要进行一些全局性的初始化工作和管理 Worker 的工作；事件处理是在 Worker 中进行的。</li>
+</ol>
 </li>
 </ol>
-<h2 id="客户端如何连接sentinel集群"><a class="header-anchor" href="#客户端如何连接sentinel集群">¶</a>客户端如何连接Sentinel集群</h2>
-<p><img src="http://47.88.24.11/imgs/Redis/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
-在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
-<ul>
-<li>Master 和 Slave 的配置和之前并无区别；</li>
-<li>Sentinel 相当于对 Master 的代理，Sentinel 可以通过发布订阅功能获取到 Slave 和其他 Sentinel 的信息。</li>
-</ul>
-<blockquote>
-<p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
-</blockquote>
-<p>同理，客户端也可以通过pubsub功能来订阅集群中的其他信息，关键事件如下：<br>
-<img src="http://47.88.24.11/imgs/Redis/RedisSentinel%E4%BA%8B%E4%BB%B6.jpg" alt="RedisSentinel事件" title="RedisSentinel事件"></p>
-<h2 id="sentinel-执行原理"><a class="header-anchor" href="#sentinel-执行原理">¶</a>Sentinel 执行原理</h2>
-<p><img src="http://47.88.24.11/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg" alt="Sentinel的主要任务" title="Sentinel的主要任务"><br>
-在Sentinel的主事件循环中可以看到它每100毫秒执行的定时任务：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Run the Sentinel timer if we are in sentinel mode. */</span><br><span class="line">    // 如果服务器运行在 sentinel 模式下，那么执行 SENTINEL 的主函数</span><br><span class="line">    run_with_period(100) &#123;</span><br><span class="line">        if (server.sentinel_mode) sentinelTimer();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。<br>
-如果一个实例（instance）距离最后一次有效回复 <code>PING</code> 命令的时间超过 <code>down-after-milliseconds</code> 选项所指定的值， 那么这个实例会被 Sentinel 标记为<strong>主观下线</strong>。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br></pre></td><td class="code"><pre><span class="line">void sentinelHandleDictOfRedisInstances(dict *instances) &#123;</span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">    // 遍历多个实例，这些实例可以是多个主服务器、多个从服务器或者多个 sentinel</span><br><span class="line">    di = dictGetIterator(instances);</span><br><span class="line">    while((de = dictNext(di)) != NULL) &#123;</span><br><span class="line"></span><br><span class="line">        // 取出实例对应的实例结构</span><br><span class="line">        sentinelRedisInstance *ri = dictGetVal(de);</span><br><span class="line"></span><br><span class="line">        // 执行调度操作</span><br><span class="line">        sentinelHandleRedisInstance(ri);</span><br><span class="line"></span><br><span class="line">        // 如果被遍历的是主服务器，那么递归地遍历该主服务器的所有从服务器</span><br><span class="line">        // 以及所有 sentinel</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">            // 所有从服务器</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;slaves);</span><br><span class="line"></span><br><span class="line">            // 所有 sentinel</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;sentinels);</span><br><span class="line"></span><br><span class="line">            // 对已下线主服务器（ri）的故障迁移已经完成</span><br><span class="line">            // ri 的所有从服务器都已经同步到新主服务器</span><br><span class="line">            if (ri-&gt;failover_state == SENTINEL_FAILOVER_STATE_UPDATE_CONFIG) &#123;</span><br><span class="line">                // 已选出新的主服务器</span><br><span class="line">                switch_to_promoted = ri;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    /* ========== MONITORING HALF ============ */</span><br><span class="line">    /* ==========     监控操作    =========*/</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    /* 对所有类型实例进行处理 */</span><br><span class="line"></span><br><span class="line">    // 如果有需要的话，创建连向实例的网络连接</span><br><span class="line">    sentinelReconnectInstance(ri);</span><br><span class="line"></span><br><span class="line">    // 根据情况，向实例发送 PING、 INFO 或者 PUBLISH 命令</span><br><span class="line">    sentinelSendPeriodicCommands(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 根据时间和实例类型等情况，向实例发送命令，比如 INFO 、PING 和 PUBLISH</span><br><span class="line">// 虽然函数的名字包含 Ping ，但命令并不只发送 PING 命令</span><br><span class="line">/* Send periodic PING, INFO, and PUBLISH to the Hello channel to</span><br><span class="line"> * the specified master or slave instance. */</span><br><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    mstime_t now = mstime();</span><br><span class="line">    mstime_t info_period, ping_period;</span><br><span class="line">    int retval;</span><br><span class="line"></span><br><span class="line">    /* Return ASAP if we have already a PING or INFO already pending, or</span><br><span class="line">     * in the case the instance is not properly connected. */</span><br><span class="line">    // 函数不能在网络连接未创建时执行</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_DISCONNECTED) return;</span><br><span class="line"></span><br><span class="line">    /* For INFO, PING, PUBLISH that are not critical commands to send we</span><br><span class="line">     * also have a limit of SENTINEL_MAX_PENDING_COMMANDS. We don&apos;t</span><br><span class="line">     * want to use a lot of memory just because a link is not working</span><br><span class="line">     * properly (note that anyway there is a redundant protection about this,</span><br><span class="line">     * that is, the link will be disconnected and reconnected if a long</span><br><span class="line">     * timeout condition is detected. */</span><br><span class="line">    // 为了避免 sentinel 在实例处于不正常状态时，发送过多命令</span><br><span class="line">    // sentinel 只在待发送命令的数量未超过 SENTINEL_MAX_PENDING_COMMANDS 常量时</span><br><span class="line">    // 才进行命令发送</span><br><span class="line">    if (ri-&gt;pending_commands &gt;= SENTINEL_MAX_PENDING_COMMANDS) return;</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* We ping instances every time the last received pong is older than</span><br><span class="line">     * the configured &apos;down-after-milliseconds&apos; time, but every second</span><br><span class="line">     * anyway if &apos;down-after-milliseconds&apos; is greater than 1 second. */</span><br><span class="line">    ping_period = ri-&gt;down_after_period;</span><br><span class="line">    if (ping_period &gt; SENTINEL_PING_PERIOD) ping_period = SENTINEL_PING_PERIOD;</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pong_time) &gt; ping_period) &#123;</span><br><span class="line">        /* Send PING to all the three kinds of instances. */</span><br><span class="line">        sentinelSendPing(ri);</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pub_time) &gt; SENTINEL_PUBLISH_PERIOD) &#123;</span><br><span class="line">        /* PUBLISH hello messages to all the three kinds of instances. */</span><br><span class="line">        sentinelSendHello(ri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>如果一个主服务器被标记为<strong>主观下线</strong>， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line"></span><br><span class="line">    /* We don&apos;t proceed with the acting half if we are in TILT mode.</span><br><span class="line">     * TILT happens when we find something odd with the time, like a</span><br><span class="line">     * sudden change in the clock. */</span><br><span class="line">    // 如果 Sentinel 处于 TILT 模式，那么不执行故障检测。</span><br><span class="line">    if (sentinel.tilt) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果 TILI 模式未解除，那么不执行动作</span><br><span class="line">        if (mstime()-sentinel.tilt_start_time &lt; SENTINEL_TILT_PERIOD) return;</span><br><span class="line"></span><br><span class="line">        // 时间已过，退出 TILT 模式</span><br><span class="line">        sentinel.tilt = 0;</span><br><span class="line">        sentinelEvent(REDIS_WARNING,&quot;-tilt&quot;,NULL,&quot;#tilt mode exited&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    // 检查给定实例是否进入 SDOWN 状态</span><br><span class="line">    sentinelCheckSubjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Is this instance down from our point of view? */</span><br><span class="line">// 检查实例是否以下线（从本 Sentinel 的角度来看）</span><br><span class="line">void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Update the SDOWN flag. We believe the instance is SDOWN if:</span><br><span class="line">     *</span><br><span class="line">     * 更新 SDOWN 标识。如果以下条件被满足，那么 Sentinel 认为实例已下线：</span><br><span class="line">     *</span><br><span class="line">     * 1) It is not replying.</span><br><span class="line">     *    它没有回应命令</span><br><span class="line">     * 2) We believe it is a master, it reports to be a slave for enough time</span><br><span class="line">     *    to meet the down_after_period, plus enough time to get two times</span><br><span class="line">     *    INFO report from the instance. </span><br><span class="line">     *    Sentinel 认为实例是主服务器，这个服务器向 Sentinel 报告它将成为从服务器，</span><br><span class="line">     *    但在超过给定时限之后，服务器仍然没有完成这一角色转换。</span><br><span class="line">     */</span><br><span class="line">    if (elapsed &gt; ri-&gt;down_after_period ||</span><br><span class="line">        (ri-&gt;flags &amp; SRI_MASTER &amp;&amp;</span><br><span class="line">         ri-&gt;role_reported == SRI_SLAVE &amp;&amp;</span><br><span class="line">         mstime() - ri-&gt;role_reported_time &gt;</span><br><span class="line">          (ri-&gt;down_after_period+SENTINEL_INFO_PERIOD*2)))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Is subjectively down */</span><br><span class="line">        if ((ri-&gt;flags &amp; SRI_S_DOWN) == 0) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;+sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 记录进入 SDOWN 状态的时间</span><br><span class="line">            ri-&gt;s_down_since_time = mstime();</span><br><span class="line">            // 打开 SDOWN 标志</span><br><span class="line">            ri-&gt;flags |= SRI_S_DOWN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 移除（可能有的） SDOWN 状态</span><br><span class="line">        /* Is subjectively up */</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_S_DOWN) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;-sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 移除相关标志</span><br><span class="line">            ri-&gt;flags &amp;= ~(SRI_S_DOWN|SRI_SCRIPT_KILL_SENT);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>如果有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为<strong>客观下线</strong>。<br>
-这个数量是可以配置的，即<strong>quorum</strong>的数量。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line">    </span><br><span class="line">    ...SDOWN检测</span><br><span class="line"></span><br><span class="line">    /* Only masters */</span><br><span class="line">    /* 对主服务器进行处理 */</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">        // 判断 master 是否进入 ODOWN 状态</span><br><span class="line">        sentinelCheckObjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">        // 如果主服务器进入了 ODOWN 状态，那么开始一次故障转移操作</span><br><span class="line">        if (sentinelStartFailoverIfNeeded(ri))</span><br><span class="line">            // 强制向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">            // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">            sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_ASK_FORCED);</span><br><span class="line"></span><br><span class="line">        // 执行故障转移</span><br><span class="line">        sentinelFailoverStateMachine(ri);</span><br><span class="line"></span><br><span class="line">        // 如果有需要的话，向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">        // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">        // 这一句是对那些没有进入 if(sentinelStartFailoverIfNeeded(ri)) &#123; /* ... */ &#125;</span><br><span class="line">        // 语句的主服务器使用的</span><br><span class="line">        sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_NO_FLAGS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>注意上边发请求时使用的回调函数<code>sentinelInfoReplyCallback</code>：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 处理 INFO 命令的回复</span><br><span class="line">void sentinelInfoReplyCallback(redisAsyncContext *c, void *reply, void *privdata) &#123;</span><br><span class="line">    sentinelRedisInstance *ri = c-&gt;data;</span><br><span class="line">    redisReply *r;</span><br><span class="line"></span><br><span class="line">    if (ri) ri-&gt;pending_commands--;</span><br><span class="line">    if (!reply || !ri) return;</span><br><span class="line">    r = reply;</span><br><span class="line"></span><br><span class="line">    if (r-&gt;type == REDIS_REPLY_STRING) &#123;</span><br><span class="line">        // 解析info命令的响应数据</span><br><span class="line">        sentinelRefreshInstanceInfo(ri,r-&gt;str);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>当没有足够数量的 Sentinel 同意主服务器已经下线，主服务器的客观下线状态就会被移除。<br>
-当主服务器重新向 Sentinel 的 PING 命令返回有效回复时，主服务器的主观下线状态就会被移除。</li>
-</ul>
-<h2 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h2>
-<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
-哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
-<ul>
-<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
-<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
-</ul>
-<h2 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h2>
-<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
-每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
-<blockquote>
-<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
-</blockquote>
-<h2 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h2>
-<ul>
-<li>主观下线（Subjectively Down， 简称 SDOWN）<br>
-主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
-如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
-</ul>
-<blockquote>
-<p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
-</blockquote>
-<ul>
-<li>客观下线（Objectively Down， 简称 ODOWN）<br>
-客观下线指的是多个 Sentinel 实例在对同一个 Master 做出 SDOWN 判断， 并且通过 SENTINEL <code>is-master-down-by-addr</code> 命令互相交流之后，得出的服务器下线判断。 （一个 Sentinel 可以通过向另一个 Sentinel 发送 SENTINEL is-master-down-by-addr 命令来询问对方是否认为给定的服务器已下线。）<br>
-从主观下线切换到客观下线并不是通过较严格的投票算法，而是采用了<strong>流言协议（gossip protocol）</strong>：只要 Sentinel 在给定时间内从其他 Sentinel 接收到足够数量的 Master 下线通知，那么 Sentinel 就会执行状态的切换；如果之后其他 Sentinel 不再报告 Master 已下线，则客观下线状态就会被移除。<br>
-只要一个 Sentinel 发现某个 Master 进入客观下线状态，之后就会进入<strong>故障迁移</strong>阶段，选举出一个 Sentinel 对失效的 Master 执行自动故障迁移操作。</li>
-</ul>
-<blockquote>
-<p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
-</blockquote>
-<h2 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h2>
-<p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
-<ul>
-<li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
-<li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
-</ul>
-<p>故障转移主要分为Sentinel选举和故障转移（Master替换）两个步骤，Sentinel选主流程如下：</p>
-<ul>
-<li>Sentinel发现主服务器已经进入客观下线状态。</li>
-<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
-<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
-</ul>
-<h3 id="slave选举"><a class="header-anchor" href="#slave选举">¶</a>Slave选举</h3>
-<p>Slave选举的规则如下：</p>
-<ul>
-<li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
-<li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
-<li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
-</ul>
-<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
-<p>之后所有Slave进行投票：<br>
-<img src="http://47.88.24.11/imgs/MySQL%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/RedisSentinel%E6%8A%95%E7%A5%A8.jpg" alt="RedisSentinel投票" title="RedisSentinel投票"></p>
-<h3 id="故障转移"><a class="header-anchor" href="#故障转移">¶</a>故障转移</h3>
-<p>提升新的Master的流程如下：</p>
-<ul>
-<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
-<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
-<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
-<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
-</ul>
-<p>客户端感知新master流程如下：<br>
-哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
-另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
-一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
-<h2 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h2>
-<p>配置安全性：</p>
-<ul>
-<li>每当一个 Redis 实例被重新配置（reconfigured） —— 无论是被设置成主服务器、从服务器、又或者被设置成其他主服务器的从服务器 —— Sentinel 都会向被重新配置的实例发送一个 CONFIG REWRITE 命令， 从而确保这些配置会持久化在硬盘里。完成重新配置之后，从服务器会去复制正确的主服务器。</li>
-<li>Sentinel 的状态会被持久化到 Sentinel 配置文件里，当 Sentinel 接收到新配置或 Leader Sentinel 为 Master 创建一个新配置时，这些配置都会与<code>epoch</code>一起被保存到磁盘；</li>
-</ul>
-<p>故障自动迁移的一致性：</p>
-<ul>
-<li>Raft 算法保证在一个 epoch 里只有一个 Leader Sentinel 产生，减少了脑裂的风险；</li>
-<li>Sentinel 集群总是以更高的 epoch 为准，因为发生<code>网络分区（network partition）</code>时可能会有 Sentinel 包含老的配置，而当这个 Sentinel 服务器接收到其他 Sentinel 的版本更新配置时就会进行更新。</li>
-<li>发生网络分区并且某些 Sentinel 仍在采用老的配置时，如果有客户端连接到这些 Sentinel 上，最终可能就会将请求转发到非 Master 服务器上，造成数据不一致。因此，应该使用 <code>min-slaves-to-write</code> 选项， 让主服务器在连接的从实例少于给定数量时停止执行写操作， 与此同时， 应该在每个运行 Redis 主服务器或从服务器的机器上运行 Redis Sentinel 进程。</li>
-</ul>
-<h2 id="tilt-模式"><a class="header-anchor" href="#tilt-模式">¶</a>TILT 模式</h2>
-<p>TILT 模式是一种特殊的保护模式，Sentinel 每隔 100ms 会向实例发一次<code>PING</code>命令，并将上一次 PING 成功的时间和当前时间比对，从而知道与该实例有多长时间没有进行任何成功通讯：</p>
-<ul>
-<li>如果两次调用时间之间的差距为负值， 或者非常大（超过 2 秒钟）， 那么 Sentinel 进入 TILT 模式。</li>
-<li>如果 Sentinel 已经进入 TILT 模式， 那么 Sentinel 延迟退出 TILT 模式的时间。</li>
-</ul>
-<blockquote>
-<p>Sentinel严重依赖计算机的时间功能，一旦计算机的时间功能出现故障， 或者计算机非常忙碌， 又或者进程因为某些原因而被阻塞时， Sentinel 可能也会跟着出现故障。</p>
-</blockquote>
-<p>进入 TILT 模式后，Sentinel 仍然会继续监视所有目标，但是：</p>
-<ul>
-<li>它不再执行任何操作，比如故障转移。</li>
-<li>当有实例向这个 Sentinel 发送 SENTINEL <code>is-master-down-by-addr</code> 命令时， Sentinel 返回负值： 因为这个 Sentinel 所进行的下线判断已经不再准确。</li>
-</ul>
-<p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
-<h2 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h2>
-<p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
-<h2 id="脑裂"><a class="header-anchor" href="#脑裂">¶</a>脑裂</h2>
-<p>虽然Sentinel利用Raft选举不会发生脑裂，但是在一些极端的情况下还是有可能会发生脑裂的，比如：</p>
+<h2 id="为什么是-nio"><a class="header-anchor" href="#为什么是-nio">¶</a>为什么是 NIO</h2>
+<p>对于优化单个 server 节点的网络层，多使用 NIO 方式，server 端与 client 端在多次通讯的情况下使用 TCP 长连接维持会话，比如 Redis epoll 模型，RocketMq 的 netty 模型<br>
+对于高性能 Server 节点，在处理好网络请求同时，还要保证 server 端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型。<br>
+在 Redis 中，采用的是 Reactor 模式实现文件事件处理器：<br>
+<img src="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png" alt="Redis-事件处理模型" title="Redis-事件处理模型"></p>
 <ol>
-<li>原Master不能提供服务了，但是它本身并没有挂掉；</li>
-<li>Sentinel发现连不上Master，于是判定客观下线，并发起主从切换；</li>
-<li>原Master和新Master同时给Client提供服务，发生脑裂。</li>
+<li>IO 多路复用<br>
+根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
+<li>封装不同 IO 模型，为事件处理器提供统一接口</li>
 </ol>
-<p>这种脑裂并不会影响可用性，但是却破坏了数据的一致性，甚至会导致数据丢失：在Sentinel重连上原Master后，会将其归入到新Master的Slave，这时脑裂期间的数据就会被从新Master上复制过来的数据覆盖掉了，导致数据的丢失。</p>
-<p>脑裂的解决办法主要是以下两个配置参数：</p>
+<h2 id="redis单线程多路复用io模型实现-事件注册"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件注册">¶</a>Redis单线程多路复用IO模型实现 - 事件注册</h2>
+<p>Redis服务器的初始化过程中包括了对事件处理器的初始化。<br>
+1、服务器启动期间初始化事件处理器<br>
+服务器初始化代码：<code>redis.c/initServer</code><br>
+初始化事件处理器代码：<code>ae.c/aeCreateEventLoop</code><br>
+2、根据系统的不同，选择不同的底层IO事件处理实现<br>
+比如linux的话，会选择epoll作为实现：<code>epoll.c/aeApiCreate</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 创建一个新的 epoll 实例，并将它赋值给 eventLoop</span><br><span class="line"> */</span><br><span class="line">static int aeApiCreate(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    aeApiState *state = zmalloc(sizeof(aeApiState));</span><br><span class="line"></span><br><span class="line">    if (!state) return -1;</span><br><span class="line"></span><br><span class="line">    // 初始化事件槽空间</span><br><span class="line">    state-&gt;events = zmalloc(sizeof(struct epoll_event)*eventLoop-&gt;setsize);</span><br><span class="line">    if (!state-&gt;events) &#123;</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 创建 epoll 实例</span><br><span class="line">    state-&gt;epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */</span><br><span class="line">    if (state-&gt;epfd == -1) &#123;</span><br><span class="line">        zfree(state-&gt;events);</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 赋值给 eventLoop</span><br><span class="line">    eventLoop-&gt;apidata = state;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当服务器需要监听某些事件时，会注册对这些事件的监听器，下面是注册监听器的函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 根据 mask 参数的值，监听 fd 文件的状态，</span><br><span class="line"> * 当 fd 可用时，执行 proc 函数</span><br><span class="line"> */</span><br><span class="line">int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,</span><br><span class="line">        aeFileProc *proc, void *clientData)</span><br><span class="line">&#123;</span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) &#123;</span><br><span class="line">        errno = ERANGE;</span><br><span class="line">        return AE_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 取出文件事件结构</span><br><span class="line">    aeFileEvent *fe = &amp;eventLoop-&gt;events[fd];</span><br><span class="line"></span><br><span class="line">    // 监听指定 fd 的指定事件</span><br><span class="line">    if (aeApiAddEvent(eventLoop, fd, mask) == -1)</span><br><span class="line">        return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 设置文件事件类型，以及事件的处理器</span><br><span class="line">    fe-&gt;mask |= mask;</span><br><span class="line">    if (mask &amp; AE_READABLE) fe-&gt;rfileProc = proc;</span><br><span class="line">    if (mask &amp; AE_WRITABLE) fe-&gt;wfileProc = proc;</span><br><span class="line"></span><br><span class="line">    // 私有数据</span><br><span class="line">    fe-&gt;clientData = clientData;</span><br><span class="line"></span><br><span class="line">    // 如果有需要，更新事件处理器的最大 fd</span><br><span class="line">    if (fd &gt; eventLoop-&gt;maxfd)</span><br><span class="line">        eventLoop-&gt;maxfd = fd;</span><br><span class="line"></span><br><span class="line">    return AE_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>比如Redis服务器要接受客户端的请求，就要注册一个监听连接事件，回调函数中会为客户端连接创建一个socket，并注册可读文件事件。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">void initServer() &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Create an event handler for accepting new connections in TCP and Unix</span><br><span class="line">     * domain sockets. */</span><br><span class="line">    // 为 TCP 连接关联连接应答（accept）处理器</span><br><span class="line">    // 用于接受并应答客户端的 connect() 调用</span><br><span class="line">    for (j = 0; j &lt; server.ipfd_count; j++) &#123;</span><br><span class="line">        if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,</span><br><span class="line">            acceptTcpHandler,NULL) == AE_ERR)</span><br><span class="line">            &#123;</span><br><span class="line">                redisPanic(</span><br><span class="line">                    &quot;Unrecoverable error creating server.ipfd file event.&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="redis单线程多路复用io模型实现-事件循环-处理"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件循环-处理">¶</a>Redis单线程多路复用IO模型实现 - 事件循环（处理）</h2>
+<p>Redis中定义了两种事件：时间事件TimeEvents、文件事件FileEvents：</p>
 <ul>
-<li>min-slaves-to-write：这个配置项设置了主库能进行数据同步的最少从库数量；</li>
-<li>min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时，从库给主库发送 ACK 消息的最大延迟（以秒为单位）。</li>
+<li><code>TimeEvents</code>：一般都是一些定时任务，实际上现在时间事件只应用于服务器启动时注册的<code>serverCron</code>定时任务的执行；</li>
+<li><code>FileEvents</code>：socket文件的IO事件，比如上面的监听连接的事件就是文件事件。</li>
 </ul>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？"><a class="header-anchor" href="#5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？">¶</a>5个哨兵的集群，quorum设置为2，在运行过程中，有3个实例都发生了故障，这时主库也发生了故障，还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？</h3>
-<p>判断客户端下线是可以的，因为判断ODOWN的条件是有不少于quorum数量的Sentinel同意即可。<br>
-不可执行主从切换，因为一个哨兵要执行主从切换，得获得半数以上哨兵的投票同意，也就是3个哨兵。</p>
-<h3 id="哨兵实例是不是越多越好？"><a class="header-anchor" href="#哨兵实例是不是越多越好？">¶</a>哨兵实例是不是越多越好？</h3>
-<p>哨兵实例越多，误判率越低，但是判断主库下线和选举Leader时实例要拿到的赞成票也越多，主从切换花费的时间也相对会更多。<br>
-如果客户端对Redis的响应时间有要求，则很有可能会报警。</p>
-<h3 id="调大down-after-milliseconds对减少误判是不是有好处？"><a class="header-anchor" href="#调大down-after-milliseconds对减少误判是不是有好处？">¶</a>调大down-after-milliseconds对减少误判是不是有好处？</h3>
-<p>这个值的作用是：判断距离上次PING成功的时间超过了这个值，就标记实例主观下线。<br>
-调大的话Sentinel需要更长的时间才能判断集群出问题了，也即影响到Redis的可用性。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="http://redisdoc.com/topic/sentinel.html" target="_blank" rel="noopener">Sentinel</a></li>
-</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 事件处理器的主循环</span><br><span class="line"> */</span><br><span class="line">void aeMain(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    eventLoop-&gt;stop = 0;</span><br><span class="line"></span><br><span class="line">    while (!eventLoop-&gt;stop) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果有需要在事件处理前执行的函数，那么运行它</span><br><span class="line">        if (eventLoop-&gt;beforesleep != NULL)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        // 开始处理事件</span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 1、看是否有事件到达了执行时间</span><br><span class="line">// 2、如果有，则执行这些事件</span><br><span class="line">/* Process every pending time event, then every pending file event</span><br><span class="line"> * (that may be registered by time event callbacks just processed).</span><br><span class="line"> *</span><br><span class="line"> * 处理所有已到达的时间事件，以及所有已就绪的文件事件。</span><br><span class="line"> *</span><br><span class="line"> * Without special flags the function sleeps until some file event</span><br><span class="line"> * fires, or when the next time event occurs (if any).</span><br><span class="line"> *</span><br><span class="line"> * 如果不传入特殊 flags 的话，那么函数睡眠直到文件事件就绪，</span><br><span class="line"> * 或者下个时间事件到达（如果有的话）。</span><br><span class="line"> *</span><br><span class="line"> * If flags is 0, the function does nothing and returns.</span><br><span class="line"> * 如果 flags 为 0 ，那么函数不作动作，直接返回。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_ALL_EVENTS set, all the kind of events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_ALL_EVENTS ，所有类型的事件都会被处理。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_FILE_EVENTS set, file events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_FILE_EVENTS ，那么处理文件事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_TIME_EVENTS set, time events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_TIME_EVENTS ，那么处理时间事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_DONT_WAIT set the function returns ASAP until all</span><br><span class="line"> * the events that&apos;s possible to process without to wait are processed.</span><br><span class="line"> * 如果 flags 包含 AE_DONT_WAIT ，</span><br><span class="line"> * 那么函数在处理完所有不许阻塞的事件之后，即刻返回。</span><br><span class="line"> *</span><br><span class="line"> * The function returns the number of events processed. </span><br><span class="line"> * 函数的返回值为已处理事件的数量</span><br><span class="line"> */</span><br><span class="line">int aeProcessEvents(aeEventLoop *eventLoop, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    int processed = 0, numevents;</span><br><span class="line"></span><br><span class="line">    /* Nothing to do? return ASAP */</span><br><span class="line">    if (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) return 0;</span><br><span class="line"></span><br><span class="line">    /* Note that we want call select() even if there are no</span><br><span class="line">     * file events to process as long as we want to process time</span><br><span class="line">     * events, in order to sleep until the next time event is ready</span><br><span class="line">     * to fire.</span><br><span class="line">     */</span><br><span class="line">    if (eventLoop-&gt;maxfd != -1 ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        int j;</span><br><span class="line">        aeTimeEvent *shortest = NULL;</span><br><span class="line">        struct timeval tv, *tvp;</span><br><span class="line"></span><br><span class="line">        // 获取最近的时间事件</span><br><span class="line">        if (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            shortest = aeSearchNearestTimer(eventLoop);</span><br><span class="line">        if (shortest) &#123;</span><br><span class="line">            // 如果时间事件存在的话</span><br><span class="line">            // 那么根据最近可执行时间事件和现在时间的时间差来决定文件事件的阻塞时间</span><br><span class="line">            long now_sec, now_ms;</span><br><span class="line"></span><br><span class="line">            /* Calculate the time missing for the nearest</span><br><span class="line">             * timer to fire. */</span><br><span class="line">            // 计算距今最近的时间事件还要多久才能达到</span><br><span class="line">            // 并将该时间距保存在 tv 结构中</span><br><span class="line">            aeGetTime(&amp;now_sec, &amp;now_ms);</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">            tvp-&gt;tv_sec = shortest-&gt;when_sec - now_sec;</span><br><span class="line">            if (shortest-&gt;when_ms &lt; now_ms) &#123;</span><br><span class="line">                tvp-&gt;tv_usec = ((shortest-&gt;when_ms+1000) - now_ms)*1000;</span><br><span class="line">                tvp-&gt;tv_sec --;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                tvp-&gt;tv_usec = (shortest-&gt;when_ms - now_ms)*1000;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            // 时间差小于 0 ，说明事件已经可以执行了，将秒和毫秒设为 0 （不阻塞）</span><br><span class="line">            if (tvp-&gt;tv_sec &lt; 0) tvp-&gt;tv_sec = 0;</span><br><span class="line">            if (tvp-&gt;tv_usec &lt; 0) tvp-&gt;tv_usec = 0;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            </span><br><span class="line">            // 执行到这一步，说明没有时间事件</span><br><span class="line">            // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span><br><span class="line"></span><br><span class="line">            /* If we have to check for events but need to return</span><br><span class="line">             * ASAP because of AE_DONT_WAIT we need to set the timeout</span><br><span class="line">             * to zero */</span><br><span class="line">            if (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                // 设置文件事件不阻塞</span><br><span class="line">                tv.tv_sec = tv.tv_usec = 0;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                /* Otherwise we can block */</span><br><span class="line">                // 文件事件可以阻塞直到有事件到达为止</span><br><span class="line">                tvp = NULL; /* wait forever */</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 处理文件事件，阻塞时间由 tvp 决定</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line">        for (j = 0; j &lt; numevents; j++) &#123;</span><br><span class="line">            // 从已就绪数组中获取事件</span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line"></span><br><span class="line">            int mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            int fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            int rfired = 0;</span><br><span class="line"></span><br><span class="line">           /* note the fe-&gt;mask &amp; mask &amp; ... code: maybe an already processed</span><br><span class="line">             * event removed an element that fired and we still didn&apos;t</span><br><span class="line">             * processed, so we check if the event is still valid. */</span><br><span class="line">            // 读事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                // rfired 确保读/写事件只能执行其中一个</span><br><span class="line">                rfired = 1;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line">            // 写事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                if (!rfired || fe-&gt;wfileProc != fe-&gt;rfileProc)</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Check time events */</span><br><span class="line">    // 执行时间事件</span><br><span class="line">    if (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line"></span><br><span class="line">    return processed; /* return the number of processed file/time events */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
           
         
@@ -1016,7 +890,8 @@ TODO</p>
 <h2 id="使用-semaphore-实现producer-consumer代码"><a class="header-anchor" href="#使用-semaphore-实现producer-consumer代码">¶</a>使用 Semaphore 实现Producer/Consumer代码</h2>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line">public class ProducerConsumerTest &#123;</span><br><span class="line"></span><br><span class="line">    static Semaphore mutex = new Semaphore(1);</span><br><span class="line">    static Semaphore items = new Semaphore(0);</span><br><span class="line">    static Semaphore spaces = new Semaphore(10);</span><br><span class="line"></span><br><span class="line">    static int resource = 0;</span><br><span class="line"></span><br><span class="line">    static class Producer implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">            int count = 5;</span><br><span class="line">            while (count-- &gt; 0) &#123;</span><br><span class="line">                try &#123;</span><br><span class="line">                    spaces.acquire();</span><br><span class="line">                    mutex.acquire();</span><br><span class="line">                    resource++;</span><br><span class="line">                    System.out.println(&quot;Producer添加一个，现在resource=&quot; + resource);</span><br><span class="line">                    mutex.release();</span><br><span class="line">                    items.release();</span><br><span class="line">                &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    static class Consumer implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">            int count = 5;</span><br><span class="line">            while (count-- &gt; 0) &#123;</span><br><span class="line">                try &#123;</span><br><span class="line">                    items.acquire();</span><br><span class="line">                    mutex.acquire();</span><br><span class="line">                    resource--;</span><br><span class="line">                    System.out.println(&quot;Consumer消费一个，现在resource=&quot; + resource);</span><br><span class="line">                    mutex.release();</span><br><span class="line">                    spaces.release();</span><br><span class="line">                &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        Thread a = new Thread(new Producer());</span><br><span class="line">        Thread b = new Thread(new Consumer());</span><br><span class="line">        a.start();</span><br><span class="line">        b.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="使用-blockingqueue-实现生产者-消费者代码"><a class="header-anchor" href="#使用-blockingqueue-实现生产者-消费者代码">¶</a>使用 BlockingQueue 实现生产者/消费者代码</h2>
-<p>下面是使用 BlockingQueue 实现的生产者/消费者代码</p>
+<p>下面是使用 BlockingQueue 实现的生产者/消费者代码<br>
+注意要使用put/take这组方法，而不是offer/poll，因为后者会在满/空时直接返回（而非阻塞等待）。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">public class Producer implements Runnable &#123;</span><br><span class="line">    private final BlockingQueue&lt;String&gt; queue;</span><br><span class="line"></span><br><span class="line">    public Producer(BlockingQueue&lt;String&gt; queue) &#123;</span><br><span class="line">        this.queue = queue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        for(int i = 0; i &lt; 10; i++) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                queue.put(&quot;Course&quot; + (i + 1));</span><br><span class="line">                System.out.println(&quot;Complete production:Course&quot; + (i + 1));</span><br><span class="line">                Thread.sleep(100);</span><br><span class="line">            &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class Consumer implements Runnable &#123;</span><br><span class="line">    private final BlockingQueue&lt;String&gt; queue;</span><br><span class="line"></span><br><span class="line">    public Consumer(BlockingQueue&lt;String&gt; queue) &#123;</span><br><span class="line">        this.queue = queue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        for(int i = 0; i &lt; 10; i++) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                String course = queue.take();</span><br><span class="line">                System.out.println(&quot;Complete consumption:&quot; + course);</span><br><span class="line">                Thread.sleep(100);</span><br><span class="line">            &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class Main &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        BlockingQueue&lt;String&gt; queue = new ArrayBlockingQueue&lt;String&gt;(2);</span><br><span class="line">        Thread t1 = new Thread(new Producer(queue));</span><br><span class="line">        Thread t2 = new Thread(new Consumer(queue));</span><br><span class="line">        t1.start();</span><br><span class="line">        t2.start();</span><br><span class="line">        try &#123;</span><br><span class="line">            t1.join();</span><br><span class="line">            t2.join();</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h1>Readers-writers</h1>
 <p>读写问题中有两类线程：</p>
@@ -2657,6 +2532,387 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fca77f63.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/fca77f63.html" itemprop="url">Linux 与 IO</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T11:34:43+08:00">
+                2019-09-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  19 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>5 种 IO 模型</h1>
+<h2 id="blocking"><a class="header-anchor" href="#blocking">¶</a>Blocking</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-BIO.png" alt="Linux-BIO" title="Linux-BIO"></p>
+<ol>
+<li>用户程序调用系统调用 read()，应用程序阻塞；</li>
+<li>当内核把数据准备好后，将数据从内核拷贝到用户内存；</li>
+<li>内核返回，用户线程解除 block 状态。</li>
+</ol>
+<h2 id="non-blocking"><a class="header-anchor" href="#non-blocking">¶</a>Non-Blocking</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-NIO.png" alt="Linux-NIO" title="Linux-NIO"></p>
+<ol>
+<li>用户进程轮询调用 recvfrom，直到内核将数据准备好；</li>
+<li>轮询期间用户可以去做别的事；</li>
+<li>当内核中的数据准备好了，再次接收到 recvfrom 调用时会将数据拷贝到用户内存并返回。</li>
+</ol>
+<h2 id="io-multiplexing-多路复用"><a class="header-anchor" href="#io-multiplexing-多路复用">¶</a>IO Multiplexing（多路复用）</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.png" alt="Linux-IO多路复用" title="Linux-IO多路复用"><br>
+又称为事件驱动 IO。</p>
+<ol>
+<li>内核会同时监听多个 select 负责的 socket，当其中任何一个 socket 中的数据准备好了，select 就会返回；</li>
+<li>当数据准备好了，用户进程再调用 read、内核会将数据从内核拷贝到用户进程。</li>
+</ol>
+<p>优势：</p>
+<ol>
+<li>能同时监听多个 socket；</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>如果 socket 较少，因为有两次系统调用，性能甚至不如 BIO；</li>
+</ol>
+<h3 id="select"><a class="header-anchor" href="#select">¶</a>select</h3>
+<p>原理：如上所述<br>
+缺点：</p>
+<ol>
+<li>select 最大的缺陷是单个进程打开的 fd 数量有限（因为是用数组保存的）；</li>
+<li>对多个 socket 的扫描是线性轮询扫描的，效率较低，当 socket 较多时，select 会浪费很多 CPU 时间，且 socket 越多，这个现象会越明显；</li>
+<li>需要一个大数据结构来存放打开的 fd，这样会使得用户空间和内核空间在传递该结构时复制开销大。</li>
+</ol>
+<h3 id="poll"><a class="header-anchor" href="#poll">¶</a>poll</h3>
+<p>原理：本质上与 select 没有区别，只是存储 fd 的结构是链表。<br>
+优点（相对 select）：</p>
+<ol>
+<li>没有最大连接数的限制</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>大量 fd 组成的链表被整体复制于用户态和内核地址空间之间，很多时候这样的复制没有意义；</li>
+</ol>
+<h3 id="epoll"><a class="header-anchor" href="#epoll">¶</a>epoll</h3>
+<p>原理：</p>
+<ol>
+<li>更灵活，使用一个文件描述符管理多个描述符，将用户关系的文件描述符的事件存放到内核的一个事件表中，这样在用户空间和内核空间的 copy 只需一次；</li>
+<li>通过回调通知进程，而不是轮询。</li>
+</ol>
+<p>优点：</p>
+<ol>
+<li>没有描述符限制，epoll 会把所有创建的描述符放到一个事件表（文件）中由一个描述符统一管理；</li>
+<li>效率更高、IO 的效率不会随着监视 fd 的数量的增长而下降，fd 变为活跃时才会调用 callback 函数通知用户进程，而不是通过轮询的方式；</li>
+<li>使用 mmap()文件映射内存加速与内核空间的消息传递，减少了复制的开销。</li>
+</ol>
+<h4 id="进程调度原理"><a class="header-anchor" href="#进程调度原理">¶</a>进程调度原理</h4>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6.png" alt="Linux-操作系统的进程调度" title="Linux-操作系统的进程调度"></p>
+<ol>
+<li>进程刚开始处于运行中状态，这时进程处于<strong>工作队列</strong>内，进程调度程序会分时执行各个运行状态的进程；</li>
+<li>进程调用了<code>recv</code>这种需要阻塞的系统调用，这时，进程从运行状态变为等待状态，会被添加到对应<strong>socket</strong>中的<strong>等待队列</strong>内，这时进程调度程序不会分配时间片给该进程，因此也不会占用任何 CPU 资源；</li>
+<li>socket 接收到数据后，操作系统将该 socket<strong>等待队列</strong>上的进程重新放回到<strong>工作队列</strong>，该进程变成运行状态，继续执行代码。也由于 socket 的接收缓冲区已经有了数据，recv 可以返回接收到的数据。</li>
+</ol>
+<h4 id="操作系统如何知道网络数据对应于哪个-socket"><a class="header-anchor" href="#操作系统如何知道网络数据对应于哪个-socket">¶</a>操作系统如何知道网络数据对应于哪个 socket</h4>
+<p>如上面进程调度原理所述，操作系统接收数据后需要唤醒 socket 上等待队列里的进程，但是操作系统接收数据后怎么知道网络数据属于哪个 socket 呢？<br>
+不妨回忆下我们平时创建 socket 时给出的参数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new Socket(serverHost, serverPort)</span><br></pre></td></tr></table></figure>
+<p>实际上因为每个 socket 都对应着一个端口号，而网络数据包中包含了 ip 和端口的信息，内核可以通过端口号找到对应的 socket。<br>
+而且为了提高处理速度，操作系统会维护端口号到 socket 的索引结构。</p>
+<h4 id="多路复用的基石-select-及其存在的问题"><a class="header-anchor" href="#多路复用的基石-select-及其存在的问题">¶</a>多路复用的基石-select 及其存在的问题</h4>
+<p>前面我们讨论了操作系统如何唤醒进程，如果进程和 socket 是一一对应的，那么我们就实现了 BIO。<br>
+不过 epoll 等模型的特点是一个进程同时监听多个 socket，即一对多的多路复用。<br>
+最普通的 select 模型中，进程将所有监听的 socket 放到一个列表内，只要有一个 socket 监听到数据到，操作系统会唤醒该进程，然后程序需要遍历一次该列表，就可以拿到所有就绪的 socket。<br>
+这种方式的缺点主要是：</p>
+<ul>
+<li>有两次遍历过程：每次 socket 读取到数据后需要遍历该 socket 的<strong>等待队列</strong>；每次进程被唤醒后，都需要遍历一次它监听的 socket 列表。<br>
+这里涉及了两次遍历，而且每次都要将整个 fds 列表传递给内核，有一定的开销。正是因为遍历操作开销大，出于效率的考量，才会规定 select 的最大监视数量，默认只能监视 1024 个 socket。</li>
+</ul>
+<p>poll 与 select 没有本质区别，只不过 poll 使用链表来保存监听的 socket，没有最大监听数量限制。</p>
+<h4 id="为什么使用-epoll"><a class="header-anchor" href="#为什么使用-epoll">¶</a>为什么使用 epoll</h4>
+<ol>
+<li>功能分离<br>
+传统 select 每次调用 select 都需要将运行队列中的进程添加到 socket 的等待队列，唤醒时再移除，然而大多数应用场景中，需要监视的 socket 相对固定，并不需要每次都修改。<br>
+epoll 的改进是只添加一次等待队列，之后每次都只需要阻塞进程，如下图所示：<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-epoll%E6%8B%86%E5%88%86%E5%8A%9F%E8%83%BD.jpg" alt="Linux-epoll拆分功能" title="Linux-epoll拆分功能"></li>
+<li>就绪列表<br>
+epoll 中，操作系统唤醒进程后，进程不需要遍历所有监听的 socket，因为收到数据的 socket 会被添加到一个<strong>就绪队列</strong>内，然后唤醒等待队列中的所有进程，这时进程只需要遍历<strong>就绪队列</strong>即可拿到所有接收到数据的 socket。<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png" alt="Linux-epoll原理" title="Linux-epoll原理"></li>
+</ol>
+<h3 id="kqueue"><a class="header-anchor" href="#kqueue">¶</a>kqueue</h3>
+<p>与 epoll 非常相似，注册一批 socket 描述符到 kqueue 以后，当其中的描述符状态发生变化时，kqueue 将一次性通知应用程序哪些描述符可读、可写或出错了。</p>
+<blockquote>
+<p>可能是因为不同 Linux 发行版之间存在接口兼容性问题，所以在已有 epoll 的情况下又有人开发了 kqueue，kqueue 主要应用在 freebsd 和 macosx 内核的操作系统上。</p>
+</blockquote>
+<h3 id="reactor"><a class="header-anchor" href="#reactor">¶</a>Reactor</h3>
+<p>Reactor 是 Java 中的一种设计模式：</p>
+<ol>
+<li>事件驱动；</li>
+<li>一次性处理一个或多个事件（输入源）；</li>
+<li>通过 Service Handler 同步的将输入事件（Event）采用多路复用分发给相应的 Request Handler（多个）处理。</li>
+</ol>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-Reactor%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%A8%A1%E5%9E%8B.png" alt="Linux-Reactor事件分发模型" title="Linux-Reactor事件分发模型"></p>
+<p>Reactor 的实现上有 3 种模式：</p>
+<ol>
+<li>单 Reactor 单线程模型<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-%E5%8D%95Reactor%E5%8D%95%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-单Reactor单线程模型" title="Linux-单Reactor单线程模型"></li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line">@Slf4j</span><br><span class="line">public class Reactor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private Selector selector;</span><br><span class="line"></span><br><span class="line">    public Reactor(int port) throws Exception &#123;</span><br><span class="line">        ServerSocketChannel server = ServerSocketChannel.open();</span><br><span class="line">        ServerSocket serverSocket = server.socket();</span><br><span class="line">        serverSocket.bind(new InetSocketAddress(port));</span><br><span class="line">        // 设置为非阻塞模式</span><br><span class="line">        server.configureBlocking(false);</span><br><span class="line">        selector = Selector.open();</span><br><span class="line">        SelectionKey sk = server.register(selector,</span><br><span class="line">                SelectionKey.OP_ACCEPT);</span><br><span class="line">        // attach Acceptor 处理新连接</span><br><span class="line">        sk.attach(new Acceptor(server, selector));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            while (!Thread.interrupted()) &#123;</span><br><span class="line">                selector.select();</span><br><span class="line">                Set selected = selector.selectedKeys();</span><br><span class="line">                Iterator it = selected.iterator();</span><br><span class="line">                while (it.hasNext()) &#123;</span><br><span class="line">                    it.remove();</span><br><span class="line">                    //分发事件处理</span><br><span class="line">                    dispatch((SelectionKey) (it.next()));</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (IOException ex) &#123;</span><br><span class="line">            log.info(&quot;异常&quot;, ex);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void dispatch(SelectionKey k) &#123;</span><br><span class="line">        // 若是连接事件获取是acceptor</span><br><span class="line">        // 若是IO读写事件获取是handler</span><br><span class="line">        Runnable runnable = (Runnable) (k.attachment());</span><br><span class="line">        if (runnable != null) &#123;</span><br><span class="line">            runnable.run();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Slf4j</span><br><span class="line">public class Acceptor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private ServerSocketChannel serverSocket;</span><br><span class="line"></span><br><span class="line">    private Selector selector;</span><br><span class="line"></span><br><span class="line">    private ExecutorService tp = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);</span><br><span class="line"></span><br><span class="line">    public Acceptor(ServerSocketChannel serverSocket,</span><br><span class="line">            Selector selector) &#123;</span><br><span class="line">        this.serverSocket = serverSocket;</span><br><span class="line">        this.selector = selector;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            SocketChannel c = serverSocket.accept();</span><br><span class="line">            if (c != null) &#123;</span><br><span class="line">                // 每个连接一个Handler</span><br><span class="line">                tp.submit(new SimpleHandler(c, selector));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            log.info(&quot;异常&quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Slf4j</span><br><span class="line">public class SimpleHandler implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    public static final int READING = 0, WRITING = 1;</span><br><span class="line"></span><br><span class="line">    int state;</span><br><span class="line">    private SocketChannel socketChannel;</span><br><span class="line">    private SelectionKey sk;</span><br><span class="line"></span><br><span class="line">    public SimpleHandler(SocketChannel socketChannel, Selector selector) throws IOException &#123;</span><br><span class="line">        this.state = READING;</span><br><span class="line">        this.socketChannel = socketChannel;</span><br><span class="line">        sk = socketChannel.register(selector, SelectionKey.OP_READ);</span><br><span class="line">        sk.attach(this);</span><br><span class="line">        socketChannel.configureBlocking(false);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        if (state == READING) &#123;</span><br><span class="line">            read();</span><br><span class="line">        &#125; else if (state == WRITING) &#123;</span><br><span class="line">            write();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        // TODO 处理读</span><br><span class="line">        //下一步处理写事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_WRITE);</span><br><span class="line">        this.state = WRITING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        // TODO 处理写</span><br><span class="line">        //下一步处理读事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">        this.state = READING;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如代码可知，Reactor 线程启动后监听客户端请求、多路分离 socket，将 connect 事件分发给 Acceptor 处理，有 IO 读写事件后交给 Handler 处理，分发过程中并没有创建新线程。<br>
+这种单线程模型不能充分利用多核资源，所以实际使用不多。</p>
+<ol>
+<li>单 Reactor 多线程模型<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-%E5%8D%95Reactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-单Reactor多线程模型" title="Linux-单Reactor多线程模型"><br>
+与上面的区别是 Handler 通过多线程来执行读写任务：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">public class MultiThreadHandler implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private static final int READING = 0, WRITING = 1;</span><br><span class="line">    private int state;</span><br><span class="line">    private final SocketChannel socket;</span><br><span class="line">    private final SelectionKey sk;</span><br><span class="line"></span><br><span class="line">    //多线程处理业务逻辑</span><br><span class="line">    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());</span><br><span class="line"></span><br><span class="line">    public MultiThreadHandler(SocketChannel socket, Selector selector) throws Exception &#123;</span><br><span class="line">        this.state = READING;</span><br><span class="line">        this.socket = socket;</span><br><span class="line">        sk = socket.register(selector, SelectionKey.OP_READ);</span><br><span class="line">        sk.attach(this);</span><br><span class="line">        socket.configureBlocking(false);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        if (state == READING) &#123;</span><br><span class="line">            read();</span><br><span class="line">        &#125; else if (state == WRITING) &#123;</span><br><span class="line">            write();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(this::process);</span><br><span class="line"></span><br><span class="line">        //下一步处理写事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_WRITE);</span><br><span class="line">        this.state = WRITING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(this::process);</span><br><span class="line"></span><br><span class="line">        //下一步处理读事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">        this.state = READING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * task 业务处理</span><br><span class="line">     */</span><br><span class="line">    public void process() &#123;</span><br><span class="line">        //do IO ,task,queue something</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>多 Reactor 多线程模型<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-%E5%A4%9AReactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-多Reactor多线程模型" title="Linux-多Reactor多线程模型"><br>
+相对上面两种来说，第三种将 Reactor 分成了两部分：
+<ul>
+<li>mainReactor 负责监听 server socket，用来处理新连接的建立，将建立的 socketChannel 指定注册给 subReactor。</li>
+<li>subReactor 维护自己的 selector, 基于 mainReactor 注册的 socketChannel 多路分离 IO 读写事件，读写网络数据，对业务处理的功能，将其扔给 worker 线程池来完成。</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * 多work 连接事件Acceptor,处理连接事件</span><br><span class="line"> */</span><br><span class="line">public class MultiWorkThreadAcceptor implements Runnable &#123; </span><br><span class="line">    </span><br><span class="line">    // cpu线程数相同多work线程</span><br><span class="line">    private int workCount =Runtime.getRuntime().availableProcessors();</span><br><span class="line">    private SubReactor[] workThreadHandlers = new SubReactor[workCount];</span><br><span class="line">    private volatile int nextHandler = 0;</span><br><span class="line">    </span><br><span class="line">    public MultiWorkThreadAcceptor() &#123;</span><br><span class="line">        this.init();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    public void init() &#123;</span><br><span class="line">        nextHandler = 0;</span><br><span class="line">        for (int i = 0; i &lt; workThreadHandlers.length; i++) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                workThreadHandlers[i] = new SubReactor();</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            SocketChannel c = serverSocket.accept();</span><br><span class="line">            if (c != null) &#123;// 注册读写</span><br><span class="line">                synchronized (c) &#123;</span><br><span class="line">                    // 顺序获取SubReactor，然后注册channel</span><br><span class="line">                    SubReactor work = workThreadHandlers[nextHandler];</span><br><span class="line">                    work.registerChannel(c);</span><br><span class="line">                    nextHandler++;</span><br><span class="line">                    if (nextHandler &gt;= workThreadHandlers.length) &#123;</span><br><span class="line">                        nextHandler = 0;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * 多work线程处理读写业务逻辑</span><br><span class="line"> */</span><br><span class="line">@Slf4j</span><br><span class="line">public class SubReactor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private final Selector mySelector;</span><br><span class="line"></span><br><span class="line">    //多线程处理业务逻辑</span><br><span class="line">    private int workCount = Runtime.getRuntime().availableProcessors();</span><br><span class="line">    private ExecutorService executorService = Executors.newFixedThreadPool(workCount);</span><br><span class="line"></span><br><span class="line">    public SubReactor() throws Exception &#123;</span><br><span class="line">        // 每个SubReactor 一个selector </span><br><span class="line">        this.mySelector = SelectorProvider.provider().openSelector();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 注册chanel</span><br><span class="line">     */</span><br><span class="line">    public void registerChannel(SocketChannel sc) throws Exception &#123;</span><br><span class="line">        sc.register(mySelector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        while (true) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                //每个SubReactor 自己做事件分派处理读写事件</span><br><span class="line">                selector.select();</span><br><span class="line">                Set&lt;SelectionKey&gt; keys = selector.selectedKeys();</span><br><span class="line">                Iterator&lt;SelectionKey&gt; iterator = keys.iterator();</span><br><span class="line">                while (iterator.hasNext()) &#123;</span><br><span class="line">                    SelectionKey key = iterator.next();</span><br><span class="line">                    iterator.remove();</span><br><span class="line">                    if (key.isReadable()) &#123;</span><br><span class="line">                        read();</span><br><span class="line">                    &#125; else if (key.isWritable()) &#123;</span><br><span class="line">                        write();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">                log.warn(&quot;出错&quot;, e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(() -&gt; process());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(() -&gt; process());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * task 业务处理</span><br><span class="line">     */</span><br><span class="line">    public void process() &#123;</span><br><span class="line">        //do IO ,task,queue something</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="signal-driven-io-信号驱动的-io"><a class="header-anchor" href="#signal-driven-io-信号驱动的-io">¶</a>Signal Driven IO（信号驱动的 IO）</h2>
+<p>用户注册一个信号处理函数，一旦数据准备好，由内核生成一个 SIGIO 信号，通知数据已经准备好的事件，之后用户进程可以调用 recvfrom 把数据从内核拷贝出来并返回结果。</p>
+<h2 id="aio"><a class="header-anchor" href="#aio">¶</a>AIO</h2>
+<p>与信号驱动 IO 的主要区别是：在信号驱动的 I/O 中，内核告诉我们何时可以启动 I/O 操作，但是异步 I/O 时，内核告诉我们何时 I/O 操作完成。</p>
+<h3 id="proactor"><a class="header-anchor" href="#proactor">¶</a>Proactor</h3>
+<h2 id="5-种-io-模型的比较"><a class="header-anchor" href="#5-种-io-模型的比较">¶</a>5 种 IO 模型的比较</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-5%E7%A7%8DIO%E6%A8%A1%E5%9E%8B%E7%9A%84%E6%AF%94%E8%BE%83.png" alt="Linux-5种IO模型的比较" title="Linux-5种IO模型的比较"></p>
+<h1>优化</h1>
+<h2 id="pagecache"><a class="header-anchor" href="#pagecache">¶</a>pageCache</h2>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-pageCache%E4%B8%8Emmap.png" alt="Linux-pageCache与mmap" title="Linux-pageCache与mmap"></p>
+<ul>
+<li>Linux里所有处理文件的IO请求均需经过pageCache，对于操作系统来说，磁盘文件都是由一系列的数据块顺序组成。<br>
+比如要读的磁盘位置若未加载到pageCache（pageCache中的每一个数据块都设置了文件以及偏移量地址信息），则发起一次<strong>缺页中断</strong>，由操作系统加载该页到pageCache中的一个空闲块，并注册到<strong>页表</strong>，然后再copy到用户缓冲区中。换进新页面时会通过<strong>页面置换算法</strong>将老页面换出，Linux中一般是基于LRU实现的。</li>
+<li>预读取（局部性原理）<br>
+page cache本身也会对数据文件进行预读取，对于每个文件的第一个读请求操作，系统在读入所请求页面的同时会读入紧随其后的少数几个页面。</li>
+</ul>
+<p>PageCache机制也不是完全无缺点的，当遇到OS进行脏页回写，内存回收，内存swap等情况时，就会引起较大的消息读写延迟，优化方式主要包括内存预分配，文件预热和mlock系统调用。</p>
+<h2 id="零拷贝"><a class="header-anchor" href="#零拷贝">¶</a>零拷贝</h2>
+<p>零拷贝技术主要有以下几种：</p>
+<ol>
+<li>直接 I/O：对于这种数据传输方式来说，应用程序可以直接访问硬件存储，操作系统内核只是辅助数据传输：这类零拷贝技术针对的是操作系统内核并不需要对数据进行直接处理的情况，数据可以在应用程序地址空间的缓冲区和磁盘之间直接进行传输，完全不需要 Linux 操作系统内核提供的页缓存的支持。</li>
+<li>在数据传输的过程中，避免数据在<strong>操作系统内核地址空间的缓冲区</strong>和<strong>用户应用程序地址空间的缓冲区</strong>之间进行拷贝。有的时候，应用程序在数据进行传输的过程中不需要对数据进行访问，那么，将数据从 Linux 的<strong>pageCache</strong>拷贝到用户进程的缓冲区中就可以完全避免，传输的数据在<strong>pageCache</strong>中就可以得到处理。在某些特殊的情况下，这种零拷贝技术可以获得较好的性能。Linux 中提供类似的系统调用主要有 <code>mmap()</code>，<code>sendfile()</code> 以及 <code>splice()</code>。</li>
+<li>对数据在 <strong>Linux 的页缓存</strong>和<strong>用户进程的缓冲区</strong>之间的传输过程进行优化。该零拷贝技术侧重于灵活地处理数据在用户进程的缓冲区和操作系统的页缓存之间的拷贝操作。这种方法延续了传统的通信方式，但是更加灵活。在 Linux 中，该方法主要利用了<strong>写时复制</strong>技术。</li>
+</ol>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-%E4%B8%80%E6%AC%A1IO%E5%8F%91%E7%94%9F%E7%9A%84%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D.png" alt="Linux-一次IO发生的内存拷贝" title="Linux-一次IO发生的内存拷贝"><br>
+当应用程序访问某块数据时，操作系统首先会检查，是不是最近访问过此文件，文件内容是否缓存在内核缓冲区，如果是，操作系统则直接根据 read 系统调用提供的 buf 地址，将内核缓冲区的内容拷贝到 buf 所指定的用户空间缓冲区中去。如果不是，操作系统则首先将磁盘上的数据拷贝的内核缓冲区，这一步目前主要依靠 DMA 来传输，然后再把内核缓冲区上的内容拷贝到用户缓冲区中。 接下来，write 系统调用再把用户缓冲区的内容拷贝到网络堆栈相关的内核缓冲区中，最后 socket 再把内核缓冲区的内容发送到网卡上。<br>
+这期间，一共进行了 4 次数据拷贝，且用户态和内核态也发生了多次上下文切换。</p>
+<p>从代码层面上来看，从硬盘上将文件读入内存，都要经过文件系统进行数据拷贝，并且数据拷贝操作是由文件系统和硬件驱动实现的，理论上来说，拷贝数据的效率是一样的。<br>
+但是通过内存映射的方法访问硬盘文件效率会比 read 和 write 系统调用高：</p>
+<ol>
+<li>read()是系统调用，首先将文件从硬盘拷贝到内核空间的一个缓冲区，再将这些数据拷贝到用户空间，实际上进行了两次数据拷贝；</li>
+<li>map()也是系统调用，但没有进行数据拷贝，当缺页中断发生时，直接将文件从硬盘拷贝到用户空间，只进行了一次数据拷贝。</li>
+</ol>
+<h3 id="mmap"><a class="header-anchor" href="#mmap">¶</a>mmap</h3>
+<p><img src="http://47.88.24.11/imgs/Linux/Linux-mmap.png" alt="Linux-mmap" title="Linux-mmap"><br>
+mmap是零拷贝的实现方案，mmap 将内核缓冲区与应用程序缓冲区共享，减少了 2 次拷贝及拷贝过程中必经的上下文切换过程。</p>
+<h3 id="java-中的零拷贝"><a class="header-anchor" href="#java-中的零拷贝">¶</a>Java 中的零拷贝</h3>
+<p>Java 中的 NIO 相对 BIO 的优势之一就是 NIO 提供了零拷贝提高了 IO 速度，实现是<code>MappedByteBuffer</code>，核心方法是<code>map()</code>，该方法把文件映射到内存中，获得内存地址 addr，然后通过这个 addr 构造<code>MappedByteBuffer</code>类，以暴露各种文件操作 API。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">public class MappedByteBufferTest &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        File file = new File(&quot;/Users/huanggaochi/Downloads/a.txt&quot;);</span><br><span class="line">        long len = file.length();</span><br><span class="line">        byte[] ds = new byte[(int) len];</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            // 读文件到字节数组</span><br><span class="line">            MappedByteBuffer mappedByteBuffer = new RandomAccessFile(file, &quot;r&quot;)</span><br><span class="line">                    .getChannel()</span><br><span class="line">                    .map(FileChannel.MapMode.READ_ONLY, 0, len);</span><br><span class="line">            for (int offset = 0; offset &lt; len; offset++) &#123;</span><br><span class="line">                byte b = mappedByteBuffer.get();</span><br><span class="line">                ds[offset] = b;</span><br><span class="line">            &#125;</span><br><span class="line">            // 从字节数组读</span><br><span class="line">            Scanner scan = new Scanner(new ByteArrayInputStream(ds)).useDelimiter(&quot; &quot;);</span><br><span class="line">            while (scan.hasNext()) &#123;</span><br><span class="line">                System.out.print(scan.next() + &quot; &quot;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (IOException e) &#123;</span><br><span class="line">            System.out.println(e.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>MappedByteBuffer</code>本身是一个抽象类，它申请的是堆外内存，因此<strong>不受 Minor GC 控制</strong>，只能在发生 Full GC 时才能被回收。而<code>DirectByteBuffer</code>改善了这一情况，原理是在<code>MappedByteBuffer</code>的基础上，维护了一个 Cleaner 对象来完成内存的回收工作，因此它既可以通过 Full GC 来回收内存，也可以调用 clean()方法来进行回收。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (address == 0) &#123;</span><br><span class="line">    // Paranoia</span><br><span class="line">    return;</span><br><span class="line">&#125;</span><br><span class="line">unsafe.freeMemory(address);</span><br><span class="line">address = 0;</span><br><span class="line">Bits.unreserveMemory(size, capacity);</span><br></pre></td></tr></table></figure>
+<p>读取内存和写入数据都是直接调用 Unsafe 的对应接口 getByte 和 putByte，通过（address + 偏移量）获取指定内存的数据。：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public byte get(int i) &#123;</span><br><span class="line">    return ((unsafe.getByte(ix(checkIndex(i)))));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public ByteBuffer put(int i, byte x) &#123;</span><br><span class="line">    unsafe.putByte(ix(checkIndex(i)), ((x)));</span><br><span class="line">    return this;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>第一次访问 address 所指向的内存区域，导致缺页中断，中断响应函数会在交换区中查找相对应的页面，如果找不到（也就是该文件从来没有被读入内存的情况），则从硬盘上将文件指定页读取到物理内存中（非 jvm 堆内存）。</li>
+<li>如果在拷贝数据时，发现物理内存不够用，则会通过虚拟内存机制（swap）将暂时不用的物理页面交换到硬盘的虚拟内存中。</li>
+</ol>
+<blockquote>
+<p>MappedByteBuffer 还有一个兄弟 HeapByteBuffer，它在堆中申请内存，本质上是一个数组，由于位于堆中，因此可受 GC 管控，易于回收。</p>
+</blockquote>
+<h1>C10K问题</h1>
+<p>两个限制：</p>
+<ol>
+<li>可打开文件句柄数的限制<br>
+可以通过ulimit命令调整。</li>
+<li>线程数的限制<br>
+注意内存容量限制，线程本身会占用堆栈空间内存。</li>
+</ol>
+<p>解决C10K问题采用的IO模型：epoll<br>
+<img src="http://47.88.24.11/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png" alt="Linux-epoll原理" title="Linux-epoll原理"><br>
+epoll具体原理描述见之前的小节。</p>
+<h1>参考</h1>
+<ol>
+<li>为什么说NIO是同步非阻塞的？和BIO有什么区别？<br>
+非阻塞指的是：通过轮询selector监听socket是否来数据，而不是阻塞等待。<br>
+同步指的是：一个socket来数据后需要创建一个线程读取，读取过程是同步的。<br>
+异步指的是：读取数据由操作系统做好，业务线程等着数据读取完毕的通知。</li>
+<li>多路复用机制如何支持海量连接？<br>
+多路复用可以用很少的线程监听很多客户端的请求。<br>
+因此多路复用常用于解决C10K问题。</li>
+</ol>
+<h1>参考文档</h1>
+<ol>
+<li><a href="https://wenchao.ren/2019/07/Select%E3%80%81Epoll%E3%80%81KQueue%E5%8C%BA%E5%88%AB/" target="_blank" rel="noopener">Select、poll、Epoll、KQueue 区别</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/63179839" target="_blank" rel="noopener">如果这篇文章说不清 epoll 的本质，那就过来掐死我吧！ （1）</a></li>
+<li><a href="https://www.jianshu.com/p/275602182f39" target="_blank" rel="noopener">零拷贝</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/283c6d00.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2793,307 +3049,6 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
 <h3 id="ln"><a class="header-anchor" href="#ln">¶</a>ln</h3>
 <h3 id="fdisk"><a class="header-anchor" href="#fdisk">¶</a>fdisk</h3>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fdisk -l # 查看硬盘分区信息</span><br></pre></td></tr></table></figure>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/283c6d00.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/283c6d00.html" itemprop="url">Linux 基本概念</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T11:34:43+08:00">
-                2019-09-14
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.4k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  8 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>并发（Concurrency）</h1>
-<p>线程、进程，线程安全，进程同步，可见性，一致性，锁，信号量，并发，并行</p>
-<h2 id="线程和进程"><a class="header-anchor" href="#线程和进程">¶</a>线程和进程</h2>
-<p>从操作系统概念上说，<strong>线程</strong>是最小的可执行单位，也就是系统调度的最小单位。<strong>进程</strong>是资源分配的最小单位。线程是依赖进程存在的，共享进程内的资源，如内存，cpu，io 等。在操作系统的发展过程中，为了提高系统的稳定性、吞吐量和安全性，操作系统内核和用户态做了隔离，例如 Linux 有内核线程，用户线程，内核进程，用户进程，从根本上 Linux 是没有线程的，线程对 Linux 系统来说是个特殊的进程。那么用户线程和内核线程是一一对应呢？从宏观上看是一一对应的，在用户态的每一个线程，都会在内核有对应的执行线程，但是由于资源的限制，用户态的线程和内核线程是多对一的关系。用户进程和内核进程也类似。具体怎样对应的，这里就不探讨了。<br>
-为了提高操作系统的实时性，操作系统是以时间片轮转来实现任务调度的。理论上时间片内是不可以被中断的，可认为是 cpu 最小的单位执行时间。现代操作系统为了提高用户体验，线程都是抢占式的，而中断一般在时间片用完的时候发生。线程、进程和 CPU 都是多对一的关系，所以存在进程线程切换的问题。<br>
-线程内部还是有自己内存空间的，所以有个概念叫线程内存模型。线程内部有自己私有的本地内存，故线程和线程之间的本地内存存在可见性问题。例如全局变量 A 在线程 1 修改后，线程 2 并不一定能拿到 A 的修改值，因为线程 1 会把全局变量 A 拷贝到本地内存，修改后并不会马上同步。在编译的时候，编译器为了优化，（例如利用超线程技术）可能会重排指令的执行顺序，这就会存在一致性了。</p>
-<h2 id="线程安全"><a class="header-anchor" href="#线程安全">¶</a>线程安全</h2>
-<p>在线程安全里面经常要讨论的两个问题就是：可见性和一致性。锁是什么东西呢？锁就是一道内存屏障，保证可见性和一致性的一种策略，由操作系统甚至更底层的硬件提供。加锁是消耗资源的，特别是在多核 CPU 上，现在多核 CPU 一般有 3 级缓存，一级缓存通常是单核独占的，而线程的本地内存很可能就保存在 cpu 的缓存里面，然而加锁就意味着保证可见性和一致性，需要中断同步数据，保证别人拿到的是最新修改值。由于用途不同，锁被设计成各种各样的，如互斥锁，读写锁，自旋锁，同步块，数据库的事务等，如果只要保证可见性的，可以不使用锁，在 java 里面可以使用 volatile 修饰全局变量。虽然在 c／c＋＋，都有同样的修饰符，但是是不是一样的意思呢，请参考其他文章。</p>
-<h2 id="死锁-deadlock"><a class="header-anchor" href="#死锁-deadlock">¶</a>死锁（deadlock）</h2>
-<h3 id="定义"><a class="header-anchor" href="#定义">¶</a>定义</h3>
-<p>多个进程竞争资源造成的互相等待情况。</p>
-<h3 id="资源"><a class="header-anchor" href="#资源">¶</a>资源</h3>
-<p>可重用性资源：可供重复使用多次的资源<br>
-不可抢占性资源：一旦系统把某资源分配给该进程后，就不能将它强行收回，只能在进程使用完后自动释放<br>
-可消耗资源:又叫临时性资源，它是在进程运行期间，由进程动态的创建和消耗的</p>
-<h3 id="死锁产生的原因"><a class="header-anchor" href="#死锁产生的原因">¶</a>死锁产生的原因</h3>
-<ol>
-<li>系统资源的竞争<br>
-系统资源的竞争导致系统资源不足，以及资源分配不当，导致死锁。<br>
-主要是竞争可重用不可抢占式的资源和可消耗的资源。</li>
-<li>进程运行推进顺序不合适<br>
-进程在运行过程中，请求和释放资源的顺序不当，会导致死锁。</li>
-</ol>
-<h3 id="死锁产生的条件"><a class="header-anchor" href="#死锁产生的条件">¶</a>死锁产生的条件</h3>
-<p><strong>互斥条件</strong> 一个资源每次只能被一个进程使用，即在一段时间内某资源仅为一个进程所占有。此时若有其他进程请求该资源，则请求进程只能等待。<br>
-<strong>请求与保持条件</strong> 进程已经保持了至少一个资源，但又提出了新的资源请求，而该资源 已被其他进程占有，此时请求进程被阻塞，但对自己已获得的资源保持不放。<br>
-<strong>不可剥夺条件</strong> 进程所获得的资源在未使用完毕之前，不能被其他进程强行夺走，即只能 由获得该资源的进程自己来释放（只能是主动释放)。<br>
-<strong>循环等待条件</strong> 若干进程间形成首尾相接循环等待资源的关系<br>
-<strong>这四个条件是死锁的必要条件，只要系统发生死锁，这些条件必然成立，而只要上述条件之一不满足，就不会发生死锁。</strong><br>
-形象地说，就是有两个酒鬼，一个有开瓶器，一个有酒，这两种资源都只能被一个人占有（互斥），且用完之前不能被另一个人抢去（不可剥夺），他们互相等对方手上的资源（循环等待），但又不肯放开自己手上的资源（请求与保持），因此陷入了死锁。</p>
-<h3 id="死锁避免"><a class="header-anchor" href="#死锁避免">¶</a>死锁避免</h3>
-<p>系统对进程发出每一个系统能够满足的资源申请进行动态检查,并根据检查结果决定是否分配资源,如果分配后系统可能发生死锁,则不予分配,否则予以分配。<br>
-书上给出了两种死锁避免策略</p>
-<ol>
-<li>进程启动拒绝<br>
-若对每个资源，能满足现有所有进程再加上新进程的需求，则可以启动这个进程，否则拒绝</li>
-<li>资源分配拒绝（银行家算法）</li>
-</ol>
-<h3 id="死锁预防"><a class="header-anchor" href="#死锁预防">¶</a>死锁预防</h3>
-<p>死锁预防是设法至少破坏产生死锁的四个必要条件之一，严格的防止死锁的出现。</p>
-<ol>
-<li>互斥<br>
-不可能禁止，比如文件只允许互斥的写访问</li>
-<li>占有且等待<br>
-可以要求进程一次性请求所有需要的资源，并且阻塞这个进程直到所有请求都同时满足，这样就不会再请求新资源了。</li>
-<li>不可抢占</li>
-<li>循环等待</li>
-</ol>
-<h1>持久化（Persistent）</h1>
-<h2 id="linux-io-模型"><a class="header-anchor" href="#linux-io-模型">¶</a>Linux IO 模型</h2>
-<p><img src="http://47.88.24.11/imgs/Linux/Linux%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84.png" alt="X" title="Linux整体结构"><br>
-应用程序调用内核 IO 函数的过程如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Linux/IO%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.png" alt="X" title="IO系统调用过程"><br>
-处于 OS 的安全性等的考虑，进程无法直接操作 I/O 设备，必须通过系统调用来请求内核完成 I/O 动作，而内核会为每个 I/O 设备维护一个 Buffer。</p>
-<ol>
-<li>用户进程发起请求；</li>
-<li>内核接收到请求后，从 I/O 设备中获取数据到 Buffer 中；</li>
-<li>将 Buffer 中的数据拷贝到用户进程的地址空间，该用户进程获取到数据后响应给客户端。</li>
-</ol>
-<p>在整个请求过程中，数据输入至 Buffer 需要时间，从 Buffer 复制数据到进程也需要时间，这个等待时间是限制 I/O 效率的罪魁祸首，根据等待方式的不同，I/O 动作可以分为以下五种模式：</p>
-<ul>
-<li>阻塞 I/O（Blocking I/O）</li>
-<li>非阻塞 I/O（Non-Blocking I/O）</li>
-<li>I/O 复用（I/O Multiplexing）</li>
-<li>信号驱动的 I/O（Signal Driven I/O）</li>
-<li>异步 I/O（Asynchronous I/O）</li>
-</ul>
-<h2 id="存储器管理"><a class="header-anchor" href="#存储器管理">¶</a>存储器管理</h2>
-<h2 id="文件系统"><a class="header-anchor" href="#文件系统">¶</a>文件系统</h2>
-<h2 id="io-pipe"><a class="header-anchor" href="#io-pipe">¶</a>IO（pipe）</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line">#include &lt;syscall.h&gt;</span><br><span class="line"></span><br><span class="line">int testPipe()&#123;</span><br><span class="line">    int fd[2];</span><br><span class="line"></span><br><span class="line">    int *read_fd = &amp;fd[0];</span><br><span class="line">    int *write_fd = &amp;fd[1];</span><br><span class="line"></span><br><span class="line">    if(pipe(fd) == -1)&#123;</span><br><span class="line">        printf(&quot;pipe create failed\n&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    int pid = fork();</span><br><span class="line">    if(pid == -1)&#123;</span><br><span class="line">        printf(&quot;fork failed&quot;);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line">    else if(pid == 0)&#123;</span><br><span class="line">        int count;</span><br><span class="line">        char string[] = &quot;hahaha&quot;;</span><br><span class="line">        close(*read_fd);</span><br><span class="line">        count = write(*write_fd, string, sizeof(string));</span><br><span class="line">        printf(&quot;写了%d个字符\n&quot;, count);</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        int count;</span><br><span class="line">        char buffer[100];</span><br><span class="line">        close(*write_fd);</span><br><span class="line">        count = read(*read_fd, buffer, sizeof(buffer));</span><br><span class="line">        printf(&quot;父进程接受到%d字节的数据:%s&quot;, count, buffer);</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="虚拟内存"><a class="header-anchor" href="#虚拟内存">¶</a>虚拟内存</h2>
-<h3 id="swap"><a class="header-anchor" href="#swap">¶</a>swap</h3>
-<h1>虚拟化（Virtualization）</h1>
-<h2 id="驱动管理"><a class="header-anchor" href="#驱动管理">¶</a>驱动管理</h2>
-<h1>参考</h1>
-<h2 id="linux-应用"><a class="header-anchor" href="#linux-应用">¶</a>Linux 应用</h2>
-<ol>
-<li>虚拟内存<br>
-<a href="https://www.linux.com/news/all-about-linux-swap-space" target="_blank" rel="noopener">All about Linux swap space</a><br>
-<a href="https://wiki.archlinux.org/index.php/swap" target="_blank" rel="noopener">Swap</a><br>
-<a href="https://haydenjames.io/linux-performance-almost-always-add-swap-space/" target="_blank" rel="noopener">Linux Performance: Why You Should Almost Always Add Swap Space</a></li>
-<li>演进<br>
-<a href="https://www.ibm.com/developerworks/cn/linux/l-kernel-advances/index.html" target="_blank" rel="noopener">Linux 内核的发展 介绍 2.6.28 和 2.6.29 版本中的新特性</a><br>
-<a href="https://linux.cn/article-6179-1.html" target="_blank" rel="noopener">对 Linux 内核的发展方向的展望 - Linux 4.2</a></li>
-<li>运维<br>
-<a href="https://juejin.im/entry/5c9780335188252d941493d3" target="_blank" rel="noopener">老司机告诉你：正规的运维工作是什么的?</a></li>
-<li>并发<br>
-<a href="https://blog.csdn.net/u011677209/article/details/78082722" target="_blank" rel="noopener">Linux 原子操作 atomic_cmpxchg()/Atomic_read()/Atomic_set()/Atomic_add()/Atomic_sub()</a></li>
-<li>隔离<br>
-<a href="https://www.v2ex.com/member/jerry017cn/topics" target="_blank" rel="noopener">cgroup - jerry017cn</a></li>
-</ol>
-<h2 id="操作系统"><a class="header-anchor" href="#操作系统">¶</a>操作系统</h2>
-<ol>
-<li>分时和实时操作系统<br>
-<a href="https://www.osrtos.com/" target="_blank" rel="noopener">List of open source real-time operating systems</a></li>
-<li>操作系统概念<br>
-<a href="https://www.cnblogs.com/leesf456/p/5375198.html" target="_blank" rel="noopener">【操作系统】操作系统综述（一）</a></li>
-<li><a href="http://pages.cs.wisc.edu/~remzi/OSTEP/#book-chapters" target="_blank" rel="noopener">Operating Systems: Three Easy Pieces</a></li>
-</ol>
-<h3 id="concurrency"><a class="header-anchor" href="#concurrency">¶</a>Concurrency</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/5413517.html" target="_blank" rel="noopener">【操作系统】进程管理（二）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/5605193.html" target="_blank" rel="noopener">【操作系统】处理机调度与死锁（三）</a></li>
-</ol>
-<h3 id="persistent"><a class="header-anchor" href="#persistent">¶</a>Persistent</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/5616041.html" target="_blank" rel="noopener">【操作系统】存储器管理（四）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/5626339.html" target="_blank" rel="noopener">【操作系统】文件管理（六）</a></li>
-</ol>
-<h3 id="virtualization"><a class="header-anchor" href="#virtualization">¶</a>Virtualization</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/5622859.html" target="_blank" rel="noopener">【操作系统】设备管理（五）</a></li>
-</ol>
-<h2 id="linux-内核"><a class="header-anchor" href="#linux-内核">¶</a>Linux 内核</h2>
-<ol>
-<li>哈工大操作系统<br>
-<a href="https://mooc.study.163.com/course/1000002004?_trace_c_p_k2_=6a6064778bf54c5f98396d86c4146823#/info" target="_blank" rel="noopener">操作系统之基础</a><br>
-<a href="https://www.shiyanlou.com/courses/115" target="_blank" rel="noopener">操作系统原理与实践</a></li>
-<li>NJU<br>
-<a href="https://nju-ics.gitbooks.io/ics2016-programming-assignment/content/1.1.html" target="_blank" rel="noopener">在开始愉快的 PA 之旅之前</a><br>
-<a href="https://github.com/NJU-ProjectN/LiteNES" target="_blank" rel="noopener">NJU-ProjectN</a></li>
-<li><a href="http://www.linfo.org/index.html" target="_blank" rel="noopener">The Linux Information Project</a></li>
-<li><a href="https://www.kernel.org/" target="_blank" rel="noopener">The Linux Kernel Archives</a></li>
-<li><a href="https://tinylab.gitbooks.io/linux-doc/content/zh-cn/" target="_blank" rel="noopener">Linux 内核文档（中文版）</a></li>
-<li><a href="http://www.superfrink.net/athenaeum/OS-FAQ/os-faq.html" target="_blank" rel="noopener">Write Your Own Operating System</a></li>
-<li><a href="https://pdos.csail.mit.edu/6.828/" target="_blank" rel="noopener">6.828: Operating System Engineering</a></li>
-</ol>
 
           
         

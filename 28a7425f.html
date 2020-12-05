@@ -88,14 +88,14 @@
 <meta property="og:description" content="如上图所示，消息的存储分为如下 3 个部分：  CommitLog：日志，存储消息主体； ConsumerQueue：在 CommitLog 中根据 Topic 和 Tag 检索消息是非常低效的，因此引入了 ConsumerQueue 作为消费消息的索引，它保存的其实是 CommitLog 中存储的消息的指针。 IndexFile：hash 索引，提供一种通过 key 或时间区间来查询消息的方法">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E6%B6%88%E6%81%AF%E5%AD%98%E5%82%A8.png">
-<meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E5%88%B7%E7%9B%98.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-Topic%E5%92%8CConsumerQueue.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-Queue%E5%92%8C%E6%B6%88%E8%B4%B9%E8%80%85.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E5%88%B7%E7%9B%98.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-IndexFile%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-Console%E6%9F%A5%E7%9C%8B%E6%B6%88%E6%81%AF%E5%A0%86%E7%A7%AF1.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/RocketMQ-Console%E6%9F%A5%E7%9C%8B%E6%B6%88%E6%81%AF%E5%A0%86%E7%A7%AF2.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/RocketMQ/%E6%A0%B9%E6%8D%AEtag%E5%88%92%E5%88%86%E7%8E%AF%E5%A2%83%E5%AF%BC%E8%87%B4%E6%B6%88%E6%81%AF%E8%A2%AB%E8%BF%87%E6%BB%A4%E7%9A%84%E9%97%AE%E9%A2%98.jpg">
-<meta property="og:updated_time" content="2020-11-26T12:53:45.582Z">
+<meta property="og:updated_time" content="2020-12-03T16:56:01.114Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="RocketMQ 消息的存储和查询原理">
 <meta name="twitter:description" content="如上图所示，消息的存储分为如下 3 个部分：  CommitLog：日志，存储消息主体； ConsumerQueue：在 CommitLog 中根据 Topic 和 Tag 检索消息是非常低效的，因此引入了 ConsumerQueue 作为消费消息的索引，它保存的其实是 CommitLog 中存储的消息的指针。 IndexFile：hash 索引，提供一种通过 key 或时间区间来查询消息的方法">
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.1k 字
+                  3.4k 字
                 </span>
               
 
@@ -383,7 +383,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  11 分钟
+                  12 分钟
                 </span>
               
             </div>
@@ -417,24 +417,31 @@
 <li>ConsumerQueue 存储的数据少、且是顺序读取（按顺序被消费），因此在<code>page cache</code>机制的预读取作用下，ConsumerQueue 文件的读取性能几乎接近于读内存。</li>
 <li>RocketMQ 主要通过 MappedByteBuffer 对文件进行读写操作，其主要利用 NIO 中的 FileChannel 模型将磁盘上的物理文件直接映射到用户态的内存地址中，避免了传统 IO 方式需要将磁盘文件数据在操作系统内核地址空间的缓冲区和用户应用程序地址空间的缓冲区之间拷贝带来的开销。</li>
 </ol>
-<h2 id="消息刷盘"><a class="header-anchor" href="#消息刷盘">¶</a>消息刷盘</h2>
-<p><img src="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E5%88%B7%E7%9B%98.png" alt="RocketMQ-刷盘" title="RocketMQ-刷盘"><br>
-刷盘有两种策略：</p>
+<h2 id="commitlog"><a class="header-anchor" href="#commitlog">¶</a>CommitLog</h2>
+<p>CommitLog负责存储所有消息的内容，做个类比可以理解为CommitLog就是MySQL中的主键索引，ConsumerQueue就是MySQL中的辅助索引，主键索引存储的是完整数据，而辅助索引存储的是对主键索引的指针。</p>
+<h3 id="commitlog写入消息的流程"><a class="header-anchor" href="#commitlog写入消息的流程">¶</a>CommitLog写入消息的流程</h3>
+<p><code>org.apache.rocketmq.store.CommitLog#asyncPutMessage</code></p>
 <ol>
-<li>同步刷盘，只有在消息真正持久化到磁盘中后 Broker 才会返回给 Producer 一个 ACK 响应。<br>
-同步刷盘可以保证消息的可靠性，但是对性能会有比较大的影响。</li>
-<li>异步刷盘，利用 OS 的 PageCache，只要消息写入 PageCache 即可将 ACK 返回给 Producer。<br>
-消息刷盘采用后台异步线程提交的方式进行，降低了读写延迟，提高了 MQ 的性能和吞吐量。</li>
+<li>构建消息体</li>
+<li>获取可用的MappedFile文件<br>
+刚开始会取到最后一个文件，并对该文件加锁，如果加锁后发现文件满了，那么再尝试重新创建一个新的文件</li>
+<li>一个一个字段写入CommitLog文件<br>
+<code>CommitLog.DefaultAppendMessageCallback#doAppend</code></li>
+<li>刷盘<br>
+<code>org.apache.rocketmq.store.CommitLog#submitFlushRequest</code><br>
+看Broker配置的是同步还是异步刷盘，如果是异步刷盘则只是唤醒异步刷盘线程。<br>
+<code>FlushRealTimeService#wakeup</code></li>
+<li>主从同步<br>
+<code>org.apache.rocketmq.store.CommitLog#submitReplicaRequest</code><br>
+一般Master默认情况下都是<code>ASYNC_MASTER</code>，这种模式下消息都是异步同步给Slave的。</li>
 </ol>
-<p>刷盘策略见配置文件<code>broker.conf</code>，默认为异步刷盘：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">flushDiskType = ASYNC_FLUSH</span><br></pre></td></tr></table></figure>
-<h3 id="commitlog的刷盘"><a class="header-anchor" href="#commitlog的刷盘">¶</a>CommitLog的刷盘</h3>
-<p>异步刷盘的实现代码见：<code>org.apache.rocketmq.store.CommitLog.FlushRealTimeService</code><br>
-可以看到，默认情况下是每<code>500ms</code>刷新一次，刷盘时先找到要刷盘的<code>MappedFile</code>，刷盘利用了NIO的<code>MappedByteBuffer</code>。<br>
-一般情况下每次刷4页，并且每10S将未同步的页面全量同步一次。</p>
-<h3 id="consumequeue的刷盘"><a class="header-anchor" href="#consumequeue的刷盘">¶</a>ConsumeQueue的刷盘</h3>
-<p>实现代码见<code>FlushConsumeQueueService</code><br>
-每秒执行一次，一般每次刷2页，Broker将退出时将所有缓存页全量刷一次。</p>
+<h3 id="dledgercommitlog写入流程"><a class="header-anchor" href="#dledgercommitlog写入流程">¶</a>DLedgerCommitLog写入流程</h3>
+<p>DLedger模式和普通模式的区别主要在于消息的高可靠性，写入数据时：<br>
+<code>io.openmessaging.storage.dledger.DLedgerServer#handleAppend</code></p>
+<ol>
+<li>写入本地文件；</li>
+<li>请求其他Slave，等待大多数（quorum）返回写入成功。</li>
+</ol>
 <h2 id="topic-和-consumerqueue"><a class="header-anchor" href="#topic-和-consumerqueue">¶</a>Topic 和 ConsumerQueue</h2>
 <p>在消息队列中主题和队列一般是包含的关系，刚开始消息队列只是一个单纯的队列，后来为了应对多消费者重复消费的需求，出现了发布订阅、Topic的概念，一个Topic中的消息是可以被订阅者重复消费的。<br>
 在RocketMQ中Topic和队列之间的关系如下图所示：<br>
@@ -454,6 +461,24 @@
 <p>使用rocketmq的时候，需要去控制台预先创建topic，为什么要这么设计，因为rocketmq topic的创建机制：<br>
 rocketmq在发送消息时，会先去获取topic的路由信息，如果topic是第一次发送消息，由于nameserver没有topic的路由信息，所以会再次以“TBW102”这个默认topic获取路由信息，假设broker都开启了自动创建开关，那么此时会获取所有broker的路由信息，消息的发送会根据负载算法选择其中一台Broker发送消息，消息到达broker后，发现本地没有该topic，会创建该topic的信息再塞进本地缓存中，同时会将topic路由信息注册到nameserver中，那么这样就会造成一个后果：<strong>以后所有该topic的消息，都将发送到这台broker上，如果该topic消息量非常大，会造成某个broker上负载过大，这样消息的存储就达不到负载均衡的目的了</strong>。<br>
 因此，自动创建Topic开关一般只会在线下开启，线上是关闭的。</p>
+<h2 id="消息刷盘"><a class="header-anchor" href="#消息刷盘">¶</a>消息刷盘</h2>
+<p><img src="http://47.88.24.11/imgs/RocketMQ/RocketMQ-%E5%88%B7%E7%9B%98.png" alt="RocketMQ-刷盘" title="RocketMQ-刷盘"><br>
+刷盘有两种策略：</p>
+<ol>
+<li>同步刷盘，只有在消息真正持久化到磁盘中后 Broker 才会返回给 Producer 一个 ACK 响应。<br>
+同步刷盘可以保证消息的可靠性，但是对性能会有比较大的影响。</li>
+<li>异步刷盘，利用 OS 的 PageCache，只要消息写入 PageCache 即可将 ACK 返回给 Producer。<br>
+消息刷盘采用后台异步线程提交的方式进行，降低了读写延迟，提高了 MQ 的性能和吞吐量。</li>
+</ol>
+<p>刷盘策略见配置文件<code>broker.conf</code>，默认为异步刷盘：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">flushDiskType = ASYNC_FLUSH</span><br></pre></td></tr></table></figure>
+<h3 id="commitlog的刷盘"><a class="header-anchor" href="#commitlog的刷盘">¶</a>CommitLog的刷盘</h3>
+<p>异步刷盘的实现代码见：<code>org.apache.rocketmq.store.CommitLog.FlushRealTimeService</code><br>
+可以看到，默认情况下是每<code>500ms</code>刷新一次，刷盘时先找到要刷盘的<code>MappedFile</code>，刷盘利用了NIO的<code>MappedByteBuffer</code>。<br>
+一般情况下每次刷4页，并且每10S将未同步的页面全量同步一次。</p>
+<h3 id="consumequeue的刷盘"><a class="header-anchor" href="#consumequeue的刷盘">¶</a>ConsumeQueue的刷盘</h3>
+<p>实现代码见<code>FlushConsumeQueueService</code><br>
+每秒执行一次，一般每次刷2页，Broker将退出时将所有缓存页全量刷一次。</p>
 <h2 id="按-message-id-查询消息"><a class="header-anchor" href="#按-message-id-查询消息">¶</a>按 Message ID 查询消息</h2>
 <p>MessageID 包含：</p>
 <ul>
@@ -722,7 +747,7 @@ Broker会将offset存储在内存的一个<code>offsetTable</code>中。</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#页缓存与内存映射"><span class="nav-number">1.</span> <span class="nav-text">¶页缓存与内存映射</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息刷盘"><span class="nav-number">2.</span> <span class="nav-text">¶消息刷盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#commitlog的刷盘"><span class="nav-number">2.1.</span> <span class="nav-text">¶CommitLog的刷盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumequeue的刷盘"><span class="nav-number">2.2.</span> <span class="nav-text">¶ConsumeQueue的刷盘</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#topic-和-consumerqueue"><span class="nav-number">3.</span> <span class="nav-text">¶Topic 和 ConsumerQueue</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么rocketmq中都需要预先创建topic？"><span class="nav-number">3.1.</span> <span class="nav-text">¶为什么RocketMQ中都需要预先创建Topic？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-id-查询消息"><span class="nav-number">4.</span> <span class="nav-text">¶按 Message ID 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-key-查询消息"><span class="nav-number">5.</span> <span class="nav-text">¶按 Message Key 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-tag-过滤消息"><span class="nav-number">6.</span> <span class="nav-text">¶按 Tag 过滤消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#offset-的存储"><span class="nav-number">7.</span> <span class="nav-text">¶offset 的存储</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer更新offset到broker"><span class="nav-number">7.1.</span> <span class="nav-text">¶Consumer更新offset到Broker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#broker端offset的存储"><span class="nav-number">7.2.</span> <span class="nav-text">¶Broker端offset的存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer从broker拉取offset"><span class="nav-number">7.3.</span> <span class="nav-text">¶Consumer从Broker拉取offset</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息堆积-积压"><span class="nav-number">8.</span> <span class="nav-text">¶消息堆积（积压）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq怎么保证高效读消息"><span class="nav-number">9.</span> <span class="nav-text">¶RocketMQ怎么保证高效读消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">10.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#我们公司有多个测试环境-消费消息时通过tag来区分环境-结果导致有的消息消费不到-这是发生甚么事了？"><span class="nav-number">10.1.</span> <span class="nav-text">¶我们公司有多个测试环境，消费消息时通过TAG来区分环境，结果导致有的消息消费不到，这是发生甚么事了？</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#页缓存与内存映射"><span class="nav-number">1.</span> <span class="nav-text">¶页缓存与内存映射</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#commitlog"><span class="nav-number">2.</span> <span class="nav-text">¶CommitLog</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#commitlog写入消息的流程"><span class="nav-number">2.1.</span> <span class="nav-text">¶CommitLog写入消息的流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dledgercommitlog写入流程"><span class="nav-number">2.2.</span> <span class="nav-text">¶DLedgerCommitLog写入流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#topic-和-consumerqueue"><span class="nav-number">3.</span> <span class="nav-text">¶Topic 和 ConsumerQueue</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么rocketmq中都需要预先创建topic？"><span class="nav-number">3.1.</span> <span class="nav-text">¶为什么RocketMQ中都需要预先创建Topic？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息刷盘"><span class="nav-number">4.</span> <span class="nav-text">¶消息刷盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#commitlog的刷盘"><span class="nav-number">4.1.</span> <span class="nav-text">¶CommitLog的刷盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumequeue的刷盘"><span class="nav-number">4.2.</span> <span class="nav-text">¶ConsumeQueue的刷盘</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-id-查询消息"><span class="nav-number">5.</span> <span class="nav-text">¶按 Message ID 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-message-key-查询消息"><span class="nav-number">6.</span> <span class="nav-text">¶按 Message Key 查询消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按-tag-过滤消息"><span class="nav-number">7.</span> <span class="nav-text">¶按 Tag 过滤消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#offset-的存储"><span class="nav-number">8.</span> <span class="nav-text">¶offset 的存储</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer更新offset到broker"><span class="nav-number">8.1.</span> <span class="nav-text">¶Consumer更新offset到Broker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#broker端offset的存储"><span class="nav-number">8.2.</span> <span class="nav-text">¶Broker端offset的存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer从broker拉取offset"><span class="nav-number">8.3.</span> <span class="nav-text">¶Consumer从Broker拉取offset</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消息堆积-积压"><span class="nav-number">9.</span> <span class="nav-text">¶消息堆积（积压）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rocketmq怎么保证高效读消息"><span class="nav-number">10.</span> <span class="nav-text">¶RocketMQ怎么保证高效读消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">11.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#我们公司有多个测试环境-消费消息时通过tag来区分环境-结果导致有的消息消费不到-这是发生甚么事了？"><span class="nav-number">11.1.</span> <span class="nav-text">¶我们公司有多个测试环境，消费消息时通过TAG来区分环境，结果导致有的消息消费不到，这是发生甚么事了？</span></a></li></ol></li></ol></div>
             
 
           </div>
