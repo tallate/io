@@ -89,7 +89,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png">
 <meta property="og:image" content="http://47.88.24.11/imgs/ES/%E5%8F%96%E5%9B%9E%E9%98%B6%E6%AE%B5.png">
-<meta property="og:updated_time" content="2020-11-30T08:09:18.114Z">
+<meta property="og:updated_time" content="2020-12-05T15:47:18.949Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES 分布式搜索">
 <meta name="twitter:description" content="¶分布式搜索原理 在分布式环境中执行的搜索是一个两阶段的过程，我们称之为 query then fetch 。 ¶查询阶段    客户端发送一个 search 请求到协调节点（也就是 Node 3），协调节点会创建一个大小为 from+size 的空优先队列   协调节点将请求广播到索引中每一个分片拷贝（主分片或者副本分片）。   每个分片在本地执行搜索并构建一个匹配文档的 优先队列。 一个 优">
@@ -361,7 +361,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  7.9k 字
+                  9.1k 字
                 </span>
               
 
@@ -377,7 +377,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  30 分钟
+                  35 分钟
                 </span>
               
             </div>
@@ -468,6 +468,42 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, // 注意再次设置游标查询过期时间为一分钟。</span><br><span class="line">    &quot;scroll_id&quot; : &quot;cXVlcnlUaGVuRmV0Y2g7NTsxMDk5NDpkUmpiR2FjOFNhNnlCM1ZDMWpWYnRROzEwOTk1OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MTA5OTM6ZFJqYkdhYzhTYTZ5QjNWQzFqVmJ0UTsxMTE5MDpBVUtwN2lxc1FLZV8yRGVjWlI2QUVBOzEwOTk2OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MDs=&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>这个游标查询返回的下一批结果。 尽管我们指定字段 size 的值为 1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 <code>size * number_of_primary_shards</code>。<br>
 当没有更多结果返回的时候，我们就处理完所有匹配的文档了。</p>
+<h2 id="搜索-轻量查询-query-string"><a class="header-anchor" href="#搜索-轻量查询-query-string">¶</a>搜索 - 轻量查询（Query-string）</h2>
+<p>当在单一的索引下进行搜索的时候，Elasticsearch 转发请求到索引的每个分片中，可以是主分片也可以是副本分片，然后从每个分片中收集结果。多索引搜索恰好也是用相同的方式工作的——只是会涉及到更多的分片。<br>
+搜索一个索引有五个主分片和搜索五个索引各有一个分片准确来所说是等价的，因为索引只是一种逻辑结构，实际上处理请求的是分片。<br>
+搜索有两种形式：Query-string 和请求体查询。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">HEAD /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">GET /megacorp/employee/_search?q=last_name:Smith</span><br><span class="line">GET /megacorp/employee/_search?q=+first_name:Jane last_name:Smith</span><br><span class="line">GET /_search?q=mary</span><br><span class="line">GET /_search?q=+name:(mary john) +date:&gt;2014-09-10 +(aggregations geo)</span><br><span class="line">GET /_search 在所有的索引中搜索所有的类型（无条件）</span><br><span class="line">/gb/_search 在 gb 索引中搜索所有的类型（指定索引）</span><br><span class="line">/gb,us/_search 在 gb 和 us 索引中搜索所有的文档（指定多个索引）</span><br><span class="line">/g*,u*/_search 在任何以 g 或者 u 开头的索引中搜索所有的类型（通配符）</span><br><span class="line">/gb/user/_search 在 gb 索引中搜索 user 类型（指定类型）</span><br><span class="line">/gb,us/user,tweet/_search 在 gb 和 us 索引中搜索 user 和 tweet 类型（指定多个类型）</span><br><span class="line">/_all/user,tweet/_search 在所有的索引中搜索 user 和 tweet 类型（指定多个类型但不限制索引）</span><br></pre></td></tr></table></figure>
+<h3 id="查询条件"><a class="header-anchor" href="#查询条件">¶</a>查询条件</h3>
+<ul>
+<li>其中 ‘_search’ 表示搜索，默认返回 10 条结果；</li>
+<li>查询本身赋值给了参数 q，查询链接会被 URL 编码，所以可读性会比较差；</li>
+<li>“last_name:Smith&quot;表示 last_name 字段中包含 Smith 的文档，”+last_name:Smith&quot;表示必须与查询条件匹配，&quot;-last_name:Smith&quot;表示一定不与查询条件匹配；<br>
+至于多个条件存在的情况下，其实不会发生矛盾，&quot;+first_name:Jane -first_name:Jane&quot;可以看成先查出 first_name 包含&quot;Jane&quot;的，再过滤掉；</li>
+</ul>
+<h3 id="隐含字段"><a class="header-anchor" href="#隐含字段">¶</a>隐含字段</h3>
+<p>当对文档进行索引时，Elasticsearch 取出所有字段的值拼接成一个大的字符串，作为 <code>_all</code> 字段进行索引。</p>
+<h3 id="query-string-的优点"><a class="header-anchor" href="#query-string-的优点">¶</a>Query-string 的优点</h3>
+<p>简洁</p>
+<h3 id="query-string-的缺点"><a class="header-anchor" href="#query-string-的缺点">¶</a>Query-string 的缺点</h3>
+<ul>
+<li>晦涩难懂</li>
+<li>脆弱，小的语法错误就会报错</li>
+<li>效率较低，查询字符串搜索允许任何用户在索引的任意字段上执行可能较慢且重量级的查询，这可能会暴露隐私信息，甚至将集群拖垮</li>
+</ul>
+<h3 id="搜索返回字段"><a class="header-anchor" href="#搜索返回字段">¶</a>搜索返回字段</h3>
+<p>hits：匹配文档总数及所查询结果的前十个文档<br>
+_score：衡量文档与查询的匹配程度<br>
+took：整个搜索请求耗费的时间（毫秒）<br>
+shards：在查询中参与的分片总数，及失败（主分片和副本分片都挂掉）和成功的数量<br>
+timeout：返回值中的 timed_out 表示查询是否超时， timeout 不是停止执行查询，它仅仅是告知正在协调的节点返回到目前为止收集的结果并且关闭连接。在后台，其他的分片可能仍在执行查询即使是结果已经被发送了。使用超时是因为 SLA(服务等级协议)对你是很重要的，而不是因为想去中止长时间运行的查询。可以在查询条件中指定时间限制：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?timeout=10ms</span><br></pre></td></tr></table></figure>
+<h3 id="分页"><a class="header-anchor" href="#分页">¶</a>分页</h3>
+<p>size：显示应该返回的结果数量，默认是 10<br>
+from：显示应该跳过的初始结果数量，默认是 0</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?size=5&amp;from=5</span><br></pre></td></tr></table></figure>
+<p>考虑到<strong>分页过深（比如请求 10001 到 10010 的数据）<strong>以及</strong>一次请求太多结果</strong>的情况：结果集在返回之前先进行排序，但请记住<strong>一个请求经常跨越多个分片</strong>，每个分片都产生自己的排序结果，这些结果需要进行集中排序以保证整体顺序是正确的。<br>
+假设在一个有 5 个主分片的索引中搜索。 当我们请求结果的第一页（结果从 1 到 10 ），每一个分片产生前 10 的结果，并且返回给 协调节点 ，协调节点对 50 个结果排序得到全部结果的前 10 个。<br>
+现在假设我们请求第 1000 页–结果从 10001 到 10010 。所有都以相同的方式工作除了每个分片不得不产生前 10010 个结果以外。 然后协调节点对全部 50050 个结果排序最后丢弃掉这些结果中的 50040 个结果。可以看到，在分布式系统中，对结果排序的成本随分页的深度成指数上升。这就是 web 搜索引擎对<strong>任何查询都不要返回超过 1000 个结果</strong>的原因。</p>
 <h2 id="请求体查询-查询表达式"><a class="header-anchor" href="#请求体查询-查询表达式">¶</a>请求体查询（查询表达式）</h2>
 <p>es 倾向于使用 GET 来表达查询操作，查询条件可以放到请求体中，而事实是这个 RFC 文档 <strong>RFC 7231</strong> — 一个专门负责处理 HTTP 语义和内容的文档 — 并没有规定一个带有请求体的 GET 请求应该如何处理！结果是，一些 HTTP 服务器允许这样子，而有一些 — 特别是一些用于缓存和代理的服务器 — 则不允许。所以 es 作了一个妥协，下面的 GET 请求同样可以使用 POST 来实现：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match&quot; : &#123;</span><br><span class="line">            &quot;last_name&quot; : &quot;Smith&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -680,6 +716,8 @@ set, shape, semi, transpar, call, set_tran, 5</li>
 <li>为什么删除文档不会立刻释放空间？</li>
 <li>refresh, flush, 和 optimize API 都做了什么, 你什么情况下应该使用他们？</li>
 </ol>
+<h3 id="相同查询多次执行结果不同"><a class="header-anchor" href="#相同查询多次执行结果不同">¶</a>相同查询多次执行结果不同</h3>
+<p>有可能是<strong>Bouncing Results</strong>问题，也有可能是主分片发生了<strong>强制段合并(forcemerge)</strong>，导致请求落到不同分片上得到的结果得分不同（<a href="https://cloud.tencent.com/developer/article/1445643" target="_blank" rel="noopener">Elasticsearch:执行同样的查询语句多次结果不一致？！</a>）。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <h3 id="文档"><a class="header-anchor" href="#文档">¶</a>文档</h3>
 <ol>
@@ -734,8 +772,8 @@ set, shape, semi, transpar, call, set_tran, 5</li>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/e43d540f.html" rel="next" title="使用 Arthas 排查线上问题">
-                <i class="fa fa-chevron-left"></i> 使用 Arthas 排查线上问题
+              <a href="/e0007243.html" rel="next" title="ES索引和文档存储">
+                <i class="fa fa-chevron-left"></i> ES索引和文档存储
               </a>
             
           </div>
@@ -828,7 +866,7 @@ set, shape, semi, transpar, call, set_tran, 5</li>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">129</span>
+                  <span class="site-state-item-count">130</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -839,7 +877,7 @@ set, shape, semi, transpar, call, set_tran, 5</li>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-count">23</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -850,7 +888,7 @@ set, shape, semi, transpar, call, set_tran, 5</li>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">62</span>
+                  <span class="site-state-item-count">64</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -885,7 +923,7 @@ set, shape, semi, transpar, call, set_tran, 5</li>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索原理"><span class="nav-number">1.</span> <span class="nav-text">¶分布式搜索原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询阶段"><span class="nav-number">1.1.</span> <span class="nav-text">¶查询阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#取回阶段"><span class="nav-number">1.2.</span> <span class="nav-text">¶取回阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#深分页问题-deep-pagination"><span class="nav-number">1.3.</span> <span class="nav-text">¶深分页问题（Deep Pagination）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#偏好"><span class="nav-number">1.4.</span> <span class="nav-text">¶偏好</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#超时"><span class="nav-number">1.5.</span> <span class="nav-text">¶超时</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#路由"><span class="nav-number">1.6.</span> <span class="nav-text">¶路由</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索类型"><span class="nav-number">1.7.</span> <span class="nav-text">¶搜索类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#游标查询-scroll"><span class="nav-number">1.8.</span> <span class="nav-text">¶游标查询 Scroll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#请求体查询-查询表达式"><span class="nav-number">2.</span> <span class="nav-text">¶请求体查询（查询表达式）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query-name-表示查询语句"><span class="nav-number">2.1.</span> <span class="nav-text">¶QUERY_NAME 表示查询语句</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#argument-一些特殊的参数"><span class="nav-number">2.2.</span> <span class="nav-text">¶ARGUMENT 一些特殊的参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#doc-values-fielddata-正排索引"><span class="nav-number">2.3.</span> <span class="nav-text">¶Doc Values（fielddata 正排索引）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#验证查询是否合法"><span class="nav-number">2.4.</span> <span class="nav-text">¶验证查询是否合法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#排序与相关性"><span class="nav-number">2.5.</span> <span class="nav-text">¶排序与相关性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scroll查询-游标"><span class="nav-number">2.6.</span> <span class="nav-text">¶Scroll查询（游标）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实践"><span class="nav-number">2.7.</span> <span class="nav-text">¶实践</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#查询订单昨天的问题订单"><span class="nav-number">2.7.1.</span> <span class="nav-text">¶查询订单昨天的问题订单</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多条件查询"><span class="nav-number">2.7.2.</span> <span class="nav-text">¶多条件查询</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分析器"><span class="nav-number">3.</span> <span class="nav-text">¶分析器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分析器和倒排索引"><span class="nav-number">3.1.</span> <span class="nav-text">¶分析器和倒排索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内置分析器"><span class="nav-number">3.2.</span> <span class="nav-text">¶内置分析器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常用字符过滤器"><span class="nav-number">3.3.</span> <span class="nav-text">¶常用字符过滤器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常用分词器"><span class="nav-number">3.4.</span> <span class="nav-text">¶常用分词器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常用词单元过滤器"><span class="nav-number">3.5.</span> <span class="nav-text">¶常用词单元过滤器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#自定义分析器"><span class="nav-number">3.6.</span> <span class="nav-text">¶自定义分析器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分析器使用时机"><span class="nav-number">3.7.</span> <span class="nav-text">¶分析器使用时机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">4.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#文档"><span class="nav-number">5.1.</span> <span class="nav-text">¶文档</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#索引-映射和文档"><span class="nav-number">5.2.</span> <span class="nav-text">¶索引、映射和文档</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索"><span class="nav-number">5.3.</span> <span class="nav-text">¶搜索</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群"><span class="nav-number">5.4.</span> <span class="nav-text">¶集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#源码"><span class="nav-number">5.5.</span> <span class="nav-text">¶源码</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索原理"><span class="nav-number">1.</span> <span class="nav-text">¶分布式搜索原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询阶段"><span class="nav-number">1.1.</span> <span class="nav-text">¶查询阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#取回阶段"><span class="nav-number">1.2.</span> <span class="nav-text">¶取回阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#深分页问题-deep-pagination"><span class="nav-number">1.3.</span> <span class="nav-text">¶深分页问题（Deep Pagination）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#偏好"><span class="nav-number">1.4.</span> <span class="nav-text">¶偏好</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#超时"><span class="nav-number">1.5.</span> <span class="nav-text">¶超时</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#路由"><span class="nav-number">1.6.</span> <span class="nav-text">¶路由</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索类型"><span class="nav-number">1.7.</span> <span class="nav-text">¶搜索类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#游标查询-scroll"><span class="nav-number">1.8.</span> <span class="nav-text">¶游标查询 Scroll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索-轻量查询-query-string"><span class="nav-number">2.</span> <span class="nav-text">¶搜索 - 轻量查询（Query-string）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询条件"><span class="nav-number">2.1.</span> <span class="nav-text">¶查询条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#隐含字段"><span class="nav-number">2.2.</span> <span class="nav-text">¶隐含字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#query-string-的优点"><span class="nav-number">2.3.</span> <span class="nav-text">¶Query-string 的优点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#query-string-的缺点"><span class="nav-number">2.4.</span> <span class="nav-text">¶Query-string 的缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">2.5.</span> <span class="nav-text">¶搜索返回字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分页"><span class="nav-number">2.6.</span> <span class="nav-text">¶分页</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#请求体查询-查询表达式"><span class="nav-number">3.</span> <span class="nav-text">¶请求体查询（查询表达式）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query-name-表示查询语句"><span class="nav-number">3.1.</span> <span class="nav-text">¶QUERY_NAME 表示查询语句</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#argument-一些特殊的参数"><span class="nav-number">3.2.</span> <span class="nav-text">¶ARGUMENT 一些特殊的参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#doc-values-fielddata-正排索引"><span class="nav-number">3.3.</span> <span class="nav-text">¶Doc Values（fielddata 正排索引）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#验证查询是否合法"><span class="nav-number">3.4.</span> <span class="nav-text">¶验证查询是否合法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#排序与相关性"><span class="nav-number">3.5.</span> <span class="nav-text">¶排序与相关性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scroll查询-游标"><span class="nav-number">3.6.</span> <span class="nav-text">¶Scroll查询（游标）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实践"><span class="nav-number">3.7.</span> <span class="nav-text">¶实践</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#查询订单昨天的问题订单"><span class="nav-number">3.7.1.</span> <span class="nav-text">¶查询订单昨天的问题订单</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多条件查询"><span class="nav-number">3.7.2.</span> <span class="nav-text">¶多条件查询</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分析器"><span class="nav-number">4.</span> <span class="nav-text">¶分析器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分析器和倒排索引"><span class="nav-number">4.1.</span> <span class="nav-text">¶分析器和倒排索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内置分析器"><span class="nav-number">4.2.</span> <span class="nav-text">¶内置分析器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常用字符过滤器"><span class="nav-number">4.3.</span> <span class="nav-text">¶常用字符过滤器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常用分词器"><span class="nav-number">4.4.</span> <span class="nav-text">¶常用分词器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常用词单元过滤器"><span class="nav-number">4.5.</span> <span class="nav-text">¶常用词单元过滤器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#自定义分析器"><span class="nav-number">4.6.</span> <span class="nav-text">¶自定义分析器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分析器使用时机"><span class="nav-number">4.7.</span> <span class="nav-text">¶分析器使用时机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">5.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#相同查询多次执行结果不同"><span class="nav-number">5.1.</span> <span class="nav-text">¶相同查询多次执行结果不同</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">6.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#文档"><span class="nav-number">6.1.</span> <span class="nav-text">¶文档</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#索引-映射和文档"><span class="nav-number">6.2.</span> <span class="nav-text">¶索引、映射和文档</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索"><span class="nav-number">6.3.</span> <span class="nav-text">¶搜索</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群"><span class="nav-number">6.4.</span> <span class="nav-text">¶集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#源码"><span class="nav-number">6.5.</span> <span class="nav-text">¶源码</span></a></li></ol></li></ol></div>
             
 
           </div>
