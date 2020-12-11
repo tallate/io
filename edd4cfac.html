@@ -88,7 +88,7 @@
 <meta property="og:description" content="¶使用主从复制   运行 Master 调整 Master 内存中保存的缓冲积压部分（replication backlog），以便执行部分重同步。  123# 缓冲区越大，可断开连接再重连执行部分重同步的时间越长，缓冲区会在每次连接时分配。repl-backlog-size 1mbrepl-backlog-ttl 3600   运行 Slave 先在配置文件中设置 Master 和 logfil">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://47.88.24.11/imgs/Redis/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6.png">
-<meta property="og:updated_time" content="2020-11-25T16:36:10.519Z">
+<meta property="og:updated_time" content="2020-12-09T16:25:13.620Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis 复制">
 <meta name="twitter:description" content="¶使用主从复制   运行 Master 调整 Master 内存中保存的缓冲积压部分（replication backlog），以便执行部分重同步。  123# 缓冲区越大，可断开连接再重连执行部分重同步的时间越长，缓冲区会在每次连接时分配。repl-backlog-size 1mbrepl-backlog-ttl 3600   运行 Slave 先在配置文件中设置 Master 和 logfil">
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  6.1k 字
+                  6.6k 字
                 </span>
               
 
@@ -376,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  22 分钟
+                  24 分钟
                 </span>
               
             </div>
@@ -519,6 +519,10 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
 <li>一方面，主从库间的网络可能会有传输延迟，所以从库不能及时地收到主库发送的命令，从库上执行同步命令的时间就会被延后。</li>
 <li>另一方面，即使从库及时收到了主库的命令，但是，也可能会因为正在处理其它复杂度高的命令（例如集合操作命令）而阻塞。此时，从库需要处理完当前的命令，才能执行主库发送的命令操作，这就会造成主从数据不一致。而在主库命令被滞后处理的这段时间内，主库本身可能又执行了新的写操作。这样一来，主从库间的数据不一致程度就会进一步加剧。</li>
 </ol>
+<p>因为异步复制的本质，Redis主从复制无法完全避免数据的丢失，除了尽量保证网络连接状况良好外，还可以写一些监控程序来监控主从库间的复制进度，原理是实时给Redis实例发<code>info replication</code>命令得到<code>master_repl_offset</code>和<code>slave_repl_offset</code>这两个进度信息，计算这二者的差值即可得到主从复制进度的实时程度，如果某个从库进度差值大于我们预设的一个阈值，我们可以让客户端不再和这个从库连接进行数据读取，从而减少读到不一致数据的情况。</p>
+<blockquote>
+<p>这个阈值当然不能设置得过低，否则可能导致所有从库都连不上了。</p>
+</blockquote>
 <p>既然无法避免，那么只能退一步、控制影响范围了，Redis 可以保证：</p>
 <ol>
 <li>Redis slave 每秒钟都会 ping master，确认已处理的复制流的数量。</li>
@@ -526,8 +530,13 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
 <li>用户可以配置一个最小的 slave 数量，使得它滞后 &lt;= 最大秒数。</li>
 <li>如果至少有 N 个 slave ，并且滞后小于 M 秒，则写入将被接受。如果条件不满足，master 将会回复一个 error 并且写入将不被接受。</li>
 </ol>
-<p>对于给定的写入来说，不能保证一致性，但至少数据丢失的时间窗限制在给定的秒数内。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">min-slaves-to-write &lt;slave 数量&gt;</span><br><span class="line">min-slaves-max-lag &lt;秒数&gt;</span><br></pre></td></tr></table></figure>
+<p>这些条件是通过<code>min-slaves-to-write</code>和<code>min-slaves-max-lag</code>这两个配置来实现的：</p>
+<ul>
+<li><code>min-slaves-to-write</code>：最少有n个slave的连接还是健康的情况下才能提供服务，至于怎么判断连接是否健康，需要看下面一个配置；</li>
+<li><code>min-slaves-max-lag</code>：判断连接健康的最大延迟时间，slave每次PING Master时Master都会记录该Slave 最后一次PING的时间，如果最后一次PING成功的时间距今比较长了，就说明该Slave的连接状态很有可能已经出问题了。</li>
+</ul>
+<p>对于给定的写入来说，虽然不能保证绝对实时的一致性，但至少数据丢失的时间窗限制在给定的秒数内。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"># It is possible for a master to stop accepting writes if there are less than</span><br><span class="line"># N slaves connected, having a lag less or equal than M seconds.</span><br><span class="line">#</span><br><span class="line"># The N slaves need to be in &quot;online&quot; state.</span><br><span class="line">#</span><br><span class="line"># The lag in seconds, that must be &lt;= the specified value, is calculated from</span><br><span class="line"># the last ping received from the slave, that is usually sent every second.</span><br><span class="line">#</span><br><span class="line"># This option does not GUARANTEES that N replicas will accept the write, but</span><br><span class="line"># will limit the window of exposure for lost writes in case not enough slaves</span><br><span class="line"># are available, to the specified number of seconds.</span><br><span class="line">#</span><br><span class="line"># For example to require at least 3 slaves with a lag &lt;= 10 seconds use:</span><br><span class="line">#</span><br><span class="line"># min-slaves-to-write 3</span><br><span class="line"># min-slaves-max-lag 10</span><br><span class="line">#</span><br><span class="line"># Setting one or the other to 0 disables the feature.</span><br><span class="line">#</span><br><span class="line"># By default min-slaves-to-write is set to 0 (feature disabled) and</span><br><span class="line"># min-slaves-max-lag is set to 10.</span><br><span class="line"></span><br><span class="line">min-slaves-to-write &lt;slave 数量&gt;</span><br><span class="line">min-slaves-max-lag &lt;秒数&gt;</span><br></pre></td></tr></table></figure>
 <h2 id="过期的-key-问题"><a class="header-anchor" href="#过期的-key-问题">¶</a>过期的 key 问题</h2>
 <p>由于复制的异步特性，对 key 设置过期时间和写入操作很容易导致 race condition 及导致数据集不一致，比如：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(1) sadd x 1</span><br><span class="line">(2) expire x 100</span><br><span class="line">(3) sadd x 2</span><br></pre></td></tr></table></figure>
@@ -600,6 +609,7 @@ Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayloa
 <li>客户端可以缓存写请求，因为使用Redis的场景同步写请求比较少，且一般都不会在应用程序的关键路径上，所以在不能立刻执行写请求的情况下，客户端完全可以先把请求缓存起来，给应用程序返回一个确认即可。</li>
 <li>另外，主从切换后，客户端要能及时和新主库重新建立连接。</li>
 </ol>
+<h3 id="主从数据发生不一致怎么办？"><a class="header-anchor" href="#主从数据发生不一致怎么办？">¶</a>主从数据发生不一致怎么办？</h3>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
 <li><a href="https://www.cnblogs.com/hongmoshui/p/10594639.html" target="_blank" rel="noopener">Redis复制实现原理</a></li>
@@ -634,8 +644,8 @@ Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayloa
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/f1a5dd67.html" rel="next" title="Redis 数据结构">
-                <i class="fa fa-chevron-left"></i> Redis 数据结构
+              <a href="/fb6b62e.html" rel="next" title="Redis高可用方案Cluster">
+                <i class="fa fa-chevron-left"></i> Redis高可用方案Cluster
               </a>
             
           </div>
@@ -644,8 +654,8 @@ Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayloa
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/a894e74e.html" rel="prev" title="Disruptor 原理">
-                Disruptor 原理 <i class="fa fa-chevron-right"></i>
+              <a href="/f1a5dd67.html" rel="prev" title="Redis 数据结构">
+                Redis 数据结构 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -728,7 +738,7 @@ Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayloa
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">130</span>
+                  <span class="site-state-item-count">131</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -785,7 +795,7 @@ Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayloa
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用主从复制"><span class="nav-number">1.</span> <span class="nav-text">¶使用主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#只读-slave"><span class="nav-number">1.1.</span> <span class="nav-text">¶只读 Slave</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#同步复制和异步复制"><span class="nav-number">2.</span> <span class="nav-text">¶同步复制和异步复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#什么时候触发复制"><span class="nav-number">3.</span> <span class="nav-text">¶什么时候触发复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制原理"><span class="nav-number">4.</span> <span class="nav-text">¶主从复制原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制存在的问题"><span class="nav-number">5.</span> <span class="nav-text">¶主从复制存在的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主从库间网络断了怎么办？"><span class="nav-number">5.1.</span> <span class="nav-text">¶主从库间网络断了怎么办？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#宕机恢复"><span class="nav-number">5.2.</span> <span class="nav-text">¶宕机恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#是否可以关闭持久化"><span class="nav-number">5.3.</span> <span class="nav-text">¶是否可以关闭持久化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何保证主从数据的一致性-数据丢失窗口的存在"><span class="nav-number">5.4.</span> <span class="nav-text">¶如何保证主从数据的一致性 - 数据丢失窗口的存在</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#过期的-key-问题"><span class="nav-number">6.</span> <span class="nav-text">¶过期的 key 问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制执行过程-slave怎么与master建立连接"><span class="nav-number">7.</span> <span class="nav-text">¶主从复制执行过程 - Slave怎么与Master建立连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制执行过程-master如何处理psync命令"><span class="nav-number">8.</span> <span class="nav-text">¶主从复制执行过程 - Master如何处理PSYNC命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制执行过程-slave如何接收复制数据"><span class="nav-number">9.</span> <span class="nav-text">¶主从复制执行过程 - Slave如何接收复制数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">10.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#aof日志更全-为什么主从同步不使用aof而是rdb呢？"><span class="nav-number">10.1.</span> <span class="nav-text">¶AOF日志更全，为什么主从同步不使用AOF而是RDB呢？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从切换过程中-客户端能正常进行请求吗？"><span class="nav-number">10.2.</span> <span class="nav-text">¶主从切换过程中，客户端能正常进行请求吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果实现应用程序不感知服务器的中断？"><span class="nav-number">10.3.</span> <span class="nav-text">¶如果实现应用程序不感知服务器的中断？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">11.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用主从复制"><span class="nav-number">1.</span> <span class="nav-text">¶使用主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#只读-slave"><span class="nav-number">1.1.</span> <span class="nav-text">¶只读 Slave</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#同步复制和异步复制"><span class="nav-number">2.</span> <span class="nav-text">¶同步复制和异步复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#什么时候触发复制"><span class="nav-number">3.</span> <span class="nav-text">¶什么时候触发复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制原理"><span class="nav-number">4.</span> <span class="nav-text">¶主从复制原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制存在的问题"><span class="nav-number">5.</span> <span class="nav-text">¶主从复制存在的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主从库间网络断了怎么办？"><span class="nav-number">5.1.</span> <span class="nav-text">¶主从库间网络断了怎么办？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#宕机恢复"><span class="nav-number">5.2.</span> <span class="nav-text">¶宕机恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#是否可以关闭持久化"><span class="nav-number">5.3.</span> <span class="nav-text">¶是否可以关闭持久化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何保证主从数据的一致性-数据丢失窗口的存在"><span class="nav-number">5.4.</span> <span class="nav-text">¶如何保证主从数据的一致性 - 数据丢失窗口的存在</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#过期的-key-问题"><span class="nav-number">6.</span> <span class="nav-text">¶过期的 key 问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制执行过程-slave怎么与master建立连接"><span class="nav-number">7.</span> <span class="nav-text">¶主从复制执行过程 - Slave怎么与Master建立连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制执行过程-master如何处理psync命令"><span class="nav-number">8.</span> <span class="nav-text">¶主从复制执行过程 - Master如何处理PSYNC命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制执行过程-slave如何接收复制数据"><span class="nav-number">9.</span> <span class="nav-text">¶主从复制执行过程 - Slave如何接收复制数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">10.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#aof日志更全-为什么主从同步不使用aof而是rdb呢？"><span class="nav-number">10.1.</span> <span class="nav-text">¶AOF日志更全，为什么主从同步不使用AOF而是RDB呢？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从切换过程中-客户端能正常进行请求吗？"><span class="nav-number">10.2.</span> <span class="nav-text">¶主从切换过程中，客户端能正常进行请求吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果实现应用程序不感知服务器的中断？"><span class="nav-number">10.3.</span> <span class="nav-text">¶如果实现应用程序不感知服务器的中断？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主从数据发生不一致怎么办？"><span class="nav-number">10.4.</span> <span class="nav-text">¶主从数据发生不一致怎么办？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">11.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>

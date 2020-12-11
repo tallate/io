@@ -266,6 +266,451 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/c6369e85.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/c6369e85.html" itemprop="url">分布式事务实现</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-12-06T11:30:49+08:00">
+                2020-12-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/分布式事务/" itemprop="url" rel="index">
+                    <span itemprop="name">分布式事务</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  9k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  31 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h2 id="xa规范"><a class="header-anchor" href="#xa规范">¶</a>XA规范</h2>
+<p>X/Open 组织（即现在的 Open Group ）定义了分布式事务处理模型。 X/Open DTP 模型（ 1994 ）包括应用程序（ AP ）、事务管理器（ TM ）、资源管理器（ RM ）、通信资源管理器（ CRM ）四部分。一般，常见的事务管理器（ TM ）是交易中间件，常见的资源管理器（ RM ）是数据库，常见的通信资源管理器（ CRM ）是消息中间件。<br>
+通常把一个数据库内部的事务处理，如对多个表的操作，作为本地事务看待。数据库的事务处理对象是本地事务，而分布式事务处理的对象是全局事务。<br>
+所谓全局事务，是指分布式事务处理环境中，多个数据库可能需要共同完成一个工作，这个工作即是一个全局事务，例如，一个事务中可能更新几个不同的数据库。对数据库的操作发生在系统的各处但必须全部被提交或回滚。此时一个数据库对自己内部所做操作的提交不仅依赖本身操作是否成功，还要依赖与全局事务相关的其它数据库的操作是否成功，如果任一数据库的任一操作失败，则参与此事务的所有数据库所做的所有操作都必须回滚。 一般情况下，某一数据库无法知道其它数据库在做什么，因此，在一个 DTP 环境中，交易中间件是必需的，由它通知和协调相关数据库的提交或回滚。而一个数据库只将其自己所做的操作（可恢复）影射到全局事务中。</p>
+<blockquote>
+<p><strong>XA</strong> 就是 X/Open DTP 定义的交易中间件与数据库之间的接口规范（即接口函数），交易中间件用它来通知数据库事务的开始、结束以及提交、回滚等。 XA 接口函数由数据库厂商提供。</p>
+</blockquote>
+<p>二阶提交协议和三阶提交协议就是根据这一思想衍生出来的。可以说二阶段提交其实就是实现XA分布式事务的关键(确切地说：两阶段提交主要保证了分布式事务的原子性：即所有结点要么全做要么全不做)</p>
+<h2 id="2pc-two-phasecommit"><a class="header-anchor" href="#2pc-two-phasecommit">¶</a>2PC（Two-phaseCommit）</h2>
+<blockquote>
+<p>二阶段提交(Two-phaseCommit)是指，在计算机网络以及数据库领域内，为了使基于分布式系统架构下的所有节点在进行事务提交时保持一致性而设计的一种算法(Algorithm)。通常，二阶段提交也被称为是一种协议(Protocol))。在分布式系统中，每个节点虽然可以知晓自己的操作时成功或者失败，却无法知道其他节点的操作的成功或失败。当一个事务跨越多个节点时，为了保持事务的ACID特性，需要引入一个作为协调者的组件来统一掌控所有节点(称作参与者)的操作结果并最终指示这些节点是否要把操作结果进行真正的提交(比如将更新后的数据写入磁盘等等)。因此，<strong>二阶段提交的算法思路可以概括为：参与者将操作成败通知协调者，再由协调者根据所有参与者的反馈情报决定各参与者是否要提交操作还是中止操作</strong>。</p>
+</blockquote>
+<h3 id="准备阶段-投票阶段"><a class="header-anchor" href="#准备阶段-投票阶段">¶</a>准备阶段（投票阶段）</h3>
+<p>事务协调者(事务管理器)给每个参与者(资源管理器)发送Prepare消息，每个参与者要么直接返回失败(如权限验证失败)，要么在本地执行事务，写本地的redo和undo日志，但不提交，到达一种“万事俱备，只欠东风”的状态。<br>
+可以进一步将准备阶段分为以下三个步骤：</p>
+<ol>
+<li>协调者节点向所有参与者节点询问是否可以执行提交操作(vote)，并开始等待各参与者节点的响应。</li>
+<li>参与者节点执行询问发起为止的所有事务操作，并将Undo信息和Redo信息写入日志。（注意：若成功这里其实每个参与者已经执行了事务操作）</li>
+<li>各参与者节点响应协调者节点发起的询问。如果参与者节点的事务操作实际执行成功，则它返回一个”同意”消息；如果参与者节点的事务操作实际执行失败，则它返回一个”中止”消息。</li>
+</ol>
+<h3 id="提交阶段-执行阶段"><a class="header-anchor" href="#提交阶段-执行阶段">¶</a>提交阶段（执行阶段）</h3>
+<p>如果协调者收到了参与者的失败消息或者超时，直接给每个参与者发送回滚(Rollback)消息；否则，发送提交(Commit)消息；参与者根据协调者的指令执行提交或者回滚操作，释放所有事务处理过程中使用的锁资源。(注意:必须在最后阶段释放锁资源)<br>
+接下来分两种情况分别讨论提交阶段的过程。<br>
+当协调者节点从所有参与者节点获得的相应消息都为”同意”时:<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E6%8F%90%E4%BA%A4.png" alt="2PC提交" title="2PC提交"></p>
+<ol>
+<li>协调者节点向所有参与者节点发出”正式提交(commit)”的请求。</li>
+<li>参与者节点正式完成操作，并释放在整个事务期间内占用的资源。</li>
+<li>参与者节点向协调者节点发送”完成”消息。</li>
+<li>协调者节点受到所有参与者节点反馈的”完成”消息后，完成事务。</li>
+</ol>
+<p>如果任一参与者节点在第一阶段返回的<strong>响应消息为”中止”</strong>，或者 <strong>协调者节点在第一阶段的询问超时之前无法获取所有参与者节点的响应消息</strong>时：<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%9B%9E%E6%BB%9A.png" alt="2PC回滚" title="2PC回滚"></p>
+<ol>
+<li>协调者节点向所有参与者节点发出”回滚操作(rollback)”的请求。</li>
+<li>参与者节点利用之前写入的Undo信息执行回滚，并释放在整个事务期间内占用的资源。</li>
+<li>参与者节点向协调者节点发送”回滚完成”消息1. 协调者节点受到所有参与者节点反馈的”回滚完成”消息后，取消事务。<br>
+不管最后结果如何，第二阶段都会结束当前事务。</li>
+</ol>
+<h3 id="优点"><a class="header-anchor" href="#优点">¶</a>优点</h3>
+<p>确实能保证事务的原子性</p>
+<h3 id="缺点"><a class="header-anchor" href="#缺点">¶</a>缺点</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%BC%82%E5%B8%B8%E7%82%B9.jpeg" alt="2PC异常点" title="2PC异常点"><br>
+图中有问号的条目,是不确定的地方,但是不影响这个分布式事务的结果<br>
+图中的感叹号条目,个人感觉其实也是允许先发消息再记录日志的,但是如果这样子做以后发生Down机,客户端或者TM都需要向其它机器询问结果才能得到结论(而这样子做的话会大大加长分布事务的阻塞时间和事务处理的复杂度,同时这样做会有一个致命的缺陷,抹除了一部分可以自恢复场景。</p>
+<ol>
+<li>同步阻塞问题<br>
+执行过程中，所有参与节点都是事务阻塞型的。当参与者占有公共资源时，其他第三方节点访问公共资源不得不处于阻塞状态。具体地说，两阶段提交中的第二阶段，协调者需要等待所有参与者发出yes请求，或者某个参与者发出no请求后，才能执行提交或者中断操作。这会造成长时间同时锁住多个资源, 造成性能瓶颈, 如果参与者有一个耗时长的操作, 性能损耗会更明显.</li>
+<li>单点故障<br>
+由于协调者的重要性，一旦协调者发生故障。参与者会一直阻塞下去。尤其在第二阶段，协调者发生故障，那么所有的参与者还都处于锁定事务资源的状态中，而无法继续完成事务操作。（如果是协调者挂掉，可以重新选举一个协调者，但是无法解决因为协调者宕机导致的参与者处于阻塞状态的问题）</li>
+<li>数据不一致/脑裂（聋哑事件）<br>
+在二阶段提交的阶段二中，当协调者向参与者发送commit请求之后，发生了局部网络异常或者在发送commit请求过程中协调者发生了故障，这回导致只有一部分参与者接受到了commit请求。此时就算重新选举出了一个新的协调者，也没有人知道系统最后的状态。而在这部分参与者接到commit请求之后就会执行commit操作，但是其他部分未接到commit请求的机器则无法执行事务提交。于是整个分布式系统便出现了数据不一致性现象。</li>
+<li>实现复杂<br>
+不利于系统的扩展。</li>
+<li>二阶段无法解决的问题<br>
+协调者再发出commit消息之后宕机，而唯一接收到这条消息的参与者同时也宕机了。那么即使协调者通过选举协议产生了新的协调者，这条事务的状态也是不确定的，没人知道事务是否被已经提交。</li>
+</ol>
+<h2 id="3pc-three-phase-commit"><a class="header-anchor" href="#3pc-three-phase-commit">¶</a>3PC（Three-phase commit）</h2>
+<blockquote>
+<p>三阶段提交，也叫三阶段提交协议（Three-phase commit protocol），是二阶段提交（2PC）的改进版本。</p>
+</blockquote>
+<p>与两阶段提交不同的是，三阶段提交有两个改动点。</p>
+<ol>
+<li>引入超时机制。同时在协调者和参与者中都引入超时机制。</li>
+<li>在第一阶段和第二阶段中插入一个准备阶段。保证了在最后提交阶段之前各参与节点的状态是一致的。</li>
+</ol>
+<p>也就是说，除了引入超时机制之外，3PC把2PC的准备阶段再次一分为二，这样三阶段提交就有CanCommit、PreCommit、DoCommit三个阶段。<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/3PC.png" alt="3PC" title="3PC"></p>
+<h3 id="cancommit阶段"><a class="header-anchor" href="#cancommit阶段">¶</a>CanCommit阶段</h3>
+<p>3PC的CanCommit阶段其实和2PC的准备阶段很像。协调者向参与者发送commit请求，参与者如果可以提交就返回Yes响应，否则返回No响应。</p>
+<ol>
+<li>事务询问 协调者向参与者发送CanCommit请求。询问是否可以执行事务提交操作。然后开始等待参与者的响应。</li>
+<li>响应反馈 参与者接到CanCommit请求之后，正常情况下，如果其自身认为可以顺利执行事务，则返回Yes响应，并进入预备状态。否则反馈No</li>
+</ol>
+<h3 id="precommit阶段"><a class="header-anchor" href="#precommit阶段">¶</a>PreCommit阶段</h3>
+<p>协调者根据参与者的反应情况来决定是否可以进行事务的PreCommit操作。根据响应情况，有以下两种可能，分别称为预执行和中断。<br>
+假如协调者从所有的参与者获得的反馈都是Yes响应，那么就会执行事务的<strong>预执行</strong>。</p>
+<ol>
+<li>发送预提交请求：协调者向参与者发送PreCommit请求，并进入Prepared阶段。</li>
+<li>事务预提交：参与者接收到PreCommit请求后，会执行事务操作，并将undo和redo信息记录到事务日志中。</li>
+<li>响应反馈：如果参与者成功的执行了事务操作，则返回ACK响应，同时开始等待最终指令。</li>
+</ol>
+<p>假如有任何一个参与者向协调者发送了No响应（CanCommit阶段），或者等待超时之后，协调者都没有接到参与者的响应，那么就执行事务的<strong>中断</strong>。</p>
+<ol>
+<li>发送中断请求 协调者向所有参与者发送abort请求。</li>
+<li>中断事务 参与者收到来自协调者的abort请求之后（或超时之后，仍未收到协调者的请求），执行事务的中断。</li>
+</ol>
+<h3 id="docommit阶段"><a class="header-anchor" href="#docommit阶段">¶</a>doCommit阶段</h3>
+<p>该阶段进行真正的事务提交，也可以分为以下两种情况。<br>
+<strong>执行提交</strong></p>
+<ol>
+<li>发送提交请求 协调接收到参与者发送的ACK响应，那么他将从预提交状态进入到提交状态。并向所有参与者发送doCommit请求。</li>
+<li>事务提交 参与者接收到doCommit请求之后，执行正式的事务提交。并在完成事务提交之后释放所有事务资源。</li>
+<li>响应反馈 事务提交完之后，向协调者发送Ack响应。</li>
+<li>完成事务 协调者接收到所有参与者的ack响应之后，完成事务。</li>
+</ol>
+<p><strong>中断事务</strong><br>
+协调者没有接收到参与者发送的ACK响应（可能是接受者发送的不是ACK响应，也可能响应超时），那么就会执行中断事务。</p>
+<ol>
+<li>发送中断请求 协调者向所有参与者发送abort请求</li>
+<li>事务回滚 参与者接收到abort请求之后，利用其在阶段二记录的undo信息来执行事务的回滚操作，并在完成回滚之后释放所有的事务资源。</li>
+<li>反馈结果 参与者完成事务回滚之后，向协调者发送ACK消息</li>
+<li>中断事务 协调者接收到参与者反馈的ACK消息之后，执行事务的中断。</li>
+</ol>
+<p>在doCommit阶段，如果参与者无法及时接收到来自协调者的doCommit或者rebort请求时，会在等待超时之后，会继续进行事务的提交。（其实这个应该是基于概率来决定的，当进入第三阶段时，说明参与者在第二阶段已经收到了PreCommit请求，那么协调者产生PreCommit请求的前提条件是他在第二阶段开始之前，收到所有参与者的CanCommit响应都是Yes。（一旦参与者收到了PreCommit，意味他知道大家其实都同意修改了）所以，一句话概括就是，当进入第三阶段时，由于网络超时等原因，虽然参与者没有收到commit或者abort响应，但是他有理由相信：成功提交的几率很大。 ）</p>
+<h3 id="优点和缺点"><a class="header-anchor" href="#优点和缺点">¶</a>优点和缺点</h3>
+<ol>
+<li>相对于2PC，3PC主要解决的单点故障问题<br>
+当在第二阶段出现聋哑事件,那么这N-1台机器可以根据超时机制直接abort掉,因为客户端这时只是预提交,当该机器重启以后只要询问周边机器事务状态,简单的将事务回滚或者提交事务,就能保持事务的最终一致性；<br>
+当进行到第三阶段的时候,如果发生聋哑事件,那么其它处于「不确定状态」的客户端会直接执行commit,而不会像2PC一样导致事务block,但是这样会有一个风险(进入到第三个阶段说明客户端在第一阶段投的都是Yes),因为在聋哑事件中,那台Down掉的机器在第二阶段中给协调者发送的不是prepared,这个时候协调者收到消息给客户端发送的是abort命令.所以3PC只是乐观的认为只要你第一阶段大家投的都是Yes,那么最后成功提交的几率很大。</li>
+<li>减少阻塞，因为一旦参与者无法及时收到来自协调者的信息之后，他会默认执行commit，而不会一直持有事务资源并处于阻塞状态。</li>
+<li>但是这种机制也会导致数据一致性问题，因为，由于网络原因，<strong>协调者发送的abort响应没有及时被参与者接收到</strong>，那么参与者在等待超时之后执行了commit操作。这样就和其他接到abort命令并执行回滚的参与者之间存在数据不一致的情况。</li>
+</ol>
+<h2 id="tcc"><a class="header-anchor" href="#tcc">¶</a>TCC</h2>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC.png" alt="TCC" title="TCC"><br>
+所谓的TCC编程模式，也是两阶段提交的一个变种。TCC提供了一个编程框架，将整个业务逻辑分为三块：Try、Confirm和Cancel三个操作。以在线下单为例，Try阶段会去扣库存，Confirm阶段则是去更新订单状态，如果更新订单失败，则进入Cancel阶段，会去恢复库存。总之，TCC就是通过代码人为实现了两阶段提交，不同的业务场景所写的代码都不一样，复杂度也不一样，因此，这种模式并不能很好地被复用。<br>
+TCC补偿性方案，分为三个阶段TRYING-CONFIRMING-CANCELING。每个阶段做不同的处理。</p>
+<ul>
+<li>Trying阶段主要针对业务系统检测及作出预留资源请求, 若预留资源成功, 则返回确认资源的链接与过期时间</li>
+<li>Confirm阶段主要是对业务系统的预留资源作出确认, 要求TCC服务的提供方要对确认预留资源的接口实现幂等性, 若Confirm成功则返回204，资源超时则证明已经被回收且返回404</li>
+<li>Cancel阶段主要是在业务执行错误或者预留资源超时后执行的资源释放操作, Cancel接口是一个可选操作, 因为要求TCC服务的提供方实现自动回收的功能, 所以即便是不认为进行Cancel, 系统也会自动回收资源</li>
+</ul>
+<h3 id="优点-v2"><a class="header-anchor" href="#优点-v2">¶</a>优点</h3>
+<ol>
+<li>TCC能够对分布式事务中的各个资源进行分别锁定, 分别提交与释放, 例如, 假设有AB两个操作, 假设A操作耗时短, 那么A就能较快的完成自身的try-confirm-cancel流程, 释放资源. 无需等待B操作. 如果事后出现问题, 追加执行补偿性事务即可.</li>
+<li>TCC是绑定在各个子业务上的(除了cancle中的全局回滚操作), 也就是各服务之间可以在一定程度上”异步并行”执行.</li>
+</ol>
+<h3 id="注意"><a class="header-anchor" href="#注意">¶</a>注意</h3>
+<ul>
+<li>事务管理器(协调器)这个节点必须以带同步复制语义的高可用集群(HAC)方式部署.</li>
+<li>事务管理器(协调器)还需要使用多数派算法来避免集群发生脑裂问题.</li>
+</ul>
+<h3 id="适用场景"><a class="header-anchor" href="#适用场景">¶</a>适用场景</h3>
+<ul>
+<li>严格一致性</li>
+<li>执行时间短</li>
+<li>实时性要求高</li>
+</ul>
+<h3 id="例子1"><a class="header-anchor" href="#例子1">¶</a>例子1</h3>
+<p>以<strong>支付场景</strong>为例，支付系统接收到会员的支付请求后，需要扣减会员账户余额、增加会员积分（暂时假设需要同步实现）增加商户账户余额<br>
+再假设：会员系统、商户系统、积分系统是独立的三个子系统，无法通过传统的事务方式进行处理。</p>
+<ol>
+<li>TRYING阶段：我们需要做的就是会员资金账户的资金预留，即：冻结会员账户的金额（订单金额）</li>
+<li>CONFIRMING阶段：我们需要做的就是会员积分账户增加积分余额，商户账户增加账户余额</li>
+<li>CANCELING阶段：该阶段需要执行的就是解冻释放我们扣减的会员余额</li>
+</ol>
+<h3 id="例子2"><a class="header-anchor" href="#例子2">¶</a>例子2</h3>
+<p>下面以<strong>客户购买商品时的付款操作</strong>为例进行讲解:</p>
+<ol>
+<li>Try<br>
+完成所有的业务检查(一致性),预留必须业务资源(准隔离性);<br>
+体现在本例中, 就是确认客户账户余额足够支付(一致性), 锁住客户账户, 商户账户(准隔离性).</li>
+<li>Confirm<br>
+使用Try阶段预留的业务资源执行业务(业务操作必须是幂等的), 如果执行出现异常, 要进行重试.<br>
+在这里就是执行客户账户扣款, 商户账户入账操作.</li>
+<li>Cancle<br>
+释放Try阶段预留的业务资源, 在这里就是释放客户账户和商户账户的锁;</li>
+</ol>
+<h3 id="try设计"><a class="header-anchor" href="#try设计">¶</a>try设计</h3>
+<p>try阶段起着一个预处理的作用。<br>
+在整个分布式事务中预处理的含义其实很广泛,比如订单,所谓的预处理就是生成订单,但是用户真实是看不到这些订单的,至于具体实现是在一张新表中记录还是在原有的订单表是加上标记位,具体实现方式由自己统筹考虑(当然还需要考虑记录事务Id);像减库存这种预处理,可以直接减少原始库存,再通过另外一张表来记录这次事务Id操作了哪个Sku的库存数量,当然也可以不减少库存只记录操作,但是这种方式在计算实际库存的时候复杂度会提高(需要减掉预处理的那部分)</p>
+<h3 id="confirm设计"><a class="header-anchor" href="#confirm设计">¶</a>confirm设计</h3>
+<p>如果任一子业务在Confirm阶段有操作无法执行成功, 会造成对业务活动管理器的响应超时, 此时要对其他业务执行<strong>补偿性事务</strong>. 如果补偿操作执行也出现异常, 必须进行重试, 若实在无法执行成功, 则事务管理器必须能够感知到失败的操作, 进行log(用于事后人工进行补偿性事务操作或者交由中间件接管在之后进行补偿性事务操作)，我称这个过程为Unconfirm.<br>
+其实像Github上的一些基于TCC设计的分布式事务框架（如tcc-transaction），都对Confirm的补偿没有作说明，也没有在代码里保证某一子任务的Confirm失败后、前面子任务的Confirm能回滚，Confirm操作出错是由用户承担的，经过测试确实会有这样的问题（在第一个Confirm中建一张表，第二个Confirm中故意抛出一个异常）。<br>
+因此，我认为TCC应该被扩充为TCUC才对，其中的U代表Unconfirm操作。</p>
+<h3 id="cancel设计"><a class="header-anchor" href="#cancel设计">¶</a>cancel设计</h3>
+<p>cancel应当能起到释放try阶段占用资源的作用，事务管理器在执行cancel时<strong>需要判断哪些try是成功的再执行其cancel</strong>，因为执行失败的try由本地事务控制回滚了，而没有执行的本来就没有必要回滚，或者，由开发者将cancel设计为可重入的、不会因为反复调用而出错。但是由于这个需求是刚需，放到业务中进行处理势必会大大增加业务的复杂度，因此由TCC框架来处理是更好的选择，需要考虑如下处理策略：</p>
+<ol>
+<li>如果TCC事务框架发现某个服务的Try操作的本地事务尚未提交，应该直接将其回滚，而后就不必再执行该服务的cancel业务；</li>
+<li>如果TCC事务框架发现某个服务的Try操作的本地事务已经回滚，则不必再执行该服务的cancel业务；</li>
+<li>如果TCC事务框架发现某个服务的Try操作尚未被执行过，那么，也不必再执行该服务的cancel业务。</li>
+</ol>
+<p>总而言之，TCC框架必须保障：</p>
+<ol>
+<li>已生效的Try操作应该被其Cancel操作所回撤；</li>
+<li>尚未生效的Try操作，则不应该执行其Cancel操作。</li>
+</ol>
+<h3 id="本地事务"><a class="header-anchor" href="#本地事务">¶</a>本地事务</h3>
+<p>TCC事务必须在本地事务的基础上实现，因为每个接口都可能有多次写库操作，如果某次写库失败，cancel中就需要判断哪些操作是失败的再调用其回滚，这样cancel中也会存在多次的反向写库操作，一旦cancel也中途出错，后续的cancel（重试）还需要判断之前cancel的哪几个操作是执行成功了的，因此，如果没有本地事务的支持，TCC事务框架是无法有效管理TCC事务的。<br>
+一种方法是在TCC框架中接管Spring的事务管理（PlatformTransactionManager），另一种办法是老老实实给每一个TCC接口添加@Transactional注解。</p>
+<ol>
+<li>必须确定本地事务的传播条件<br>
+一个业务方法可能会包含多个RM本地事务。比如：A(REQUIRED)-&gt;B(REQUIRES_NEW)-&gt;C(REQUIRED)，这种情况下，A服务所参与的RM本地事务被提交时，B服务和C服务参与的RM本地事务则可能会被回滚。</li>
+<li>必须手动指定本地事务的回滚条件<br>
+并不是抛出了异常的业务方法，其参与的事务就回滚了。Spring容器的声明式事务定义了两类异常，其事务完成方向都不一样：系统异常（一般为Unchecked异常，默认事务完成方向是rollback）、应用异常（一般为Checked异常，默认事务完成方向是commit）。二者的事务完成方向又可以通过@Transactional配置显式的指定，如rollbackFor/noRollbackFor等。<br>
+Spring容器还支持使用setRollbackOnly的方式显式的控制事务完成方向。</li>
+<li>TCC拦截器的执行顺序必须在本地事务拦截器之后<br>
+自行拦截业务方法的拦截器和Spring的事务处理的拦截器还会存在执行先后、拦截范围不同等问题。例如，如果自行拦截器执行在前，就会出现业务方法虽然已经执行完毕但此时其参与的RM本地事务还没有commit/rollback。</li>
+</ol>
+<h3 id="异常分析"><a class="header-anchor" href="#异常分析">¶</a>异常分析</h3>
+<p>实际应用中，会有各种故障出现，很多都会造成事务的中断，从而使得统一提交/回滚全局事务的目标不能达到，甚至出现”一部分分支事务已经提交，而另一部分分支事务则已回滚”的情况。常见错误包括：<br>
+业务系统服务器宕机、重启；数据库服务器宕机、重启；网络故障；断电等。这些故障可能单独发生，也可能会同时发生。</p>
+<p>在整个流程,我们主要需要关注的是<code>cancel</code>失败和<code>confirm</code>失败引起的数据不一致现象：<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E5%BC%82%E5%B8%B8%E5%88%86%E6%9E%90.jpeg" alt="TCC异常分析" title="TCC异常分析"><br>
+TCC事务框架要支持故障恢复，就必须记录相应的事务日志。事务日志是故障恢复的基础和前提，它记录了事务的各项数据。TCC事务框架做故障恢复时，可以根据事务日志的数据将中断的事务恢复至正确的状态，并在此基础上继续执行先前未完成的提交/回滚操作。</p>
+<h3 id="异常情况-cancel与try乱序-或并发执行"><a class="header-anchor" href="#异常情况-cancel与try乱序-或并发执行">¶</a>异常情况 - Cancel与Try乱序（或并发执行）</h3>
+<p>这应该算TCC事务机制特有的一个不可思议的陷阱。一般来说，一个特定的TCC服务，其Try操作的执行，是应该在其Confirm/Cancel操作之前的。Try操作执行完毕之后，Spring容器再根据Try操作的执行情况，指示TCC事务框架提交/回滚全局事务。然后，TCC事务框架再去逐个调用各TCC服务的Confirm/Cancel操作。<br>
+然而，超时、网络故障、服务器的重启等故障的存在，使得这个顺序会被打乱。比如：<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/Cancel%E4%B8%8ETry%E4%B9%B1%E5%BA%8F.jpg" alt="Cancel与Try乱序" title="Cancel与Try乱序"><br>
+上图中，假设[B:Try]操作执行过程中，网络闪断，[A:Try]会收到一个RPC远程调用异常。A不处理该异常，导致全局事务决定回滚，TCC事务框架就会去调用[B:Cancel]，而此刻A、B之间网络刚好已经恢复。如果[B:Try]操作耗时较长（网络阻塞/数据库操作阻塞），就会出现[B:Try]和[B:Cancel]二者并行处理的现象，甚至[B:Cancel]先完成的现象。<br>
+这种情况下，由于[B:Cancel]执行时，[B:Try]尚未生效（其RM本地事务尚未提交），因此，[B:Cancel]是不能执行的，至少是不能生效（执行了其RM本地事务也要rollback）的。<br>
+然而，当[B:Cancel]处理完毕（跳过执行、或者执行后rollback其RM本地事务）后，[B:Try]操作完成又生效了（其RM本地事务成功提交），这就使得[B:Cancel]虽然提供了，但却没有起到回撤[B:Try]的作用，导致数据的不一致。</p>
+<p>所以，TCC框架在这种情况下，需要：</p>
+<ol>
+<li>将[B:Try]的本地事务标注为Marked_ReadOnly，阻止其后续生效；</li>
+<li>禁止其再次将事务上下文传递给其他远程分支，否则该问题将在其他分支上出现；</li>
+<li>相应地，[B:Cancel]也不必执行，至少不能生效。</li>
+</ol>
+<blockquote>
+<p>当然，TCC事务框架也可以简单的选择阻塞[B:Cancel]，待[B:Try]执行完毕后，再根据它的执行情况判断是否需要执行[B:Cancel]。不过，这种处理方式因为需要等待，所以，处理效率上会有所不及。</p>
+</blockquote>
+<p>同样的情况也会出现在confirm业务上，只不过，发生在Confirm业务上的处理逻辑与发生在Cancel业务上的处理逻辑会不一样，TCC框架必须保证：</p>
+<ol>
+<li>Confirm业务在Try业务之后执行，若发现并行，则只能阻塞相应的Confirm业务操作；</li>
+<li>在进入Confirm执行阶段之后，也不可以再提交同一全局事务内的新的Try操作的RM本地事务。</li>
+</ol>
+<h3 id="tcc中心化-使用一个tcc服务器来集中回调confirm和cancel方法"><a class="header-anchor" href="#tcc中心化-使用一个tcc服务器来集中回调confirm和cancel方法">¶</a>TCC中心化（使用一个TCC服务器来集中回调confirm和cancel方法）</h3>
+<p>基于TCC的中心化事务一致性解决方法,各个应用服务器如果需要感知某次事务是否成功的成本很高,所以对于自身而言进行事务补偿成本就会很高.举个例子：<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E4%B8%AD%E5%BF%83%E5%8C%96.jpeg" alt="TCC中心化" title="TCC中心化"></p>
+<ol>
+<li>每次成功的执行本应用服务器的事务以后,都需要把成功执行的事务Id记录</li>
+<li>继续confirm或者将confirm完的数据回滚,对用户都很不友好,特别是需要confirm订单或者回滚订单数据</li>
+<li>可以根据事务开始的时间,并且设计一个事务超时时间,如果在这个时间范围以外事务还没有处理完成,就可以当做这个事务已经失败,将预处理数据删除<br>
+总体来说,事务补偿机制,心智负担过于沉重.所以只能依赖TCC服务器的失败重试机制,如果失败重试机制不能处理,只能人肉去处理(建议全程人肉,因为同时进行失败重试和人肉的话,因为如果失败重试和人肉都在操作同一条数据,还需要考虑这种竞争的场景,对重试次数需要限定)</li>
+</ol>
+<h3 id="无tcc服务器设计-去中心化"><a class="header-anchor" href="#无tcc服务器设计-去中心化">¶</a>无TCC服务器设计（去中心化）</h3>
+<p>可以让<strong>交易链路</strong>来充当TCC服务器的角色,但是长期来看,TCC相当于是一个公用的组件,所以其它地方也需要TCC分布式事务,可以公用这一个组件(交易链路可以完成TCC所能完成的一切操作,把TCC单独部署一个服务,仅仅是考虑整个系统的抽象结构和功能复用)。<br>
+像框架<code>tcc-transaction</code>中每次第一个发起事务的服务器就起到了这个TCC服务器的作用。</p>
+<h3 id="幂等性"><a class="header-anchor" href="#幂等性">¶</a>幂等性</h3>
+<p>TCC服务支持接口失败重试,所以对TCC暴露的接口都需要满足幂等性(根据事务Id很好满足)，幂等性的实现方式可以是：</p>
+<ol>
+<li>通过唯一键值做处理，即每次调用的时候传入唯一键值，通过唯一键值判断业务是否被操作，如果已被操作，则不再重复操作</li>
+<li>通过状态机处理，给业务数据设置状态，通过业务状态判断是否需要重复执行</li>
+</ol>
+<h3 id="调用链路"><a class="header-anchor" href="#调用链路">¶</a>调用链路</h3>
+<p>就想本地事务通过方法调用来传递，分布式事务也需要在进行远程调用时传递该事务的标识（称为调用链路ID，有时会包装到一个事务上下文内）<br>
+服务为了确认自己处于哪个事务中，必须将调用链路ID作为参数在远程调用时进行传递，这和实现密切相关，待补充。。。。</p>
+<h2 id="结合mq消息中间件实现的可靠消息最终一致性"><a class="header-anchor" href="#结合mq消息中间件实现的可靠消息最终一致性">¶</a>结合MQ消息中间件实现的可靠消息最终一致性</h2>
+<p>可靠消息最终一致性，需要业务系统结合MQ消息中间件实现，在实现过程中需要保证消息的成功发送及成功消费。即需要通过业务系统控制MQ的消息状态。<br>
+所谓的消息事务本质上就是基于消息中间件的两阶段提交，是对消息中间件的一种特殊利用，它是将本地事务和发消息放在了一个分布式事务里，保证要么本地操作成功成功并且对外发消息成功，要么两者都失败，开源的RocketMQ就支持这一特性，具体原理如下：<br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1.png" alt="消息事务" title="消息事务"><br>
+步骤1失败：则整个事务失败，不会执行A的本地操作；<br>
+步骤2失败：同样整个事务失败，不会执行A的本地操作（被本地数据库回滚掉了）；<br>
+步骤3失败：消息中间件需要有回查机制，回查A系统该事务是否被本地执行成功了，如果成功则照常继续执行，如果失败则将预备消息回滚了，其实这指的就是步骤4的回调。</p>
+<p>虽然上面的方案能够完成A和B的操作，但是A和B并不是严格一致的，而是最终一致的，我们在这里牺牲了一致性，换来了性能的大幅度提升。当然，这种玩法也是有风险的，如果B一直执行不成功，那么一致性会被破坏，具体要不要玩，还是得看业务能够承担多少风险。</p>
+<h3 id="实例-下单"><a class="header-anchor" href="#实例-下单">¶</a>实例 - 下单</h3>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1-%E4%B8%8B%E5%8D%95.jpeg" alt="消息事务-下单" title="消息事务-下单"></p>
+<ol>
+<li>预创建订单失败:如果实际预创建订单成功,订单定时补偿机制,定时删除这部分订单,不影响数据一致性,下单失败；</li>
+<li>预扣减库存失败:如果预扣减库存真实失败,则下单失败(订单由定时补偿机制定时删除,其它应用参照场景4的处理方式,下单失败;如果实际预扣减库存成功,参照场景4的处理方式,下单失败；</li>
+<li>实际创建订单失败:如果创建订单真实失败(不需要发送下单失败消息,防止实际创建订单成功场景),订单的预处理数据通过订单的定时补偿机制尝试删除(需要考虑事务处理时间,将超过某个时间范围该事务还处于预处理状态的订单删除),下单失败;如果实际创建订单成功,其它应用参照场景4的处理方式,下单成功(提示用户下单失败)；</li>
+<li>发送订单创建成功消息失败/库存服务由于各种原因没有接到下单成功消息:库存服务定时轮询处理数据(需要考虑事务处理时间,将超过某个时间范围该事务还处于预处理状态的订单筛选出来),询问订单服务改订单Id对应的订单是否创建成功,根据订单创建成功与否选取相应的事务补偿机制</li>
+</ol>
+<h3 id="和tcc比较"><a class="header-anchor" href="#和tcc比较">¶</a>和TCC比较</h3>
+<ol>
+<li>TCC是把所有的订单创建步骤平等看待，只要有一个失败,整个下单流程全部失败(比较TCC里面的confirm失败和基于MQ实际创建订单失败的补偿难易程度)</li>
+<li>TCC是通过发消息给TCC服务器，然后由TCC服务调用应用服务；<br>
+基于MQ的分布式事务补偿机制，是通过将消息发送到MQ，然后由应用自己去监听MQ的事件。</li>
+</ol>
+<h3 id="注意-v2"><a class="header-anchor" href="#注意-v2">¶</a>注意</h3>
+<p>消息中间件在系统中扮演一个重要的角色, 所有的事务消息都需要通过它来传达, 所以消息中间件也需要支持 HA 来确保事务消息不丢失.<br>
+根据业务逻辑的具体实现不同，还可能需要对消息中间件增加消息不重复, 不乱序等其它要求.</p>
+<h3 id="适用场景-v2"><a class="header-anchor" href="#适用场景-v2">¶</a>适用场景</h3>
+<ol>
+<li>执行周期较长</li>
+<li>实时性要求不高</li>
+</ol>
+<p>例如:</p>
+<ul>
+<li>跨行转账/汇款业务(两个服务分别在不同的银行中)</li>
+<li>退货/退款业务</li>
+<li>财务, 账单统计业务(先发送到消息中间件, 然后进行批量记账)</li>
+</ul>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5f3f10ab.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -351,7 +796,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3k 字
+                  5.1k 字
                 </span>
               
 
@@ -367,7 +812,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  11 分钟
+                  18 分钟
                 </span>
               
             </div>
@@ -397,824 +842,6 @@
             </a>
           </div>
           <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/0.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/0.html" itemprop="url">未命名</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-12-01T00:49:28+08:00">
-                2020-12-01
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  4.8k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  20 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>基于注册中心目录服务，使服务消费方能动态的查找服务提供方，使地址透明，不再需要写死服务提供方地址，注册中心基于接口名查询服务提供者的 IP 地址，使服务提供方可以平滑增加或减少机器。</p>
-<h2 id="角色分类"><a class="header-anchor" href="#角色分类">¶</a>角色分类</h2>
-<p>以功能角度来说服务可以分成以下几种：</p>
-<ul>
-<li>服务提供者；</li>
-<li>服务消费者；</li>
-<li>服务提供者兼消费者。</li>
-</ul>
-<h2 id="注册中心分类"><a class="header-anchor" href="#注册中心分类">¶</a>注册中心分类</h2>
-<p>可以分成以下几种注册中心：</p>
-<ul>
-<li>Simple 注册中心 点对点直连</li>
-<li>Multicast 注册中心 多播</li>
-<li>Zookeeper 注册中心</li>
-<li>Redis 注册中心</li>
-</ul>
-<h2 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h2>
-<p>服务提供者（provider）配置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 应用名称，可显示依赖关系 --&gt;</span><br><span class="line">&lt;dubbo:application name=&quot;dubbo-order-server&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 注册中心是ZooKeeper，也可以选择Redis做注册中心 --&gt;</span><br><span class="line">&lt;dubbo:registry address=&quot;zookeeper://127.0.0.1:2181&quot;</span><br><span class="line">    client=&quot;zkclient&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 通过dubbo协议在注册中心（127.0.0.1表示本机）的20880端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; host=&quot;127.0.0.1&quot; port=&quot;20880&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 提供服务用地的是service标签，将该接口暴露到dubbo中 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.dubbo.service.OrderService&quot;</span><br><span class="line">    ref=&quot;orderService&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- Spring容器加载具体的实现类--&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;dubbo.service.impl.OrderServiceImpl&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:monitor protocol=&quot;registry&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<p>服务消费者（consumer）配置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 应用名称，可显示依赖关系 --&gt;</span><br><span class="line">&lt;dubbo:application name=&quot;dubbo-user-consumer&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- zookeeper作为注册中心 ，也可以选择Redis做注册中心 --&gt;</span><br><span class="line">&lt;dubbo:registry address=&quot;zookeeper://127.0.0.1:2181&quot;</span><br><span class="line">    client=&quot;zkclient&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol host=&quot;127.0.0.1&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 调用服务使用reference标签，从注册中心中查找服务 --&gt;</span><br><span class="line">&lt;dubbo:reference id=&quot;orderService&quot; interface=&quot;com.dubbo.service.OrderService&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<h2 id="查看服务注册-暴露结果"><a class="header-anchor" href="#查看服务注册-暴露结果">¶</a>查看服务注册/暴露结果</h2>
-<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9C%8D%E5%8A%A1%E6%B3%A8%E5%86%8C%E4%BF%A1%E6%81%AF.png" alt="Dubbo服务注册信息" title="Dubbo服务注册信息"><br>
-Dubbo 在 ZooKeeper 中以树形结构维护服务注册信息：</p>
-<ul>
-<li>服务提供者启动时: 向 /dubbo/com.foo.BarService/providers 目录下写入自己的 URL 地址；</li>
-<li>服务消费者启动时: 订阅 /dubbo/com.foo.BarService/providers 目录下的提供者 URL 地址。并向 /dubbo/com.foo.BarService/consumers 目录下写入自己的 URL 地址；</li>
-<li>监控中心启动时: 订阅 /dubbo/com.foo.BarService 目录下的所有提供者和消费者 URL 地址。</li>
-</ul>
-<p>ZooKeeper 启动的时候会把配置信息加载进内存并持久化到数据库，然后启动定时器脏数据检查定时器 DirtyCheckTask，分别检查消费者和提供者的地址列表缓存、消费者和提供者地址列表的数据库数据，清理不存活的消费者和提供者数据，对于缓存中的存在的消费者和提供者而数据库不存在，提供者重新注册和消费者重新订阅。</p>
-<p>Dubbo 提供了一些异常情况下的兜底方案：</p>
-<ul>
-<li>当提供者出现断电等异常停机时，注册中心能自动删除提供者信息</li>
-<li>当注册中心重启时，能自动恢复注册数据，以及订阅请求</li>
-<li>当会话过期时，能自动恢复注册数据，以及订阅请求</li>
-<li>当设置 &lt;dubbo:registry check=“false” /&gt; 时，记录失败注册和订阅请求，后台定时重试</li>
-</ul>
-<p>在了解 ZooKeeper 基础上，还可以增加一些配置来修改注册细节：<br>
-可通过 <code>&lt;dubbo:registry username=&quot;admin&quot; password=&quot;1234&quot; /&gt;</code> 设置 ZooKeeper 登录信息<br>
-可通过 <code>&lt;dubbo:registry group=&quot;dubbo&quot; /&gt;</code> 设置 ZooKeeper 的根节点，不设置将使用无根树<br>
-支持 * 号通配符 <code>&lt;dubbo:reference group=&quot;*&quot; version=&quot;*&quot; /&gt;</code> ，可订阅服务的所有分组和所有版本的提供者</p>
-<p>在 Provider 启动完毕后，可以登录到 ZooKeeper 上查看注册的结果：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 11] ls /</span><br><span class="line">[dubbo, zookeeper]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 12] ls /dubbo</span><br><span class="line">[com.alibaba.dubbo.monitor.MonitorService, com.tallate.UserServiceBo]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 13] ls /dubbo/com.tallate.UserServiceBo</span><br><span class="line">[configurators, consumers, providers, routers]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 14] ls /dubbo/com.tallate.UserServiceBo/providers</span><br><span class="line">[dubbo%3A%2F%2F192.168.96.194%3A20880%2Fcom.tallate.UserServiceBo%3Fanyhost%3Dtrue%26application%3DdubboProvider%26dubbo%3D2.0.2%26generic%3Dfalse%26group%3Ddubbo%26interface%3Dcom.tallate.UserServiceBo%26methods%3DsayHello%2CtestPojo%2CsayHello2%26pid%3D28129%26revision%3D1.0.0%26side%3Dprovider%26timeout%3D3000%26timestamp%3D1575202776615%26version%3D1.0.0]</span><br></pre></td></tr></table></figure>
-<h2 id="服务自动发现流程"><a class="header-anchor" href="#服务自动发现流程">¶</a>服务自动发现流程</h2>
-<p>服务自动发现功能完成下面这个流程，我们接下来分点概述：</p>
-<ol>
-<li>服务提供者在启动时，向注册中心注册自己提供的服务。</li>
-<li>服务消费者在启动时，向注册中心订阅自己所需的服务。</li>
-<li>注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。</li>
-<li>服务消费者，从提供者地址列表中，基于软负载均衡算法（基于软件的负载均衡，与 F5 相对），选一台提供者进行调用，如果调用失败，再选另一台调用。</li>
-</ol>
-<h2 id="注册和注销服务-provider-执行流程"><a class="header-anchor" href="#注册和注销服务-provider-执行流程">¶</a>注册和注销服务（Provider 执行流程）</h2>
-<p>服务的注册与注销，是对服务提供方角色而言，大致流程如下所示：<br>
-<img src="http://47.88.24.11/imgs/Dubbo/%E6%B3%A8%E5%86%8C%E5%92%8C%E6%B3%A8%E9%94%80%E6%9C%8D%E5%8A%A1.png" alt="注册和注销服务" title="注册和注销服务"></p>
-<ol>
-<li>在接口提供者初始化时，每个接口都会创建一个 Invoker 和 Exporter，Exporter 持有 Invoker 实例，通过 Invocation 中的信息就可找到对应的 Exporter 和 Invoker</li>
-<li>同 Consumer 的过程类似，调用 Invoker 前会调用 Invoker-Filter。</li>
-<li>调用 Invoker.invoke() 时，通过反射调用最终的服务实现执行相关逻辑。</li>
-</ol>
-<p>ServiceBean 负责了服务的暴露：</p>
-<ul>
-<li>继承自 ServiceConfig，export 方法实现了服务暴露的逻辑；</li>
-<li>实现了 Spring 中的 InitializingBean, DisposableBean, ApplicationContextAware, ApplicationListener<contextrefreshedevent>, BeanNameAware</contextrefreshedevent></li>
-</ul>
-<p>启动时，ServiceBean 主要负责以下任务：</p>
-<ul>
-<li>生成 DubboExporter 对象并缓存起来</li>
-<li>添加过滤器和监听器支持</li>
-<li>在 zk 上注册相关信息，暴露服务，方便被感知到</li>
-<li>监听端口，等待通信的到来</li>
-</ul>
-<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E6%9C%8D%E5%8A%A1%E5%AF%BC%E5%87%BA.png" alt="Dubbo服务导出" title="Dubbo服务导出"></p>
-<ol>
-<li>前置工作，主要用于检查参数和组装 URL；<br>
-ServiceBean#onApplicationEvent: 接收 Spring 上下文刷新事件后执行服务导出操作<br>
--&gt; ServiceBean#export: 导出服务<br>
--&gt; ProviderConfig.getExport、getDelay 获取配置，如果 export 为 false 则无法提供给其他服务调用、一般只提供给本地调试时使用，如果需要 delay 则将任务交给一个 ScheduledExecutorService 延迟执行，否则调用 doExport 暴露服务<br>
--&gt; ServiceConfig.doExport 一堆配置检查</li>
-<li>导出服务，包含导出服务到本地（JVM）和导出服务到远程两个过程；<br>
-<code>ServiceConfig.doExportUrls</code><br>
-导出服务，Dubbo 中所有服务都通过 URL 导出，支持多协议多注册中心导出服务（遍历 ProtocolConfig 集合导出每个服务）<br>
-<code>AbstractInterfaceConfig#loadRegistries</code><br>
-加载注册中心链接<br>
-<code>ServiceConfig#doExportUrlsFor1Protocol</code><br>
-组装 URL，将服务注册到注册中心<br>
-<code>JavassistProxyFactory#getInvoker</code><br>
-获取 Invoker 实例，用于接收请求<br>
-<code>ServiceConfig#exportLocal、DubboProtocol#export</code><br>
-根据配置信息导出服务到本地或远程，远程默认取Dubbo协议<br>
-<code>DubboProtocol#openServer</code><br>
-开始监听请求</li>
-<li>向注册中心注册服务，用于服务发现<br>
-Dubbo 服务注册本质是在 zk 指定目录下创建临时节点，路径是<code>{group}/{Interface}/providers/{url}</code>。<br>
-RegistryProtocol#register<br>
--&gt; RegistryFactory#getRegistry<br>
--&gt; AbstractRegistry#register</li>
-</ol>
-<p>因为Dubbo一般使用ZooKeeper作为注册中心，所以完全可以利用ZooKeeper的临时节点自动删除机制来实现服务器下线自动踢出的机制。</p>
-<h2 id="服务订阅和取消-consumer-执行流程"><a class="header-anchor" href="#服务订阅和取消-consumer-执行流程">¶</a>服务订阅和取消（Consumer 执行流程）</h2>
-<p>为了满足应用系统的需求，服务消费方的可能需要从服务注册中心订阅指定的有服务提供方发布的服务，在得到通知可以使用服务时，就可以直接调用服务。反过来，如果不需要某一个服务了，可以取消该服务。<br>
-<img src="http://47.88.24.11/imgs/Dubbo/%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85%E5%92%8C%E5%8F%96%E6%B6%88.png" alt="服务订阅和取消" title="服务订阅和取消"></p>
-<p>有两种服务引入方式：</p>
-<ol>
-<li>饿汉式：Spring 容器调用 ReferenceBean 的 afterPropertiesSet 方法时引用服务，可通过配置 <code>&lt;dubbo:reference&gt;</code> 的 init 属性开启。</li>
-<li>懒汉式：ReferenceBean 对应的服务被注入到其他类中时引用</li>
-</ol>
-<p>服务提供的方式有三种：</p>
-<ol>
-<li>引用本地 (JVM) 服务；</li>
-<li>通过直连方式引用远程服务；</li>
-<li>通过注册中心引用远程服务。</li>
-</ol>
-<p>不管是哪种引用方式，最后都会得到一个 Invoker 实例。如果有多个注册中心，多个服务提供者，这个时候会得到一组 Invoker 实例，此时需要通过集群管理类 Cluster 将多个 Invoker 合并成一个实例。</p>
-<p>获取客户端Proxy：</p>
-<ol>
-<li>在 Consumer 初始化的时候，会生成一个代理注册到容器中，该代理回调中持有一个 Invoker 实例，消费调用服务接口时它的 invoke() 方法会被调用。<br>
-spring.ReferenceBean#getObject<br>
-ReferenceConfig#createProxy<br>
-创建代理实例，根据 url 的协议、scope 以及 injvm 等参数检测是否需要本地引用，不是本地引用的情况下默认采用Dubbo协议。<br>
-Protocol#refer<br>
--&gt; DubboProtocol#getClients 获取客户端实例，实例类型为 ExchangeClient，ExchangeClient 不具备通信能力，它需要依赖更底层的客户端实例<br>
--&gt; DubboProtocol#getSharedClient 默认获取共享客户端<br>
--&gt; DubboProtocol#initClient 创建客户端实例，默认为 Netty<br>
--&gt; Exchangers#connect(URL url, ExchangeHandler handler)</li>
-<li>使用 Cluster 合并 Invoker<br>
-org.apache.dubbo.rpc.cluster.Cluster#join<br>
-如果配置了多个 URL，则使用 Cluster 合并多个 Invoker</li>
-<li>创建动态代理<br>
--&gt; ProxyFactory#getProxy(Invoker<t> invoker)<br>
-常用的动态代理技术有 javassist、cglib、jdk，其中 dubbo 使用的是 javassist。</t></li>
-</ol>
-<blockquote>
-<p>根据早期 Dubbo 作者梁飞（<a href="http://javatar.iteye.com/blog/814426%EF%BC%89%E7%9A%84%E8%AF%B4%E6%B3%95%EF%BC%8C%E4%BD%BF%E7%94%A8" target="_blank" rel="noopener">http://javatar.iteye.com/blog/814426）的说法，使用</a> javassist 是为了性能。</p>
-</blockquote>
-<h2 id="consumer端服务调用过程"><a class="header-anchor" href="#consumer端服务调用过程">¶</a>Consumer端服务调用过程</h2>
-<p><img src="http://47.88.24.11/imgs/Dubbo/Dubbo%E7%BB%84%E4%BB%B6.png" alt="Dubbo组件" title="Dubbo组件"></p>
-<h3 id="调用代理类的方法"><a class="header-anchor" href="#调用代理类的方法">¶</a>调用代理类的方法</h3>
-<p>请求实际调用的是<code>InvokerInvocationHandler.invoke</code>。</p>
-<h3 id="registry-directory"><a class="header-anchor" href="#registry-directory">¶</a>Registry &amp; Directory</h3>
-<h4 id="registry-将注册信息保存到本地的directory"><a class="header-anchor" href="#registry-将注册信息保存到本地的directory">¶</a>Registry 将注册信息保存到本地的Directory</h4>
-<p>启动服务时需要给一个Dubbo接口创建代理，这时需要将注册URL转换为Invoker对象：<br>
-<code>org.apache.dubbo.registry.integration.RegistryProtocol#refer</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">public &lt;T&gt; Invoker&lt;T&gt; refer(Class&lt;T&gt; type, URL url) throws RpcException &#123;</span><br><span class="line">    url = getRegistryUrl(url);</span><br><span class="line">    Registry registry = registryFactory.getRegistry(url);</span><br><span class="line">    if (RegistryService.class.equals(type)) &#123;</span><br><span class="line">        return proxyFactory.getInvoker((T) registry, type, url);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // group=&quot;a,b&quot; or group=&quot;*&quot;</span><br><span class="line">    Map&lt;String, String&gt; qs = StringUtils.parseQueryString(url.getParameterAndDecoded(REFER_KEY));</span><br><span class="line">    String group = qs.get(GROUP_KEY);</span><br><span class="line">    if (group != null &amp;&amp; group.length() &gt; 0) &#123;</span><br><span class="line">        if ((COMMA_SPLIT_PATTERN.split(group)).length &gt; 1 || &quot;*&quot;.equals(group)) &#123;</span><br><span class="line">            return doRefer(getMergeableCluster(), registry, type, url);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return doRefer(cluster, registry, type, url);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>引用一个服务时，会注册一个<code>zkListener</code>，监听注册服务的命名空间的变更情况。<br>
-<code>org.apache.dubbo.registry.zookeeper.ZookeeperRegistry#doSubscribe</code><br>
-那么服务是怎么注册的呢？其实就是上边Provider注册服务的过程。<br>
-监听到注册中心的变更后，更新本地的Invoker列表，同时删除不可用的。<br>
-<code>org.apache.dubbo.registry.integration.RegistryDirectory#refreshInvoker</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">private void refreshInvoker(List&lt;URL&gt; invokerUrls) &#123;</span><br><span class="line">    Assert.notNull(invokerUrls, &quot;invokerUrls should not be null&quot;);</span><br><span class="line"></span><br><span class="line">    if (invokerUrls.size() == 1</span><br><span class="line">            &amp;&amp; invokerUrls.get(0) != null</span><br><span class="line">            &amp;&amp; EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) &#123;</span><br><span class="line">        this.forbidden = true; // Forbid to access</span><br><span class="line">        this.invokers = Collections.emptyList();</span><br><span class="line">        routerChain.setInvokers(this.invokers);</span><br><span class="line">        destroyAllInvokers(); // Close all invokers</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        this.forbidden = false; // Allow to access</span><br><span class="line">        Map&lt;String, Invoker&lt;T&gt;&gt; oldUrlInvokerMap = this.urlInvokerMap; // local reference</span><br><span class="line">        </span><br><span class="line">        ...</span><br><span class="line">        </span><br><span class="line">        Map&lt;String, Invoker&lt;T&gt;&gt; newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map</span><br><span class="line"></span><br><span class="line">        ...</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            logger.warn(&quot;destroyUnusedInvokers error. &quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="invoker使用directory"><a class="header-anchor" href="#invoker使用directory">¶</a>Invoker使用Directory</h4>
-<p>为了服务高可用同一个服务一般会有多个应用服务器提供，要先挑选一个提供者提供服务。在服务接口消费者初始化时，接口方法和提供者 Invoker 对应关系保存在 Directory。 中，通过调用的方法名称（或方法名称+第一个参数）获取该方法对应的提供者 Invoker 列表，如注册中心设置了路由规则，对这些 Invoker 根据路由规则进行过滤。<br>
-启动时订阅某个服务：<br>
-<code>org.apache.dubbo.registry.integration.RegistryProtocol#doRefer</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">private &lt;T&gt; Invoker&lt;T&gt; doRefer(Cluster cluster, Registry registry, Class&lt;T&gt; type, URL url) &#123;</span><br><span class="line">    RegistryDirectory&lt;T&gt; directory = new RegistryDirectory&lt;T&gt;(type, url);</span><br><span class="line">    directory.setRegistry(registry);</span><br><span class="line">    directory.setProtocol(protocol);</span><br><span class="line">    // all attributes of REFER_KEY</span><br><span class="line">    Map&lt;String, String&gt; parameters = new HashMap&lt;String, String&gt;(directory.getUrl().getParameters());</span><br><span class="line">    URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);</span><br><span class="line">    if (!ANY_VALUE.equals(url.getServiceInterface()) &amp;&amp; url.getParameter(REGISTER_KEY, true)) &#123;</span><br><span class="line">        directory.setRegisteredConsumerUrl(getRegisteredConsumerUrl(subscribeUrl, url));</span><br><span class="line">        registry.register(directory.getRegisteredConsumerUrl());</span><br><span class="line">    &#125;</span><br><span class="line">    directory.buildRouterChain(subscribeUrl);</span><br><span class="line">    // 订阅providers、configurators、routers这几个namespace</span><br><span class="line">    directory.subscribe(subscribeUrl.addParameter(CATEGORY_KEY,</span><br><span class="line">            PROVIDERS_CATEGORY + &quot;,&quot; + CONFIGURATORS_CATEGORY + &quot;,&quot; + ROUTERS_CATEGORY));</span><br><span class="line"></span><br><span class="line">    // 使用Cluster组合Invoker</span><br><span class="line">    Invoker invoker = cluster.join(directory);</span><br><span class="line">    return invoker;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>添加监听器：<br>
-<code>org.apache.dubbo.registry.integration.RegistryDirectory#subscribe</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public void subscribe(URL url) &#123;</span><br><span class="line">    setConsumerUrl(url);</span><br><span class="line">    CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(this);</span><br><span class="line">    serviceConfigurationListener = new ReferenceConfigurationListener(this, url);</span><br><span class="line">    registry.subscribe(url, this);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>Consumer端监听服务变更事件，刷新Invoker列表：<br>
-<code>org.apache.dubbo.registry.integration.RegistryDirectory#refreshInvoker</code></p>
-<h4 id="directory的几种实现"><a class="header-anchor" href="#directory的几种实现">¶</a>Directory的几种实现</h4>
-<ul>
-<li>RegistryDirectory<br>
-保存注册中心的服务注册信息，包括routers、configurators、provider。</li>
-<li>StaticDirectory<br>
-Invoker列表是固定的。</li>
-</ul>
-<h3 id="cluster"><a class="header-anchor" href="#cluster">¶</a>Cluster</h3>
-<p>封装了服务降级和容错机制，比如，如果调用失败则执行其他（<code>FailoverClusterInvoker</code>）、仍然调用失败则降级执行 mock（<code>MockClusterInvoker</code>）。<br>
-调用的第一层是<code>MockClusterInvoker</code>：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">public Result invoke(Invocation invocation) throws RpcException &#123;</span><br><span class="line">    Result result = null;</span><br><span class="line">    </span><br><span class="line">    String value = directory.getUrl().getMethodParameter(invocation.getMethodName(), MOCK_KEY, Boolean.FALSE.toString()).trim();</span><br><span class="line">    // 没有设置mock属性或设置为false，则直接调就完了</span><br><span class="line">    if (value.length() == 0 || &quot;false&quot;.equalsIgnoreCase(value)) &#123;</span><br><span class="line">        //no mock</span><br><span class="line">        result = this.invoker.invoke(invocation);</span><br><span class="line">    &#125;</span><br><span class="line">    // 配成force了，直接调mock方法</span><br><span class="line">    else if (value.startsWith(&quot;force&quot;)) &#123;</span><br><span class="line">        if (logger.isWarnEnabled()) &#123;</span><br><span class="line">            logger.warn(&quot;force-mock: &quot; + invocation.getMethodName() + &quot; force-mock enabled , url : &quot; + directory.getUrl());</span><br><span class="line">        &#125;</span><br><span class="line">        //force:direct mock</span><br><span class="line">        result = doMockInvoke(invocation, null);</span><br><span class="line">    &#125;</span><br><span class="line">    // fail-mock的方式</span><br><span class="line">    else &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            result = this.invoker.invoke(invocation);</span><br><span class="line"></span><br><span class="line">            //fix:#4585</span><br><span class="line">            if(result.getException() != null &amp;&amp; result.getException() instanceof RpcException)&#123;</span><br><span class="line">                RpcException rpcException= (RpcException)result.getException();</span><br><span class="line">                if(rpcException.isBiz())&#123;</span><br><span class="line">                    throw  rpcException;</span><br><span class="line">                &#125;else &#123;</span><br><span class="line">                    result = doMockInvoke(invocation, rpcException);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125; catch (RpcException e) &#123;</span><br><span class="line">            if (e.isBiz()) &#123;</span><br><span class="line">                throw e;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            if (logger.isWarnEnabled()) &#123;</span><br><span class="line">                logger.warn(&quot;fail-mock: &quot; + invocation.getMethodName() + &quot; fail-mock enabled , url : &quot; + directory.getUrl(), e);</span><br><span class="line">            &#125;</span><br><span class="line">            result = doMockInvoke(invocation, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>实际invoke调用的是父类<code>AbstractClusterInvoker</code>的invoke方法，这个方法的主要功能是提供负载均衡：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">public Result invoke(final Invocation invocation) throws RpcException &#123;</span><br><span class="line">    checkWhetherDestroyed();</span><br><span class="line"></span><br><span class="line">    // binding attachments into invocation.</span><br><span class="line">    Map&lt;String, String&gt; contextAttachments = RpcContext.getContext().getAttachments();</span><br><span class="line">    if (contextAttachments != null &amp;&amp; contextAttachments.size() != 0) &#123;</span><br><span class="line">        ((RpcInvocation) invocation).addAttachments(contextAttachments);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 找到所有可调用的服务器</span><br><span class="line">    List&lt;Invoker&lt;T&gt;&gt; invokers = list(invocation);</span><br><span class="line">    // 发送时要经过负载均衡</span><br><span class="line">    LoadBalance loadbalance = initLoadBalance(invokers, invocation);</span><br><span class="line">    RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);</span><br><span class="line">    return doInvoke(invocation, invokers, loadbalance);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>上面的<code>doInvoke</code>是一个模板方法，由子类实现，默认子类是<code>FailoverClusterInvoker</code>，可以看到，它先通过负载均衡策略得到一个Invoker，再调用该Invoker，Invoker的默认实现是<code>DubboInvoker</code>，表示使用的是Dubbo协议。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">private Result doInvoke(List&lt;Invoker&lt;T&gt;&gt; invokers,</span><br><span class="line">                        final List&lt;Invoker&lt;T&gt;&gt; invoked,</span><br><span class="line">                        Holder&lt;RpcException&gt; lastException,</span><br><span class="line">                        final Set&lt;String&gt; providers,</span><br><span class="line">                        final Invocation invocation,</span><br><span class="line">                        final LoadBalance loadbalance,</span><br><span class="line">                        final int totalRetries,</span><br><span class="line">                        int retries,</span><br><span class="line">                        Holder&lt;Invoker&lt;T&gt;&gt; lastInvoked) throws RpcException &#123;</span><br><span class="line">    if (retries &lt; totalRetries) &#123;</span><br><span class="line">        checkWheatherDestoried();</span><br><span class="line">        invokers = list(invocation);</span><br><span class="line">        checkInvokers(invokers, invocation);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 负载均衡</span><br><span class="line">    final Invoker&lt;T&gt; invoker = select(loadbalance, invocation, invokers, invoked);</span><br><span class="line">    invoked.add(invoker);</span><br><span class="line">    lastInvoked.value = invoker;</span><br><span class="line">    RpcContext.getContext().setInvokers((List) invoked);</span><br><span class="line"></span><br><span class="line">    try &#123;</span><br><span class="line">        return invoker.invoke(invocation);</span><br><span class="line">    &#125; catch (RpcException e) &#123;</span><br><span class="line">        //业务异常不重试</span><br><span class="line">        if (e.isBiz()) &#123;</span><br><span class="line">            throw e;</span><br><span class="line">        &#125;</span><br><span class="line">        lastException.value = e;</span><br><span class="line">    &#125; catch (Throwable e) &#123;</span><br><span class="line">        lastException.value = new RpcException(e.getMessage(), e);</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        providers.add(invoker.getUrl().getAddress());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (--retries == 0) &#123;</span><br><span class="line">        throw populateException(invokers, lastException.value, providers, invocation, totalRetries);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    return doInvoke(invokers, invoked, lastException, providers, invocation, loadbalance, totalRetries, retries, lastInvoked);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="cluster的实现"><a class="header-anchor" href="#cluster的实现">¶</a>Cluster的实现</h4>
-<ul>
-<li>MockClusterInvoker<br>
-调用失败降级到mock接口；</li>
-<li>BroadcastClusterInvoker<br>
-每个Invoker都调一次，忽略了LoadBalance；</li>
-<li>AvailableClusterInvoker<br>
-把处于可用状态的Invoker都调一遍。</li>
-<li>FailoverClusterInvoker<br>
-一个Invoker失败就换个Invoker重试几次。</li>
-<li>FailbackClusterInvoker<br>
-如果调用失败就放到一个线程池中延迟5秒再发，一般用于发消息。</li>
-<li>FailfastClusterInvoker<br>
-失败立刻报错</li>
-<li>FailsafeClusterInvoker<br>
-失败就忽略，一般是用于记日志这种失败了影响也不大的场景。</li>
-<li>ForkingClusterInvoker<br>
-一次性选n个Invoker，并行调用，只要有一个调用成功就返回，线程间通过<code>LinkedBlockingQueue</code>通信。</li>
-</ul>
-<h3 id="loadbalance"><a class="header-anchor" href="#loadbalance">¶</a>LoadBalance</h3>
-<p>Cluster 层包含多个 Invoker，LoadBalance 负责从中选出一个来调用，有多种 LoadBalance 策略，比如随机选一个（<code>RandomLoadBalance</code>）、轮询（<code>RoundRobinLoadBalance</code>）、一致性hash（ConsistentHashLoadBalance）。<br>
-实例化LoadBalance：<code>com.alibaba.dubbo.rpc.cluster.support.AbstractClusterInvoker#invoke</code><br>
-使用LoadBalance选择一个Invoker：<code>com.alibaba.dubbo.rpc.cluster.support.AbstractClusterInvoker#select</code></p>
-<h4 id="loadbalance的多种实现"><a class="header-anchor" href="#loadbalance的多种实现">¶</a>LoadBalance的多种实现</h4>
-<ul>
-<li>RandomLoadBalance<br>
-计算权重，然后根据每个Invoker的权重调一个。</li>
-<li>LeastActiveLoadBalance<br>
-找最近最不活跃的Invoker调用，如果这样的Invoker有多个，则按权重来随机选一个。</li>
-<li>RoundRobinLoadBalance<br>
-轮询</li>
-<li>ConsistentHashLoadBalance<br>
-一致性哈希，启动时会将Invoker排列在一个圆环上：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">public ConsistentHashSelector(List&lt;Invoker&lt;T&gt;&gt; invokers, String methodName, int identityHashCode) &#123;</span><br><span class="line">    this.virtualInvokers = new TreeMap&lt;Long, Invoker&lt;T&gt;&gt;();</span><br><span class="line">    this.identityHashCode = identityHashCode;</span><br><span class="line">    URL url = invokers.get(0).getUrl();</span><br><span class="line"></span><br><span class="line">    String[] index = Constants.COMMA_SPLIT_PATTERN.split(url.getMethodParameter(methodName, &quot;hash.arguments&quot;, &quot;0&quot;));</span><br><span class="line">    argumentIndex = new int[index.length];</span><br><span class="line">    for (int i = 0; i &lt; index.length; i++) &#123;</span><br><span class="line">        argumentIndex[i] = Integer.parseInt(index[i]);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    int replicaNumber = url.getMethodParameter(methodName, &quot;hash.nodes&quot;, 160);</span><br><span class="line">    for (Invoker&lt;T&gt; invoker : invokers) &#123;</span><br><span class="line">        String address = invoker.getUrl().getAddress();</span><br><span class="line">        // 多复制几个，更均匀，避免所有请求都被hash到同一个Invoker</span><br><span class="line">        for (int i = 0; i &lt; replicaNumber / 4; i++) &#123;</span><br><span class="line">            byte[] digest = md5(address + i);</span><br><span class="line">            for (int h = 0; h &lt; 4; h++) &#123;</span><br><span class="line">                long m = hash(digest, h);</span><br><span class="line">                // 放入圆环上</span><br><span class="line">                virtualInvokers.put(m, invoker);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>将Invoker保存到virtualInvokers上，但是virtualInvokers本身是一个HashMap，如果新来的请求不能精确hash到其中的某个Invoker怎么办？是通过tailMap找到的下一个Invoker：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">private Invoker&lt;T&gt; selectForKey(long hash) &#123;</span><br><span class="line">    Invoker&lt;T&gt; invoker;</span><br><span class="line">    Long key = hash;</span><br><span class="line"></span><br><span class="line">    if (!virtualInvokers.containsKey(key)) &#123;</span><br><span class="line">        SortedMap&lt;Long, Invoker&lt;T&gt;&gt; tailMap = virtualInvokers.tailMap(key);</span><br><span class="line">        if (tailMap.isEmpty()) &#123;</span><br><span class="line">            key = virtualInvokers.firstKey();</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            key = tailMap.firstKey();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    invoker = virtualInvokers.get(key);</span><br><span class="line">    return invoker;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="filter-invoker-层"><a class="header-anchor" href="#filter-invoker-层">¶</a>Filter &amp; Invoker 层</h3>
-<p>不过，在实际网络调用之前，Dubbo还提供Filter功能，Cluster会先激活Filter链然后最终调到<code>DubboInvoker.invoke(RpcInvocation)</code>：</p>
-<ol>
-<li><code>ConsumerContextFilter</code>可以将请求对象<code>Invocation</code>添加到上下文<code>RpcContext</code>中，其实就是存储到一个ThreadLocal变量中。</li>
-<li><code>FutureFilter</code>在调用完毕后唤醒调用者线程。</li>
-<li>或许还会有一些自定义的Filter，比如增加线程的TraceId、打印一些调用日志之类的，Filter结束后才最终调用到<code>DubboInvoker</code>。</li>
-</ol>
-<p><code>DubboInvoker</code>封装了同步和异步调用，Dubbo 实现同步和异步调用比较关键的一点就在于由谁调用 ResponseFuture 的 get 方法。同步调用模式下，由框架自身调用 ResponseFuture 的 get 方法。异步调用模式下，则由用户调用该方法。<br>
-DubboInvoker是通过Netty发送消息的，消息本身如何发送的就不多说了。</p>
-<h3 id="exchange"><a class="header-anchor" href="#exchange">¶</a>Exchange</h3>
-<p>封装了网络客户端的发送逻辑，包括：</p>
-<ul>
-<li>HeaderExchangeChannel<br>
-对 Request 的序列化</li>
-<li>ReferenceCountExchangeClient<br>
-无引用时自动关闭客户端</li>
-<li>HeaderExchangeClient<br>
-心跳检测</li>
-</ul>
-<h3 id="数据编码-发送"><a class="header-anchor" href="#数据编码-发送">¶</a>数据编码 &amp; 发送</h3>
-<p>DubboCodec<br>
-NettyChannel#send</p>
-<h2 id="provider端接受调用的过程"><a class="header-anchor" href="#provider端接受调用的过程">¶</a>Provider端接受调用的过程</h2>
-<ol>
-<li>接收请求<br>
-NettyClient<br>
-请求被接收后，通过 Netty 调用链向下传递执行<br>
-NettyHandler#messageReceived<br>
-NettyChannel</li>
-<li>解码<br>
-<code>ExchangeCodec</code></li>
-<li>线程派发<br>
-<code>Dispatcher</code><br>
-IO 线程接收请求后分发给事件处理线程执行，具体的派发逻辑在<code>ChannelHandler</code>中实现，比如<code>AllChannelHandler</code>。</li>
-<li>请求分发<br>
-<code>ChannelEventRunnable</code><br>
-根据请求类型将请求分发给不同的<code>ChannelHandler</code>处理。</li>
-</ol>
-<p>Provider 端响应</p>
-<p>Consumer 端接收响应</p>
-<ol>
-<li>发送完请求后阻塞<br>
-<code>HeaderExchangeHandler</code><br>
-用户线程在发送完请求后，会调用 <code>DefaultFuture</code> 的 <code>get</code> 方法等待响应对象的到来，这时每个<code>DefaultFuture</code>都会关联一个<strong>调用编号</strong>，用于在接收到响应时能对应上请求的<code>DefaultFuture</code>。<br>
-当响应对象到来后，IO 线程根据<strong>调用编号</strong>可以找到<code>DefaultFuture</code>，之后会将响应对象保存到<code>DefaultFuture</code>，并唤醒用户线程。</li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/0.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/0.html" itemprop="url">未命名</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-12-01T00:49:28+08:00">
-                2020-12-01
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.3k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  5 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>Dubbo 支持多种协议，如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Dubbo/Protocol%E6%89%A9%E5%B1%95.png" alt="Protocol扩展" title="Protocol扩展"><br>
-在通信过程中，不同的服务等级一般对应着不同的服务质量，那么选择合适的协议便是一件非常重要的事情，需要根据应用的特征来选择。例如，使用 RMI 协议，一般会受到防火墙的限制，所以对于外部与内部进行通信的场景，就不要使用 RMI 协议，而是基于 HTTP 协议或者 Hessian 协议。</p>
-<h3 id="hessian-协议"><a class="header-anchor" href="#hessian-协议">¶</a>Hessian 协议</h3>
-<ul>
-<li>连接个数：多连接</li>
-<li>连接方式：短连接</li>
-<li>传输协议：HTTP</li>
-<li>传输方式：同步传输</li>
-<li>序列化：Hessian 二进制序列化</li>
-<li>适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。</li>
-<li>适用场景：页面传输，文件传输，Hessian 是 Caucho 开源的一个 RPC 框架，其通讯效率高于 WebService 和 Java 自带的序列化，Hessian 底层采用 Http 通讯，采用 Servlet 暴露服务，Dubbo 缺省内嵌 Jetty 作为服务器实现。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--定义 hessian 协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;hessian&quot; port=&quot;8080&quot; server=&quot;jetty&quot; /&gt;</span><br><span class="line">&lt;!--设置默认协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line">&lt;!--设置 service 协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.caucho&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hessian&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.0.33&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="http-协议"><a class="header-anchor" href="#http-协议">¶</a>Http 协议</h3>
-<ul>
-<li>连接个数：多连接</li>
-<li>连接方式：短连接</li>
-<li>传输协议：HTTP</li>
-<li>传输方式：同步传输</li>
-<li>序列化：表单序列化</li>
-<li>适用范围：传入传出参数数据包大小混合，提供者比消费者个数多，可用浏览器查看，可用表单或 URL 传入参数，暂不支持传文件。</li>
-<li>适用场景：需同时给应用程序和浏览器 JS 使用的服务。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--配置协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;http&quot; port=&quot;8080&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="thrift-协议"><a class="header-anchor" href="#thrift-协议">¶</a>Thrift 协议</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.thrift&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;libthrift&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;0.8.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol name=&quot;thrift&quot; port=&quot;3030&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<p>Dubbo 使用的 Thrift 和原生的 Thrift 协议不兼容，在原生协议的基础上添加了一些额外的头信息，比如 service name，magic number 等。</p>
-<h3 id="rest-协议"><a class="header-anchor" href="#rest-协议">¶</a>Rest 协议</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 用rest协议在8080端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;rest&quot; port=&quot;8080&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 声明需要暴露的服务接口 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.service.OrderService&quot; ref=&quot;orderService&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 和本地bean一样实现服务 --&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;com.service.OrderServiceImpl&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<p>在代码中需要通过注解指定访问路径：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public class OrderService &#123;    </span><br><span class="line">   void createOrder(Order order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Path(&quot;orders&quot;) // 访问Url的相对路径</span><br><span class="line">public class OrderServiceImpl implements OrderService &#123;</span><br><span class="line"></span><br><span class="line">    @POST</span><br><span class="line">    @Path(&quot;create&quot;) // 访问Url的相对路径</span><br><span class="line">    // 将传递过来的JSON数据反序列化为Order对象</span><br><span class="line">    @Consumes(&#123;MediaType.APPLICATION_JSON&#125;) </span><br><span class="line">    public void createOrder(Order order) &#123;</span><br><span class="line">        // create the order...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="长连接-or-短连接"><a class="header-anchor" href="#长连接-or-短连接">¶</a>长连接 OR 短连接</h3>
-<p>Dubbo 协议缺省每服务每提供者每消费者使用单一长连接，如果数据量较大，可以使用多个连接。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 表示该服务使用 JVM 共享长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;0&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;0&quot;&gt;</span><br><span class="line">&lt;!-- 表示该服务使用独立长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;1&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;1&quot;&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="为什么要消费者比提供者个数多"><a class="header-anchor" href="#为什么要消费者比提供者个数多">¶</a>为什么要消费者比提供者个数多</h3>
-<p>因为 dubbo 协议采用单一长连接，假设网络为千兆网卡 3，根据测试经验数据每条连接最多只能压满 7MByte（不同的环境可能不一样），理论上 1 个服务提供者需要 20 个服务消费者才能压满网卡。</p>
-<h3 id="为什么不能传大包"><a class="header-anchor" href="#为什么不能传大包">¶</a>为什么不能传大包</h3>
-<p>因 dubbo 协议采用单一长连接，如果每次请求的数据包大小为 500KByte，假设网络为千兆网卡 3，每条连接最大 7MByte(不同的环境可能不一样，供参考)，单个服务提供者的 TPS(每秒处理事务数)最大为：128MByte / 500KByte = 262。单个消费者调用单个服务提供者的 TPS(每秒处理事务数)最大为：7MByte / 500KByte = 14。如果能接受，可以考虑使用，否则网络将成为瓶颈。</p>
-<h3 id="为什么采用异步单一长连接"><a class="header-anchor" href="#为什么采用异步单一长连接">¶</a>为什么采用异步单一长连接</h3>
-<p>因为服务的现状大都是服务提供者少，通常只有几台机器，而服务的消费者多，可能整个网站都在访问该服务，比如 Morgan 的提供者只有 6 台提供者，却有上百台消费者，每天有 1.5 亿次调用，如果采用常规的 hessian 服务，服务提供者很容易就被压跨，通过单一连接，保证单一消费者不会压死提供者，长连接，减少连接握手验证等，并使用异步 IO，复用线程池，防止 C10K 问题（服务器无法服务 1w 左右的并发连接）。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 配置协议端口和服务提供方最大连接数，防止服务被压垮 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot; accepts=&quot;1000&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo默认协议 --&gt;</span><br><span class="line">&lt;dubbo:provider protocol=&quot;dubbo&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo设置服务协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;dubbo&quot; /&gt;</span><br></pre></td></tr></table></figure>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/0.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/0.html" itemprop="url">未命名</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-12-01T00:49:28+08:00">
-                2020-12-01
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  6 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h2 id="接口扩展策略注解-spi"><a class="header-anchor" href="#接口扩展策略注解-spi">¶</a>接口扩展策略注解 @SPI</h2>
-<p>Dubbo中的很多扩展接口，如 Protocol、Transporter、Filter 等，都是通过 JDK 的 SPI 机制实现的，也就是说这些功能都可被用户自定义的扩展所替换，接口扩展点由注解<code>@SPI</code>定义。<br>
-JDK 中 SPI（Service Provider Interface）的设计与策略模式如出一辙，开发者可以替换掉 Dubbo 原扩展接口的默认实现，完成自定义需求，即可以自定义实现策略。<br>
-Dubbo 在 JDK 现有 SPI 实现的基础上做了如下改进：</p>
-<ol>
-<li>JDK 标准的 SPI 会一次性实例化扩展点所有实现，如果有扩展实现初始化很耗时，但如果没用上也加载，会很浪费资源。</li>
-<li>如果扩展点加载失败，连扩展点的名称都拿不到了。比如：JDK 标准的 ScriptEngine，通过 getName();获取脚本类型的名称，但如果 RubyScriptEngine 因为所依赖的 jruby.jar 不存在，导致 RubyScriptEngine 类加载失败，这个失败原因被吃掉了，和 ruby 对应不起来，当用户执行 ruby 脚本时，会报不支持 ruby，而不是真正失败的原因。</li>
-<li>增加了对扩展点 IoC 和 AOP 的支持，一个扩展点可以直接 setter 注入其它扩展点。</li>
-</ol>
-<p>那么 Dubbo 的 SPI 机制是怎么实现的呢？以协议扩展为例，Dubbo 中协议被抽象为 Protocol 接口。</p>
-<h3 id="读取扩展点"><a class="header-anchor" href="#读取扩展点">¶</a>读取扩展点</h3>
-<p>ServiceConfig#protocol</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension()</span><br></pre></td></tr></table></figure>
-<p>Dubbo 使用 ExtensionLoader 实现扩展点加载。</p>
-<ul>
-<li>ExtensionLoader#getExtensionLoader()<br>
-获取 ExtensionLoader 实现，保证每种扩展点一个单例。</li>
-<li>ExtensionLoader#getAdaptiveExtension()<br>
-根据不同的 SPI 扩展点，即不同的 interface，生成不同的 Adaptive 实例的代码。<br>
--&gt; getAdaptiveExtensionClass()<br>
--&gt; getExtensionClasses()<br>
--&gt; loadExtensionClasses()<br>
-加载所有的扩展点实现，直到扩展点方法执行时才决定调用是一个扩展点实现，即从众多的实现策略中决定具体使用哪一个策略。<br>
-ExtensionLoader 会依次从<code>META-INF/dubbo/internal</code>（Dubbo 内部实现）、<code>META-INF/dubbo/</code>（开发者自定义策略）、<code>META-INF/services/</code>这几个目录下读取扩展点实现，目录下的同名文件配置了对应扩展点的实现策略，调用 loadFile 来加载对应的扩展策略。<br>
--&gt; loadFile(Map&lt;String, Class&lt;?&gt;&gt; extensionClasses, String dir)</li>
-</ul>
-<h3 id="生成-adaptive-实例"><a class="header-anchor" href="#生成-adaptive-实例">¶</a>生成 Adaptive 实例</h3>
-<ul>
-<li>ExtensionLoader#loadFile<br>
--&gt; String fileName = dir + type.getName()<br>
-拼接文件路径<br>
--&gt; ClassLoader classLoader = findClassLoader()<br>
-拿到 ExtensionLoader 的类加载器。<br>
--&gt; Class&lt;?&gt; clazz = Class.forName(line, true, classLoader);<br>
-文件每行是一个实现类的全路径名，通过反射加载并拿到具体类型。<br>
--&gt; extensionClasses.put(n, clazz)<br>
-添加到 map 里返回。</li>
-<li>ExtensionLoader#cachedClasses<br>
--&gt; cachedClasses.set(classes)<br>
-添加到缓存。</li>
-<li>ExtensionLoader#createAdaptiveExtensionClass<br>
--&gt; ExtensionLoader#createAdaptiveExtensionClassCode<br>
-生成 Adaptive 类。<br>
--&gt; compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension()<br>
-拿到编译接口扩展点的一个具体实现，dubbo 内部支持 jdk 和 javassist，默认是 javassist。<br>
--&gt; compiler.compile(code, classLoader)<br>
-编译代码，生成 Adaptive 实例类。</li>
-</ul>
-<p>上面提到 Compiler 也是一个扩展点，同样也依赖这个流程来实例化，在运行时生成 Adaptive 实例的时候，需要生成 Compiler 接口的 Adaptive 实例，即运行生成 Adaptive 实例的时候需要先有一个 Compiler 接口的 Adaptive 实例，那这样岂不是陷入了死循环，这里就要提到显示指定 Adaptive 实例的情况。<code>@Adaptive</code>注解支持类级别和方法级别：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">1、类级别：只能拥有一个，注解打在接口实现类上，显示的注册一个Adaptive实例，在编译期就存在，如`AdaptiveCompiler`，解决了上面的死循环问题，由`AdaptiveCompiler`依据dubbo配置决定使用哪个编译类；</span><br><span class="line">2、方法级别：在运行期动态的生成Adaptive实例。</span><br></pre></td></tr></table></figure>
-<h3 id="通过-url-动态选择协议"><a class="header-anchor" href="#通过-url-动态选择协议">¶</a>通过 URL 动态选择协议</h3>
-<p>ExtensionLoader#createAdaptiveExtensionClassCode<br>
-生成的 Protocol 的 Adaptive 实例类，依据 URL 中 protocol key-value 的值，选择对应的 Protocol 策略来暴露和引用服务。<br>
-扩展点方法调用会有 URL 参数（或是参数有 URL 成员），这样依赖的扩展点可以从 URL 拿到配置信息，所有的扩展点自己定好配置的 Key 后，配置信息从 URL 上从最外层传入，URL 在配置传递上即是一条总线。<br>
-以 dubbo+zookeeper 为例，暴露和引用远程服务都是注册在 zookeeper 上的，服务注册在 zookeeper 上本质其实是一个 URL，远程服务调用的过程中依据 URL 的 key-value 来动态决定执行 Protocol、Filter 等接口扩展点的执行策略。<br>
-下面是 Provider 端暴露 HelloService 服务时在 zookeeper 上注册的 URL，在 zookeeper 上的路径为/dubbo/com.dubbo.test.service.HelloService/providers，URL 表示了采用 dubbo 协议，接口为 com.dubbo.test.service.HelloService，方法为 say，要执行的 Filter 为 whiteFilter 等。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[zk： localhost：2181(CONNECTED) 1] Is /dubbo/com.dubbo.test.service.HelloService/providers</span><br><span class="line">[dubbo://127.0.0.1:2O881/com.dubbo.test.service.HelloService?anyhost=true&amp;application=dubbo-test-service&amp;dubbo=2.4.10&amp;group=test-prod&amp;interface=com.dubbo.test.service.HelloService&amp;methods=say&amp;pid=21242&amp;revision=l.0&amp;service.filter=whiteFilter&amp;side=providerxtamp=1495436105078&amp;version=l.0]</span><br></pre></td></tr></table></figure>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<ul>
-<li>volatile Class&lt;~&gt; cachedAdaptiveClass<br>
-这个是缓存 AdaptiveClass，如果一个扩展类的类上面带有 @Adaptive 注解，那么这个类就会被缓存在这个地方，每一种类型的扩展类只有一个 AdaptiveClass，如果发现有多个，则会报错。另外，当通过 getAdaptiveExtensionClass 来获取自适应扩展类时，如果当前还没有 AdaptiveClass，则会自动创建一个（动态生成 Java 代码，再编译，典型的比如 Protocol$Adaptive 就是这么生成的）</li>
-<li>Set&lt;~&gt; cachedWrapperClasses<br>
-这个是缓存包装类的，Dubbo 判断一个扩展类是否是包装类比较简单，通过构造函数来判断，如果这个扩展类有一个构造函数，其中参数是当前扩展类的类型，那么就是包装类，举个例子，ProtocolFilterWrapper 就是 protocol 扩展类的包装类，因为有这个构造函数：<code>public ProtocolFilterWrapper(Protocol protocol)</code></li>
-<li>Map&lt;~&gt; cachedActivates<br>
-这个是缓存激活的扩展类，当然，@Activate 注解还可以规定激活的条件和时机</li>
-<li>Holder&lt;~&gt; cachedClasses<br>
-这个是缓存 Adaptive 和 Wrapper 扩展类之外的普通扩展类</li>
-</ul>
-<p>扩展类被加载后会根据一定的规则放入以上 4 个缓存中，比如带有 @Adaptive 注解的会被放入 cachedAdaptiveClass。</p>
-
-          
         
       
     </div>
@@ -3148,11 +2775,378 @@ Config Service会从消息中获取配置发布的AppId+Cluster+Namespace，然�
 
 
     
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/80b748be.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/80b748be.html" itemprop="url">项目总结-bm</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-09-23T22:53:43+08:00">
+                2020-09-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/项目总结/" itemprop="url" rel="index">
+                    <span itemprop="name">项目总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  9.8k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  35 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <ol>
+<li>业务背景</li>
+<li>业务逻辑</li>
+<li>收益</li>
+<li>技术选型<br>
+服务器几台、QPS多少、存储、缓存、MQ等</li>
+<li>架构图</li>
+<li>规划</li>
+<li>个人角色 / 做了什么</li>
+<li>技术难点</li>
+<li>遇到的问题</li>
+<li>复盘 / 未来规划</li>
+</ol>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/80b748be.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/385c6999.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/385c6999.html" itemprop="url">Sentinel原理总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-09-15T11:21:48+08:00">
+                2020-09-15
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  14 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h1>Sentinel vs Hystrix</h1>
+<p><a href="https://github.com/alibaba/Sentinel/wiki/Sentinel-%E4%B8%8E-Hystrix-%E7%9A%84%E5%AF%B9%E6%AF%94" target="_blank" rel="noopener">Sentinel 与 Hystrix 的对比</a></p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/385c6999.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
   </section>
 
   
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right"></i></a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/14/">14</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right"></i></a>
   </nav>
 
 
@@ -3198,7 +3192,7 @@ Config Service会从消息中获取配置发布的AppId+Cluster+Namespace，然�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">130</span>
+                  <span class="site-state-item-count">131</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>

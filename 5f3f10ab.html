@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="这篇文档集中于概念的梳理，不会谈太多实现上的细节。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-12-06T02:34:27.410Z">
+<meta property="og:updated_time" content="2020-12-06T03:53:20.488Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="分布式事务-从本地事务到分布式事务">
 <meta name="twitter:description" content="这篇文档集中于概念的梳理，不会谈太多实现上的细节。">
@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3k 字
+                  5.1k 字
                 </span>
               
 
@@ -374,7 +374,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  11 分钟
+                  18 分钟
                 </span>
               
             </div>
@@ -504,6 +504,65 @@ PROPAGATION_NESTED：<br>
 <h1>分布式事务</h1>
 <h2 id="一致性-cap与base"><a class="header-anchor" href="#一致性-cap与base">¶</a>一致性、CAP与BASE</h2>
 <h2 id="柔性事务和刚性事务"><a class="header-anchor" href="#柔性事务和刚性事务">¶</a>柔性事务和刚性事务</h2>
+<p>刚性事务是指严格遵循ACID原则的事务, 例如单机环境下的数据库事务.<br>
+柔性事务是指遵循BASE理论的事务, 通常用在分布式环境中, 常见的实现方式有: 两阶段提交(2PC), TCC补偿型提交, 基于消息的异步确保型, 最大努力通知型.<br>
+通常对本地事务采用刚性事务, 分布式事务使用柔性事务.</p>
+<h2 id="最佳实践"><a class="header-anchor" href="#最佳实践">¶</a>最佳实践</h2>
+<p>如果业务场景需要强一致性, 那么尽量避免将它们放在不同服务中, 也就是尽量使用<strong>本地事务</strong>, 避免使用强一致性的分布式事务.<br>
+如果业务场景能够接受最终一致性, 那么最好是使用<strong>基于消息的最终一致性的方案</strong>(异步确保型)来解决.<br>
+如果业务场景需要强一致性, 并且只能够进行分布式服务部署, 那么最好是使用<strong>TCC方案</strong>而不是2PC方案来解决.</p>
+<h2 id="幂等性"><a class="header-anchor" href="#幂等性">¶</a>幂等性</h2>
+<p>幂等性则是指业务方法调用一次与调用多次的执行返回结果是一样的。分布式事务的设计中一般会需要服务接口提供者再提供一个逆向操作接口，在正向接口失败后被调用，以实现事务补偿机制。正向接口和逆向接口都是有可能被重试调用的，因此将接口设计成幂等的是必须的。</p>
+<h2 id="分布式一致性"><a class="header-anchor" href="#分布式一致性">¶</a>分布式一致性</h2>
+<p>在分布式系统中，为了保证数据的高可用，通常，我们会将数据保留多个副本(replica)，这些副本会放置在不同的物理的机器上。为了对用户提供正确的增\删\改\差等语义，我们需要保证这些放置在不同物理机器上的副本是一致的。<br>
+一般来说一致性是必须满足的，不然那个系统就是完全不可靠的了，我们说在某些场景下需要牺牲一致性，指的是牺牲强一致性。</p>
+<h2 id="数据一致性"><a class="header-anchor" href="#数据一致性">¶</a>数据一致性</h2>
+<p>通常情况下，我们所说的分布式一致性问题通常指的是数据一致性问题。<br>
+数据一致性其实是数据库系统中的概念。我们可以简单的把一致性理解为正确性或者完整性，那么数据一致性通常指关联数据之间的逻辑关系是否正确和完整。我们知道，在数据库系统中通常用事务（访问并可能更新数据库中各种数据项的一个程序执行单元）来保证数据的一致性和完整性。而在分布式系统中，数据一致性往往指的是由于数据的复制，不同数据节点中的数据内容是否完整并且相同。<br>
+为了提高可用性，我们往往会将数据复制到多台服务器上，以消除单点故障问题，然后使用负载均衡来提高整个系统的性能。在分布式系统引入复制机制后，不同的数据节点之间由于网络延时等原因很容易产生数据不一致的情况。<br>
+比如两个用户访问一个服务的两个实例，两个实例都知道票只有一张，所以他们都会提示购票成功，但是整个系统也只有这一张票的情况下，必须得有一个用户手上的票作废，或者说购票不成功。</p>
+<h2 id="一致性模型"><a class="header-anchor" href="#一致性模型">¶</a>一致性模型</h2>
+<h3 id="强一致性"><a class="header-anchor" href="#强一致性">¶</a>强一致性</h3>
+<p>当更新操作完成之后，任何多个后续进程或者线程的访问都会返回最新的更新过的值。这种是对用户最友好的，就是用户上一次写什么，下一次就保证能读到什么。但是这种实现对性能影响较大。</p>
+<h3 id="弱一致性"><a class="header-anchor" href="#弱一致性">¶</a>弱一致性</h3>
+<p>系统并不保证续进程或者线程的访问都会返回最新的更新过的值。系统在数据写入成功之后，不承诺立即可以读到最新写入的值，也不会具体的承诺多久之后可以读到。但会尽可能保证在某个时间级别（比如秒级别）之后，可以让数据达到一致性状态。</p>
+<h3 id="最终一致性"><a class="header-anchor" href="#最终一致性">¶</a>最终一致性</h3>
+<p>弱一致性的特定形式。系统保证在没有后续更新的前提下，系统最终返回上一次更新操作的值。在没有故障发生的前提下，不一致窗口的时间主要受通信延迟，系统负载和复制副本的个数影响。DNS是一个典型的最终一致性系统。</p>
+<h3 id="最终一致性模型的变种"><a class="header-anchor" href="#最终一致性模型的变种">¶</a>最终一致性模型的变种</h3>
+<ul>
+<li>因果一致性：如果A进程在更新之后向B进程通知更新的完成，那么B的访问操作将会返回更新的值。如果没有因果关系的C进程将会遵循最终一致性的规则。</li>
+<li>读己所写一致性：因果一致性的特定形式。一个进程总可以读到自己更新的数据。</li>
+<li>会话一致性：读己所写一致性的特定形式。进程在访问存储系统同一个会话内，系统保证该进程读己之所写。</li>
+<li>单调读一致性：如果一个进程已经读取到一个特定值，那么该进程不会读取到该值以前的任何值。</li>
+<li>单调写一致性：系统保证对同一个进程的写操作串行化。</li>
+<li>上述最终一致性的不同方式可以进行组合，例如单调读一致性和读己之所写一致性就可以组合实现。并且从实践的角度来看，这两者的组合，读取自己更新的 数据，和一旦读取到最新的版本不会再读取旧版本，对于此架构上的程序开发来说，会少很多额外的烦恼。</li>
+</ul>
+<h2 id="分布式事务"><a class="header-anchor" href="#分布式事务">¶</a>分布式事务</h2>
+<p>分布式事务是指会涉及到操作多个数据库的事务。其实就是将对同一库事务的概念扩大到了对多个库的事务。目的是为了保证分布式系统中的数据一致性。分布式事务处理的关键是必须有一种方法可以知道事务在任何地方所做的所有动作，提交或回滚事务的决定必须产生统一的结果（全部提交或全部回滚）。<br>
+常用的几个方案：</p>
+<ol>
+<li>XA两阶段提交<br>
+锁定资源时间长，对性能影响大，不适合微服务场景。</li>
+<li>TCC方案<br>
+对应用侵入性强，实现难度大。</li>
+<li>基于消息的最终一致性方案<br>
+侵入性强，需要对业务进行大量改造，成本较高。</li>
+</ol>
+<h2 id="分布式事务的替代方案"><a class="header-anchor" href="#分布式事务的替代方案">¶</a>分布式事务的替代方案</h2>
+<h3 id="补偿事务"><a class="header-anchor" href="#补偿事务">¶</a>补偿事务</h3>
+<p>在业务端实施业务逆向操作事务。<br>
+包括正向（重试）和逆向（回滚）两个部分，</p>
+<p>补偿事务有什么缺点？</p>
+<ul>
+<li>不同的业务要写不同的补偿事务，不具备通用性；</li>
+<li>没有考虑补偿事务的失败；</li>
+<li>如果业务流程很复杂，if/else会嵌套非常多层；</li>
+</ul>
+<h2 id="应用场景"><a class="header-anchor" href="#应用场景">¶</a>应用场景</h2>
+<h3 id="支付"><a class="header-anchor" href="#支付">¶</a>支付</h3>
+<p>最经典的场景就是支付了，一笔支付，是对买家账户进行扣款，同时对卖家账户进行加钱，这些操作必须在一个事务里执行，要么全部成功，要么全部失败。而对于买家账户属于买家中心，对应的是买家数据库，而卖家账户属于卖家中心，对应的是卖家数据库，对不同数据库的操作必然需要引入分布式事务。</p>
+<h3 id="在线下单"><a class="header-anchor" href="#在线下单">¶</a>在线下单</h3>
+<p>买家在电商平台下单，往往会涉及到两个动作，一个是扣库存，第二个是更新订单状态，库存和订单一般属于不同的数据库，需要使用分布式事务保证数据一致性。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <h3 id="概念理解"><a class="header-anchor" href="#概念理解">¶</a>概念理解</h3>
 <ol>
@@ -548,7 +607,7 @@ PROPAGATION_NESTED：<br>
 <ol>
 <li><a href="https://blog.csdn.net/yuliying/article/details/52813302" target="_blank" rel="noopener">事务补偿机制</a></li>
 </ol>
-<h3 id="幂等性"><a class="header-anchor" href="#幂等性">¶</a>幂等性</h3>
+<h3 id="幂等性-v2"><a class="header-anchor" href="#幂等性-v2">¶</a>幂等性</h3>
 <ol>
 <li><a href="https://www.zhihu.com/question/27744795" target="_blank" rel="noopener">分布式高并发系统如何保证对外接口的幂等性？</a></li>
 <li><a href="http://outofmemory.cn/wiki/service-idempotency" target="_blank" rel="noopener">服务幂等以及常用实现方式</a></li>
@@ -585,8 +644,8 @@ PROPAGATION_NESTED：<br>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/0.html" rel="next" title="">
-                <i class="fa fa-chevron-left"></i> 
+              <a href="/22fb3f5f.html" rel="next" title="从Spring改造成SpringBoot项目">
+                <i class="fa fa-chevron-left"></i> 从Spring改造成SpringBoot项目
               </a>
             
           </div>
@@ -594,6 +653,10 @@ PROPAGATION_NESTED：<br>
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
+            
+              <a href="/c6369e85.html" rel="prev" title="分布式事务实现">
+                分布式事务实现 <i class="fa fa-chevron-right"></i>
+              </a>
             
           </div>
         </div>
@@ -675,7 +738,7 @@ PROPAGATION_NESTED：<br>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">130</span>
+                  <span class="site-state-item-count">131</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -732,7 +795,7 @@ PROPAGATION_NESTED：<br>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">单机事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#acid"><span class="nav-number">1.1.</span> <span class="nav-text">¶ACID</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三个问题"><span class="nav-number">1.2.</span> <span class="nav-text">¶三个问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务传播级别-spring"><span class="nav-number">1.3.</span> <span class="nav-text">¶事务传播级别（Spring）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务隔离级别-db"><span class="nav-number">1.4.</span> <span class="nav-text">¶事务隔离级别（DB）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务常用属性-spring-transactional"><span class="nav-number">1.5.</span> <span class="nav-text">¶事务常用属性（Spring - Transactional）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现事务隔离级别"><span class="nav-number">1.6.</span> <span class="nav-text">¶实现事务隔离级别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#mysql数据库为我们提供四种隔离级别："><span class="nav-number">1.6.1.</span> <span class="nav-text">¶MySQL数据库为我们提供四种隔离级别：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#jdbc驱动"><span class="nav-number">1.6.2.</span> <span class="nav-text">¶JDBC驱动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#spring框架事务隔离级别"><span class="nav-number">1.6.3.</span> <span class="nav-text">¶Spring框架事务隔离级别</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">分布式事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#一致性-cap与base"><span class="nav-number">2.1.</span> <span class="nav-text">¶一致性、CAP与BASE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#柔性事务和刚性事务"><span class="nav-number">2.2.</span> <span class="nav-text">¶柔性事务和刚性事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">2.3.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念理解"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶概念理解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#方案"><span class="nav-number">2.3.2.</span> <span class="nav-text">¶方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实现"><span class="nav-number">2.3.3.</span> <span class="nav-text">¶实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bytetcc"><span class="nav-number">2.3.4.</span> <span class="nav-text">¶ByteTCC</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务补偿机制"><span class="nav-number">2.3.5.</span> <span class="nav-text">¶事务补偿机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#幂等性"><span class="nav-number">2.3.6.</span> <span class="nav-text">¶幂等性</span></a></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">单机事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#acid"><span class="nav-number">1.1.</span> <span class="nav-text">¶ACID</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三个问题"><span class="nav-number">1.2.</span> <span class="nav-text">¶三个问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务传播级别-spring"><span class="nav-number">1.3.</span> <span class="nav-text">¶事务传播级别（Spring）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务隔离级别-db"><span class="nav-number">1.4.</span> <span class="nav-text">¶事务隔离级别（DB）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务常用属性-spring-transactional"><span class="nav-number">1.5.</span> <span class="nav-text">¶事务常用属性（Spring - Transactional）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现事务隔离级别"><span class="nav-number">1.6.</span> <span class="nav-text">¶实现事务隔离级别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#mysql数据库为我们提供四种隔离级别："><span class="nav-number">1.6.1.</span> <span class="nav-text">¶MySQL数据库为我们提供四种隔离级别：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#jdbc驱动"><span class="nav-number">1.6.2.</span> <span class="nav-text">¶JDBC驱动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#spring框架事务隔离级别"><span class="nav-number">1.6.3.</span> <span class="nav-text">¶Spring框架事务隔离级别</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">分布式事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#一致性-cap与base"><span class="nav-number">2.1.</span> <span class="nav-text">¶一致性、CAP与BASE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#柔性事务和刚性事务"><span class="nav-number">2.2.</span> <span class="nav-text">¶柔性事务和刚性事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#最佳实践"><span class="nav-number">2.3.</span> <span class="nav-text">¶最佳实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#幂等性"><span class="nav-number">2.4.</span> <span class="nav-text">¶幂等性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式一致性"><span class="nav-number">2.5.</span> <span class="nav-text">¶分布式一致性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据一致性"><span class="nav-number">2.6.</span> <span class="nav-text">¶数据一致性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一致性模型"><span class="nav-number">2.7.</span> <span class="nav-text">¶一致性模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#强一致性"><span class="nav-number">2.7.1.</span> <span class="nav-text">¶强一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#弱一致性"><span class="nav-number">2.7.2.</span> <span class="nav-text">¶弱一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最终一致性"><span class="nav-number">2.7.3.</span> <span class="nav-text">¶最终一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最终一致性模型的变种"><span class="nav-number">2.7.4.</span> <span class="nav-text">¶最终一致性模型的变种</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式事务"><span class="nav-number">2.8.</span> <span class="nav-text">¶分布式事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式事务的替代方案"><span class="nav-number">2.9.</span> <span class="nav-text">¶分布式事务的替代方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#补偿事务"><span class="nav-number">2.9.1.</span> <span class="nav-text">¶补偿事务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#应用场景"><span class="nav-number">2.10.</span> <span class="nav-text">¶应用场景</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#支付"><span class="nav-number">2.10.1.</span> <span class="nav-text">¶支付</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#在线下单"><span class="nav-number">2.10.2.</span> <span class="nav-text">¶在线下单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">2.11.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念理解"><span class="nav-number">2.11.1.</span> <span class="nav-text">¶概念理解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#方案"><span class="nav-number">2.11.2.</span> <span class="nav-text">¶方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实现"><span class="nav-number">2.11.3.</span> <span class="nav-text">¶实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bytetcc"><span class="nav-number">2.11.4.</span> <span class="nav-text">¶ByteTCC</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务补偿机制"><span class="nav-number">2.11.5.</span> <span class="nav-text">¶事务补偿机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#幂等性-v2"><span class="nav-number">2.11.6.</span> <span class="nav-text">¶幂等性</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>
