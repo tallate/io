@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="可靠、弹性、可维护的应用 数据模型和查询语言  应用数据 定义业务对象的数据结构，比如商品、菜单、用户等 数据模型 存储的数据模型，如何表达它们，比如JSON、XML、关系数据库表、图模型等。 数据组织 如何用缓存、磁盘、网络表达这些数据，来应对上层的查询、搜索、写入等操作。 物理层 决定计算机如何存储数据。  ¶关系模型和文档模型 ¶数据查询语言 存储和检索 ¶数据库的数据结构 ¶事务处理 编码">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-11-19T02:23:53.331Z">
+<meta property="og:updated_time" content="2020-12-16T01:56:01.172Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="《设计数据密集型应用》">
 <meta name="twitter:description" content="可靠、弹性、可维护的应用 数据模型和查询语言  应用数据 定义业务对象的数据结构，比如商品、菜单、用户等 数据模型 存储的数据模型，如何表达它们，比如JSON、XML、关系数据库表、图模型等。 数据组织 如何用缓存、磁盘、网络表达这些数据，来应对上层的查询、搜索、写入等操作。 物理层 决定计算机如何存储数据。  ¶关系模型和文档模型 ¶数据查询语言 存储和检索 ¶数据库的数据结构 ¶事务处理 编码">
@@ -357,7 +357,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  905 字
+                  1.9k 字
                 </span>
               
 
@@ -373,7 +373,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  3 分钟
+                  6 分钟
                 </span>
               
             </div>
@@ -491,6 +491,50 @@ TODO：我需要先研究下MySQL中是怎么处理这种延迟的。</p>
 <h2 id="多主复制-multi-leader-replication"><a class="header-anchor" href="#多主复制-multi-leader-replication">¶</a>多主复制（Multi-Leader Replication）</h2>
 <h2 id="无主复制-leaderless-replication"><a class="header-anchor" href="#无主复制-leaderless-replication">¶</a>无主复制（Leaderless Replication）</h2>
 <h1>分区</h1>
+<h2 id="分区和复制"><a class="header-anchor" href="#分区和复制">¶</a>分区和复制</h2>
+<p>数据只存在于一个分区，而一个分区可以有多个复制，因此分区和复制是一对多的关系。</p>
+<h2 id="kv数据库的分区"><a class="header-anchor" href="#kv数据库的分区">¶</a>KV数据库的分区</h2>
+<p>倾斜（<strong>skew</strong>）指一些分区存储的数据比其他的多，或接受更多的查询请求。倾斜会导致大部分请求被打到了少数节点上，产生<strong>热点问题</strong>。</p>
+<ul>
+<li>解决热点问题的一种最简单的方式是<strong>随机分配数据</strong><br>
+但是这种方式的问题是不知道数据被分配到了哪个节点上，所以可能需要遍历所有节点才能获取到数据。</li>
+<li>根据范围分区<br>
+根据范围边界我们可以快速得知一个key存在于哪个分区，如果已知分区和节点的映射关系，我们就可以直接将key定位到一个节点上。<br>
+优点除了找得快外，每个分区里的key也可以是有序的，这样顺序查找会快一些。<br>
+缺点是可能出现热点数据，比如按创建时间分区的话，最近产生的数据就会被扎堆访问。所以分区的key需要谨慎选择。<br>
+例子：Bigtable</li>
+<li>根据key的hash值进行分区<br>
+这种方式的好处是key在分区间能分布得比较均匀（和hash函数有关）。<br>
+缺点是范围查询非常不便。<br>
+Cassandra和MongoDB采用MD5作为hash函数；<br>
+Redis（Cluster）采用CRC16。</li>
+</ul>
+<p>即使用hash的方式来分区，极端情况下仍有可能发生热点问题，比如大部分请求集中于少数的key上。<br>
+为了解决这种倾斜问题，应用可以通过设计数据分布方案来分散数据，比如给key加上一些随机数来帮助key分散得更均匀。</p>
+<h2 id="二级索引-关系数据库-文档数据库-的分区"><a class="header-anchor" href="#二级索引-关系数据库-文档数据库-的分区">¶</a>二级索引（关系数据库、文档数据库）的分区</h2>
+<ul>
+<li>根据文档分片<br>
+最常用的文档数据库比如Elasticsearch，如果将MySQL的每一行看作一个文档，二级索引实际上就是为文档建立索引。<br>
+二级索引服务于单个数据库实例（一个分片），因此又被称为<strong>本地索引</strong>，如果要查询数据库的多个分片，就需要从每个分片对应的二级索引上查询一次。<br>
+ShardingJDBC的分库分表方案就是采用这种每个库都建一个索引的方式。<br>
+MongoDB、Elasticsearch等均是采用的这种方案。</li>
+<li>根据Term（词）分片<br>
+Term可以看作文档中的一个字段，根据Term索引即将一个范围内的Term索引到同一分片内，不考虑对应文档实际所处的分片，这种索引方式被称为<strong>全局索引（global term-partitioned）</strong>。<br>
+比如文档有一个颜色字段，我们可以将颜色首字母a-r的索引到第一个分片，s-z的索引到第二个分片，查询时如果判断要查询的颜色是红色（red）则可以直接定位到第一个分片上去查到所有的Term，然后再取到所有的文档。<br>
+好处是我们不需要遍历每个分片上的每个索引了。<br>
+缺点是写操作变得非常复杂，因为一次写入会影响多个分片，而且还需要分布式事务来保证这个过程的原子性。<br>
+这种方案比较少见，已知的有Riak、Oracle data warehouse。</li>
+</ul>
+<h2 id="分片再平衡-扩容"><a class="header-anchor" href="#分片再平衡-扩容">¶</a>分片再平衡（扩容）</h2>
+<p>Rebalancing：在集群中将一个节点的负载转移到另一个节点的过程称为Rebalancing。</p>
+<ul>
+<li>hash mod N<br>
+N变大的情况下将原来对其他节点的请求打到新节点上。<br>
+但是只要N变大原来key的定位就会发生变化，会发生很多不必要的Rebalancing，一个key第一次可能会被定位到节点0，第二次扩容可能会被定位到节点1，等等。</li>
+<li>固定数量的分片<br>
+类似于Redis的做法，分片数量固定，且大于节点数，分片被平均分配到节点上，扩容也是针对分片进行的。</li>
+<li>动态分片</li>
+</ul>
 <h1>事务</h1>
 <h1>分布式系统的挑战</h1>
 <h1>一致性和共识</h1>
@@ -614,7 +658,7 @@ TODO：我需要先研究下MySQL中是怎么处理这种延迟的。</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">131</span>
+                  <span class="site-state-item-count">133</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -671,7 +715,7 @@ TODO：我需要先研究下MySQL中是怎么处理这种延迟的。</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">可靠、弹性、可维护的应用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">数据模型和查询语言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#关系模型和文档模型"><span class="nav-number">2.1.</span> <span class="nav-text">¶关系模型和文档模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据查询语言"><span class="nav-number">2.2.</span> <span class="nav-text">¶数据查询语言</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">存储和检索</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据库的数据结构"><span class="nav-number">3.1.</span> <span class="nav-text">¶数据库的数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务处理"><span class="nav-number">3.2.</span> <span class="nav-text">¶事务处理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">编码和演变</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据格式"><span class="nav-number">4.1.</span> <span class="nav-text">¶数据格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据流"><span class="nav-number">4.2.</span> <span class="nav-text">¶数据流</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">复制（Replication）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制"><span class="nav-number">5.1.</span> <span class="nav-text">¶主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#同步-or-异步复制"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶同步 OR 异步复制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#复制的一般过程"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶复制的一般过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障恢复-follower故障"><span class="nav-number">5.1.3.</span> <span class="nav-text">¶故障恢复 - Follower故障</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障转移-failover-leader故障"><span class="nav-number">5.1.4.</span> <span class="nav-text">¶故障转移（Failover） - Leader故障</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#replication-log的实现"><span class="nav-number">5.1.5.</span> <span class="nav-text">¶Replication Log的实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#复制延迟-replication-lag"><span class="nav-number">5.2.</span> <span class="nav-text">¶复制延迟（Replication Lag）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多主复制-multi-leader-replication"><span class="nav-number">5.3.</span> <span class="nav-text">¶多主复制（Multi-Leader Replication）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#无主复制-leaderless-replication"><span class="nav-number">5.4.</span> <span class="nav-text">¶无主复制（Leaderless Replication）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">分区</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">事务</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">8.</span> <span class="nav-text">分布式系统的挑战</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">9.</span> <span class="nav-text">一致性和共识</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">10.</span> <span class="nav-text">批处理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">11.</span> <span class="nav-text">流处理</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">可靠、弹性、可维护的应用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">数据模型和查询语言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#关系模型和文档模型"><span class="nav-number">2.1.</span> <span class="nav-text">¶关系模型和文档模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据查询语言"><span class="nav-number">2.2.</span> <span class="nav-text">¶数据查询语言</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">存储和检索</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据库的数据结构"><span class="nav-number">3.1.</span> <span class="nav-text">¶数据库的数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务处理"><span class="nav-number">3.2.</span> <span class="nav-text">¶事务处理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">编码和演变</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据格式"><span class="nav-number">4.1.</span> <span class="nav-text">¶数据格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据流"><span class="nav-number">4.2.</span> <span class="nav-text">¶数据流</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">复制（Replication）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制"><span class="nav-number">5.1.</span> <span class="nav-text">¶主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#同步-or-异步复制"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶同步 OR 异步复制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#复制的一般过程"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶复制的一般过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障恢复-follower故障"><span class="nav-number">5.1.3.</span> <span class="nav-text">¶故障恢复 - Follower故障</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障转移-failover-leader故障"><span class="nav-number">5.1.4.</span> <span class="nav-text">¶故障转移（Failover） - Leader故障</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#replication-log的实现"><span class="nav-number">5.1.5.</span> <span class="nav-text">¶Replication Log的实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#复制延迟-replication-lag"><span class="nav-number">5.2.</span> <span class="nav-text">¶复制延迟（Replication Lag）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多主复制-multi-leader-replication"><span class="nav-number">5.3.</span> <span class="nav-text">¶多主复制（Multi-Leader Replication）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#无主复制-leaderless-replication"><span class="nav-number">5.4.</span> <span class="nav-text">¶无主复制（Leaderless Replication）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">分区</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分区和复制"><span class="nav-number">6.1.</span> <span class="nav-text">¶分区和复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kv数据库的分区"><span class="nav-number">6.2.</span> <span class="nav-text">¶KV数据库的分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二级索引-关系数据库-文档数据库-的分区"><span class="nav-number">6.3.</span> <span class="nav-text">¶二级索引（关系数据库、文档数据库）的分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分片再平衡-扩容"><span class="nav-number">6.4.</span> <span class="nav-text">¶分片再平衡（扩容）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">事务</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">8.</span> <span class="nav-text">分布式系统的挑战</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">9.</span> <span class="nav-text">一致性和共识</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">10.</span> <span class="nav-text">批处理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">11.</span> <span class="nav-text">流处理</span></a></li></ol></div>
             
 
           </div>
