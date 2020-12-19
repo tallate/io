@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/df2941e1.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/f1a5dd67.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/df2941e1.html" itemprop="url">Redis 概述</a></h1>
+                <a class="post-title-link" href="/f1a5dd67.html" itemprop="url">Redis 数据结构</a></h1>
         
 
         <div class="post-meta">
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  17 分钟
                 </span>
               
             </div>
@@ -391,471 +391,233 @@
         
           
             <a id="more"></a>
-<p><img src="http://47.88.24.11/imgs/Redis/Redis%E6%9E%B6%E6%9E%84%E5%9B%BE.jpg" alt="Redis架构图" title="Redis架构图"><br>
-<img src="http://47.88.24.11/imgs/Redis/Redis%E7%9F%A5%E8%AF%86%E6%A1%86%E6%9E%B6.jpeg" alt="Redis知识框架" title="Redis知识框架"><br>
-<img src="http://47.88.24.11/imgs/Redis/Redis%E9%97%AE%E9%A2%98%E7%94%BB%E5%83%8F.jpg" alt="Redis问题画像" title="Redis问题画像"></p>
+<h1>基本数据结构</h1>
+<h2 id="string"><a class="header-anchor" href="#string">¶</a>String</h2>
+<h3 id="特点"><a class="header-anchor" href="#特点">¶</a>特点</h3>
+<ol>
+<li>最大能存储 512MB == 536870912 B(byte) ；</li>
+<li>二进制安全，在传输数据的时候，能保证二进制数据的信息安全，也就是不会被篡改、破译；如果被攻击，能够及时检测出来</li>
+<li>能存储各种类型的数据，字符串、数字，以至对象（通过json序列化）、位图等。</li>
+</ol>
+<h3 id="基本使用"><a class="header-anchor" href="#基本使用">¶</a>基本使用</h3>
+<p>容量：512M</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">set aa &apos;str&apos;</span><br><span class="line">get aa</span><br></pre></td></tr></table></figure>
+<p>操作总结</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">set/get/del/append/strlen key</span><br><span class="line">incr/decr/incrby/decrby key</span><br><span class="line">getrange key start end/setrange key offset value（从offset处开始读取/覆盖）</span><br><span class="line">setex key seconds value(set with expire插入key的同时设置过期时间)/setnx key value(set if not exists如果已存在则直接返回0)</span><br><span class="line">mset/mget/msetnx key value &#123;key value&#125;（设置/读取多个key的值，msetnx比较特殊，要么都成功，要么一个都不执行，可以用来设置一个对象的多个不同字段）</span><br><span class="line">getset key(设置并返回key对应的旧值，可以用于计数器的重置)</span><br></pre></td></tr></table></figure>
+<h3 id="常见应用"><a class="header-anchor" href="#常见应用">¶</a>常见应用</h3>
+<p>字符串、jpg图片、序列化对象、一些复杂的计数功能的缓存</p>
+<h2 id="hash"><a class="header-anchor" href="#hash">¶</a>Hash</h2>
+<p>存储 String 类型键值对的映射表、对象</p>
+<h3 id="基本使用方法"><a class="header-anchor" href="#基本使用方法">¶</a>基本使用方法</h3>
+<p>容量：每个 Hash 可存 2^32 - 1（约 40 亿）个键值对</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hmset user username &apos;name&apos; password &apos;123456&apos; # 定义一个有两个元素的Hash表</span><br><span class="line">hgetall user # 获取user中所有key和value</span><br><span class="line">hget user username # 获取user中key为username的value</span><br></pre></td></tr></table></figure>
+<h3 id="常见应用-v2"><a class="header-anchor" href="#常见应用-v2">¶</a>常见应用</h3>
+<p>单点登录（存&lt;CookieId, 用户信息&gt;，设置 30 分钟为缓存过期时间，能很好地模拟出类似 Session 的效果）。</p>
+<h2 id="list"><a class="header-anchor" href="#list">¶</a>List</h2>
+<p>String列表</p>
+<h3 id="基本使用方法-v2"><a class="header-anchor" href="#基本使用方法-v2">¶</a>基本使用方法</h3>
+<p>容量：每个 List 可存 2^32 - 1 个元素</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">lpush ball basketball soccer # 按顺序从左侧压入，如果ball列表不存在则创建</span><br><span class="line">rpush ball volleyball</span><br><span class="line">lrange 0 1 # 获取索引从0到1的值</span><br></pre></td></tr></table></figure>
+<p>操作总结</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">lpush/rpush/lrange</span><br><span class="line">lpop/rpop</span><br><span class="line">lindex</span><br><span class="line">llen</span><br><span class="line">lrem key</span><br><span class="line">ltrim key</span><br><span class="line">rpoplpush</span><br><span class="line">lset key index value</span><br><span class="line">linsert key before/after val1 val2</span><br></pre></td></tr></table></figure>
+<h3 id="常见应用-v3"><a class="header-anchor" href="#常见应用-v3">¶</a>常见应用</h3>
+<p>简单的消息队列<br>
+基于 Redis 的分页功能（利用 lrang 命令，性能极佳，用户体验好）</p>
+<h2 id="set"><a class="header-anchor" href="#set">¶</a>Set</h2>
+<p>字符串的无序集合，使用 Hash 实现（key 和 value 相同的 Hash）</p>
+<h3 id="基本使用方法-v3"><a class="header-anchor" href="#基本使用方法-v3">¶</a>基本使用方法</h3>
+<p>容量：2^32 - 1 个成员</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sadd myset li1 # 向集合myset中添加一个元素li1，若不存在则创建</span><br><span class="line">smembers myset</span><br></pre></td></tr></table></figure>
+<h3 id="常见应用-v4"><a class="header-anchor" href="#常见应用-v4">¶</a>常见应用</h3>
+<p>全局去重（为什么不用 JDK 自带的 Set 去重？因为我们的系统一般都是集群部署）<br>
+计算共同喜好、全部喜好、自己独有的喜好等功能（交集、并集、差集）</p>
+<h2 id="zset"><a class="header-anchor" href="#zset">¶</a>ZSet</h2>
+<p>字符串的有序集合，每个元素都关联一个 double 类型的权重参数 score，集合中的元素能够按 score 进行排列。</p>
+<h3 id="基本使用方法-v4"><a class="header-anchor" href="#基本使用方法-v4">¶</a>基本使用方法</h3>
+<p>容量：2^32 - 1 个成员</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">zadd myzset 0 abc</span><br><span class="line">zrangebyscore myzset 0 10</span><br></pre></td></tr></table></figure>
+<h3 id="常见应用-v5"><a class="header-anchor" href="#常见应用-v5">¶</a>常见应用</h3>
+<p>排行榜<br>
+取 Top N 操作<br>
+延时任务（<a href="https://www.cnblogs.com/rjzheng/p/8972725.html%EF%BC%89" target="_blank" rel="noopener">https://www.cnblogs.com/rjzheng/p/8972725.html）</a><br>
+范围查找</p>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
+<p>实现上类似于 Java 的 SortedSet 和 HashMap 的结合体，value 唯一（Set 结构的特点），每个 value 一个 score 代表该 value 的排序权重。<br>
+zset 内部是使用一种叫做跳跃列表的结构实现的。</p>
+<h1>Redis 数据结构的实现</h1>
+<h2 id="数据结构的声明和实现"><a class="header-anchor" href="#数据结构的声明和实现">¶</a>数据结构的声明和实现</h2>
+<p><img src="http://tallate.top/imgs/Redis/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%8F%8A%E5%85%B6%E5%AE%9E%E7%8E%B0.png" alt="Redis数据结构及其实现" title="Redis数据结构及其实现"><br>
+Redis 中的 set、zset 等结构在 Redis 中并不是由一个单独的数据结构实现的，而是会根据情况有所变化。</p>
+<h3 id="set-v2"><a class="header-anchor" href="#set-v2">¶</a>set</h3>
+<p>set和Java中的HashSet有点像，它本身是HashMap的封装，key是集合中的对象，而value直接用NULL代替。<br>
+但是注意一些特殊情况：</p>
+<ul>
+<li>创建集合对象时，如果发现集合内的元素可以使用整数（longlong）编码，则创建一个intset而不是dict；</li>
+<li>之前是intset编码的情况下，插入的新元素如果是非整数的，那么集合会被重新转换成dict编码的；或者插入的元素数量达到了阈值（512），也会自动转换成dict。<br>
+创建代码见：<code>t_set.c/setTypeCreate()</code></li>
+</ul>
+<h3 id="zset-v2"><a class="header-anchor" href="#zset-v2">¶</a>zset</h3>
+<p>zset同样有两种形态：ziplist编码和skiplist编码。</p>
+<ul>
+<li>按ziplist编码的情况下：<br>
+zset本身就是个ziplist对象。</li>
+<li>按skiplist编码的情况下：<br>
+zset的集合功能是通过dict实现的，这部分和set并无区别；<br>
+zset的有序性是通过skiplist实现的，skiplist按分值排序成员，支持平均复杂度为O(logN)的按分值定位成员的操作。</li>
+</ul>
+<p>执行zadd命令代码：<code>t_zset.c/zaddGenericCommand()</code><br>
+创建zset对象：<code>object.c/createZsetZiplistObject()</code>、<code>object.c/createZsetObject()</code></p>
+<h2 id="sds-simple-dynamic-string"><a class="header-anchor" href="#sds-simple-dynamic-string">¶</a>SDS(Simple Dynamic String)</h2>
+<p>Redis 中的动态数组有以下特点：</p>
+<ul>
+<li>可动态扩展内存。sds 表示的字符串其内容可以修改，也可以追加。在很多语言中字符串会分为 mutable 和 immutable 两种，显然 sds 属于 mutable 类型的。</li>
+<li>减少修改字符串的内存重新分配次数<br>
+C语言由于不记录字符串的长度，所以如果要修改字符串，必须要重新分配内存（先释放再申请），因为如果没有重新分配，字符串长度增大时会造成内存缓冲区溢出，字符串长度减小时会造成内存泄露。<br>
+而对于SDS，由于<code>len</code>属性和<code>free</code>属性的存在，对于修改字符串SDS实现了空间预分配和惰性空间释放两种策略：<br>
+1、空间预分配：对字符串进行空间扩展的时候，扩展的内存比实际需要的多，这样可以减少连续执行字符串增长操作所需的内存重分配次数。<br>
+2、惰性空间释放：对字符串进行缩短操作时，程序不立即使用内存重新分配来回收缩短后多余的字节，而是使用 free 属性将这些字节的数量记录下来，等待后续使用。（当然SDS也提供了相应的API，当我们有需要时，也可以手动释放这些未使用的空间。）</li>
+<li>二进制安全（Binary Safe）。sds 能存储任意二进制数据，而不仅仅是可打印字符。</li>
+<li>与传统的 C 语言字符串类型兼容。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct SDS&lt;T&gt; &#123;</span><br><span class="line">  T capacity; // 数组容量</span><br><span class="line">  T len; // 数组当前长度</span><br><span class="line">  byte flags; // 特殊标识位，不理睬它</span><br><span class="line">  byte[] content; // 数组内容</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下面的函数将 t 数组拷贝到 s 中，如果长度不够则需要进行扩容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">/* Append the specified binary-safe string pointed by &apos;t&apos; of &apos;len&apos; bytes to the</span><br><span class="line"> * end of the specified sds string &apos;s&apos;.</span><br><span class="line"> *</span><br><span class="line"> * After the call, the passed sds string is no longer valid and all the</span><br><span class="line"> * references must be substituted with the new pointer returned by the call. */</span><br><span class="line">sds sdscatlen(sds s, const void *t, size_t len) &#123;</span><br><span class="line">    size_t curlen = sdslen(s);  // 原字符串长度</span><br><span class="line"></span><br><span class="line">    // 按需调整空间，如果 capacity 不够容纳追加的内容，就会重新分配字节数组并复制原字符串的内容到新数组中</span><br><span class="line">    s = sdsMakeRoomFor(s,len);</span><br><span class="line">    if (s == NULL) return NULL; // 内存不足</span><br><span class="line">    memcpy(s+curlen, t, len);  // 追加目标字符串的内容到字节数组中</span><br><span class="line">    sdssetlen(s, curlen+len); // 设置追加后的长度值</span><br><span class="line">    s[curlen+len] = &apos;\0&apos;; // 让字符串以\0 结尾，便于调试打印，还可以直接使用 glibc 的字符串函数进行操作</span><br><span class="line">    return s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>SDS 有 embstr 和 raw 两种存储结构，它们的区别是：</p>
+<ol>
+<li>内存分配上：<br>
+embstr 调用 1 次 malloc, 因此 redisObject 和 SDS 内存是连续分配的；<br>
+raw 需要调用 2 次 malloc, 因此 redisObject 和 SDS 内存不连续分配</li>
+<li>使用上:<br>
+embstr 整体 64 byte, 正好和<strong>cpu cache line</strong> 64byte 一样, 可以更好的使用缓存, 效率更高</li>
+</ol>
+<h2 id="quicklist"><a class="header-anchor" href="#quicklist">¶</a>quicklist</h2>
+<p>Redis 早期版本存储 list 数据结构采用（元素少时 ziplist、多时 linkedlist ）的方案，但是：</p>
+<ol>
+<li>链表的附加空间太高，prev 和 next 指针就要占去 16 个字节（64 位系统）；</li>
+<li>链表每个节点都是单独分配，会加剧内存的碎片化。</li>
+</ol>
+<p>因此在之后的版本中转换为了 quicklist 存储。<br>
+quicklist 是 ziplist 和 linkedlist 的混合体，它将 linkedlist 按段切分，每一段使用 ziplist 来紧凑存储，多个 ziplist 之间使用双向指针串接起来。<br>
+<img src="http://tallate.top/imgs/Redis/Redis-quicklist%E7%BB%93%E6%9E%84.png" alt="Redis-quicklist结构" title="Redis-quicklist结构"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">struct ziplist &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">struct ziplist_compressed &#123;</span><br><span class="line">    int32 size;</span><br><span class="line">    byte[] compressed_data;</span><br><span class="line">&#125;</span><br><span class="line">struct quicklistNode &#123;</span><br><span class="line">    quicklistNode* prev;</span><br><span class="line">    quicklistNode* next;</span><br><span class="line">    ziplist* zl; // 指向压缩列表</span><br><span class="line">    int32 size; // ziplist 的字节总数</span><br><span class="line">    int16 count; // ziplist 中的元素数量</span><br><span class="line">    int2 encoding; // 存储形式 2bit，原生字节数组还是 LZF 压缩存储</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">struct quicklist &#123;</span><br><span class="line">    quicklistNode* head;</span><br><span class="line">    quicklistNode* tail;</span><br><span class="line">    long count; // 元素总数</span><br><span class="line">    int nodes; // ziplist 节点的个数</span><br><span class="line">    int compressDepth; // LZF 算法压缩深度</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="ziplist"><a class="header-anchor" href="#ziplist">¶</a>ziplist</h2>
+<p>ziplist 是一种压缩存储的数组结构，当 Redis 中的集合数据结构很小，则它会使用这种紧凑的存储形式存储，元素之间紧挨着存储，查找就是对数组进行遍历找到目标对象。</p>
+<ul>
+<li>zset 和 hash 容器在元素个数较少时会采用 ziplist 存储。当存储的对象数量小于 512 且所有 entry 的 value 值长度小于 64，采用 ziplist 存储，否则转为采用 hashtable 存储。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">import redis</span><br><span class="line">client = redis.StrictRedis()</span><br><span class="line">client.delete(&quot;hello&quot;)</span><br><span class="line">for i in range(512):</span><br><span class="line">    client.hset(&quot;hello&quot;, str(i), str(i))</span><br><span class="line">print client.object(&quot;encoding&quot;, &quot;hello&quot;)</span><br><span class="line">client.hset(&quot;hello&quot;, &quot;512&quot;, &quot;512&quot;)</span><br><span class="line"># 或者插入一个长度为65的值也能起到转化的作用</span><br><span class="line">print client.object(&quot;encoding&quot;, &quot;hello&quot;)</span><br></pre></td></tr></table></figure>
+<p>可以上服务器上使用<code>debug object</code>命令验证数据结构的类型：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; zadd hgc_test 1.0 go 2.0 python 2.0 java</span><br><span class="line">...</span><br><span class="line">&gt; debug object hgc_test</span><br><span class="line">Value at:0x7f73c6d673a0 refcount:1 encoding:ziplist serializedlength:36 lru:1381596 lru_seconds_idle:77</span><br></pre></td></tr></table></figure>
+<h3 id="结构"><a class="header-anchor" href="#结构">¶</a>结构</h3>
+<p><img src="http://tallate.top/imgs/Redis/Redis-ziplist%E7%BB%93%E6%9E%84.png" alt="Redis-ziplist结构" title="Redis-ziplist结构"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">struct ziplist&lt;T&gt; &#123;</span><br><span class="line">    int32 zlbytes; // 整个压缩列表占用字节数</span><br><span class="line">    int32 zltail_offset; // 最后一个元素距离压缩列表起始位置的偏移量，用于快速定位到最后一个节点</span><br><span class="line">    int16 zllength; // 元素个数</span><br><span class="line">    T[] entries; // 元素内容列表，挨个挨个紧凑存储</span><br><span class="line">    int8 zlend; // 标志压缩列表的结束，值恒为 0xFF</span><br><span class="line">&#125;</span><br><span class="line">struct entry &#123;</span><br><span class="line">    int&lt;var&gt; prevlen; // 前一个 entry 的字节长度</span><br><span class="line">    int&lt;var&gt; encoding; // 元素类型编码</span><br><span class="line">    optional byte[] content; // 元素内容</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>zltail_offset 字段可以快速定位到 ziplist 中的最后一个节点，可以用于倒序遍历，entry 中的 prevlen 表示前一个 entry 的字节长度，可以用于倒序遍历时找到下一个元素的位置；</li>
+<li>encoding 记录编码类型，ziplist 利用该字段决定后面的 content 内容的形式，比如用<code>00xxxxxx</code>表示最大长度为 63 的短字符串，<code>01xxxxxx xxxxxxxx</code>表示中等长度的字符串；</li>
+</ul>
+<h3 id="插入"><a class="header-anchor" href="#插入">¶</a>插入</h3>
+<p>ziplist 是紧凑存储的，没有冗余空间，因此插入一个新元素就需要调用 realloc 重新分配内存空间，并将之前的内容一次性拷贝到新的内存空间中。<br>
+重新分配空间是比较耗时的，因此 ziplist 不适合存储大量数据。</p>
+<h3 id="更新-删除"><a class="header-anchor" href="#更新-删除">¶</a>更新/删除</h3>
+<p>修改或删除一个元素后其后一个位置的元素中的 prevlen 也需要级联更新，prevlen 字段又是变长的，所以可能会导致连锁反应。</p>
+<h3 id="ziplist-vs-dict"><a class="header-anchor" href="#ziplist-vs-dict">¶</a>ziplist vs dict</h3>
+<p>为什么 hash 结构中会采用 ziplist 而不是 dict，主要原因如下：</p>
+<ol>
+<li>数据量小时，ziplist 的速度也很快；</li>
+<li>数据量大时，ziplist 在每次插入或修改时引发的 realloc 操作会有更大的概率造成内存拷贝，从而降低性能，而且数据项过多的时候，在 ziplist 上查找指定数据项的性能会变得很低，因为在 ziplist 上的查找需要进行遍历。</li>
+</ol>
+<h2 id="dict-字典"><a class="header-anchor" href="#dict-字典">¶</a>dict（字典）</h2>
+<p>dict 是 Redis 中使用最广泛的数据结构：</p>
+<ol>
+<li>hash 结构的数据会用到字典；</li>
+<li>整个 Redis 数据库的所有 key 和 value 也组成了一个全局字典；</li>
+<li>带过期时间的 key 集合也是一个字典；</li>
+<li>set 结构的底层实现也是字典，只是所有 value 都是 NULL；</li>
+<li>zset 集合中存储 value 和 score 值的映射关系也是通过 dict 结构实现的。</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">struct RedisDb &#123;</span><br><span class="line">    dict* dict; // all keys  key=&gt;value</span><br><span class="line">    dict* expires; // all expired keys key=&gt;long(timestamp)</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct dict &#123;</span><br><span class="line">    ...</span><br><span class="line">    dictht ht[2];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">struct zset &#123;</span><br><span class="line">    dict *dict; // all values  value=&gt;score</span><br><span class="line">    zskiplist *zsl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="hashtable"><a class="header-anchor" href="#hashtable">¶</a>hashtable</h3>
+<p>dict 中的 hashtable 结构和 Java 中的 HashMap 类似，使用一个数组来保存所有的哈希桶，通过<strong>siphash</strong>函数来将 key 散列到数组中的某个桶上，每个哈希桶都是一个链表，也就是说如果发生哈希冲突，则将新元素直接插入到桶的头部。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">struct dictEntry &#123;</span><br><span class="line">    void* key;</span><br><span class="line">    void* val;</span><br><span class="line">    dictEntry* next; // 链接下一个 entry</span><br><span class="line">&#125;</span><br><span class="line">struct dictht &#123;</span><br><span class="line">    dictEntry** table; // 二维</span><br><span class="line">    long size; // 第一维数组的长度</span><br><span class="line">    long used; // hash 表中的元素个数</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="扩容：渐进式-rehash"><a class="header-anchor" href="#扩容：渐进式-rehash">¶</a>扩容：渐进式 rehash</h3>
+<p>正常情况下，当 hashtable 中元素的个数等于第一维数组的长度时、来了一个新增/修改/删除操作，就会触发扩容，扩容的新数组是原数组大小的 2 倍。</p>
 <blockquote>
-<p>以上图片来自极客时间的《Redis核心技术与实战》。<br>
-对原理的分析都是基于Redis3.0版本的代码，现在最新的版本应该是6.0，很多功能都是后面的版本引入的，因此这篇里不会描述多线程这些功能。</p>
+<p>存在一个特殊情况：如果 Redis 正在做 bgsave，为了减少内存页的过多分离 (Copy On Write)，Redis 尽量不去扩容 (<code>dict_can_resize</code>)，但是如果 hash 表已经非常满了，元素的个数已经达到了第一维数组长度的 5 倍 (<code>dict_force_resize_ratio</code>)，说明 hash 表已经过于拥挤了，这个时候就会强制扩容。</p>
 </blockquote>
-<h2 id="为什么使用-redis"><a class="header-anchor" href="#为什么使用-redis">¶</a>为什么使用 Redis</h2>
-<h3 id="redis-的缺点-优点"><a class="header-anchor" href="#redis-的缺点-优点">¶</a>Redis 的缺点 &amp; 优点</h3>
-<p>特性及优势：</p>
+<p><img src="http://tallate.top/imgs/Redis/Redis-dict%E6%89%A9%E5%AE%B9rehash.png" alt="Redis-dict扩容rehash" title="Redis-dict扩容rehash"><br>
+一般情况下 dict 中只有一个 hashtable 有值，但是在扩容时会分配另一个新的 hashtable，然后执行<strong>渐进式</strong>的数据迁移，避免一次性对所有 key 执行 rehash，而是将 rehash 操作分散到了对 dict 的各个增删改查操作中去了。</p>
 <ol>
-<li>内存数据库，吞吐率不受磁盘影响；</li>
-<li>每秒可以处理超过 10 万次读写操作；</li>
-<li>多数据结构支持，包括 string、hash、list、set、zset、Bitmaps、Hyperloglog、Geo、Pub/Sub、Redis Module、BloomFilter、RedisSearch、Redis-ML 等，支持绝大多数应用场景；</li>
-<li>Replication（复制）；</li>
-<li>lua（支持服务端执行复杂的业务逻辑）；</li>
-<li>LRU eviction（缓存淘汰）；</li>
-<li>Transactions；</li>
-<li>Persistence（持久化），包括 rdb（快照）和 AOF 两种；</li>
-<li>Sentinel（哨兵）；</li>
-<li>Cluster（分区）。</li>
+<li>在扩容过程中，如果有新增元素，则该元素会被同时添加到新 hashtable 中；</li>
+<li>查询、删除、修改操作中，会先查询旧 hashtable，若存在则迁移这个 key 所在的桶并返回元素，若不存在则到新 hashtable 中查找元素。</li>
+<li>有一个异步线程执行定时任务对字典主动迁移。</li>
 </ol>
-<p>但是也不能忽略 Redis 本身的一些缺点：</p>
+<p>dict 之所以这样设计，是为了避免 rehash 期间单个请求的响应时间剧烈增加。<br>
+当旧 hashtable 中无元素时，即代表迁移完毕，这时会将新旧 hashtable 的指针交换，旧的会被删除，而新的则取而代之。</p>
+<h3 id="缩容"><a class="header-anchor" href="#缩容">¶</a>缩容</h3>
+<p>当 hash 表因为元素的逐渐删除变得越来越稀疏时，Redis 会对 hash 表进行缩容来减少 hash 表的第一维数组空间占用。缩容的条件是元素个数低于数组长度的 10%。<br>
+缩容不会考虑 Redis 是否正在做 bgsave，因为 COW 的特性是当内存页上的数据被修改时会复制一页做修改，如果删除操作并不会触发删除内存页的数据，操作系统回收内存机制导致的。</p>
+<h3 id="全局哈希表"><a class="header-anchor" href="#全局哈希表">¶</a>全局哈希表</h3>
+<p><code>get a</code>和<code>llen b</code>中的a和b是不同数据结构的对象，他们统统被存储在一个叫全局哈希表的地方。<br>
+哈希表中的每个哈希桶存储的不是值本身，而是指向它们的指针。<br>
+<img src="http://tallate.top/imgs/Redis/Redis%E4%B8%AD%E7%9A%84%E5%85%A8%E5%B1%80%E5%93%88%E5%B8%8C%E8%A1%A8.jpg" alt="Redis中的全局哈希表" title="Redis中的全局哈希表"><br>
+代码定义在：<code>redis.h/redisDb</code></p>
+<p>缺点：</p>
 <ol>
-<li>数据库容量受到物理内存的限制，不能用作海量数据的高性能读写，因此 Redis 适合的场景主要局限在较小数据量的高性能操作和运算上；</li>
-<li>缓存和数据库双写一致性问题；</li>
-<li>缓存雪崩问题；</li>
-<li>缓存击穿问题；</li>
-<li>缓存的并发竞争问题。</li>
+<li>过多的哈希冲突容易产生过长的哈希桶（哈希冲突链）。<br>
+为了减少这个问题产生的影响，需要对哈希表进行rehash操作，这个rehash操作和dict数据结构的rehash原理是一样的。</li>
 </ol>
-<h3 id="redis-memcached"><a class="header-anchor" href="#redis-memcached">¶</a>Redis &amp; Memcached</h3>
-<p>Redis 相对 Memcached 来说有以下优点：</p>
+<blockquote>
+<p>全局哈希表实际上就是dict，可以看源码中的定义。</p>
+</blockquote>
+<p>优点：</p>
 <ol>
-<li>memcached 所有的值均是简单的字符串，redis 作为其替代者，支持更为丰富的数据类型</li>
-<li>redis 的速度比 memcached 快很多</li>
-<li>redis 可以持久化其数据</li>
+<li>合适的散列函数和扩容机制可以保证<code>O(1)</code>的操作复杂度。</li>
 </ol>
-<p>Redis 和 Memcached 之间存在以下区别：</p>
-<ol>
-<li>存储方式 Memecache 把数据全部存在内存之中，断电后会挂掉，数据不能超过内存大小。 Redis 有部份存在硬盘上，这样能保证数据的持久性。</li>
-<li>数据支持类型 Memcache 对数据类型支持相对简单。 Redis 有复杂的数据类型。</li>
-<li>使用底层模型不同 它们之间底层实现方式 以及与客户端之间通信的应用协议不一样。 Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求。</li>
-</ol>
-<h3 id="应用场景"><a class="header-anchor" href="#应用场景">¶</a>应用场景</h3>
-<ol>
-<li>会话缓存（Session Cache）<br>
-最常用的一种使用 Redis 的情景是会话缓存（session cache）。用 Redis 缓存会话比其他存储（如 Memcached）的优势在于：Redis 提供持久化。当维护一个不是严格要求一致性的缓存时，如果用户的购物车信息全部丢失，大部分人都会不高兴的，现在，他们还会这样吗？<br>
-幸运的是，随着 Redis 这些年的改进，很容易找到怎么恰当的使用 Redis 来缓存会话的文档。甚至广为人知的商业平台 Magento 也提供 Redis 的插件。</li>
-<li>全页缓存（FPC）<br>
-除基本的会话 token 之外，Redis 还提供很简便的 FPC 平台。回到一致性问题，即使重启了 Redis 实例，因为有磁盘的持久化，用户也不会看到页面加载速度的下降，这是一个极大改进，类似 PHP 本地 FPC。<br>
-再次以 Magento 为例，Magento 提供一个插件来使用 Redis 作为全页缓存后端。<br>
-此外，对 WordPress 的用户来说，Pantheon 有一个非常好的插件 wp-redis，这个插件能帮助你以最快速度加载你曾浏览过的页面。</li>
-<li>队列<br>
-Reids 在内存存储引擎领域的一大优点是提供 list 和 set 操作，这使得 Redis 能作为一个很好的消息队列平台来使用。Redis 作为队列使用的操作，就类似于本地程序语言（如 Python）对 list 的 push/pop 操作。<br>
-当然要将 Redis 作为消息队列投入生产环境还有很多设计要点，比如采用 sleep 一段时间重试还是 blpop 阻塞、主题订阅、如何应对消费者下线导致的消息丢失问题（如何保证消息一定能被消费）等。<br>
-Redis 作为消息队列坑比较多，如果希望少点麻烦且对服务质量有一定要求，最好还是采用 RocketMQ 这些比较成熟的方案。</li>
-<li>延时队列<br>
-使用 zset，时间戳作为 score，消费者用 zrangebyscore 指令获取 N 秒之前的数据轮询进行处理，这种思路和 JDK 中的 ScheduledThreadPoolExecutor 有点像。</li>
-<li>排行榜/计数器<br>
-Redis 在内存中对数字进行递增或递减的操作实现的非常好。集合（Set）和有序集合（Sorted Set）也使得我们在执行这些操作的时候变的非常简单，Redis 只是正好提供了这两种数据结构。所以，我们要从排序集合中获取到排名最靠前的 10 个用户–我们<br>
-称之为“user_scores”，我们只需要像下面一样执行即可：<br>
-当然，这是假定你是根据你用户的分数做递增的排序。如果你想返回用户及用户的分数，你需要这样执行：<br>
-ZRANGE user_scores 0 10 WITHSCORES<br>
-Agora Games 就是一个很好的例子，用 Ruby 实现的，它的排行榜就是使用 Redis 来存储数据的，你可以在这里看到。</li>
-<li>发布/订阅<br>
-最后（但肯定不是最不重要的）是 Redis 的发布/订阅功能。发布/订阅的使用场景确实非常多。我已看见人们在社交网络连接中使用，还可作为基于发布/订阅的脚本触发器，甚至用 Redis 的发布/订阅功能来建立聊天系统！（不，这是真的，你可以去核实）。<br>
-Redis 提供的所有特性中，我感觉这个是喜欢的人最少的一个，虽然它为用户提供如果此多功能。</li>
-<li>分布式锁<br>
-不要用 setnx+expire，因为如果进程 crash 或重启这个锁就直接失效了。实际上 set 命令本身就包含超时和 cas 的设置。</li>
-<li>扫描<br>
-如果 Redis 中有 1 亿多个 key，其中有 10W+个 key 有固定的前缀（这种场景非常常见），如何将它们全部找出来？<br>
-由于 Redis 的单线程特性，使用 keys 可能会阻塞 Redis 进程，最好换成 scan 命令，不过可能提取出的部分 key 是重复的，需要客户端做去重。</li>
-</ol>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="redis与其他kv存储有何不同？"><a class="header-anchor" href="#redis与其他kv存储有何不同？">¶</a>Redis与其他KV存储有何不同？</h3>
+<h2 id="skiplist"><a class="header-anchor" href="#skiplist">¶</a>skiplist</h2>
+<p>zset 中除了 dict（字典）外，还会用一个 skiplist 来提供按score排序的要求，以实现指定 score 的范围来获取 value 列表的功能。</p>
+<p><img src="http://tallate.top/imgs/Redis/Redis-skiplist%E7%BB%93%E6%9E%84.png" alt="Redis-skiplist结构" title="Redis-skiplist结构"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">struct zslnode &#123;</span><br><span class="line">  string value;</span><br><span class="line">  double score;</span><br><span class="line">  zslnode*[] forwards;  // 多层连接指针</span><br><span class="line">  zslnode* backward;  // 回溯指针</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct zsl &#123;</span><br><span class="line">  zslnode* header; // 跳跃列表头指针</span><br><span class="line">  int maxLevel; // 跳跃列表当前的最高层</span><br><span class="line">  map&lt;string, zslnode*&gt; ht; // hash 结构的所有键值对</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <ul>
-<li>更多复杂的数据结构，支持更多特殊的场景；</li>
-<li>Redis是内存数据库，但是支持持久化到磁盘。</li>
+<li>各层均为一个有序的链表结构；</li>
+<li>层数越大，节点越少；</li>
+<li>有一个 header 节点作为哨兵，value=null，score=Double.MIN_VALUE。</li>
 </ul>
-<h3 id="有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？"><a class="header-anchor" href="#有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？">¶</a>有人说 Redis 只适合用来做缓存，当数据库来用并不合适，为什么？</h3>
-<p>Redis 的事务并不严格：<br>
-* A(原子性)：Redis 支持事务，所有命令会被保存到一个事务队列中，服务器接收到 exec 时才会被真正执行，注意如果中间出错，事务不会回滚，后面的指令还会继续执行；而且如果涉及到复杂的逻辑判断，则只能通过<strong>lua 脚本</strong>实现“伪原子性”，说它是“伪原子性”是因为虽然脚本可以一次性执行多条命令，如果中间某个命令出错还是会无法保证“要么全部执行，要么都不执行”的要求。<br>
-* I(隔离性)：Redis 是单线程模型，因此可以保证隔离性。<br>
-* D(持久性)：Redis 是内存数据库，服务器意外崩溃会导致内存中的数据丢失，除非开启 AOF，并且配置成每次写入都记日志，但是这样又会极大地影响效率，所以一般会配置成混合模式的持久化。</p>
-<h3 id="redis会占用多少内存空间？"><a class="header-anchor" href="#redis会占用多少内存空间？">¶</a>Redis会占用多少内存空间？</h3>
+<h3 id="插入-v2"><a class="header-anchor" href="#插入-v2">¶</a>插入</h3>
+<p>插入时会先自顶向下找到新节点在跳表中底层的插入位置，插入每一层时都有概率晋升到更高一层，在 Redis 中是 25%。</p>
+<h3 id="删除"><a class="header-anchor" href="#删除">¶</a>删除</h3>
+<p>删除每一层上的对应节点。</p>
+<h3 id="更新"><a class="header-anchor" href="#更新">¶</a>更新</h3>
+<p>如果不影响排序则直接更新，否则会先删除再重新插入。</p>
+<h2 id="布隆过滤器"><a class="header-anchor" href="#布隆过滤器">¶</a>布隆过滤器</h2>
+<h2 id="hyperloglog"><a class="header-anchor" href="#hyperloglog">¶</a>HyperLogLog</h2>
+<p>布隆过滤器用于实现<code>contains</code>的需求，而 HyperLogLog 主要用于实现<code>count</code>。<br>
+同样是一个特别大的位数组，HyperLogLog 将位数组拆分为桶，每个桶是连续的 6 个位，计数时并非单独对某个桶计数，而是：</p>
 <ul>
-<li>An empty instance uses ~ 3MB of memory.</li>
-<li>1 Million small Keys -&gt; String Value pairs use ~ 85MB of memory.<br>
-那么10亿个kv，大概就会占用85G的内存了。</li>
-<li>1 Million Keys -&gt; Hash value, representing an object with 5 fields, use ~ 160 MB of memory.</li>
+<li>set 操作：计算 key 的散列值，为一个 64 位的数字，前 14 位是桶的位置，桶记录后 50 位中第一个 1 的位置 count，并且<code>count = max(count, oldCount)</code>，即每次记录最大的计数。</li>
+<li>count 操作：因为是概率算法，每个桶的计数值并不精确，但是所有桶的调和均值非常接近真实的计数值。</li>
 </ul>
-<p>64位机器会占用比32位机器更多的内存，因为指针在64位机器上占用更多空间，但同时64位机器也可以有更大的内存空间。</p>
-<h3 id="redis-的底层数据结构有哪些"><a class="header-anchor" href="#redis-的底层数据结构有哪些">¶</a>Redis 的底层数据结构有哪些</h3>
-<p>sds：string 使用，变长字符串，不够的情况下重新分配空间并将老字符串数据拷贝过去；<br>
-dict：字典应用很多，包括 Redis 数据库中保存所有 key-value、hash、set、zset。dict 类似 Java 中的 HashMap，将 key 散列到哈希桶数组中，每个哈希桶都是一个链表，插入就是插入到链表头部，当元素超过了容量的一半后会启动渐进式 rehash 进行扩容。<br>
-ziplist：相当于一个数组，查询时需要遍历一次，每次插入都需要 realloc 重新分配一个新的更大的数组，然后把老数组内容拷贝过去。<br>
-quicklist：由于 linkedlist 附加空间成本高且容易产生碎片，因此 Redis 里的 quicklist 设计成了 linkedlist 和 ziplist 的结合，它将 linkedlist 按段切分，每一段使用 ziplist 存储；<br>
-skiplist：skiplist 用于实现 zset 中按 score 排序的要求，插入时先自顶向下查位置，然后按概率计算该节点应该分配到几层。</p>
-<h3 id="存储数据选择-string-还是-hash？"><a class="header-anchor" href="#存储数据选择-string-还是-hash？">¶</a>存储数据选择 string 还是 hash？</h3>
-<p>从业务层面来看，如果要存好多字段的对象、而且这个对象的每个字段都会单独拿出来用，则可以考虑使用 hash，否则没有太多限制条件。<br>
-从性能角度来看，如果存的字段少，hash 会使用 ziplist 结构存储，性能多少受点影响，而且还要考虑转换结构和渐进式扩容对性能的损耗。<br>
-从节约空间的角度来看，string 的 key 一般都会加个前缀，一般会比 hash 占用更多的空间，不过差距不大。</p>
-<h3 id="设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前"><a class="header-anchor" href="#设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前">¶</a>设计 redis 排序，数据结构是金额+花钱的时间，金额越大，时间越早越靠前</h3>
-<p>用 zset 存，score 是金额拼上时间，金额放高位，MAX_INT 和时间作差放低位，查询时使用<code>ZREVRANGE</code>命令查询。</p>
-<h3 id="hash-中哈希冲突怎么解决的"><a class="header-anchor" href="#hash-中哈希冲突怎么解决的">¶</a>hash 中哈希冲突怎么解决的</h3>
-<p>分两种情况：hash 在数据量小时结构是 ziplist，这时插入不会做冲突检测，插入到目标位置后就向后统一移动数据，给新插入的数据项流出空间；在数据量大时结构是 dict，这种结构和 Java 中的 HashMap 类似，使用链表来处理冲突。</p>
+<h2 id="pubsub"><a class="header-anchor" href="#pubsub">¶</a>pubsub</h2>
+<p>用于实现轻量级的发布订阅功能。</p>
+<h2 id="geohash"><a class="header-anchor" href="#geohash">¶</a>geohash</h2>
+<h1>QA</h1>
+<h2 id="使用string还是hash？"><a class="header-anchor" href="#使用string还是hash？">¶</a>使用string还是hash？</h2>
+<p>当数据量少时，使用hash明显更加节省内存，因为数据少时hash会转成ziplist的结构，而string每个kv都需要一大堆的额外空间存储元数据。</p>
+<h2 id="如何使用redis的数据结构实现统计？"><a class="header-anchor" href="#如何使用redis的数据结构实现统计？">¶</a>如何使用Redis的数据结构实现统计？</h2>
 <ol>
-<li>说说 Redis 为什么那么快。<br>
-单线程模型-&gt;减少了线程间上下文切换的开销。<br>
-多路复用的 IO 模型-&gt;单线程监控多个连接。</li>
-<li>为什么 Redis 记录 AOF 日志是先执行指令然后再记录 AOF 日志？而不是像其他存储引擎一样反过来？<br>
-主要是因为 Redis 本身是缓存而不是 db，侧重点不同，db 先写日志是为了失败回滚，而 Redis 持久化是一个附加功能，只能保证数据不会完全丢失。</li>
+<li>需要支持集合运算（差集、交集、并集）的场合<br>
+使用set、zset，数据量少时会转成ziplist节省内存。</li>
+<li>需要进行二值统计的场合<br>
+使用bitmap</li>
+<li>需要大规模统计，且不要求精确统计的场合<br>
+使用HyperLogLog</li>
 </ol>
-<h3 id="redis-淘汰时-如果读取-会不会数据不完整"><a class="header-anchor" href="#redis-淘汰时-如果读取-会不会数据不完整">¶</a>Redis 淘汰时，如果读取，会不会数据不完整</h3>
-<p>redis 的淘汰分两种：</p>
-<ul>
-<li>一种是过期，这种不会导致这种问题，因为查询时会判断下过期时间，过期了就不返回；</li>
-<li>另一种是超过内存容量淘汰，比如 LRU，这种也不会导致这种问题，因为执行每个命令时都会检查下缓存是否超出了阈值，可见代码<code>server.c/processCommand</code>：<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis-%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4%E5%89%8D%E6%A3%80%E6%9F%A5%E7%BC%93%E5%AD%98%E6%98%AF%E5%90%A6%E6%BA%A2%E5%87%BA.jpeg" alt="Redis-执行命令前检查缓存是否溢出" title="Redis-执行命令前检查缓存是否溢出"></li>
-</ul>
-<h3 id="redis-的持久化原理是什么"><a class="header-anchor" href="#redis-的持久化原理是什么">¶</a>Redis 的持久化原理是什么</h3>
-<p>Redis 有两种持久化方式：RDB 和 AOF<br>
-RDB 是快照，AOF 记录了写操作，效率起见，一般 RDB 作为 checkpoint，checkpoint 后的数据通过 AOF 恢复。</p>
-<h3 id="rdb-和-aof-之间的区别"><a class="header-anchor" href="#rdb-和-aof-之间的区别">¶</a>RDB 和 AOF 之间的区别</h3>
-<p>RDB 二进制文件可以直接加载到内存速度较快；AOF 要重放命令，所以速度比较慢。<br>
-RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。</p>
-<h3 id="redis的复制原理是什么？"><a class="header-anchor" href="#redis的复制原理是什么？">¶</a>Redis的复制原理是什么？</h3>
-<p>master 会启动一个后台进程进行持久化（RDB or AOF），第一次连接时会将 RDB 文件发给 slave，slave 先保存到磁盘，之后加载到内存中；如果不是第一次连接，slave 连接 master 后通过 PSYNC 命令告知自己同步的起始位置，master 将增量部分 AOF 文件发送给 slave。</p>
-<h3 id="redis-持久化期间-主进程还能对外提供服务吗？为什么"><a class="header-anchor" href="#redis-持久化期间-主进程还能对外提供服务吗？为什么">¶</a>Redis 持久化期间，主进程还能对外提供服务吗？为什么</h3>
-<p>能。<br>
-因为 Redis 的复制是通过 fork 子进程实现的，父进程仍然可以接收请求。</p>
-<h3 id="持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？"><a class="header-anchor" href="#持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？">¶</a>持久化期间，Redis如何处理新写入的数据呢，这个数据也会直接进行持久化吗？</h3>
-<p>不会。<br>
-因为 Redis 复制是通过 fork 子进程实现的，由于 COW 机制，子进程只能看到老数据。</p>
-<h3 id="主从复制为什么会发生延迟？怎么解决"><a class="header-anchor" href="#主从复制为什么会发生延迟？怎么解决">¶</a>主从复制为什么会发生延迟？怎么解决</h3>
-<p>延迟无法避免，比如主从之间的网络抖动、slave 发生阻塞（如 IO）等情况。<br>
-解决办法有两种：</p>
-<ul>
-<li><code>min-slave-to-write N</code>和<code>min-slave-max-lag M</code>，控制 Master，只有在至少有 N 个 slave 正在工作，并且滞后时间均小于 M 秒的情况下，Master 将不接受写入请求；</li>
-<li><code>slave-serve-stale-data</code>，控制从库对主库失去响应或复制进行过程中从库的表现，为 yes 则从库会继续响应客户端的请求，为 no 则除去 INFO 和 SLAVOF 命令之外的任何请求都会返回一个错误<code>SYNC with master in progress</code>；</li>
-<li>编写外部监控程序，如果某个 slave 延迟较大，则通知 client 不要读这个 slave。</li>
-</ul>
-<h3 id="redis-怎么实现高可用"><a class="header-anchor" href="#redis-怎么实现高可用">¶</a>Redis 怎么实现高可用</h3>
-<p>从复制、Sentinel 到 Cluster</p>
-<h3 id="sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置"><a class="header-anchor" href="#sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置">¶</a>sentinel 中，使用客户端是怎么连接服务器的？（Redisson 配置）</h3>
-<p>见《Redis 客户端》。</p>
-<h3 id="哈希槽原理？和一致性哈希的区别？怎么落点"><a class="header-anchor" href="#哈希槽原理？和一致性哈希的区别？怎么落点">¶</a>哈希槽原理？和一致性哈希的区别？怎么落点</h3>
-<p>redis cluster 默认分配了 16384 个 slot，当我们 set 一个 key 时，会用<strong>CRC16</strong>算法来取模得到所属的 slot，然后将这个 key 分到哈希槽区间的节点上，具体算法就是：<code>CRC16(key) % 16384</code>。所以我们在测试的时候看到 set 和 get 的时候，直接跳转到了 7000 端口的节点。<br>
-哈希槽与一致性哈希的区别：哈希槽由客户端来重定向到目标 slot 所在节点，一致性哈希需要由服务器端重定向到目标节点，而且需要按顺时针方向一个一个节点递归地找。</p>
-<h3 id="redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决"><a class="header-anchor" href="#redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决">¶</a>Redis雪崩、击穿、穿透等现象是怎么出现的？怎么解决</h3>
+<h2 id="采用渐进式hash时-如果实例暂时没有接收到新请求-是不是就不会做rehash了？"><a class="header-anchor" href="#采用渐进式hash时-如果实例暂时没有接收到新请求-是不是就不会做rehash了？">¶</a>采用渐进式hash时，如果实例暂时没有接收到新请求，是不是就不会做rehash了？</h2>
+<p>不会，还有一个定时任务每隔100ms执行rehash，而且每次执行时长不会超过1ms，以免影响其他任务。</p>
+<h1>参考</h1>
 <ol>
-<li>缓存穿透<br>
-缓存穿透指查询一个不存在的数据，出于容错考虑这个查询会穿透到 DB 层，如果这种带穿透的查询特别多可能会把 DB 打挂掉。<br>
-解决办法：使用布隆过滤器，保存所有可能存在的数据到一个足够大的 bitmap 中，由于布隆过滤器的特性，一定不存在的数据在 bitmap 中一定找不到，从而可以很大程度上避免对底层存储系统的查询压力；还有一种更简单的方法，就是在查询返回结果为空时也把这个空结果缓存起来，但是它的过期时间会短一些，最长时间不超过 5 分钟。</li>
-<li>缓存雪崩<br>
-缓存雪崩指的是设置缓存时采用了相同的过期时间，导致缓存在同一时间同时失效，请求全部打到 DB，DB 瞬时压力过大导致雪崩。<br>
-解决办法：缓存失效时间随机化，在原有失效时间基础上加上一个随机值，可以使得过期时间的重复率降低；加锁并令请求排队，使得请求串行化，避免所有请求都查询数据库，不过这样会导致性能的降低。</li>
-<li>缓存击穿<br>
-缓存击穿指的是某个 key 在过期时正好有大量请求访问该 key，这些请求会同时回表，可能会瞬间将后端 DB 打挂。<br>
-解决办法：使用互斥锁，缓存失效时先加锁，避免并发回表；一些长时间不变的数据完全可以不设置过期时间，或者过期时间特别长。</li>
+<li><a href="https://redissrc.readthedocs.io/en/latest/" target="_blank" rel="noopener">redis源码解析</a></li>
 </ol>
-<h3 id="主从复制的流程？传的是文件吗？"><a class="header-anchor" href="#主从复制的流程？传的是文件吗？">¶</a>主从复制的流程？传的是文件吗？</h3>
-<p>流程见《主从同步》。<br>
-如果是全量同步，同步时会先同步 RDB 文件，再同步增量写命令；<br>
-如果是部分重同步，则只同步增量写命令。</p>
-<h3 id="中间传输失败怎么办？中间传输不一致怎么办"><a class="header-anchor" href="#中间传输失败怎么办？中间传输不一致怎么办">¶</a>中间传输失败怎么办？中间传输不一致怎么办</h3>
-<p>如果上次传输中断，则下次同步时从中断位置开始执行部分重同步。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://redis.io/topics/faq" target="_blank" rel="noopener">FAQ</a></li>
-<li><a href="https://www.cxc233.com/blog/e1d54234.html" target="_blank" rel="noopener">使用vscode(gdb)调试redis</a></li>
-</ol>
-<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
-<ol>
-<li><a href="https://stackoverflow.com/questions/16375188/redis-strings-vs-redis-hashes-to-represent-json-efficiency" target="_blank" rel="noopener">Redis strings vs Redis hashes to represent JSON: efficiency?</a></li>
-</ol>
-<h3 id="数据结构"><a class="header-anchor" href="#数据结构">¶</a>数据结构</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/4992bed65b22" target="_blank" rel="noopener">Redis 源码涉及 C 语言</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261203&amp;idx=1&amp;sn=f7ff61ce42e29b874a8026683875bbb1&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(1)——dict</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261213&amp;idx=1&amp;sn=0ddddf48929610a4155bd82794cad4fa&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(2)——sds</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261237&amp;idx=1&amp;sn=380d183332d41d24ea6f88a54f533fc3&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(3)——robj</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261265&amp;idx=1&amp;sn=e105c4b86a5640c5fc8212cd824f750b&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(4)——ziplist</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261335&amp;idx=1&amp;sn=053d72a348be2e78040f3847f4092d92&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(5)——quicklist</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261457&amp;idx=1&amp;sn=fe966f3825b81e9d50a2cf38dac9060c&amp;chksm=84479e48b330175ea07905e791856cca5fc50694db9fd4c3485ba5dc097443e69f5ed28a34b5&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 为什么用跳表而不用平衡树？</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261457&amp;idx=1&amp;sn=fe966f3825b81e9d50a2cf38dac9060c&amp;chksm=84479e48b330175ea07905e791856cca5fc50694db9fd4c3485ba5dc097443e69f5ed28a34b5&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 中的集合类型是怎么实现的？</a></li>
-</ol>
-<h3 id="persistence"><a class="header-anchor" href="#persistence">¶</a>Persistence</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/c210851d3558" target="_blank" rel="noopener">剖析 Redis RDB 文件</a></li>
-<li><a href="https://www.jianshu.com/p/131cf929a262" target="_blank" rel="noopener">Redis 源码分析–RDB 实现源码阅读</a></li>
-<li><a href="https://www.jianshu.com/p/90cdd28c5e92" target="_blank" rel="noopener">Redis 源码分析–AOF 文件全量重写源码阅读</a></li>
-<li><a href="https://www.jianshu.com/p/91cf48c8c082" target="_blank" rel="noopener">Redis 源码分析–AOF 文件增量追写源码阅读</a></li>
-</ol>
-<h3 id="客户端"><a class="header-anchor" href="#客户端">¶</a>客户端</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/clients.html" target="_blank" rel="noopener">Redis 如何处理客户端连接</a></li>
-<li><a href="https://www.jianshu.com/p/36a5935db85b" target="_blank" rel="noopener">剖析 Redis 协议</a></li>
-<li><a href="https://www.jianshu.com/p/78b94407f59c" target="_blank" rel="noopener">剖析 Redis 协议(续)</a></li>
-</ol>
-<h3 id="主从复制"><a class="header-anchor" href="#主从复制">¶</a>主从复制</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/replication.html" target="_blank" rel="noopener">复制</a></li>
-<li><a href="https://www.cnblogs.com/wdliu/p/9407179.html" target="_blank" rel="noopener">redis 系列–主从复制以及 redis 复制演进</a></li>
-</ol>
-<h3 id="sentinel-cluster"><a class="header-anchor" href="#sentinel-cluster">¶</a>Sentinel &amp; Cluster</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/partitioning.html" target="_blank" rel="noopener">分区：怎样将数据分布到多个 redis 实例</a></li>
-<li><a href="http://www.redis.cn/topics/sentinel.html" target="_blank" rel="noopener">Redis 的 Sentinel 文档</a></li>
-<li><a href="http://www.redis.cn/topics/cluster-tutorial.html" target="_blank" rel="noopener">Redis 集群教程</a></li>
-<li><a href="http://www.redis.cn/topics/cluster-spec.html" target="_blank" rel="noopener">Redis 集群规范</a></li>
-<li><a href="https://www.jianshu.com/p/4163916a2a8a" target="_blank" rel="noopener">一致性哈希和哈希槽对比</a></li>
-<li><a href="https://www.jianshu.com/p/145215dc3440" target="_blank" rel="noopener">Redis 集群扩容和缩容</a></li>
-</ol>
-<h3 id="架构迁移"><a class="header-anchor" href="#架构迁移">¶</a>架构迁移</h3>
-<ol>
-<li><a href="http://www.redis.cn/articles/20170830103.html" target="_blank" rel="noopener">Redis 集群迁移案例</a></li>
-<li><a href="https://github.com/vipshop/redis-migrate-tool" target="_blank" rel="noopener">redis-migrate-tool</a></li>
-<li><a href="https://github.com/CodisLabs/redis-port" target="_blank" rel="noopener">redis-port</a></li>
-<li>redis-migration<br>
-<a href="https://github.com/helifu/redis-migration" target="_blank" rel="noopener">redis-migration</a><br>
-<a href="https://mp.weixin.qq.com/s?__biz=MzAxNjc1MTk5Nw==&amp;mid=401404354&amp;idx=1&amp;sn=36225e1e72aa1402d2fb79928addadd9&amp;scene=1&amp;srcid=0304rSI42ziy0Qfb9wvNDzBi&amp;key=8dcebf9e179c9f3a6f34ddb7f5de1b77fe12f5078f6a2ac7bf9f7c0d8485989ab2d848694250dec6c20a3f96f42c0e09&amp;ascene=0&amp;uin=MzM4Njg2NDU1&amp;devicetype=iMac+MacBookPro12%2C1+OSX+OSX+10.10.3+build(14D136)&amp;version=11020201&amp;pass_ticket=MGWnMZAOg9KlbJTWgO9ARaZA3po2c%2BLDVDHD6Xtt9cZYpjpc9ygP%2BpjWQz3D6NBE" target="_blank" rel="noopener">redis-migration：独创的 redis 在线数据迁移工具</a></li>
-</ol>
-<h3 id="twemproxy"><a class="header-anchor" href="#twemproxy">¶</a>Twemproxy</h3>
-<ol>
-<li><a href="https://github.com/twitter/twemproxy" target="_blank" rel="noopener">Twemproxy</a></li>
-</ol>
-<h3 id="codis"><a class="header-anchor" href="#codis">¶</a>Codis</h3>
-<ol>
-<li><a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">Codis</a></li>
-</ol>
-<h3 id="redisson"><a class="header-anchor" href="#redisson">¶</a>Redisson</h3>
-<ol>
-<li><a href="https://github.com/redisson/redisson" target="_blank" rel="noopener">Redisson</a></li>
-</ol>
-<h3 id="系统优化"><a class="header-anchor" href="#系统优化">¶</a>系统优化</h3>
-<ol>
-<li><a href="https://www.oschina.net/translate/redis-latency-problems-troubleshooting?lang=chs&amp;p=1" target="_blank" rel="noopener">Redis 响应延迟问题排查</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9dda6023.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/9dda6023.html" itemprop="url">Redis 进程和 IO 模型</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
-                2019-09-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/缓存/" itemprop="url" rel="index">
-                    <span itemprop="name">缓存</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.7k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  11 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h2 id="为什么-redis-这么快"><a class="header-anchor" href="#为什么-redis-这么快">¶</a>为什么 Redis 这么快</h2>
-<p>Redis 采用的是一种<strong>单线程工作模型</strong>，它能这么快主要归功于下面几个策略：</p>
-<ol>
-<li>完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)；</li>
-<li>数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的；</li>
-<li>采用单线程，避免了不必要的上下文切换和竞争条件，也不存在多进程或者多线程导致的切换而消耗 CPU，不用去考虑各种锁的问题，不存在加锁释放锁操作，没有因为可能出现死锁而导致的性能消耗；</li>
-<li>使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；</li>
-<li>使用<strong>多路 I/O 复用</strong>模型，非阻塞 IO；<br>
-多路 I/O 复用模型是利用 select、poll、epoll 可以同时监察多个流的 I/O 事件的能力，在空闲的时候，会把当前线程阻塞掉，当有一个或多个流有 I/O 事件时，就从阻塞态中唤醒，于是程序就会轮询一遍所有的流（epoll 是只轮询那些真正发出了事件的流），并且只依次顺序的处理就绪的流，这种做法就避免了大量的无用操作。<br>
-Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，在服务端，有一段 I/O 多路复用程序，将其置入队列之中，然后，文件事件分派器依次去队列中取，转发到不同的事件处理器中（对这个 I/O 多路复用机制，Redis 还提供了 select、epoll、evport、kqueue 等多路复用函数库）。<br>
-这里“多路”指的是多个网络连接，“复用”指的是复用同一个线程。采用多路 I/O 复用技术可以让单个线程高效的处理多个连接请求（尽量减少网络 IO 的时间消耗），且 Redis 在内存中操作数据的速度非常快，也就是说内存内的操作不会成为影响 Redis 性能的瓶颈，主要由以上几点造就了 Redis 具有很高的吞吐量。<br>
-<img src="http://47.88.24.11/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg" alt="多路IO复用模型" title="多路IO复用模型"></li>
-</ol>
-<h2 id="一些常见的进程模型"><a class="header-anchor" href="#一些常见的进程模型">¶</a>一些常见的进程模型</h2>
-<ol>
-<li>单进程多线程模型：MySQL、Memcached、Oracle（Windows 版本）；</li>
-<li>多进程模型：Oracle（Linux 版本）；</li>
-<li>Nginx 有两类进程，一类称为 Master 进程(相当于管理进程)，另一类称为 Worker 进程（实际工作进程）。启动方式有两种：
-<ol>
-<li>单进程启动：此时系统中仅有一个进程，该进程既充当 Master 进程的角色，也充当 Worker 进程的角色。</li>
-<li>多进程启动：此时系统有且仅有一个 Master 进程，至少有一个 Worker 进程工作。</li>
-<li>Master 进程主要进行一些全局性的初始化工作和管理 Worker 的工作；事件处理是在 Worker 中进行的。</li>
-</ol>
-</li>
-</ol>
-<h2 id="为什么是-nio"><a class="header-anchor" href="#为什么是-nio">¶</a>为什么是 NIO</h2>
-<p>对于优化单个 server 节点的网络层，多使用 NIO 方式，server 端与 client 端在多次通讯的情况下使用 TCP 长连接维持会话，比如 Redis epoll 模型，RocketMq 的 netty 模型<br>
-对于高性能 Server 节点，在处理好网络请求同时，还要保证 server 端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型。<br>
-在 Redis 中，采用的是 Reactor 模式实现文件事件处理器：<br>
-<img src="http://47.88.24.11/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png" alt="Redis-事件处理模型" title="Redis-事件处理模型"></p>
-<ol>
-<li>IO 多路复用<br>
-根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
-<li>封装不同 IO 模型，为事件处理器提供统一接口</li>
-</ol>
-<h2 id="redis单线程多路复用io模型实现-事件注册"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件注册">¶</a>Redis单线程多路复用IO模型实现 - 事件注册</h2>
-<p>Redis服务器的初始化过程中包括了对事件处理器的初始化。<br>
-1、服务器启动期间初始化事件处理器<br>
-服务器初始化代码：<code>redis.c/initServer</code><br>
-初始化事件处理器代码：<code>ae.c/aeCreateEventLoop</code><br>
-2、根据系统的不同，选择不同的底层IO事件处理实现<br>
-比如linux的话，会选择epoll作为实现：<code>epoll.c/aeApiCreate</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 创建一个新的 epoll 实例，并将它赋值给 eventLoop</span><br><span class="line"> */</span><br><span class="line">static int aeApiCreate(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    aeApiState *state = zmalloc(sizeof(aeApiState));</span><br><span class="line"></span><br><span class="line">    if (!state) return -1;</span><br><span class="line"></span><br><span class="line">    // 初始化事件槽空间</span><br><span class="line">    state-&gt;events = zmalloc(sizeof(struct epoll_event)*eventLoop-&gt;setsize);</span><br><span class="line">    if (!state-&gt;events) &#123;</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 创建 epoll 实例</span><br><span class="line">    state-&gt;epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */</span><br><span class="line">    if (state-&gt;epfd == -1) &#123;</span><br><span class="line">        zfree(state-&gt;events);</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 赋值给 eventLoop</span><br><span class="line">    eventLoop-&gt;apidata = state;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>当服务器需要监听某些事件时，会注册对这些事件的监听器，下面是注册监听器的函数：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 根据 mask 参数的值，监听 fd 文件的状态，</span><br><span class="line"> * 当 fd 可用时，执行 proc 函数</span><br><span class="line"> */</span><br><span class="line">int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,</span><br><span class="line">        aeFileProc *proc, void *clientData)</span><br><span class="line">&#123;</span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) &#123;</span><br><span class="line">        errno = ERANGE;</span><br><span class="line">        return AE_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 取出文件事件结构</span><br><span class="line">    aeFileEvent *fe = &amp;eventLoop-&gt;events[fd];</span><br><span class="line"></span><br><span class="line">    // 监听指定 fd 的指定事件</span><br><span class="line">    if (aeApiAddEvent(eventLoop, fd, mask) == -1)</span><br><span class="line">        return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 设置文件事件类型，以及事件的处理器</span><br><span class="line">    fe-&gt;mask |= mask;</span><br><span class="line">    if (mask &amp; AE_READABLE) fe-&gt;rfileProc = proc;</span><br><span class="line">    if (mask &amp; AE_WRITABLE) fe-&gt;wfileProc = proc;</span><br><span class="line"></span><br><span class="line">    // 私有数据</span><br><span class="line">    fe-&gt;clientData = clientData;</span><br><span class="line"></span><br><span class="line">    // 如果有需要，更新事件处理器的最大 fd</span><br><span class="line">    if (fd &gt; eventLoop-&gt;maxfd)</span><br><span class="line">        eventLoop-&gt;maxfd = fd;</span><br><span class="line"></span><br><span class="line">    return AE_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>比如Redis服务器要接受客户端的请求，就要注册一个监听连接事件，回调函数中会为客户端连接创建一个socket，并注册可读文件事件。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">void initServer() &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Create an event handler for accepting new connections in TCP and Unix</span><br><span class="line">     * domain sockets. */</span><br><span class="line">    // 为 TCP 连接关联连接应答（accept）处理器</span><br><span class="line">    // 用于接受并应答客户端的 connect() 调用</span><br><span class="line">    for (j = 0; j &lt; server.ipfd_count; j++) &#123;</span><br><span class="line">        if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,</span><br><span class="line">            acceptTcpHandler,NULL) == AE_ERR)</span><br><span class="line">            &#123;</span><br><span class="line">                redisPanic(</span><br><span class="line">                    &quot;Unrecoverable error creating server.ipfd file event.&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="redis单线程多路复用io模型实现-事件循环-处理"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件循环-处理">¶</a>Redis单线程多路复用IO模型实现 - 事件循环（处理）</h2>
-<p>Redis中定义了两种事件：时间事件TimeEvents、文件事件FileEvents：</p>
-<ul>
-<li><code>TimeEvents</code>：一般都是一些定时任务，实际上现在时间事件只应用于服务器启动时注册的<code>serverCron</code>定时任务的执行；</li>
-<li><code>FileEvents</code>：socket文件的IO事件，比如上面的监听连接的事件就是文件事件。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 事件处理器的主循环</span><br><span class="line"> */</span><br><span class="line">void aeMain(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    eventLoop-&gt;stop = 0;</span><br><span class="line"></span><br><span class="line">    while (!eventLoop-&gt;stop) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果有需要在事件处理前执行的函数，那么运行它</span><br><span class="line">        if (eventLoop-&gt;beforesleep != NULL)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        // 开始处理事件</span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 1、看是否有事件到达了执行时间</span><br><span class="line">// 2、如果有，则执行这些事件</span><br><span class="line">/* Process every pending time event, then every pending file event</span><br><span class="line"> * (that may be registered by time event callbacks just processed).</span><br><span class="line"> *</span><br><span class="line"> * 处理所有已到达的时间事件，以及所有已就绪的文件事件。</span><br><span class="line"> *</span><br><span class="line"> * Without special flags the function sleeps until some file event</span><br><span class="line"> * fires, or when the next time event occurs (if any).</span><br><span class="line"> *</span><br><span class="line"> * 如果不传入特殊 flags 的话，那么函数睡眠直到文件事件就绪，</span><br><span class="line"> * 或者下个时间事件到达（如果有的话）。</span><br><span class="line"> *</span><br><span class="line"> * If flags is 0, the function does nothing and returns.</span><br><span class="line"> * 如果 flags 为 0 ，那么函数不作动作，直接返回。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_ALL_EVENTS set, all the kind of events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_ALL_EVENTS ，所有类型的事件都会被处理。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_FILE_EVENTS set, file events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_FILE_EVENTS ，那么处理文件事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_TIME_EVENTS set, time events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_TIME_EVENTS ，那么处理时间事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_DONT_WAIT set the function returns ASAP until all</span><br><span class="line"> * the events that&apos;s possible to process without to wait are processed.</span><br><span class="line"> * 如果 flags 包含 AE_DONT_WAIT ，</span><br><span class="line"> * 那么函数在处理完所有不许阻塞的事件之后，即刻返回。</span><br><span class="line"> *</span><br><span class="line"> * The function returns the number of events processed. </span><br><span class="line"> * 函数的返回值为已处理事件的数量</span><br><span class="line"> */</span><br><span class="line">int aeProcessEvents(aeEventLoop *eventLoop, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    int processed = 0, numevents;</span><br><span class="line"></span><br><span class="line">    /* Nothing to do? return ASAP */</span><br><span class="line">    if (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) return 0;</span><br><span class="line"></span><br><span class="line">    /* Note that we want call select() even if there are no</span><br><span class="line">     * file events to process as long as we want to process time</span><br><span class="line">     * events, in order to sleep until the next time event is ready</span><br><span class="line">     * to fire.</span><br><span class="line">     */</span><br><span class="line">    if (eventLoop-&gt;maxfd != -1 ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        int j;</span><br><span class="line">        aeTimeEvent *shortest = NULL;</span><br><span class="line">        struct timeval tv, *tvp;</span><br><span class="line"></span><br><span class="line">        // 获取最近的时间事件</span><br><span class="line">        if (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            shortest = aeSearchNearestTimer(eventLoop);</span><br><span class="line">        if (shortest) &#123;</span><br><span class="line">            // 如果时间事件存在的话</span><br><span class="line">            // 那么根据最近可执行时间事件和现在时间的时间差来决定文件事件的阻塞时间</span><br><span class="line">            long now_sec, now_ms;</span><br><span class="line"></span><br><span class="line">            /* Calculate the time missing for the nearest</span><br><span class="line">             * timer to fire. */</span><br><span class="line">            // 计算距今最近的时间事件还要多久才能达到</span><br><span class="line">            // 并将该时间距保存在 tv 结构中</span><br><span class="line">            aeGetTime(&amp;now_sec, &amp;now_ms);</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">            tvp-&gt;tv_sec = shortest-&gt;when_sec - now_sec;</span><br><span class="line">            if (shortest-&gt;when_ms &lt; now_ms) &#123;</span><br><span class="line">                tvp-&gt;tv_usec = ((shortest-&gt;when_ms+1000) - now_ms)*1000;</span><br><span class="line">                tvp-&gt;tv_sec --;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                tvp-&gt;tv_usec = (shortest-&gt;when_ms - now_ms)*1000;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            // 时间差小于 0 ，说明事件已经可以执行了，将秒和毫秒设为 0 （不阻塞）</span><br><span class="line">            if (tvp-&gt;tv_sec &lt; 0) tvp-&gt;tv_sec = 0;</span><br><span class="line">            if (tvp-&gt;tv_usec &lt; 0) tvp-&gt;tv_usec = 0;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            </span><br><span class="line">            // 执行到这一步，说明没有时间事件</span><br><span class="line">            // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span><br><span class="line"></span><br><span class="line">            /* If we have to check for events but need to return</span><br><span class="line">             * ASAP because of AE_DONT_WAIT we need to set the timeout</span><br><span class="line">             * to zero */</span><br><span class="line">            if (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                // 设置文件事件不阻塞</span><br><span class="line">                tv.tv_sec = tv.tv_usec = 0;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                /* Otherwise we can block */</span><br><span class="line">                // 文件事件可以阻塞直到有事件到达为止</span><br><span class="line">                tvp = NULL; /* wait forever */</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 处理文件事件，阻塞时间由 tvp 决定</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line">        for (j = 0; j &lt; numevents; j++) &#123;</span><br><span class="line">            // 从已就绪数组中获取事件</span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line"></span><br><span class="line">            int mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            int fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            int rfired = 0;</span><br><span class="line"></span><br><span class="line">           /* note the fe-&gt;mask &amp; mask &amp; ... code: maybe an already processed</span><br><span class="line">             * event removed an element that fired and we still didn&apos;t</span><br><span class="line">             * processed, so we check if the event is still valid. */</span><br><span class="line">            // 读事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                // rfired 确保读/写事件只能执行其中一个</span><br><span class="line">                rfired = 1;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line">            // 写事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                if (!rfired || fe-&gt;wfileProc != fe-&gt;rfileProc)</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Check time events */</span><br><span class="line">    // 执行时间事件</span><br><span class="line">    if (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line"></span><br><span class="line">    return processed; /* return the number of processed file/time events */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
           
         
@@ -1391,183 +1153,6 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e913f4bd.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e913f4bd.html" itemprop="url">JVM 与动态内存管理</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T15:26:49+08:00">
-                2019-09-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  21.2k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  77 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>在 Java 体系中，提到并发就不得不提到 JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/e913f4bd.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b27f4a82.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -1747,7 +1332,7 @@ GC 一旦发现了只具有弱引用的对象，不管当前内存空间足够�
 <li>方法区中常量引用的对象。</li>
 <li>本地方法栈中 JNI(Native 方法)引用的对象。</li>
 </ol>
-<p><img src="http://47.88.24.11/imgs/JVM/%E5%8F%AF%E8%BE%BE%E6%80%A7%E5%88%86%E6%9E%90%E7%AE%97%E6%B3%95.png" alt="可达性分析算法" title="可达性分析算法"><br>
+<p><img src="http://tallate.top/imgs/JVM/%E5%8F%AF%E8%BE%BE%E6%80%A7%E5%88%86%E6%9E%90%E7%AE%97%E6%B3%95.png" alt="可达性分析算法" title="可达性分析算法"><br>
 如上图所示，Obj8、Obj9、Obj10 都没有到 GC Root 的引用链，因此它们会被标记为垃圾，即便 Obj9 和 Obj10 之间有引用关系。</p>
 <h4 id="引用与垃圾检测算法"><a class="header-anchor" href="#引用与垃圾检测算法">¶</a>引用与垃圾检测算法</h4>
 <p>对于可达性分析算法而言，未到达的对象并非是“非死不可”的，若要宣判一个对象死亡，至少需要经历两次标记阶段。</p>
@@ -1765,7 +1350,7 @@ GC 一旦发现了只具有弱引用的对象，不管当前内存空间足够�
 <li>产生大量内存碎片，当程序在以后的运行过程中需要分配较大对象时无法找到足够的连续内存而不得不提前触发另一次垃圾收集动作。</li>
 </ul>
 <p>首先标记出所有需要回收的对象，使用可达性分析算法判断一个对象是否为可回收，在标记完成后统一回收所有被标记的对象。下图是算法具体的一次执行过程后的结果对比。<br>
-<img src="http://47.88.24.11/imgs/JVM/%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%AE%97%E6%B3%95.png" alt="标记清除算法" title="标记清除算法"></p>
+<img src="http://tallate.top/imgs/JVM/%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%AE%97%E6%B3%95.png" alt="标记清除算法" title="标记清除算法"></p>
 <h4 id="复制算法-copying"><a class="header-anchor" href="#复制算法-copying">¶</a>复制算法（Copying）</h4>
 <p>将可用内存划分为大小相等的两半，对每一块使用<strong>指针碰撞</strong>（从已分配内存向空闲内存空间移动对象大小的空间）的方法为对象分配空间，如果这一块内存用完，就将还存活的对象复制到另一半块上，将原来的这一半一次清理掉。<br>
 HotSpot 中使用的是 Eden-Survivor 方法，大体上每次使用一个 Eden 和一个 Survivor 来分配对象空间，当回收时，将这两块中还存活的对象一次性复制到另一块 Survivor 中，Eden 和 Survivor 的比例为<code>8:1</code>。如果 Survivor 的空间不够了，就会使用老年代进行<strong>分配担保（Handle Promotion）</strong>。</p>
@@ -1788,12 +1373,12 @@ HotSpot 中使用的是 Eden-Survivor 方法，大体上每次使用一个 Eden 
 <li>对象存活率较高的时候就要执行较多的复制操作，效率变低；</li>
 <li>如果不使用50%的对分策略，老年代需要考虑空间担保策略，复杂度变高。</li>
 </ul>
-<p><img src="http://47.88.24.11/imgs/JVM/%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95.png" alt="复制算法" title="复制算法"><br>
+<p><img src="http://tallate.top/imgs/JVM/%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95.png" alt="复制算法" title="复制算法"><br>
 将内存分为两等块，每次使用其中一块。当这一块内存用完后，就将还存活的对象复制到另外一个块上面，然后再把已经使用过的内存空间一次清理掉。图是算法具体的一次执行过程后的结果对比。</p>
 <h4 id="标记-整理算法-mark-compact"><a class="header-anchor" href="#标记-整理算法-mark-compact">¶</a>标记-整理算法（Mark-Compact）</h4>
 <p>标记过程和Mark-Sweep一样，但是不直接清除，而是让存活的对象向前移，再清理端边界外的内存。<br>
 标记过程还是和标记-清除算法一样，之后让所有存活的对象都向一端移动，然后直接清理掉边界以外的内存，标记 - 整理算法示意图如下<br>
-<img src="http://47.88.24.11/imgs/JVM/%E6%A0%87%E8%AE%B0%E6%95%B4%E7%90%86%E7%AE%97%E6%B3%95.png" alt="标记整理算法" title="标记整理算法"></p>
+<img src="http://tallate.top/imgs/JVM/%E6%A0%87%E8%AE%B0%E6%95%B4%E7%90%86%E7%AE%97%E6%B3%95.png" alt="标记整理算法" title="标记整理算法"></p>
 <p>标记-整理算法往往与标记-清除同时使用，优先执行标记-清除，当内存空间碎片过多时，才运行标记-整理压缩内存空间。</p>
 <h4 id="分代收集算法-generational-collection"><a class="header-anchor" href="#分代收集算法-generational-collection">¶</a>分代收集算法（Generational Collection）</h4>
 <p>将 Java 堆分为新生代和老生代，根据各个年代的特点采取最适当的收集算法。在新生代中死得快，就选用复制算法（要复制的少），老生代中对象存活率高，就使用标记整理或标记清除算法。</p>
@@ -1971,7 +1556,7 @@ NIO 类可以直接通过 Native 函数分配堆外内存，然后通过一个�
 这个配置指定年轻代为 Serial，同时会指定老年代采用 Serial Old。</li>
 </ul>
 <h3 id="实现原理"><a class="header-anchor" href="#实现原理">¶</a>实现原理</h3>
-<p><img src="http://47.88.24.11/imgs/JVM/Serial%EF%BC%88SerialOld%EF%BC%89%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="Serial（SerialOld）收集器工作过程" title="Serial（SerialOld）收集器工作过程"></p>
+<p><img src="http://tallate.top/imgs/JVM/Serial%EF%BC%88SerialOld%EF%BC%89%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="Serial（SerialOld）收集器工作过程" title="Serial（SerialOld）收集器工作过程"></p>
 <ul>
 <li>单线程阻塞队列。</li>
 <li>年轻代采用复制算法，老年代采用标记整理算法，作用于老年代时称作 Serial Old 收集器。</li>
@@ -1999,7 +1584,7 @@ NIO 类可以直接通过 Native 函数分配堆外内存，然后通过一个�
 ParNew 默认开启的收集线程数与 CPU 的数量相同，在 CPU 非常多的情况下可使用 -XX:ParallerGCThreads 参数设置。</li>
 </ul>
 <h3 id="实现原理-v2"><a class="header-anchor" href="#实现原理-v2">¶</a>实现原理</h3>
-<p><img src="http://47.88.24.11/imgs/JVM/ParNew%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="ParNew收集器工作过程" title="ParNew收集器工作过程"><br>
+<p><img src="http://tallate.top/imgs/JVM/ParNew%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="ParNew收集器工作过程" title="ParNew收集器工作过程"><br>
 ParNew 收集器就是 Serial 收集器的多线程版本（即并发模式），除了使用多线程进行垃圾收集外，其余行为包括 Serial 收集器可用的所有控制参数、收集算法（复制算法）、Stop The World、对象分配规则、回收策略等与 Serial 收集器完全相同，两者共用了相当多的代码。</p>
 <h3 id="优点-v2"><a class="header-anchor" href="#优点-v2">¶</a>优点</h3>
 <ul>
@@ -2026,7 +1611,7 @@ ParNew 收集器就是 Serial 收集器的多线程版本（即并发模式）�
 GC 占用总时间的最大比率。</li>
 </ul>
 <h3 id="实现原理-v3"><a class="header-anchor" href="#实现原理-v3">¶</a>实现原理</h3>
-<p><img src="http://47.88.24.11/imgs/JVM/ParallelScavenge%EF%BC%88ParallelOld%EF%BC%89%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="ParallelScavenge（ParallelOld）收集器工作过程" title="ParallelScavenge（ParallelOld）收集器工作过程"></p>
+<p><img src="http://tallate.top/imgs/JVM/ParallelScavenge%EF%BC%88ParallelOld%EF%BC%89%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="ParallelScavenge（ParallelOld）收集器工作过程" title="ParallelScavenge（ParallelOld）收集器工作过程"></p>
 <ul>
 <li>并行</li>
 <li>可控的吞吐量</li>
@@ -2059,28 +1644,28 @@ Full GC 后，进行一次碎片整理，整理过程是独占的，会引起停
 </ul>
 <h3 id="实现原理-v4"><a class="header-anchor" href="#实现原理-v4">¶</a>实现原理</h3>
 <p>CMS 收集器运行过程中各步骤所涉及的并发和所需的停顿时间如下图所示：<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="CMS收集器工作过程" title="CMS收集器工作过程"><br>
+<img src="http://tallate.top/imgs/JVM/CMS%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="CMS收集器工作过程" title="CMS收集器工作过程"><br>
 CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时间为目标的收集器。<br>
 顾名思义，CMS 采用标记清除算法，它的工作流程分为以下 6 个步骤：</p>
 <ol>
 <li>初始标记（CMS initial mark）：仅仅只是标记一下 GC Roots 能直接关联到的对象，速度很快，需要<strong>Stop The World（stw）</strong>。<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS-InitialMark.png" alt="CMS-InitialMark" title="CMS-InitialMark"></li>
+<img src="http://tallate.top/imgs/JVM/CMS-InitialMark.png" alt="CMS-InitialMark" title="CMS-InitialMark"></li>
 <li>并发标记（CMS concurrent mark）：进行 GC Roots Tracing 的过程，在整个过程中耗时最长。<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS-ConcurrentMark.png" alt="CMS-ConcurrentMark" title="CMS-ConcurrentMark"><br>
+<img src="http://tallate.top/imgs/JVM/CMS-ConcurrentMark.png" alt="CMS-ConcurrentMark" title="CMS-ConcurrentMark"><br>
 根据上个阶段找到的 GC Roots 遍历查找，并不是上一阶段存活的对象都会被标记，因为在标记期间用户的程序可能会改变一些引用，如上图所示。</li>
 <li>并发预清理（CMS Concurrent Preclean）：并发过程，标记并发执行过程中的脏区域（Card）。<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS-ConcurrentPreclean.png" alt="CMS-ConcurrentPreclean" title="CMS-ConcurrentPreclean"><br>
+<img src="http://tallate.top/imgs/JVM/CMS-ConcurrentPreclean.png" alt="CMS-ConcurrentPreclean" title="CMS-ConcurrentPreclean"><br>
 如上图所示，在并发运行过程中（包括上一阶段），一些对象的引用可能会发生变化，预清理过程将包含这个对象的区域（Card）标记为 Dirty，这也就是<strong>Card Marking</strong>。<br>
 然后，由这些脏可达的对象也会被重新标记：<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS-ConcurrentPreclean-Mark.png" alt="CMS-ConcurrentPreclean-Mark" title="CMS-ConcurrentPreclean-Mark"></li>
+<img src="http://tallate.top/imgs/JVM/CMS-ConcurrentPreclean-Mark.png" alt="CMS-ConcurrentPreclean-Mark" title="CMS-ConcurrentPreclean-Mark"></li>
 <li>可中断预清理（CMS Concurrent Abortable Preclean）：这也是一个并发阶段，这个阶段的主要目的是尽量承担最终标记阶段的工作。<br>
 因为重新标记阶段阶段需要全堆扫描，此时如果先进行了MinorGC则可以大大较少需要扫描的对象数量，因此Abortable Preclean阶段的目的就是等一段时间，看看能不能在重新标记前执行一次MinorGC。<br>
 为什么重新标记阶段需要做全堆扫描？因为判断对象是否可达需要使用根搜索算法，而只有MinorGC时才会使用根搜索算法，否则CMS也不知道之前的并发阶段是否产生了新的不可达对象。</li>
 <li>重新标记（CMS remark）：为了修正并发标记期间因用户程序继续运作而导致标记产生变动的那一部分对象的标记记录，这个阶段的停顿时间一般会比初始标记阶段稍长一些，但远比并发标记的时间短。此阶段也需要<strong>Stop The World</strong>。<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS-Remark.png" alt="CMS-Remark" title="CMS-Remark"><br>
+<img src="http://tallate.top/imgs/JVM/CMS-Remark.png" alt="CMS-Remark" title="CMS-Remark"><br>
 通常 Remark 阶段会在年轻代尽可能干净的时候运行，目的是为了减少连续 STW 发生的可能性。</li>
 <li>并发清除（CMS concurrent sweep）：清除不再使用的对象。<br>
-<img src="http://47.88.24.11/imgs/JVM/CMS-ConcurrentSweep.png" alt="CMS-ConcurrentSweep" title="CMS-ConcurrentSweep"></li>
+<img src="http://tallate.top/imgs/JVM/CMS-ConcurrentSweep.png" alt="CMS-ConcurrentSweep" title="CMS-ConcurrentSweep"></li>
 </ol>
 <p>下面以一个真实环境中的FullGC日志为例：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">2020-08-20T04:37:36.159+0800: 638682.623: [GC (CMS Initial Mark) [1 CMS-initial-mark: 1930043K(2097152K)] 2000027K(4793536K), 0.2664430 secs] [Times: user=0.11 sys=0.02, real=0.26 secs]</span><br><span class="line">2020-08-20T04:37:36.426+0800: 638682.890: [CMS-concurrent-mark-start]</span><br><span class="line">2020-08-20T04:37:42.956+0800: 638689.420: [CMS-concurrent-mark: 6.513/6.529 secs] [Times: user=2.11 sys=0.40, real=6.53 secs]</span><br><span class="line">2020-08-20T04:37:42.956+0800: 638689.420: [CMS-concurrent-preclean-start]</span><br><span class="line">2020-08-20T04:37:42.982+0800: 638689.445: [CMS-concurrent-preclean: 0.024/0.026 secs] [Times: user=0.03 sys=0.01, real=0.03 secs]</span><br><span class="line">2020-08-20T04:37:42.982+0800: 638689.446: [CMS-concurrent-abortable-preclean-start]</span><br><span class="line"> CMS: abort preclean due to time 2020-08-20T04:37:48.340+0800: 638694.804: [CMS-concurrent-abortable-preclean: 5.356/5.358 secs] [Times: user=6.26 sys=0.24, real=5.36 secs]</span><br><span class="line">2020-08-20T04:37:48.344+0800: 638694.807: [GC (CMS Final Remark) [YG occupancy: 571811 K (2696384 K)]2020-08-20T04:37:48.344+0800: 638694.808: [Rescan (parallel) , 0.0743374 secs]2020-08-20T04:37:48.418+0800: 638694.882: [weak refs processing, 0.0004330 secs]2020-08-20T04:37:48.419+0800: 638694.882: [class unloading, 3.9423498 secs]2020-08-20T04:37:52.361+0800: 638698.825: [scrub symbol table, 0.5589452 secs]2020-08-20T04:37:52.920+0800: 638699.384: [scrub string table, 0.0015701 secs][1 CMS-remark: 1930043K(2097152K)] 2501855K(4793536K), 4.5824373 secs] [Times: user=0.47 sys=0.04, real=4.58 secs]</span><br><span class="line">2020-08-20T04:37:52.927+0800: 638699.391: [CMS-concurrent-sweep-start]</span><br><span class="line">2020-08-20T04:37:56.807+0800: 638703.271: [CMS-concurrent-sweep: 3.877/3.880 secs] [Times: user=2.69 sys=0.11, real=3.88 secs]</span><br><span class="line">2020-08-20T04:37:56.808+0800: 638703.271: [CMS-concurrent-reset-start]</span><br><span class="line">2020-08-20T04:37:56.815+0800: 638703.279: [CMS-concurrent-reset: 0.007/0.007 secs] [Times: user=0.01 sys=0.00, real=0.00 secs]</span><br></pre></td></tr></table></figure>
@@ -2115,7 +1700,7 @@ CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时�
 <li>第 11~12 行、重置，重新初始化 CMS 内部数据结构，以备下一轮 GC 使用。</li>
 </ul>
 <p>普通串行标记清除算法与并行标记清除算法（CMS）的比较如下图所示：<br>
-<img src="http://47.88.24.11/imgs/JVM/%E4%B8%B2%E8%A1%8C%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%AE%97%E6%B3%95%E4%B8%8E%E5%B9%B6%E8%A1%8C%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%AE%97%E6%B3%95%E4%B9%8B%E9%97%B4%E7%9A%84%E6%AF%94%E8%BE%83.png" alt="串行标记清除算法与并行标记清除算法之间的比较" title="串行标记清除算法与并行标记清除算法之间的比较"><br>
+<img src="http://tallate.top/imgs/JVM/%E4%B8%B2%E8%A1%8C%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%AE%97%E6%B3%95%E4%B8%8E%E5%B9%B6%E8%A1%8C%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%AE%97%E6%B3%95%E4%B9%8B%E9%97%B4%E7%9A%84%E6%AF%94%E8%BE%83.png" alt="串行标记清除算法与并行标记清除算法之间的比较" title="串行标记清除算法与并行标记清除算法之间的比较"><br>
 如上图可知，并发标记清除算法与串行标记清除算法之间的区别主要在于，前者将标记过程分成了 3 个部分，其中占用时间最长的<code>Concurrent Mark</code>不需要<code>stw</code>。 <br>
 由于整个过程中耗时最长的并发标记和并发清除过程收集器线程都可以与用户线程一起工作，所以从总体上来说，CMS 收集器的内存回收过程是与用户线程一起并发执行的。</p>
 <h3 id="优点-v4"><a class="header-anchor" href="#优点-v4">¶</a>优点</h3>
@@ -2163,7 +1748,7 @@ CMS 是一款基于“标记-清除”算法实现的收集器，这意味着收
 </ul>
 <h3 id="实现原理-内存结构与gc算法"><a class="header-anchor" href="#实现原理-内存结构与gc算法">¶</a>实现原理 - 内存结构与GC算法</h3>
 <p>在 G1 算法中，采用了另外一种完全不同的方式组织堆内存，堆内存被划分为多个大小相等的内存块，称为<strong>Region</strong>，每个 Region 是逻辑连续的一段内存，结构如下：<br>
-<img src="http://47.88.24.11/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%86%85%E5%AD%98%E7%BB%93%E6%9E%84.png" alt="G1收集器内存结构" title="G1收集器内存结构"><br>
+<img src="http://tallate.top/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%86%85%E5%AD%98%E7%BB%93%E6%9E%84.png" alt="G1收集器内存结构" title="G1收集器内存结构"><br>
 由上图可见：</p>
 <ul>
 <li>新生代与老年代并不是连续的，而是一些 Region 的集合；</li>
@@ -2176,7 +1761,7 @@ G1 可以独立管理整个堆空间，但是能够采用不同方式来处理�
 <p>发生在年轻代的 GC 算法，一般对象（除了巨型对象）都是在 <strong>Eden Region</strong> 中分配内存，当所有 Eden Region 被耗尽无法申请内存时，就会触发一次 Young GC，这种触发机制和之前的 Young GC 差不多，执行完一次 Young GC，活跃对象会被拷贝到 <strong>Survivor Region</strong> 或者晋升到 <strong>Old Region</strong> 中，空闲的 Region 会被放入<strong>空闲列表</strong>中，等待下次被使用。</p>
 <h4 id="mixed-gc"><a class="header-anchor" href="#mixed-gc">¶</a>Mixed GC</h4>
 <p>当越来越多的对象晋升到老年代 Old Region 时，为了避免堆内存被耗尽，虚拟机会触发一个混合的垃圾收集器，即 Mixed GC，该算法并不是一个 old gc，除了回收整个 Young Region，还会回收一部分的 Old Region，这里需要注意：是一部分老年代，而不是全部老年代，可以选择哪些 Old Region 进行收集，从而可以对垃圾回收的耗时时间进行控制。<br>
-<img src="http://47.88.24.11/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="G1收集器工作过程" title="G1收集器工作过程"><br>
+<img src="http://tallate.top/imgs/JVM/G1%E6%94%B6%E9%9B%86%E5%99%A8%E5%B7%A5%E4%BD%9C%E8%BF%87%E7%A8%8B.png" alt="G1收集器工作过程" title="G1收集器工作过程"><br>
 Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
 <ul>
 <li>initial mark: 初始标记过程，整个过程需要 STW，但耗时比较短，标记了从 GC Root 可达的对象，它们能被 GC Root 直接关联到；</li>
@@ -2194,7 +1779,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
 <h3 id="缺点-v5"><a class="header-anchor" href="#缺点-v5">¶</a>缺点</h3>
 <h3 id="应用场景-v3"><a class="header-anchor" href="#应用场景-v3">¶</a>应用场景</h3>
 <h2 id="各垃圾收集器之间的比较"><a class="header-anchor" href="#各垃圾收集器之间的比较">¶</a>各垃圾收集器之间的比较</h2>
-<p><img src="http://47.88.24.11/imgs/JVM/%E5%90%84%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB.png" alt="各垃圾收集器之间的关系" title="各垃圾收集器之间的关系"></p>
+<p><img src="http://tallate.top/imgs/JVM/%E5%90%84%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB.png" alt="各垃圾收集器之间的关系" title="各垃圾收集器之间的关系"></p>
 <ol>
 <li>CMS 与 Serial Old 是可以相互配合的</li>
 <li>G1 既可以用于年轻代又可以用于老年代</li>
@@ -2374,7 +1959,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/92a28d62.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e913f4bd.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -2393,7 +1978,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/92a28d62.html" itemprop="url">SpringCloud 配置总结</a></h1>
+                <a class="post-title-link" href="/e913f4bd.html" itemprop="url">JVM 与动态内存管理</a></h1>
         
 
         <div class="post-meta">
@@ -2405,7 +1990,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T13:09:11+08:00">
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T15:26:49+08:00">
                 2019-09-21
               </time>
             
@@ -2428,8 +2013,8 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
                   </a>
                 </span>
 
@@ -2459,7 +2044,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.1k 字
+                  21.2k 字
                 </span>
               
 
@@ -2475,7 +2060,7 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  9 分钟
+                  77 分钟
                 </span>
               
             </div>
@@ -2497,11 +2082,10 @@ Mixed GC 的执行过程有点类似 CMS，主要分为以下几个步骤：</p>
 
       
         
-          <p>Spring Cloud 是一系列框架的有序集合，它利用 Spring Boot 的开发便利性简化了分布式系统的开发，比如服务发现、服务网关、服务路由、链路追踪等。Spring Cloud 并不重复造轮子，而是将市面上开发得比较好的模块集成进去，进行封装，从而减少了各模块的开发成本。换句话说：Spring Cloud 提供了构建分布式系统所需的“全家桶”。<br>
-Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服务治理，接入 Dubbo 的服务能够实现自动上下线、能通过 Dubbo 协议（其实 Dubbo 还支持其他很多协议）互联，但是 Dubbo 并不提供网关、配置中心、链路追踪等一系列微服务架构常用的技术，需要单独引入。</p>
+          <p>在 Java 体系中，提到并发就不得不提到 JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
           <!--noindex-->
           <div class="post-button text-center">
-            <a class="btn" href="/92a28d62.html#more" rel="contents">
+            <a class="btn" href="/e913f4bd.html#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -2767,6 +2351,184 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/92a28d62.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/92a28d62.html" itemprop="url">SpringCloud 配置总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T13:09:11+08:00">
+                2019-09-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2.1k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  9 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>Spring Cloud 是一系列框架的有序集合，它利用 Spring Boot 的开发便利性简化了分布式系统的开发，比如服务发现、服务网关、服务路由、链路追踪等。Spring Cloud 并不重复造轮子，而是将市面上开发得比较好的模块集成进去，进行封装，从而减少了各模块的开发成本。换句话说：Spring Cloud 提供了构建分布式系统所需的“全家桶”。<br>
+Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服务治理，接入 Dubbo 的服务能够实现自动上下线、能通过 Dubbo 协议（其实 Dubbo 还支持其他很多协议）互联，但是 Dubbo 并不提供网关、配置中心、链路追踪等一系列微服务架构常用的技术，需要单独引入。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/92a28d62.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/485e1bd7.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2898,6 +2660,387 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
             </a>
           </div>
           <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fca77f63.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/fca77f63.html" itemprop="url">Linux 与 IO</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T11:34:43+08:00">
+                2019-09-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  19 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>5 种 IO 模型</h1>
+<h2 id="blocking"><a class="header-anchor" href="#blocking">¶</a>Blocking</h2>
+<p><img src="http://tallate.top/imgs/Linux/Linux-BIO.png" alt="Linux-BIO" title="Linux-BIO"></p>
+<ol>
+<li>用户程序调用系统调用 read()，应用程序阻塞；</li>
+<li>当内核把数据准备好后，将数据从内核拷贝到用户内存；</li>
+<li>内核返回，用户线程解除 block 状态。</li>
+</ol>
+<h2 id="non-blocking"><a class="header-anchor" href="#non-blocking">¶</a>Non-Blocking</h2>
+<p><img src="http://tallate.top/imgs/Linux/Linux-NIO.png" alt="Linux-NIO" title="Linux-NIO"></p>
+<ol>
+<li>用户进程轮询调用 recvfrom，直到内核将数据准备好；</li>
+<li>轮询期间用户可以去做别的事；</li>
+<li>当内核中的数据准备好了，再次接收到 recvfrom 调用时会将数据拷贝到用户内存并返回。</li>
+</ol>
+<h2 id="io-multiplexing-多路复用"><a class="header-anchor" href="#io-multiplexing-多路复用">¶</a>IO Multiplexing（多路复用）</h2>
+<p><img src="http://tallate.top/imgs/Linux/Linux-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.png" alt="Linux-IO多路复用" title="Linux-IO多路复用"><br>
+又称为事件驱动 IO。</p>
+<ol>
+<li>内核会同时监听多个 select 负责的 socket，当其中任何一个 socket 中的数据准备好了，select 就会返回；</li>
+<li>当数据准备好了，用户进程再调用 read、内核会将数据从内核拷贝到用户进程。</li>
+</ol>
+<p>优势：</p>
+<ol>
+<li>能同时监听多个 socket；</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>如果 socket 较少，因为有两次系统调用，性能甚至不如 BIO；</li>
+</ol>
+<h3 id="select"><a class="header-anchor" href="#select">¶</a>select</h3>
+<p>原理：如上所述<br>
+缺点：</p>
+<ol>
+<li>select 最大的缺陷是单个进程打开的 fd 数量有限（因为是用数组保存的）；</li>
+<li>对多个 socket 的扫描是线性轮询扫描的，效率较低，当 socket 较多时，select 会浪费很多 CPU 时间，且 socket 越多，这个现象会越明显；</li>
+<li>需要一个大数据结构来存放打开的 fd，这样会使得用户空间和内核空间在传递该结构时复制开销大。</li>
+</ol>
+<h3 id="poll"><a class="header-anchor" href="#poll">¶</a>poll</h3>
+<p>原理：本质上与 select 没有区别，只是存储 fd 的结构是链表。<br>
+优点（相对 select）：</p>
+<ol>
+<li>没有最大连接数的限制</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>大量 fd 组成的链表被整体复制于用户态和内核地址空间之间，很多时候这样的复制没有意义；</li>
+</ol>
+<h3 id="epoll"><a class="header-anchor" href="#epoll">¶</a>epoll</h3>
+<p>原理：</p>
+<ol>
+<li>更灵活，使用一个文件描述符管理多个描述符，将用户关系的文件描述符的事件存放到内核的一个事件表中，这样在用户空间和内核空间的 copy 只需一次；</li>
+<li>通过回调通知进程，而不是轮询。</li>
+</ol>
+<p>优点：</p>
+<ol>
+<li>没有描述符限制，epoll 会把所有创建的描述符放到一个事件表（文件）中由一个描述符统一管理；</li>
+<li>效率更高、IO 的效率不会随着监视 fd 的数量的增长而下降，fd 变为活跃时才会调用 callback 函数通知用户进程，而不是通过轮询的方式；</li>
+<li>使用 mmap()文件映射内存加速与内核空间的消息传递，减少了复制的开销。</li>
+</ol>
+<h4 id="进程调度原理"><a class="header-anchor" href="#进程调度原理">¶</a>进程调度原理</h4>
+<p><img src="http://tallate.top/imgs/Linux/Linux-%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6.png" alt="Linux-操作系统的进程调度" title="Linux-操作系统的进程调度"></p>
+<ol>
+<li>进程刚开始处于运行中状态，这时进程处于<strong>工作队列</strong>内，进程调度程序会分时执行各个运行状态的进程；</li>
+<li>进程调用了<code>recv</code>这种需要阻塞的系统调用，这时，进程从运行状态变为等待状态，会被添加到对应<strong>socket</strong>中的<strong>等待队列</strong>内，这时进程调度程序不会分配时间片给该进程，因此也不会占用任何 CPU 资源；</li>
+<li>socket 接收到数据后，操作系统将该 socket<strong>等待队列</strong>上的进程重新放回到<strong>工作队列</strong>，该进程变成运行状态，继续执行代码。也由于 socket 的接收缓冲区已经有了数据，recv 可以返回接收到的数据。</li>
+</ol>
+<h4 id="操作系统如何知道网络数据对应于哪个-socket"><a class="header-anchor" href="#操作系统如何知道网络数据对应于哪个-socket">¶</a>操作系统如何知道网络数据对应于哪个 socket</h4>
+<p>如上面进程调度原理所述，操作系统接收数据后需要唤醒 socket 上等待队列里的进程，但是操作系统接收数据后怎么知道网络数据属于哪个 socket 呢？<br>
+不妨回忆下我们平时创建 socket 时给出的参数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new Socket(serverHost, serverPort)</span><br></pre></td></tr></table></figure>
+<p>实际上因为每个 socket 都对应着一个端口号，而网络数据包中包含了 ip 和端口的信息，内核可以通过端口号找到对应的 socket。<br>
+而且为了提高处理速度，操作系统会维护端口号到 socket 的索引结构。</p>
+<h4 id="多路复用的基石-select-及其存在的问题"><a class="header-anchor" href="#多路复用的基石-select-及其存在的问题">¶</a>多路复用的基石-select 及其存在的问题</h4>
+<p>前面我们讨论了操作系统如何唤醒进程，如果进程和 socket 是一一对应的，那么我们就实现了 BIO。<br>
+不过 epoll 等模型的特点是一个进程同时监听多个 socket，即一对多的多路复用。<br>
+最普通的 select 模型中，进程将所有监听的 socket 放到一个列表内，只要有一个 socket 监听到数据到，操作系统会唤醒该进程，然后程序需要遍历一次该列表，就可以拿到所有就绪的 socket。<br>
+这种方式的缺点主要是：</p>
+<ul>
+<li>有两次遍历过程：每次 socket 读取到数据后需要遍历该 socket 的<strong>等待队列</strong>；每次进程被唤醒后，都需要遍历一次它监听的 socket 列表。<br>
+这里涉及了两次遍历，而且每次都要将整个 fds 列表传递给内核，有一定的开销。正是因为遍历操作开销大，出于效率的考量，才会规定 select 的最大监视数量，默认只能监视 1024 个 socket。</li>
+</ul>
+<p>poll 与 select 没有本质区别，只不过 poll 使用链表来保存监听的 socket，没有最大监听数量限制。</p>
+<h4 id="为什么使用-epoll"><a class="header-anchor" href="#为什么使用-epoll">¶</a>为什么使用 epoll</h4>
+<ol>
+<li>功能分离<br>
+传统 select 每次调用 select 都需要将运行队列中的进程添加到 socket 的等待队列，唤醒时再移除，然而大多数应用场景中，需要监视的 socket 相对固定，并不需要每次都修改。<br>
+epoll 的改进是只添加一次等待队列，之后每次都只需要阻塞进程，如下图所示：<br>
+<img src="http://tallate.top/imgs/Linux/Linux-epoll%E6%8B%86%E5%88%86%E5%8A%9F%E8%83%BD.jpg" alt="Linux-epoll拆分功能" title="Linux-epoll拆分功能"></li>
+<li>就绪列表<br>
+epoll 中，操作系统唤醒进程后，进程不需要遍历所有监听的 socket，因为收到数据的 socket 会被添加到一个<strong>就绪队列</strong>内，然后唤醒等待队列中的所有进程，这时进程只需要遍历<strong>就绪队列</strong>即可拿到所有接收到数据的 socket。<br>
+<img src="http://tallate.top/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png" alt="Linux-epoll原理" title="Linux-epoll原理"></li>
+</ol>
+<h3 id="kqueue"><a class="header-anchor" href="#kqueue">¶</a>kqueue</h3>
+<p>与 epoll 非常相似，注册一批 socket 描述符到 kqueue 以后，当其中的描述符状态发生变化时，kqueue 将一次性通知应用程序哪些描述符可读、可写或出错了。</p>
+<blockquote>
+<p>可能是因为不同 Linux 发行版之间存在接口兼容性问题，所以在已有 epoll 的情况下又有人开发了 kqueue，kqueue 主要应用在 freebsd 和 macosx 内核的操作系统上。</p>
+</blockquote>
+<h3 id="reactor"><a class="header-anchor" href="#reactor">¶</a>Reactor</h3>
+<p>Reactor 是 Java 中的一种设计模式：</p>
+<ol>
+<li>事件驱动；</li>
+<li>一次性处理一个或多个事件（输入源）；</li>
+<li>通过 Service Handler 同步的将输入事件（Event）采用多路复用分发给相应的 Request Handler（多个）处理。</li>
+</ol>
+<p><img src="http://tallate.top/imgs/Linux/Linux-Reactor%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%A8%A1%E5%9E%8B.png" alt="Linux-Reactor事件分发模型" title="Linux-Reactor事件分发模型"></p>
+<p>Reactor 的实现上有 3 种模式：</p>
+<ol>
+<li>单 Reactor 单线程模型<br>
+<img src="http://tallate.top/imgs/Linux/Linux-%E5%8D%95Reactor%E5%8D%95%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-单Reactor单线程模型" title="Linux-单Reactor单线程模型"></li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line">@Slf4j</span><br><span class="line">public class Reactor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private Selector selector;</span><br><span class="line"></span><br><span class="line">    public Reactor(int port) throws Exception &#123;</span><br><span class="line">        ServerSocketChannel server = ServerSocketChannel.open();</span><br><span class="line">        ServerSocket serverSocket = server.socket();</span><br><span class="line">        serverSocket.bind(new InetSocketAddress(port));</span><br><span class="line">        // 设置为非阻塞模式</span><br><span class="line">        server.configureBlocking(false);</span><br><span class="line">        selector = Selector.open();</span><br><span class="line">        SelectionKey sk = server.register(selector,</span><br><span class="line">                SelectionKey.OP_ACCEPT);</span><br><span class="line">        // attach Acceptor 处理新连接</span><br><span class="line">        sk.attach(new Acceptor(server, selector));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            while (!Thread.interrupted()) &#123;</span><br><span class="line">                selector.select();</span><br><span class="line">                Set selected = selector.selectedKeys();</span><br><span class="line">                Iterator it = selected.iterator();</span><br><span class="line">                while (it.hasNext()) &#123;</span><br><span class="line">                    it.remove();</span><br><span class="line">                    //分发事件处理</span><br><span class="line">                    dispatch((SelectionKey) (it.next()));</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (IOException ex) &#123;</span><br><span class="line">            log.info(&quot;异常&quot;, ex);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void dispatch(SelectionKey k) &#123;</span><br><span class="line">        // 若是连接事件获取是acceptor</span><br><span class="line">        // 若是IO读写事件获取是handler</span><br><span class="line">        Runnable runnable = (Runnable) (k.attachment());</span><br><span class="line">        if (runnable != null) &#123;</span><br><span class="line">            runnable.run();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Slf4j</span><br><span class="line">public class Acceptor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private ServerSocketChannel serverSocket;</span><br><span class="line"></span><br><span class="line">    private Selector selector;</span><br><span class="line"></span><br><span class="line">    private ExecutorService tp = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);</span><br><span class="line"></span><br><span class="line">    public Acceptor(ServerSocketChannel serverSocket,</span><br><span class="line">            Selector selector) &#123;</span><br><span class="line">        this.serverSocket = serverSocket;</span><br><span class="line">        this.selector = selector;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            SocketChannel c = serverSocket.accept();</span><br><span class="line">            if (c != null) &#123;</span><br><span class="line">                // 每个连接一个Handler</span><br><span class="line">                tp.submit(new SimpleHandler(c, selector));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            log.info(&quot;异常&quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Slf4j</span><br><span class="line">public class SimpleHandler implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    public static final int READING = 0, WRITING = 1;</span><br><span class="line"></span><br><span class="line">    int state;</span><br><span class="line">    private SocketChannel socketChannel;</span><br><span class="line">    private SelectionKey sk;</span><br><span class="line"></span><br><span class="line">    public SimpleHandler(SocketChannel socketChannel, Selector selector) throws IOException &#123;</span><br><span class="line">        this.state = READING;</span><br><span class="line">        this.socketChannel = socketChannel;</span><br><span class="line">        sk = socketChannel.register(selector, SelectionKey.OP_READ);</span><br><span class="line">        sk.attach(this);</span><br><span class="line">        socketChannel.configureBlocking(false);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        if (state == READING) &#123;</span><br><span class="line">            read();</span><br><span class="line">        &#125; else if (state == WRITING) &#123;</span><br><span class="line">            write();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        // TODO 处理读</span><br><span class="line">        //下一步处理写事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_WRITE);</span><br><span class="line">        this.state = WRITING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        // TODO 处理写</span><br><span class="line">        //下一步处理读事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">        this.state = READING;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如代码可知，Reactor 线程启动后监听客户端请求、多路分离 socket，将 connect 事件分发给 Acceptor 处理，有 IO 读写事件后交给 Handler 处理，分发过程中并没有创建新线程。<br>
+这种单线程模型不能充分利用多核资源，所以实际使用不多。</p>
+<ol>
+<li>单 Reactor 多线程模型<br>
+<img src="http://tallate.top/imgs/Linux/Linux-%E5%8D%95Reactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-单Reactor多线程模型" title="Linux-单Reactor多线程模型"><br>
+与上面的区别是 Handler 通过多线程来执行读写任务：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">public class MultiThreadHandler implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private static final int READING = 0, WRITING = 1;</span><br><span class="line">    private int state;</span><br><span class="line">    private final SocketChannel socket;</span><br><span class="line">    private final SelectionKey sk;</span><br><span class="line"></span><br><span class="line">    //多线程处理业务逻辑</span><br><span class="line">    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());</span><br><span class="line"></span><br><span class="line">    public MultiThreadHandler(SocketChannel socket, Selector selector) throws Exception &#123;</span><br><span class="line">        this.state = READING;</span><br><span class="line">        this.socket = socket;</span><br><span class="line">        sk = socket.register(selector, SelectionKey.OP_READ);</span><br><span class="line">        sk.attach(this);</span><br><span class="line">        socket.configureBlocking(false);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        if (state == READING) &#123;</span><br><span class="line">            read();</span><br><span class="line">        &#125; else if (state == WRITING) &#123;</span><br><span class="line">            write();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(this::process);</span><br><span class="line"></span><br><span class="line">        //下一步处理写事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_WRITE);</span><br><span class="line">        this.state = WRITING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(this::process);</span><br><span class="line"></span><br><span class="line">        //下一步处理读事件</span><br><span class="line">        sk.interestOps(SelectionKey.OP_READ);</span><br><span class="line">        this.state = READING;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * task 业务处理</span><br><span class="line">     */</span><br><span class="line">    public void process() &#123;</span><br><span class="line">        //do IO ,task,queue something</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>多 Reactor 多线程模型<br>
+<img src="http://tallate.top/imgs/Linux/Linux-%E5%A4%9AReactor%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Linux-多Reactor多线程模型" title="Linux-多Reactor多线程模型"><br>
+相对上面两种来说，第三种将 Reactor 分成了两部分：
+<ul>
+<li>mainReactor 负责监听 server socket，用来处理新连接的建立，将建立的 socketChannel 指定注册给 subReactor。</li>
+<li>subReactor 维护自己的 selector, 基于 mainReactor 注册的 socketChannel 多路分离 IO 读写事件，读写网络数据，对业务处理的功能，将其扔给 worker 线程池来完成。</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * 多work 连接事件Acceptor,处理连接事件</span><br><span class="line"> */</span><br><span class="line">public class MultiWorkThreadAcceptor implements Runnable &#123; </span><br><span class="line">    </span><br><span class="line">    // cpu线程数相同多work线程</span><br><span class="line">    private int workCount =Runtime.getRuntime().availableProcessors();</span><br><span class="line">    private SubReactor[] workThreadHandlers = new SubReactor[workCount];</span><br><span class="line">    private volatile int nextHandler = 0;</span><br><span class="line">    </span><br><span class="line">    public MultiWorkThreadAcceptor() &#123;</span><br><span class="line">        this.init();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    public void init() &#123;</span><br><span class="line">        nextHandler = 0;</span><br><span class="line">        for (int i = 0; i &lt; workThreadHandlers.length; i++) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                workThreadHandlers[i] = new SubReactor();</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            SocketChannel c = serverSocket.accept();</span><br><span class="line">            if (c != null) &#123;// 注册读写</span><br><span class="line">                synchronized (c) &#123;</span><br><span class="line">                    // 顺序获取SubReactor，然后注册channel</span><br><span class="line">                    SubReactor work = workThreadHandlers[nextHandler];</span><br><span class="line">                    work.registerChannel(c);</span><br><span class="line">                    nextHandler++;</span><br><span class="line">                    if (nextHandler &gt;= workThreadHandlers.length) &#123;</span><br><span class="line">                        nextHandler = 0;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * 多work线程处理读写业务逻辑</span><br><span class="line"> */</span><br><span class="line">@Slf4j</span><br><span class="line">public class SubReactor implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private final Selector mySelector;</span><br><span class="line"></span><br><span class="line">    //多线程处理业务逻辑</span><br><span class="line">    private int workCount = Runtime.getRuntime().availableProcessors();</span><br><span class="line">    private ExecutorService executorService = Executors.newFixedThreadPool(workCount);</span><br><span class="line"></span><br><span class="line">    public SubReactor() throws Exception &#123;</span><br><span class="line">        // 每个SubReactor 一个selector </span><br><span class="line">        this.mySelector = SelectorProvider.provider().openSelector();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 注册chanel</span><br><span class="line">     */</span><br><span class="line">    public void registerChannel(SocketChannel sc) throws Exception &#123;</span><br><span class="line">        sc.register(mySelector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        while (true) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                //每个SubReactor 自己做事件分派处理读写事件</span><br><span class="line">                selector.select();</span><br><span class="line">                Set&lt;SelectionKey&gt; keys = selector.selectedKeys();</span><br><span class="line">                Iterator&lt;SelectionKey&gt; iterator = keys.iterator();</span><br><span class="line">                while (iterator.hasNext()) &#123;</span><br><span class="line">                    SelectionKey key = iterator.next();</span><br><span class="line">                    iterator.remove();</span><br><span class="line">                    if (key.isReadable()) &#123;</span><br><span class="line">                        read();</span><br><span class="line">                    &#125; else if (key.isWritable()) &#123;</span><br><span class="line">                        write();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">                log.warn(&quot;出错&quot;, e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void read() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(() -&gt; process());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void write() &#123;</span><br><span class="line">        //任务异步处理</span><br><span class="line">        executorService.submit(() -&gt; process());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * task 业务处理</span><br><span class="line">     */</span><br><span class="line">    public void process() &#123;</span><br><span class="line">        //do IO ,task,queue something</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="signal-driven-io-信号驱动的-io"><a class="header-anchor" href="#signal-driven-io-信号驱动的-io">¶</a>Signal Driven IO（信号驱动的 IO）</h2>
+<p>用户注册一个信号处理函数，一旦数据准备好，由内核生成一个 SIGIO 信号，通知数据已经准备好的事件，之后用户进程可以调用 recvfrom 把数据从内核拷贝出来并返回结果。</p>
+<h2 id="aio"><a class="header-anchor" href="#aio">¶</a>AIO</h2>
+<p>与信号驱动 IO 的主要区别是：在信号驱动的 I/O 中，内核告诉我们何时可以启动 I/O 操作，但是异步 I/O 时，内核告诉我们何时 I/O 操作完成。</p>
+<h3 id="proactor"><a class="header-anchor" href="#proactor">¶</a>Proactor</h3>
+<h2 id="5-种-io-模型的比较"><a class="header-anchor" href="#5-种-io-模型的比较">¶</a>5 种 IO 模型的比较</h2>
+<p><img src="http://tallate.top/imgs/Linux/Linux-5%E7%A7%8DIO%E6%A8%A1%E5%9E%8B%E7%9A%84%E6%AF%94%E8%BE%83.png" alt="Linux-5种IO模型的比较" title="Linux-5种IO模型的比较"></p>
+<h1>优化</h1>
+<h2 id="pagecache"><a class="header-anchor" href="#pagecache">¶</a>pageCache</h2>
+<p><img src="http://tallate.top/imgs/Linux/Linux-pageCache%E4%B8%8Emmap.png" alt="Linux-pageCache与mmap" title="Linux-pageCache与mmap"></p>
+<ul>
+<li>Linux里所有处理文件的IO请求均需经过pageCache，对于操作系统来说，磁盘文件都是由一系列的数据块顺序组成。<br>
+比如要读的磁盘位置若未加载到pageCache（pageCache中的每一个数据块都设置了文件以及偏移量地址信息），则发起一次<strong>缺页中断</strong>，由操作系统加载该页到pageCache中的一个空闲块，并注册到<strong>页表</strong>，然后再copy到用户缓冲区中。换进新页面时会通过<strong>页面置换算法</strong>将老页面换出，Linux中一般是基于LRU实现的。</li>
+<li>预读取（局部性原理）<br>
+page cache本身也会对数据文件进行预读取，对于每个文件的第一个读请求操作，系统在读入所请求页面的同时会读入紧随其后的少数几个页面。</li>
+</ul>
+<p>PageCache机制也不是完全无缺点的，当遇到OS进行脏页回写，内存回收，内存swap等情况时，就会引起较大的消息读写延迟，优化方式主要包括内存预分配，文件预热和mlock系统调用。</p>
+<h2 id="零拷贝"><a class="header-anchor" href="#零拷贝">¶</a>零拷贝</h2>
+<p>零拷贝技术主要有以下几种：</p>
+<ol>
+<li>直接 I/O：对于这种数据传输方式来说，应用程序可以直接访问硬件存储，操作系统内核只是辅助数据传输：这类零拷贝技术针对的是操作系统内核并不需要对数据进行直接处理的情况，数据可以在应用程序地址空间的缓冲区和磁盘之间直接进行传输，完全不需要 Linux 操作系统内核提供的页缓存的支持。</li>
+<li>在数据传输的过程中，避免数据在<strong>操作系统内核地址空间的缓冲区</strong>和<strong>用户应用程序地址空间的缓冲区</strong>之间进行拷贝。有的时候，应用程序在数据进行传输的过程中不需要对数据进行访问，那么，将数据从 Linux 的<strong>pageCache</strong>拷贝到用户进程的缓冲区中就可以完全避免，传输的数据在<strong>pageCache</strong>中就可以得到处理。在某些特殊的情况下，这种零拷贝技术可以获得较好的性能。Linux 中提供类似的系统调用主要有 <code>mmap()</code>，<code>sendfile()</code> 以及 <code>splice()</code>。</li>
+<li>对数据在 <strong>Linux 的页缓存</strong>和<strong>用户进程的缓冲区</strong>之间的传输过程进行优化。该零拷贝技术侧重于灵活地处理数据在用户进程的缓冲区和操作系统的页缓存之间的拷贝操作。这种方法延续了传统的通信方式，但是更加灵活。在 Linux 中，该方法主要利用了<strong>写时复制</strong>技术。</li>
+</ol>
+<p><img src="http://tallate.top/imgs/Linux/Linux-%E4%B8%80%E6%AC%A1IO%E5%8F%91%E7%94%9F%E7%9A%84%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D.png" alt="Linux-一次IO发生的内存拷贝" title="Linux-一次IO发生的内存拷贝"><br>
+当应用程序访问某块数据时，操作系统首先会检查，是不是最近访问过此文件，文件内容是否缓存在内核缓冲区，如果是，操作系统则直接根据 read 系统调用提供的 buf 地址，将内核缓冲区的内容拷贝到 buf 所指定的用户空间缓冲区中去。如果不是，操作系统则首先将磁盘上的数据拷贝的内核缓冲区，这一步目前主要依靠 DMA 来传输，然后再把内核缓冲区上的内容拷贝到用户缓冲区中。 接下来，write 系统调用再把用户缓冲区的内容拷贝到网络堆栈相关的内核缓冲区中，最后 socket 再把内核缓冲区的内容发送到网卡上。<br>
+这期间，一共进行了 4 次数据拷贝，且用户态和内核态也发生了多次上下文切换。</p>
+<p>从代码层面上来看，从硬盘上将文件读入内存，都要经过文件系统进行数据拷贝，并且数据拷贝操作是由文件系统和硬件驱动实现的，理论上来说，拷贝数据的效率是一样的。<br>
+但是通过内存映射的方法访问硬盘文件效率会比 read 和 write 系统调用高：</p>
+<ol>
+<li>read()是系统调用，首先将文件从硬盘拷贝到内核空间的一个缓冲区，再将这些数据拷贝到用户空间，实际上进行了两次数据拷贝；</li>
+<li>map()也是系统调用，但没有进行数据拷贝，当缺页中断发生时，直接将文件从硬盘拷贝到用户空间，只进行了一次数据拷贝。</li>
+</ol>
+<h3 id="mmap"><a class="header-anchor" href="#mmap">¶</a>mmap</h3>
+<p><img src="http://tallate.top/imgs/Linux/Linux-mmap.png" alt="Linux-mmap" title="Linux-mmap"><br>
+mmap是零拷贝的实现方案，mmap 将内核缓冲区与应用程序缓冲区共享，减少了 2 次拷贝及拷贝过程中必经的上下文切换过程。</p>
+<h3 id="java-中的零拷贝"><a class="header-anchor" href="#java-中的零拷贝">¶</a>Java 中的零拷贝</h3>
+<p>Java 中的 NIO 相对 BIO 的优势之一就是 NIO 提供了零拷贝提高了 IO 速度，实现是<code>MappedByteBuffer</code>，核心方法是<code>map()</code>，该方法把文件映射到内存中，获得内存地址 addr，然后通过这个 addr 构造<code>MappedByteBuffer</code>类，以暴露各种文件操作 API。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">public class MappedByteBufferTest &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        File file = new File(&quot;/Users/huanggaochi/Downloads/a.txt&quot;);</span><br><span class="line">        long len = file.length();</span><br><span class="line">        byte[] ds = new byte[(int) len];</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            // 读文件到字节数组</span><br><span class="line">            MappedByteBuffer mappedByteBuffer = new RandomAccessFile(file, &quot;r&quot;)</span><br><span class="line">                    .getChannel()</span><br><span class="line">                    .map(FileChannel.MapMode.READ_ONLY, 0, len);</span><br><span class="line">            for (int offset = 0; offset &lt; len; offset++) &#123;</span><br><span class="line">                byte b = mappedByteBuffer.get();</span><br><span class="line">                ds[offset] = b;</span><br><span class="line">            &#125;</span><br><span class="line">            // 从字节数组读</span><br><span class="line">            Scanner scan = new Scanner(new ByteArrayInputStream(ds)).useDelimiter(&quot; &quot;);</span><br><span class="line">            while (scan.hasNext()) &#123;</span><br><span class="line">                System.out.print(scan.next() + &quot; &quot;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (IOException e) &#123;</span><br><span class="line">            System.out.println(e.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>MappedByteBuffer</code>本身是一个抽象类，它申请的是堆外内存，因此<strong>不受 Minor GC 控制</strong>，只能在发生 Full GC 时才能被回收。而<code>DirectByteBuffer</code>改善了这一情况，原理是在<code>MappedByteBuffer</code>的基础上，维护了一个 Cleaner 对象来完成内存的回收工作，因此它既可以通过 Full GC 来回收内存，也可以调用 clean()方法来进行回收。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (address == 0) &#123;</span><br><span class="line">    // Paranoia</span><br><span class="line">    return;</span><br><span class="line">&#125;</span><br><span class="line">unsafe.freeMemory(address);</span><br><span class="line">address = 0;</span><br><span class="line">Bits.unreserveMemory(size, capacity);</span><br></pre></td></tr></table></figure>
+<p>读取内存和写入数据都是直接调用 Unsafe 的对应接口 getByte 和 putByte，通过（address + 偏移量）获取指定内存的数据。：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public byte get(int i) &#123;</span><br><span class="line">    return ((unsafe.getByte(ix(checkIndex(i)))));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public ByteBuffer put(int i, byte x) &#123;</span><br><span class="line">    unsafe.putByte(ix(checkIndex(i)), ((x)));</span><br><span class="line">    return this;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>第一次访问 address 所指向的内存区域，导致缺页中断，中断响应函数会在交换区中查找相对应的页面，如果找不到（也就是该文件从来没有被读入内存的情况），则从硬盘上将文件指定页读取到物理内存中（非 jvm 堆内存）。</li>
+<li>如果在拷贝数据时，发现物理内存不够用，则会通过虚拟内存机制（swap）将暂时不用的物理页面交换到硬盘的虚拟内存中。</li>
+</ol>
+<blockquote>
+<p>MappedByteBuffer 还有一个兄弟 HeapByteBuffer，它在堆中申请内存，本质上是一个数组，由于位于堆中，因此可受 GC 管控，易于回收。</p>
+</blockquote>
+<h1>C10K问题</h1>
+<p>两个限制：</p>
+<ol>
+<li>可打开文件句柄数的限制<br>
+可以通过ulimit命令调整。</li>
+<li>线程数的限制<br>
+注意内存容量限制，线程本身会占用堆栈空间内存。</li>
+</ol>
+<p>解决C10K问题采用的IO模型：epoll<br>
+<img src="http://tallate.top/imgs/Linux/Linux-epoll%E5%8E%9F%E7%90%86.png" alt="Linux-epoll原理" title="Linux-epoll原理"><br>
+epoll具体原理描述见之前的小节。</p>
+<h1>参考</h1>
+<ol>
+<li>为什么说NIO是同步非阻塞的？和BIO有什么区别？<br>
+非阻塞指的是：通过轮询selector监听socket是否来数据，而不是阻塞等待。<br>
+同步指的是：一个socket来数据后需要创建一个线程读取，读取过程是同步的。<br>
+异步指的是：读取数据由操作系统做好，业务线程等着数据读取完毕的通知。</li>
+<li>多路复用机制如何支持海量连接？<br>
+多路复用可以用很少的线程监听很多客户端的请求。<br>
+因此多路复用常用于解决C10K问题。</li>
+</ol>
+<h1>参考文档</h1>
+<ol>
+<li><a href="https://wenchao.ren/2019/07/Select%E3%80%81Epoll%E3%80%81KQueue%E5%8C%BA%E5%88%AB/" target="_blank" rel="noopener">Select、poll、Epoll、KQueue 区别</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/63179839" target="_blank" rel="noopener">如果这篇文章说不清 epoll 的本质，那就过来掐死我吧！ （1）</a></li>
+<li><a href="https://www.jianshu.com/p/275602182f39" target="_blank" rel="noopener">零拷贝</a></li>
+</ol>
+
+          
         
       
     </div>
@@ -3119,9 +3262,9 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
 </ol>
 <h1>持久化（Persistent）</h1>
 <h2 id="linux-io-模型"><a class="header-anchor" href="#linux-io-模型">¶</a>Linux IO 模型</h2>
-<p><img src="http://47.88.24.11/imgs/Linux/Linux%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84.png" alt="X" title="Linux整体结构"><br>
+<p><img src="http://tallate.top/imgs/Linux/Linux%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84.png" alt="X" title="Linux整体结构"><br>
 应用程序调用内核 IO 函数的过程如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Linux/IO%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.png" alt="X" title="IO系统调用过程"><br>
+<img src="http://tallate.top/imgs/Linux/IO%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.png" alt="X" title="IO系统调用过程"><br>
 处于 OS 的安全性等的考虑，进程无法直接操作 I/O 设备，必须通过系统调用来请求内核完成 I/O 动作，而内核会为每个 I/O 设备维护一个 Buffer。</p>
 <ol>
 <li>用户进程发起请求；</li>
