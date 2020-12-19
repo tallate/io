@@ -1666,6 +1666,278 @@ instanceName：每个集群不一致，同一集群 groupName 不能重，两个
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/37173fb7.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/37173fb7.html" itemprop="url">MyBatis 原理</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-07-21T11:14:01+08:00">
+                2020-07-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2.2k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  7 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>MyBatis 整体结构</h1>
+<p><img src="https://tallate.top/imgs/MyBatis/MyBatis%E7%BB%93%E6%9E%84.png" alt="MyBatis结构" title="MyBatis结构"></p>
+<h1>配置文件</h1>
+<p>配置类提供的功能几乎贯穿了整个处理过程：</p>
+<ol>
+<li>解析 Xml 文件</li>
+<li>创建 SQL 处理器 Executor</li>
+<li>对语句进行缓存 MappedStatement</li>
+</ol>
+<h2 id="怎么定位路径"><a class="header-anchor" href="#怎么定位路径">¶</a>怎么定位路径</h2>
+<ul>
+<li>getResourceAsStream</li>
+</ul>
+<h2 id="怎么解析文件"><a class="header-anchor" href="#怎么解析文件">¶</a>怎么解析文件</h2>
+<p>xml 文件的解析方式有两种，一种 DOM 是直接读入整个 xml 文件，根据标签的嵌套关系构建一棵文档树；另一种方式叫 SAX（Simple API for XML），是一种事件驱动的文档解析方式，什么是事件驱动呢？比如说 SAX 驱动扫描到了起始标签，就代表发生了一个事件，它会转而调用某个由用户定义的函数（startElement）执行逻辑。<br>
+有一种设计原则叫好莱坞法则（Hollywood），形象地说就是“你不要 call 我，需要你时我会 call 你”，一个例子是异步调用，这是一种通信机制，客户端在发出请求后不必等待服务端处理完毕就可以返回处理自己的逻辑，等到服务端处理完毕后再将结果传回，这种方式一定程度上可以解决客户端长期阻塞的问题、改善用户体验，回调函数也是一个例子。<br>
+据网上的说法，DOM 需要一次构建整棵 DOM 树，所以比较占内存，不适合大的 xml 文档解析，但是由于 DOM 树上可以任意遍历，所以自由度很高，相对来说，SAX 是读到什么就调用什么回调函数，所以内存占用小，但是编程多少会复杂一些。</p>
+<h1>构建数据库连接</h1>
+<h2 id="数据库连接"><a class="header-anchor" href="#数据库连接">¶</a>数据库连接</h2>
+<h3 id="sqlsessionfactorybuilder"><a class="header-anchor" href="#sqlsessionfactorybuilder">¶</a>SqlSessionFactoryBuilder</h3>
+<p>应用了建造者模式，根据配置文件来创建 SqlSessionFactory，创建后其任务就结束了，生命周期在一个方法内。</p>
+<h3 id="sqlsessionfactory"><a class="header-anchor" href="#sqlsessionfactory">¶</a>SqlSessionFactory</h3>
+<p>创建和数据库连接的工具，在整个应用运行期间应该作为一个单例存在，或者使用依赖注入管理其生命周期。</p>
+<h3 id="sqlsession"><a class="header-anchor" href="#sqlsession">¶</a>SqlSession</h3>
+<p>代表和数据库的一次连接，在 MyBatis 中其实现是线程不安全的，生命周期最好控制在一次请求之间。</p>
+<h2 id="数据源"><a class="header-anchor" href="#数据源">¶</a>数据源</h2>
+<ul>
+<li>DBCP</li>
+<li>C3P0</li>
+<li>Druid</li>
+<li>MyBatis 内置数据源（UNPOOLED、POOLED、JNDI）</li>
+<li>自定义数据源</li>
+</ul>
+<h2 id="映射器"><a class="header-anchor" href="#映射器">¶</a>映射器</h2>
+<ul>
+<li>mapper 文件</li>
+<li>注解</li>
+</ul>
+<h1>SQL 执行</h1>
+<p>SqlSession 本身是可以直接执行 sql 语句的，它的所有 update、query 等方法都是对语句进行了包装（MappedStatement），然后再调用 Executor 的相应方法，Executor 是执行器，是 MyBatis 的核心。<br>
+SQL 的执行是由 Executor 负责的，Executor 对象是和 SqlSession 同时创建的，SqlSessionFactory 会为 Executor 创建事务，事务类默认为 ManagedTransactionFactory，Executor 需要从事务对象获取数据库连接（包装上一层事务后扩展性更好），事务会从环境对象中获取 DataSource 对象，然后委托 DataSource 创建连接，并且可以根据事务等级来为连接设置事务。说白了，把 Config 对象传给新建的 Transaction，由 Transaction 创建连接。<br>
+Executor 并不是直接执行 SQL 语句，SQL 语句由 MappedStatement 包装，再交给 StatementHandler 执行</p>
+<h1>Executor�</h1>
+<p>MyBatis 提供 4 种 Executor，他们都继承于 BaseExecutor  �<br>
+<strong>BaseExecutor</strong> 是一个抽象类，实现了延迟加载、一级缓存（PerpetualCache）等功能  �<br>
+<strong>SimpleExecutor</strong> 语句使用 PreparedStatement 保存，使用 StatementHandler 处理  �<br>
+<strong>ReuseExecutor</strong> 与 SimpleExecutor 的区别是它使用一个 Map&lt;String, Statement&gt;来缓存 SQL 语句对应的 Statement，如果某些 Sql 复杂且使用频繁的话可以使用这个执行器，因为这个 Map 不是静态的，并且 MyBatis 实际上会为每个新建的 SqlSession 创建一个 Executor，所以这个缓存只在同一个 Session 内有效  �</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">private final Map&lt;String, Statement&gt; statementMap = new HashMap&lt;String, Statement&gt;();</span><br><span class="line">if (hasStatementFor(sql)) &#123;</span><br><span class="line">    //如果缓存中已经有了，直接得到Statement</span><br><span class="line">    stmt = getStatement(sql);</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    //如果缓存没有找到，则和SimpleExecutor处理完全一样，然后加入缓存</span><br><span class="line">    Connection connection = getConnection(statementLog);</span><br><span class="line">    stmt = handler.prepare(connection);</span><br><span class="line">    putStatement(sql, stmt);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>BatchExecutor（批量执行器）</strong> 将一些 SQL 语句放在一个 List 中，最后 doFlushStatements 一块执行，并且如果两个相邻的 SQL 语句是相同的，还会复用前一个 Statement 对象。<br>
+<strong>CachingExecutor（二级缓存执行器）</strong> 为什么说是二级缓存？一级缓存由 BaseExecutor 中的 PerpetualCache 实现，CachingExecutor 会先在二级缓存中查找，如果找不到再委托给 delegate 执行，delegate 是 BaseExecutor 的子类，当然有一级缓存的功能。  �<br>
+�</p>
+<h1>参数类型和返回值�</h1>
+<p>我们很多时候会指定 parameterType 和 resultType 为复杂类型，怎么将这些类型和数据库表结构进行映射正是 orm 框架的任务之一。  �<br>
+parameterType 表示传入参数类型，在 sql 语句中可以使用#{参数名}来调用，比如�</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sqlSession.selectOne(&quot;com.tallate.UserMapper.selectUser&quot;, 1); </span><br></pre></td></tr></table></figure>
+<p>传入了一个 Integer 类型的参数 1，那么 PreparedStatementHandler 在准备语句时，应该对这个参数的类型进行判断，这个是由 ParameterHandler 负责的。  �<br>
+resultType 表示返回值类型，PreparedStatementHandler 在获得 ResultSet 后应该将查询到的表记录转换为 Java 对象，这个是由 ResultSetHandler 负责的，它最终会调用对应类的构造函数将查询出的结果传入。  �<br>
+�</p>
+<h1>动态代理�</h1>
+<p>我们平常使用 MyBatis 时都会定义一个 XXMapper 接口，对应 mapper.xml 中的一个 namespace，而且我们也不必显示写出其实现类，调用过程都是由动态代理实现的。  �<br>
+一般来说，代理类和被代理类应该实现相同的接口，但是现在我们的被代理类是一个 xxmapper.xml 文件，所以问题现在变成了：怎么将 xxmapper.xml 文件转换成被代理类。  �<br>
+查看源码中的 MapperProxyFactory 和 MapperProxy 可以知道，MyBatis 实现 Mapper 接口其实是调用了 SqlSession 中的方法（select、selectOne 等，已经实现了），但是它们的方法名并不相同，比如 selectUser 怎么和 selectOne 关联上呢？  �<br>
+MapperProxy 的 invoke 方法并不是直接调用被代理对象的方法，而是使用 MapperMethod 来表示映射的方法，通过 MapperMethod 可以判断接口方法的返回值、方法名等来确定应该调用 SqlSession 的哪个方法  �</p>
+<ol>
+<li>启动时 XMLConfigBuilder 会为 config.xml 中所有 mapper 节点扫描包下所有映射器�</li>
+<li>创建对应的映射 interface -&gt; MapperProxyFactory�</li>
+<li>添加动态代理对象到 MapperRegistry 中（我为了方便，直接加到 Config 中了，其实是刚开始对 MapperRegistry 的功能理解错了…）�</li>
+<li>之后每次 getMapper，都可以根据接口名来找到对应的动态代理对象，调用方法时实际上是调用了相应的 MapperMethod�<br>
+�</li>
+</ol>
+<h3 id="并发"><a class="header-anchor" href="#并发">¶</a>并发�</h3>
+<p>有哪些资源是中心化的？如果是，会不会被多线程同时访问？在 web 环境中，假设每个用户代表一个线程，当他们同时访问服务器就会出现并发问题。  �</p>
+<ul>
+<li>线程池（数据源）  �<br>
+如果线程池是使用链表（LinkedList）实现的，可以使用 Collections.synchronizedList 进行包装，或者直接使用 Vector  �</li>
+<li>Map&lt;String, MappedStatement&gt; MappedStatements�<br>
+使用 Map 容器储存 MappedStatement，MappedStatement 表示调用语句到 sql 语句的映射，比如&quot;namespace.selectUser&quot;到 mapper.xml 中对应的 sql 语句（使用 SqlSource 包装）。  �</li>
+<li>List<environment> environments�<br>
+表示 config.xml 中注册的所有环境对象列表  �</environment></li>
+<li>List<mapperregistry> mappers�<br>
+表示 config.xml 中注册的所有 mapper 的列表  �</mapperregistry></li>
+<li>Map&lt;Method, MapperMethod&gt; methodCache�<br>
+MapperProxyFactory 中的映射器方法缓冲是使用 ConcurrentHashMap 实现的  �<br>
+�<br>
+�</li>
+</ul>
+<h1>QA</h1>
+<ol>
+<li>一级缓存不够吗？为什么要有二级缓存？<br>
+一级缓存是会话级缓存，在 BaseExecutor 中，是成员变量，生命周期在一个 SqlSession 内，连接断开就没了；<br>
+二级缓存是语句级缓存，在 MappedStatement 中，可以跨多个 SqlSession，当一些数据不常发生变化或者允许偶尔的并发的时候，二级缓存可能更有效率。</li>
+<li>为什么不推荐使用 MyBatis 中的缓存？<br>
+一级缓存会产生脏数据。因为作用范围是会话，如果有俩会话，会话 1 加载数据到缓存，会话 2 修改该条数据，之后会话 1 读到的是缓存里的老数据。<br>
+二级缓存同样会产生脏数据。二级缓存作用范围是语句，需要手动刷新或在 xml 中配置需要刷新，一般在写入操作和事务提交后都需要刷新一下。但是如果表 A 的 Amapper.xml 中关联了表 B，即使表 B 的数据有变更，我们在 Amapper.xml 中执行查询语句仍然会读到缓存中的脏数据。</li>
+<li>MyBatis 与 JDBC 对象之前的关联？<br>
+ParameterStatement - ParameterStatementHandler<br>
+SimpleStatement - SimpleStatementHandler<br>
+ResultSet - ResultSetHandler</li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/679dc1ee.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -1955,278 +2227,6 @@ change buffer 使用的是 buffer pool 里的内存。</li>
 但是唯一索引不能利用change buffer优化。</p>
 <h2 id="某次写入change-buffer后-系统重启了-change-buffer会丢失吗？"><a class="header-anchor" href="#某次写入change-buffer后-系统重启了-change-buffer会丢失吗？">¶</a>某次写入change buffer后，系统重启了，change buffer会丢失吗？</h2>
 <p>不会丢失，因为事务提交的时候change buffer操作已经记录到redo log里了，因此崩溃恢复后change buffer能找回来。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/37173fb7.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/37173fb7.html" itemprop="url">MyBatis 原理</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-07-21T11:14:01+08:00">
-                2020-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.2k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  7 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>MyBatis 整体结构</h1>
-<p><img src="https://tallate.top/imgs/MyBatis/MyBatis%E7%BB%93%E6%9E%84.png" alt="MyBatis结构" title="MyBatis结构"></p>
-<h1>配置文件</h1>
-<p>配置类提供的功能几乎贯穿了整个处理过程：</p>
-<ol>
-<li>解析 Xml 文件</li>
-<li>创建 SQL 处理器 Executor</li>
-<li>对语句进行缓存 MappedStatement</li>
-</ol>
-<h2 id="怎么定位路径"><a class="header-anchor" href="#怎么定位路径">¶</a>怎么定位路径</h2>
-<ul>
-<li>getResourceAsStream</li>
-</ul>
-<h2 id="怎么解析文件"><a class="header-anchor" href="#怎么解析文件">¶</a>怎么解析文件</h2>
-<p>xml 文件的解析方式有两种，一种 DOM 是直接读入整个 xml 文件，根据标签的嵌套关系构建一棵文档树；另一种方式叫 SAX（Simple API for XML），是一种事件驱动的文档解析方式，什么是事件驱动呢？比如说 SAX 驱动扫描到了起始标签，就代表发生了一个事件，它会转而调用某个由用户定义的函数（startElement）执行逻辑。<br>
-有一种设计原则叫好莱坞法则（Hollywood），形象地说就是“你不要 call 我，需要你时我会 call 你”，一个例子是异步调用，这是一种通信机制，客户端在发出请求后不必等待服务端处理完毕就可以返回处理自己的逻辑，等到服务端处理完毕后再将结果传回，这种方式一定程度上可以解决客户端长期阻塞的问题、改善用户体验，回调函数也是一个例子。<br>
-据网上的说法，DOM 需要一次构建整棵 DOM 树，所以比较占内存，不适合大的 xml 文档解析，但是由于 DOM 树上可以任意遍历，所以自由度很高，相对来说，SAX 是读到什么就调用什么回调函数，所以内存占用小，但是编程多少会复杂一些。</p>
-<h1>构建数据库连接</h1>
-<h2 id="数据库连接"><a class="header-anchor" href="#数据库连接">¶</a>数据库连接</h2>
-<h3 id="sqlsessionfactorybuilder"><a class="header-anchor" href="#sqlsessionfactorybuilder">¶</a>SqlSessionFactoryBuilder</h3>
-<p>应用了建造者模式，根据配置文件来创建 SqlSessionFactory，创建后其任务就结束了，生命周期在一个方法内。</p>
-<h3 id="sqlsessionfactory"><a class="header-anchor" href="#sqlsessionfactory">¶</a>SqlSessionFactory</h3>
-<p>创建和数据库连接的工具，在整个应用运行期间应该作为一个单例存在，或者使用依赖注入管理其生命周期。</p>
-<h3 id="sqlsession"><a class="header-anchor" href="#sqlsession">¶</a>SqlSession</h3>
-<p>代表和数据库的一次连接，在 MyBatis 中其实现是线程不安全的，生命周期最好控制在一次请求之间。</p>
-<h2 id="数据源"><a class="header-anchor" href="#数据源">¶</a>数据源</h2>
-<ul>
-<li>DBCP</li>
-<li>C3P0</li>
-<li>Druid</li>
-<li>MyBatis 内置数据源（UNPOOLED、POOLED、JNDI）</li>
-<li>自定义数据源</li>
-</ul>
-<h2 id="映射器"><a class="header-anchor" href="#映射器">¶</a>映射器</h2>
-<ul>
-<li>mapper 文件</li>
-<li>注解</li>
-</ul>
-<h1>SQL 执行</h1>
-<p>SqlSession 本身是可以直接执行 sql 语句的，它的所有 update、query 等方法都是对语句进行了包装（MappedStatement），然后再调用 Executor 的相应方法，Executor 是执行器，是 MyBatis 的核心。<br>
-SQL 的执行是由 Executor 负责的，Executor 对象是和 SqlSession 同时创建的，SqlSessionFactory 会为 Executor 创建事务，事务类默认为 ManagedTransactionFactory，Executor 需要从事务对象获取数据库连接（包装上一层事务后扩展性更好），事务会从环境对象中获取 DataSource 对象，然后委托 DataSource 创建连接，并且可以根据事务等级来为连接设置事务。说白了，把 Config 对象传给新建的 Transaction，由 Transaction 创建连接。<br>
-Executor 并不是直接执行 SQL 语句，SQL 语句由 MappedStatement 包装，再交给 StatementHandler 执行</p>
-<h1>Executor�</h1>
-<p>MyBatis 提供 4 种 Executor，他们都继承于 BaseExecutor  �<br>
-<strong>BaseExecutor</strong> 是一个抽象类，实现了延迟加载、一级缓存（PerpetualCache）等功能  �<br>
-<strong>SimpleExecutor</strong> 语句使用 PreparedStatement 保存，使用 StatementHandler 处理  �<br>
-<strong>ReuseExecutor</strong> 与 SimpleExecutor 的区别是它使用一个 Map&lt;String, Statement&gt;来缓存 SQL 语句对应的 Statement，如果某些 Sql 复杂且使用频繁的话可以使用这个执行器，因为这个 Map 不是静态的，并且 MyBatis 实际上会为每个新建的 SqlSession 创建一个 Executor，所以这个缓存只在同一个 Session 内有效  �</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">private final Map&lt;String, Statement&gt; statementMap = new HashMap&lt;String, Statement&gt;();</span><br><span class="line">if (hasStatementFor(sql)) &#123;</span><br><span class="line">    //如果缓存中已经有了，直接得到Statement</span><br><span class="line">    stmt = getStatement(sql);</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    //如果缓存没有找到，则和SimpleExecutor处理完全一样，然后加入缓存</span><br><span class="line">    Connection connection = getConnection(statementLog);</span><br><span class="line">    stmt = handler.prepare(connection);</span><br><span class="line">    putStatement(sql, stmt);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>BatchExecutor（批量执行器）</strong> 将一些 SQL 语句放在一个 List 中，最后 doFlushStatements 一块执行，并且如果两个相邻的 SQL 语句是相同的，还会复用前一个 Statement 对象。<br>
-<strong>CachingExecutor（二级缓存执行器）</strong> 为什么说是二级缓存？一级缓存由 BaseExecutor 中的 PerpetualCache 实现，CachingExecutor 会先在二级缓存中查找，如果找不到再委托给 delegate 执行，delegate 是 BaseExecutor 的子类，当然有一级缓存的功能。  �<br>
-�</p>
-<h1>参数类型和返回值�</h1>
-<p>我们很多时候会指定 parameterType 和 resultType 为复杂类型，怎么将这些类型和数据库表结构进行映射正是 orm 框架的任务之一。  �<br>
-parameterType 表示传入参数类型，在 sql 语句中可以使用#{参数名}来调用，比如�</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sqlSession.selectOne(&quot;com.tallate.UserMapper.selectUser&quot;, 1); </span><br></pre></td></tr></table></figure>
-<p>传入了一个 Integer 类型的参数 1，那么 PreparedStatementHandler 在准备语句时，应该对这个参数的类型进行判断，这个是由 ParameterHandler 负责的。  �<br>
-resultType 表示返回值类型，PreparedStatementHandler 在获得 ResultSet 后应该将查询到的表记录转换为 Java 对象，这个是由 ResultSetHandler 负责的，它最终会调用对应类的构造函数将查询出的结果传入。  �<br>
-�</p>
-<h1>动态代理�</h1>
-<p>我们平常使用 MyBatis 时都会定义一个 XXMapper 接口，对应 mapper.xml 中的一个 namespace，而且我们也不必显示写出其实现类，调用过程都是由动态代理实现的。  �<br>
-一般来说，代理类和被代理类应该实现相同的接口，但是现在我们的被代理类是一个 xxmapper.xml 文件，所以问题现在变成了：怎么将 xxmapper.xml 文件转换成被代理类。  �<br>
-查看源码中的 MapperProxyFactory 和 MapperProxy 可以知道，MyBatis 实现 Mapper 接口其实是调用了 SqlSession 中的方法（select、selectOne 等，已经实现了），但是它们的方法名并不相同，比如 selectUser 怎么和 selectOne 关联上呢？  �<br>
-MapperProxy 的 invoke 方法并不是直接调用被代理对象的方法，而是使用 MapperMethod 来表示映射的方法，通过 MapperMethod 可以判断接口方法的返回值、方法名等来确定应该调用 SqlSession 的哪个方法  �</p>
-<ol>
-<li>启动时 XMLConfigBuilder 会为 config.xml 中所有 mapper 节点扫描包下所有映射器�</li>
-<li>创建对应的映射 interface -&gt; MapperProxyFactory�</li>
-<li>添加动态代理对象到 MapperRegistry 中（我为了方便，直接加到 Config 中了，其实是刚开始对 MapperRegistry 的功能理解错了…）�</li>
-<li>之后每次 getMapper，都可以根据接口名来找到对应的动态代理对象，调用方法时实际上是调用了相应的 MapperMethod�<br>
-�</li>
-</ol>
-<h3 id="并发"><a class="header-anchor" href="#并发">¶</a>并发�</h3>
-<p>有哪些资源是中心化的？如果是，会不会被多线程同时访问？在 web 环境中，假设每个用户代表一个线程，当他们同时访问服务器就会出现并发问题。  �</p>
-<ul>
-<li>线程池（数据源）  �<br>
-如果线程池是使用链表（LinkedList）实现的，可以使用 Collections.synchronizedList 进行包装，或者直接使用 Vector  �</li>
-<li>Map&lt;String, MappedStatement&gt; MappedStatements�<br>
-使用 Map 容器储存 MappedStatement，MappedStatement 表示调用语句到 sql 语句的映射，比如&quot;namespace.selectUser&quot;到 mapper.xml 中对应的 sql 语句（使用 SqlSource 包装）。  �</li>
-<li>List<environment> environments�<br>
-表示 config.xml 中注册的所有环境对象列表  �</environment></li>
-<li>List<mapperregistry> mappers�<br>
-表示 config.xml 中注册的所有 mapper 的列表  �</mapperregistry></li>
-<li>Map&lt;Method, MapperMethod&gt; methodCache�<br>
-MapperProxyFactory 中的映射器方法缓冲是使用 ConcurrentHashMap 实现的  �<br>
-�<br>
-�</li>
-</ul>
-<h1>QA</h1>
-<ol>
-<li>一级缓存不够吗？为什么要有二级缓存？<br>
-一级缓存是会话级缓存，在 BaseExecutor 中，是成员变量，生命周期在一个 SqlSession 内，连接断开就没了；<br>
-二级缓存是语句级缓存，在 MappedStatement 中，可以跨多个 SqlSession，当一些数据不常发生变化或者允许偶尔的并发的时候，二级缓存可能更有效率。</li>
-<li>为什么不推荐使用 MyBatis 中的缓存？<br>
-一级缓存会产生脏数据。因为作用范围是会话，如果有俩会话，会话 1 加载数据到缓存，会话 2 修改该条数据，之后会话 1 读到的是缓存里的老数据。<br>
-二级缓存同样会产生脏数据。二级缓存作用范围是语句，需要手动刷新或在 xml 中配置需要刷新，一般在写入操作和事务提交后都需要刷新一下。但是如果表 A 的 Amapper.xml 中关联了表 B，即使表 B 的数据有变更，我们在 Amapper.xml 中执行查询语句仍然会读到缓存中的脏数据。</li>
-<li>MyBatis 与 JDBC 对象之前的关联？<br>
-ParameterStatement - ParameterStatementHandler<br>
-SimpleStatement - SimpleStatementHandler<br>
-ResultSet - ResultSetHandler</li>
-</ol>
 
           
         
@@ -3023,7 +3023,7 @@ InnoDB 内部维护了一个 max_trx_id 全局变量，每次需要申请一个�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">132</span>
+                  <span class="site-state-item-count">131</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -3034,7 +3034,7 @@ InnoDB 内部维护了一个 max_trx_id 全局变量，每次需要申请一个�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-count">21</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
