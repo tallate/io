@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6577ef90.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
+                <a class="post-title-link" href="/6577ef90.html" itemprop="url">SpringBoot 与常见中间件的搭建</a></h1>
         
 
         <div class="post-meta">
@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  760 字
+                  3.7k 字
                 </span>
               
 
@@ -367,7 +367,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  3 分钟
+                  16 分钟
                 </span>
               
             </div>
@@ -391,79 +391,629 @@
         
           
             <a id="more"></a>
-<h1>事务</h1>
-<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
-<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
-<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
-<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
-<h1>源码</h1>
-<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
+<h2 id="eureka"><a class="header-anchor" href="#eureka">¶</a>Eureka</h2>
+<ul>
+<li>服务发现，提供高可用的服务注册表功能，是之后 Ribbon、Zuul 等组件的基础。</li>
+</ul>
+<h3 id="创建-eureka-server"><a class="header-anchor" href="#创建-eureka-server">¶</a>创建 Eureka Server</h3>
 <ol>
-<li>数据源元数据信息和表元数据信息的收集</li>
-<li>表分库分表策略和算法的配置信息收集</li>
+<li>创建 Spring Initializr 项目<br>
+选中 Cloud Discovery -&gt; Eureka Server 模块</li>
+<li>在 <strong>EurekaServerApplication</strong> 类上添加 <strong>@EnableEurekaServer</strong></li>
+<li>指定一个 Eureka Server<br>
+在默认情况下 erureka server 也是一个 eureka client，必须要指定一个 server，在配置文件中添加： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">    server.port=8761</span><br><span class="line">    eureka.instance.hostname=localhost</span><br><span class="line">    eureka.client.register-with-eureka=false</span><br><span class="line">    eureka.client.fetch-registry=false</span><br><span class="line">    eureka.client.service-url.default-zone=http://eureka.instance.hostname:eureka.instance.hostname:</span><br><span class="line">&#123;server.port&#125;/eureka/</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
-<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
--&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
-<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
-<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
-org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
--&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
--&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
--&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
--&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
-<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; ShardingPreparedStatement#shard<br>
--&gt; BaseShardingEngine#shard<br>
--&gt; PreparedQueryShardingEngine#route<br>
--&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
--&gt; ParsingSQLRouter#parse<br>
--&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
--&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
--&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
--&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
--&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
--&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
--&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
--&gt; ParsingSQLRouter#route<br>
--&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
--&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
--&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
--&gt; BaseShardingEngine#rewriteAndConvert<br>
--&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
-<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
--&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
--&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
--&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
--&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
--&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
--&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
--&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
--&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
--&gt; AbstractStatementExecutor#executeCallback<br>
--&gt; SQLExecuteTemplate#executeGroup<br>
--&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
--&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
-<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
--&gt; AbstractStatementExecutor#getResultSets<br>
--&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
--&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
-<h1>参考</h1>
+<p>其中通过 eureka.client.registerWithEureka=false 和 fetchRegistry=false 来表明自己是一个 Eureka Server。</p>
 <ol>
-<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
-<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
-<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
-<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
+<li>访问 Eureka Server 服务器<br>
+localhost:8761<br>
+此时还没有服务被注册进来。</li>
 </ol>
-<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
+<h3 id="创建-eureka-client"><a class="header-anchor" href="#创建-eureka-client">¶</a>创建 Eureka Client</h3>
 <ol>
-<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
+<li>类似的，创建的 Spring Initializr 项目是 <strong>Eureka Discovery</strong></li>
+<li>为 <strong>EurekaClientApplication</strong> 类上添加 <strong>@EnableEurekaClient</strong> 注解</li>
+<li>添加配置 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.default-zone=http://localhost:8761/eureka</span><br><span class="line">server.port=8762</span><br><span class="line">spring.application.name=service-name</span><br><span class="line">eureka.client.register-with-eureka=false</span><br><span class="line">eureka.client.fetch-registry=false</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>需要指明 <a href="http://spring.application.name" target="_blank" rel="noopener">spring.application.name</a>，这个很重要，这在以后的服务与服务之间相互调用一般都是根据这个 name。</p>
+<h3 id="集群化-eureka-server"><a class="header-anchor" href="#集群化-eureka-server">¶</a>集群化 Eureka Server</h3>
+<ol>
+<li>创建两个配置文件，分别代表两个实例的属性<br>
+application-peer1.properties： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8761</span><br><span class="line">eureka.instance.hostname=peer1</span><br><span class="line">eureka.client.service-url.defaultZone=http://peer2:8769/eureka/</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>application-peer2.properties：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8769</span><br><span class="line">eureka.instance.hostname=peer2</span><br><span class="line">eureka.client.service-url.defaultZone=http://peer1:8761/eureka/</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>
+<p>在/etc/hosts 文件中添加下面两条记录：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1 peer1</span><br><span class="line">127.0.0.1 peer2</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>启动<br>
+先在application.properties中指定：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.profiles.active=peer1</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>启动 peer1，然后指定：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.profiles.active=peer2</span><br></pre></td></tr></table></figure></p>
+<p>启动 peer2。<br>
+这时访问 localhost:8761 和 localhost:8769 可以看到两个节点的注册信息，他们分别是对方的复制，他们是对等的。</p>
+<h2 id="ribbon-服务消费"><a class="header-anchor" href="#ribbon-服务消费">¶</a>Ribbon - 服务消费</h2>
+<ul>
+<li>用来作为软件的负载均衡，微服务之间相互调用是通过 ribbon 作为软件负载均衡使用负载到微服务集群内的不同的实例。</li>
+</ul>
+<h3 id="配置bean"><a class="header-anchor" href="#配置bean">¶</a>配置Bean</h3>
+<p>IClientConfig ribbonClientConfig: DefaultClientConfigImpl<br>
+IRule ribbonRule: ZoneAvoidanceRule<br>
+IPing ribbonPing: NoOpPing<br>
+ServerList ribbonServerList: ConfigurationBasedServerList<br>
+ServerListFilter ribbonServerListFilter: ZonePreferenceServerListFilter<br>
+ILoadBalancer ribbonLoadBalancer: ZoneAwareLoadBalancer</p>
+<h3 id="创建服务消费者"><a class="header-anchor" href="#创建服务消费者">¶</a>创建服务消费者</h3>
+<ol>
+<li>
+<p>创建 Spring Initializr<br>
+勾选 Eureka Discovery、Ribbon</p>
+</li>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.defaultZone=http://localhost:8761/eureka/</span><br><span class="line">server.port=8764</span><br><span class="line">spring.application.name=service-ribbon</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>除了为 <strong>ServiceRibbonApplication</strong> 类添加 <strong>@EnableDiscoveryClient</strong> 外，还需要注册一个 RestTemplate 的 Bean：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">* 向Spring容器注入一个RestTemplate</span><br><span class="line">* 通过@LoadBalanced表明开启负载均衡功能</span><br><span class="line">* @return</span><br><span class="line">*/</span><br><span class="line">@Bean</span><br><span class="line">@LoadBalanced</span><br><span class="line">RestTemplate restTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建服务类来消费service-name服务的&quot;/hi&quot;接口的服务，当该服务名有多个服务实例时会从中选择一个具体的服务实例：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class HelloService &#123;</span><br><span class="line"> @Autowired</span><br><span class="line"> RestTemplate restTemplate;</span><br><span class="line"> public String hello(String name) &#123;</span><br><span class="line">   return restTemplate.getForObject(&quot;http://service-name/hi?name=&quot; + name, String.class);</span><br><span class="line"> &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>使用一个 Controller 来调用负载均衡服务</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">  @Autowired</span><br><span class="line">  HelloService helloService;</span><br><span class="line"></span><br><span class="line">  @RequestMapping(&quot;/hi&quot;)</span><br><span class="line">  public String hi(@RequestParam String name) &#123;</span><br><span class="line">    return helloService.hello(name);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>此时访问 service-ribbon 的&quot;/hi&quot;接口就会被转发到 service-name 的对应服务上去，并且会根据负载情况来轮流调用不同实例的端口。</p>
+</li>
+</ol>
+<h2 id="feign-服务消费"><a class="header-anchor" href="#feign-服务消费">¶</a>Feign - 服务消费</h2>
+<h3 id="与-ribbon-区别"><a class="header-anchor" href="#与-ribbon-区别">¶</a>与 Ribbon 区别</h3>
+<ol>
+<li>Feign 整合了 Ribbon</li>
+<li>Feign 是基于接口的注解，Ribbon 是基于 RestTemplate 的</li>
+</ol>
+<h3 id="创建-feign-服务"><a class="header-anchor" href="#创建-feign-服务">¶</a>创建 Feign 服务</h3>
+<ol>
+<li>创建一个 Spring Initializr 项目<br>
+选中 Eureka Discovery 和 Feign</li>
+<li>为 <strong>ServiceFeignApplication</strong> 类上添加 **@EnableDiscoveryClient<br>
+** 和 <strong>@EnableFeignClients</strong> 注解开启 Eureka 服务发现和 Feign 功能</li>
+<li>定义一个 Feign 接口 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">@FeignClient(&quot;service-name&quot;)</span><br><span class="line">public interface ScheduleServiceHi &#123;</span><br><span class="line">    @RequestMapping(value = &quot;/hi&quot;, method = RequestMethod.GET)</span><br><span class="line">    String sayHiFromClientOne(@RequestParam(&quot;name&quot;) String name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>注解 <strong>@FeignClient</strong> 指定了服务名，具体的接口使用@RequestMapping指定。</p>
+<ol>
+<li>创建一个 Controller，对外暴露一个&quot;/hi&quot;接口，它调用上面定义的 Feign 客户端的 ScheduleServiceHi 来消费服务 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HiController &#123;</span><br><span class="line"></span><br><span class="line">  @Autowired</span><br><span class="line">  private ScheduleServiceHi scheduleServiceHi;</span><br><span class="line"></span><br><span class="line">  @RequestMapping(value = &quot;/hi&quot;, method = RequestMethod.GET)</span><br><span class="line">  public String sayHi(@RequestParam String name) &#123;</span><br><span class="line">    return scheduleServiceHi.sayHiFromClientOne(name);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="zuul"><a class="header-anchor" href="#zuul">¶</a>Zuul</h2>
+<h2 id="hystrix-断路器"><a class="header-anchor" href="#hystrix-断路器">¶</a>Hystrix - 断路器</h2>
+<p>Dashboard 和 Turbine：一个是单个节点的监控，后者可以从多个 Hystrix 服务器获取数据、整合到一个 Dashboard 界面上显示</p>
+<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
+<ol>
+<li>防止服务器雪崩<br>
+<strong>雪崩</strong>：如果单个服务出现问题，调用这个服务就会出现线程阻塞，此时若有大量的请求涌入，Servlet容器的线程资源会被消耗完毕，导致服务瘫痪。服务与服务之间的依赖性，故障会传播，会对整个微服务系统造成灾难性的严重后果。<br>
+断路就是及早阻止对这些不可用服务的请求。</li>
+<li>断路原理<br>
+当对特定的服务的调用的不可用达到一个阀值（Hystric 是 5 秒 20 次） 断路器将会被打开，然后？？？</li>
+</ol>
+<h3 id="为-ribbon-工程添加-hystrix-功能"><a class="header-anchor" href="#为-ribbon-工程添加-hystrix-功能">¶</a>为 Ribbon 工程添加 Hystrix 功能</h3>
+<ol>
+<li>
+<p>创建 Spring Initializr 项目<br>
+勾选 Hystrix、Eureka Discovery、Ribbon，或者在 Ribbon 项目中添加下面的依赖：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-cloud-starter-hystrix&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>为 <strong>ServiceRibbonApplication</strong> 类添加 <strong>@EnableHystrix</strong> 注解开启Hystrix</p>
+</li>
+<li>
+<p>为 Service 方法添加 <strong>@HystrixCommand</strong> 注解</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@HystrixCommand(fallbackMethod = &quot;hiError&quot;)</span><br><span class="line">public String hello(String name) &#123;</span><br><span class="line">    return restTemplate.getForObject(&quot;http://service-name/hi?name=&quot; + name, String.class);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public String hiError(String name) &#123;</span><br><span class="line">    return &quot;hi, &quot; + name + &quot;, sorry, error!&quot;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>接下来在启动所有服务后，关闭 service-name 服务（这是断路器依赖的服务）<br>
+这样就会在访问 service-ribbon 服务时被断路，并调用 hiError()方法。</p>
+</li>
+</ol>
+<h3 id="为-feign-工程添加-hystrix-功能"><a class="header-anchor" href="#为-feign-工程添加-hystrix-功能">¶</a>为 Feign 工程添加 Hystrix 功能</h3>
+<ol>
+<li>
+<p>为 Feign 客户端添加 fallback 属性，该属性值是服务接口的实现类</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">@FeignClient(value = &quot;service-name&quot;, fallback = ScheduleServiceHiHystrix.class)</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建接口的实现类</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@Component</span><br><span class="line">public class ScheduleServiceHiHystrix implements ScheduleServiceHi &#123;</span><br><span class="line">  @Override</span><br><span class="line">  public String sayHiFromClientOne(String name) &#123;</span><br><span class="line">    return &quot;sorry &quot; + name;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>添加下面的配置项<br>
+feign.hystrix.enabled=true</p>
+</li>
+<li>
+<p>必须还得添加下面的依赖包</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-cloud-starter-hystrix&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.netflix.hystrix&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hystrix-javanica&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.5.12&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>测试接口时，可以先开着 service-name 服务关掉再开起来，在这个过程中访问 service-feign 服务，可以看到响应的变化</p>
+</li>
+</ol>
+<h3 id="hystrix-dashboard"><a class="header-anchor" href="#hystrix-dashboard">¶</a>Hystrix Dashboard</h3>
+<ol>
+<li>
+<p>开启仪表盘很简单，先添加依赖库：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-cloud-starter-hystrix-dashboard&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>以 service-ribbon 服务为例，为 ServiceRibbonApplication 类添加 <strong>@EnableHystrixDashboard</strong> 注解</p>
+</li>
+<li>
+<p>访问http://localhost:8764/hystrix 接口，进入监控界面<br>
+<img src="https://tallate.top/imgs/SpringBoot/HystrixDashboard.png" alt="HystrixDashboard" title="HystrixDashboard"></p>
+</li>
+</ol>
+<h3 id="hystrix-turbine"><a class="header-anchor" href="#hystrix-turbine">¶</a>Hystrix Turbine</h3>
+<ol>
+<li>
+<p>创建一个 Spring Initializr 工程<br>
+勾选 Actuator、Turbine</p>
+</li>
+<li>
+<p>为启动类添加注解 <strong>@EnableTurbine</strong> ，它其实包含了@EnableDiscoveryClient，所以 Turbine 默认是作为 Eureka 集群中的一员的</p>
+</li>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">spring.application.name=service-turbine</span><br><span class="line">server.port=8770</span><br><span class="line">security.basic.enabled=false</span><br><span class="line"># 指定聚合的集群，多个使用&quot;,&quot;分割，默认为default。可使用http://.../turbine.stream?cluster=&#123;clusterConfig之一&#125;访问</span><br><span class="line">turbine.aggregator.cluster-config=default</span><br><span class="line"># 监控的Hystrix服务名列表</span><br><span class="line">turbine.app-config=service-ribbon</span><br><span class="line"># 1. clusterNameExpression指定集群名称，默认表达式appName；此时：turbine.aggregator.clusterConfig需要配置想要监控的应用名称</span><br><span class="line"># 2. 当clusterNameExpression: default时，turbine.aggregator.clusterConfig可以不写，因为默认就是default</span><br><span class="line"># 3. 当clusterNameExpression: metadata[&apos;cluster&apos;]时，假设想要监控的应用配置了eureka.instance.metadata-map.cluster: ABC，则需要配置，同时turbine.aggregator.clusterConfig: ABC</span><br><span class="line">turbine.cluster-name-expression=new String(&quot;default&quot;)</span><br><span class="line">eureka.client.service-url.defaultZone=http://localhost:8761/eureka/</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>进入 Dashboard 查看监控流<br>
+比如http://localhost:8764/hystrix，输入监控流 <a href="http://localhost:8770/turbine.stream" target="_blank" rel="noopener">http://localhost:8770/turbine.stream</a><br>
+会发现监控的服务列表都呈现在了 Thread Pools 中</p>
+</li>
+</ol>
+<h2 id="sleuth-服务链路追踪"><a class="header-anchor" href="#sleuth-服务链路追踪">¶</a>Sleuth - 服务链路追踪</h2>
+<h3 id="概念"><a class="header-anchor" href="#概念">¶</a>概念</h3>
+<ol>
+<li>Zipkin：Sleuth 集成了服务追踪组件 Zipkin，而 Sleuth 通过了通过 Spring Boot 来集成 Zipkin 到微服务系统的方案。</li>
+<li><strong>Span</strong>：基本工作单元，比如发送一个 PRC 请求或 RPC 响应都是一个 Span，使用一个 64 位的 ID 表示（文档这里相当费解？？？），启动 Trace 的第一个 Span 称为 Root Span；</li>
+<li><strong>Trace</strong>：一组 Span 可以构成一个树状结构；</li>
+<li><strong>Annotation</strong>：用于标识事件，比如请求的开始、结束，有以下 Annotation 种类：
+<ul>
+<li>cs - Client Sent -客户端发起一个请求，这个 annotion 描述了这个 span 的开始</li>
+<li>sr - Server Received -服务端获得请求并准备开始处理它，如果将其 sr 减去 cs 时间戳便可得到网络延迟</li>
+<li>ss - Server Sent -注解表明请求处理的完成(当请求返回客户端)，如果 ss 减去 sr 时间戳便可得到服务端需要的处理请求时间</li>
+<li>cr - Client Received -表明 span 的结束，客户端成功接收到服务端的回复，如果 cr 减去 cs 时间戳便可得到客户端从服务端获取回复的所有所需时间</li>
+</ul>
+</li>
+</ol>
+<h3 id="服务链路追踪"><a class="header-anchor" href="#服务链路追踪">¶</a>服务链路追踪</h3>
+<ol>
+<li>创建一个 Spring Initializr 项目<br>
+一个 zipkin-server 勾选 Web、Zipkin Stream、Zipkin UI 和 Rabbit Stream，还有供跟踪的服务 zipkin-test1 和 zipkin-test2 勾选 Zipkin Client 和 Web，</li>
+<li>加入注解<br>
+在zipkin-server的Application上添加 <strong>@EnableZipkinServer</strong>。</li>
+<li>配置<br>
+在 zipkin-server 中指定服务端口号即可： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">server.port=9411</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>在 zipkin-test1（zipkin-test2 类似）中需要指定 zipkin 服务器的地址<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8988</span><br><span class="line">spring.zipkin.base-url=http://localhost:9411</span><br><span class="line">spring.application.name=service-hi</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>在两个 Service 之间使用 RestTemplate 进行互调<br>
+第一个服务： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = Logger.getLogger(ZipkinTest1Application.class);</span><br><span class="line">@Autowired</span><br><span class="line">private RestTemplate restTemplate;</span><br><span class="line">@Bean</span><br><span class="line">public RestTemplate getRestTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@RequestMapping(&quot;/hi&quot;)</span><br><span class="line">public String callMiya()&#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;calling trace service-hi  &quot;);</span><br><span class="line">    return restTemplate.getForObject(&quot;http://localhost:8989/miya&quot;, String.class);</span><br><span class="line">&#125;</span><br><span class="line">@RequestMapping(&quot;/info&quot;)</span><br><span class="line">public String info()&#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;calling trace service-hi &quot;);</span><br><span class="line">    return &quot;i&apos;m service-hi&quot;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>另一个服务：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = Logger.getLogger(ZipkinTest2Application.class);</span><br><span class="line">@Autowired</span><br><span class="line">private RestTemplate restTemplate;</span><br><span class="line">@Bean</span><br><span class="line">public RestTemplate getRestTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@RequestMapping(&quot;/miya&quot;)</span><br><span class="line">public String miya() &#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;info is being called&quot;);</span><br><span class="line">    return restTemplate.getForObject(&quot;http://localhost:8988/info&quot;, String.class);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>为 Service 注入 Sampler 用于记录 Span <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Bean</span><br><span class="line">public AlwaysSampler defaultSampler() &#123;</span><br><span class="line">    return new AlwaysSampler();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>如果不注入 Sampler，会出现之后访问服务后，在 Zipkin 界面看不到服务依赖图的情况。</p>
+<ol>
+<li>访问，并读取链路<br>
+访问服务http://localhost:8988/hi<br>
+现在访问http://localhost:9411/会出现 Zipkin 界面，可以查看服务间的相互依赖关系，和服务间调用的具体数据。</li>
+</ol>
+<h2 id="docker部署"><a class="header-anchor" href="#docker部署">¶</a>Docker部署</h2>
+<h3 id="应用-v2"><a class="header-anchor" href="#应用-v2">¶</a>应用</h3>
+<ol>
+<li>web 应用的自动化打包和发布；</li>
+<li>自动化测试和持续集成、发布；</li>
+<li>在服务型环境中部署和调整数据库或其他的后台应用；</li>
+<li>从头编译或者扩展现有的 OpenShift 或 Cloud Foundry 平台来搭建自己的 PaaS 环境。</li>
+</ol>
+<h3 id="为-spring-cloud-项目构建-docker-镜像"><a class="header-anchor" href="#为-spring-cloud-项目构建-docker-镜像">¶</a>为 Spring Cloud 项目构建 Docker 镜像</h3>
+<ol>
+<li>
+<p>添加依赖</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--Spotify的docker镜像构建插件--&gt;</span><br><span class="line">&lt;plugin&gt;</span><br><span class="line">	&lt;groupId&gt;com.spotify&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;docker-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;0.4.3&lt;/version&gt;</span><br><span class="line">	&lt;configuration&gt;</span><br><span class="line">	&lt;!--</span><br><span class="line">	imageName：镜像名</span><br><span class="line">	dockerDirectory：Dockerfile位置</span><br><span class="line">	resources：指定需要和Dockerfile放在一起构建镜像的文件，包括jar包--&gt;</span><br><span class="line">	&lt;imageName&gt;$&#123;docker.image.prefix&#125;/$&#123;project.artifactId&#125;&lt;/imageName&gt;</span><br><span class="line">	&lt;dockerDirectory&gt;src/main/docker&lt;/dockerDirectory&gt;</span><br><span class="line">	&lt;resources&gt;</span><br><span class="line">	&lt;resource&gt;</span><br><span class="line">	&lt;targetPath&gt;/&lt;/targetPath&gt;</span><br><span class="line">	&lt;directory&gt;$&#123;project.build.directory&#125;&lt;/directory&gt;</span><br><span class="line">	&lt;include&gt;$&#123;project.build.finalName&#125;.jar&lt;/include&gt;</span><br><span class="line">	&lt;/resource&gt;</span><br><span class="line">	&lt;/resources&gt;</span><br><span class="line">	&lt;/configuration&gt;</span><br><span class="line">&lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>配置<br>
+这个是注册中心的配置：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">server.port=8761</span><br><span class="line">eureka.instance.prefer-ip-address=true</span><br><span class="line">eureka.client.register-with-eureka=false</span><br><span class="line">eureka.client.fetch-registry=false</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>服务的配置比较简单（注意 defaultZone 改成了镜像名）：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/ # 使用docker启动，defaultZone的host改为镜像名</span><br><span class="line">server.port=8762</span><br><span class="line">spring.application.name=service-name</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>在 src/main/docker 下创建 Dockerfile 文件<br>
+注册中心： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">FROM frolvlad/alpine-oraclejdk8:slim # 指定image，可以是官方仓库或本地仓库</span><br><span class="line">VOLUME /tmp # 使容器中的一个目录具有持久化数据的功能</span><br><span class="line">ADD eureka-server-0.0.1-SNAPSHOT.jar app.jar # 从src目录复制文件到容器的dest</span><br><span class="line"># RUN bash -c &apos;touch /app.jar&apos; # 容器启动时执行的命令，可以多次设置但只有最后一个有效</span><br><span class="line">ENTRYPOINT [&quot;java&quot;, &quot;-Djava.security.egd=file:/dev/./urandom&quot;, &quot;-jar&quot;, &quot;/app.jar&quot;]</span><br><span class="line">EXPOSE 8761 # 暴露的端口号</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>服务类似，只是要将 ADD 操作拷贝的镜像名和 EXPOSE 暴露的端口号改一改。</p>
+<ol>
+<li>构建 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mvn clean</span><br><span class="line">mvn package docker:build</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>这样运行可能会报错：没有权限，这时候可以切换到 root 用户运行，或将当前用户加入到 docker 组中。</p>
+<ol>
+<li>运行<br>
+注册中心： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># --name指定容器名用于之后被其他容器连接，-p指定端口映射，第一个是主机端口，第二个是容器内的端口，这两个端口也可以实现为一个范围且这两个范围中的端口数必须相同，比如`-p 1234-1236:1222-1224`，还可以在端口前面指定监听的主机ip，-t指定分配一个虚拟终端，这样在该终端退出后这个服务还是在运行着的，最后的参数是docker镜像名</span><br><span class="line">docker run --name eureka-server -p 8761:8761 -t springboot/eureka-server</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>服务：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># --link连接到某个容器:端口上，它会在两个容器之间建立一个安全通道，且该容器的该端口必须是暴露的</span><br><span class="line">docker run --link eureka-server:8761 -p 8762:8762 -t springboot/eureka-client</span><br></pre></td></tr></table></figure></p>
+<h3 id="使用-docker-compose-启动镜像"><a class="header-anchor" href="#使用-docker-compose-启动镜像">¶</a>使用 Docker-Compose 启动镜像</h3>
+<p>Compose 是一个用于定义和运行多容器的 Docker 应用的工具。使用 Compose，你可以在一个配置文件（yaml 格式）中配置你应用的服务，然后使用一个命令，即可创建并启动配置中引用的所有服务。</p>
+<ol>
+<li>
+<p>按上面的步骤构建 docker 镜像</p>
+</li>
+<li>
+<p>在上面两个项目的父一级目录下创建配置文件 docker-compose.yml 配置文件</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">version: &apos;2&apos;</span><br><span class="line">services:</span><br><span class="line">    eureka-server:</span><br><span class="line">        image: springboot/eureka-server</span><br><span class="line">        restart: always</span><br><span class="line">        ports:</span><br><span class="line">            - 8761:8761</span><br><span class="line"></span><br><span class="line">    eureka-client:</span><br><span class="line">        image: springboot/eureka-client</span><br><span class="line">        restart: always</span><br><span class="line">        ports:</span><br><span class="line">            - 8762:8762</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>启动</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker-compose up</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="使用docker-compose构建并启动镜像"><a class="header-anchor" href="#使用docker-compose构建并启动镜像">¶</a>使用Docker-Compose构建并启动镜像</h3>
+<p>docker-compose 也可以用于构建镜像，这样就不用一个一个镜像构建再去运行了。</p>
+<ol>
+<li>
+<p>在 docker-compose.yml 同级目录下创建配置文件 docker-compose-dev.yml：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">version: &apos;2&apos;</span><br><span class="line">services:</span><br><span class="line">    eureka-server:</span><br><span class="line">        build: eureka-server</span><br><span class="line">        ports:</span><br><span class="line">            - 8761:8761</span><br><span class="line"></span><br><span class="line">    eureka-client:</span><br><span class="line">        build: eureka-client</span><br><span class="line">        ports:</span><br><span class="line">            - 8762:8762</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>构建并启动</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker-compose -f docker-compose.yml -f docker-compose-dev.yml up</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="eureka-v2"><a class="header-anchor" href="#eureka-v2">¶</a>Eureka</h3>
+<ol>
+<li><a href="https://www.springcloud.cc/spring-cloud-dalston.html#_service_discovery_eureka_clients" target="_blank" rel="noopener">服务发现：Eureka客户端</a></li>
+</ol>
+<h3 id="ribbon"><a class="header-anchor" href="#ribbon">¶</a>Ribbon</h3>
+<ol>
+<li>Netflix/ribbon <a href="https://github.com/Netflix/ribbon/wiki" target="_blank" rel="noopener">https://github.com/Netflix/ribbon/wiki</a></li>
+<li>客户端负载平衡器：Ribbon <a href="https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-ribbon" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-ribbon</a></li>
+</ol>
+<h3 id="feign"><a class="header-anchor" href="#feign">¶</a>Feign</h3>
+<ol>
+<li>声明性 REST 客户端：Feign <a href="https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-feign" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-feign</a></li>
+</ol>
+<h3 id="hystrix"><a class="header-anchor" href="#hystrix">¶</a>Hystrix</h3>
+<ol>
+<li>Netflix/Hystrix <a href="https://github.com/Netflix/Hystrix/wiki" target="_blank" rel="noopener">https://github.com/Netflix/Hystrix/wiki</a></li>
+<li>Circuit Breaker: Hystrix Clients <a href="https://springcloud.cc/spring-cloud-dalston.html#_circuit_breaker_hystrix_clients" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#_circuit_breaker_hystrix_clients</a></li>
+</ol>
+<h3 id="sleuth"><a class="header-anchor" href="#sleuth">¶</a>Sleuth</h3>
+<ol>
+<li>Zipkin <a href="https://zipkin.io/" target="_blank" rel="noopener">https://zipkin.io/</a></li>
+<li>Spring Cloud Sleuth <a href="https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_sleuth" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_sleuth</a></li>
+<li>Google Dapper-大规模分布式系统的基础跟踪设施 <a href="http://duanple.blog.163.com/blog/static/70971767201329113141336/" target="_blank" rel="noopener">http://duanple.blog.163.com/blog/static/70971767201329113141336/</a></li>
+<li><a href="http://research.google.com/pubs/pub36356.html" target="_blank" rel="noopener">http://research.google.com/pubs/pub36356.html</a></li>
+<li><a href="http://bigbully.github.io/Dapper-translation/" target="_blank" rel="noopener">http://bigbully.github.io/Dapper-translation/</a></li>
+<li><a href="http://research.google.com/pubs/pub40378.html" target="_blank" rel="noopener">http://research.google.com/pubs/pub40378.html</a></li>
+<li>Eagleeye</li>
+<li><a href="https://www.jianshu.com/p/d24ac0be831d" target="_blank" rel="noopener">Sleuth 源码分析</a></li>
+</ol>
+<h3 id="docker"><a class="header-anchor" href="#docker">¶</a>Docker</h3>
+<ol>
+<li><a href="https://yq.aliyun.com/articles/47344" target="_blank" rel="noopener">用 Docker 构建、运行、发布一个 Spring Boot 应用</a></li>
+<li><a href="https://github.com/spotify/docker-maven-plugin" target="_blank" rel="noopener">docker-maven-plugin</a></li>
+<li><a href="https://docs.docker.com/compose/" target="_blank" rel="noopener">Docker Compose</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
+<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
+<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
+<ol>
+<li>超时降级<br>
+配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
+<li>失败次数降级<br>
+失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
+<li>故障降级<br>
+如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
+和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
+<li>限流降级<br>
+单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
+</ol>
+<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
+<p>降级后，在代码层面，可以进行的处理策略如下：</p>
+<ol>
+<li>抛异常</li>
+<li>返回 NULL</li>
+<li>调用 Mock 数据</li>
+<li>调用 Fallback 处理逻辑</li>
+</ol>
+<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
+<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
+<ul>
+<li>toObservable()<br>
+最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
+<li>observe()<br>
+调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
+<li>queue()<br>
+调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
+<li>execute()<br>
+调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
+</ul>
+<p>HystrixCommand.execute<br>
+-&gt; HystrixCommand.queue<br>
+-&gt; AbstractCommand.toObservable</p>
+<p>AbstractCommand.observe<br>
+-&gt; AbstractCommand.toObservable</p>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
+开启配置：<br>
+HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
+HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
+-&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
+<p>实施信号量隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
+<p>实施线程隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; AbstractCommand.executeCommandAndObserve<br>
+-&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
+-&gt; AbstractCommand.getUserExecutionObservable<br>
+-&gt; HystrixCommand.getExecutionObservable</p>
+<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
+<p>Hystrix的限流限制的是并发量，其实和隔离特性的实现方式一样，可以通过调整信号量或线程池大小来实现限流。</p>
+<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
+<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
+当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
+Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
+<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
+<ol>
+<li>熔断关闭状态（Closed）<br>
+服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
+<li>熔断开启状态（Open）<br>
+在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
+<li>半熔断状态（Half-Open）<br>
+在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
+</ol>
+<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
+<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
+<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
+<ol>
+<li>run()方法抛出非 HystrixBadRequestException 异常<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
+HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
+<li>run()方法调用超时<br>
+对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
+-&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
+-&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
+可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
+<li>熔断器开启拦截调用<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution</li>
+<li>线程池/队列/信号量是否跑满<br>
+在《隔离》那一节中已经说明了代码的位置。</li>
+<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
+HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
+</ol>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
+结果缓存这个功能我觉得应该由幂等框架来做。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
+<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
+<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
+<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
+<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
 </ol>
 
           
@@ -898,500 +1448,6 @@ Actuator 模块提供了一些组件用于检查应用或中间件的健康状�
 <h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
 <ol>
 <li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.5k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  5 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
-<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
-<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
-<ol>
-<li>超时降级<br>
-配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
-<li>失败次数降级<br>
-失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
-<li>故障降级<br>
-如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
-和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
-<li>限流降级<br>
-单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
-</ol>
-<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
-<p>降级后，在代码层面，可以进行的处理策略如下：</p>
-<ol>
-<li>抛异常</li>
-<li>返回 NULL</li>
-<li>调用 Mock 数据</li>
-<li>调用 Fallback 处理逻辑</li>
-</ol>
-<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
-<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
-<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
-<ul>
-<li>toObservable()<br>
-最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
-<li>observe()<br>
-调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
-<li>queue()<br>
-调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
-<li>execute()<br>
-调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
-</ul>
-<p>HystrixCommand.execute<br>
--&gt; HystrixCommand.queue<br>
--&gt; AbstractCommand.toObservable</p>
-<p>AbstractCommand.observe<br>
--&gt; AbstractCommand.toObservable</p>
-<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
-<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
-开启配置：<br>
-HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
-HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
--&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
-<p>实施信号量隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
-<p>实施线程隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; AbstractCommand.executeCommandAndObserve<br>
--&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
--&gt; AbstractCommand.getUserExecutionObservable<br>
--&gt; HystrixCommand.getExecutionObservable</p>
-<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
-<p>Hystrix的限流限制的是并发量，其实和隔离特性的实现方式一样，可以通过调整信号量或线程池大小来实现限流。</p>
-<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
-<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
-当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
-Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
-<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
-<ol>
-<li>熔断关闭状态（Closed）<br>
-服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
-<li>熔断开启状态（Open）<br>
-在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
-<li>半熔断状态（Half-Open）<br>
-在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
-</ol>
-<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
-<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
-<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
-<ol>
-<li>run()方法抛出非 HystrixBadRequestException 异常<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
-HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
-<li>run()方法调用超时<br>
-对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
--&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
--&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
-可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
-<li>熔断器开启拦截调用<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution</li>
-<li>线程池/队列/信号量是否跑满<br>
-在《隔离》那一节中已经说明了代码的位置。</li>
-<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
-HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
-</ol>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
-结果缓存这个功能我觉得应该由幂等框架来做。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
-<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
-<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
-<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
-<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
-                2019-10-05
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  765 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  2 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
-<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
-<img src="https://tallate.top/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
-<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
-<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
-Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
-<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
-<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
-此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
-<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
-<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
-<ul>
-<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
-<li>检查变量使用前是否已声明；</li>
-<li>推导泛型方法的类型参数；</li>
-<li>检查类型匹配性；</li>
-<li>进行常量折叠；</li>
-<li>检查所有语句都可到达；</li>
-<li>检查所有 checked exception 都被捕获或抛出；</li>
-<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
-<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
-<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
-<li>等…</li>
-</ul>
-<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
-<ul>
-<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
-<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
-<li>最后从符号表生成 class 文件。</li>
-</ul>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
 </ol>
 
           
@@ -2629,6 +2685,215 @@ wait 方法比较复杂，但是核心过程只有 3 步：</p>
 <li><a href="https://www.zhihu.com/question/23328075" target="_blank" rel="noopener">java sleep 和 wait 的区别的疑惑?</a></li>
 <li><a href="http://blog.csdn.net/raintungli/article/details/6532784" target="_blank" rel="noopener">java 中的 wait 和 notify 实现的源码分析</a></li>
 <li><a href="http://blog.csdn.net/raintungli/article/details/6553337" target="_blank" rel="noopener">JVM Thread stop 的源码分析</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  765 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  2 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
+<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
+<img src="https://tallate.top/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
+<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
+<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
+Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
+<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
+<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
+此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
+<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
+<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
+<ul>
+<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
+<li>检查变量使用前是否已声明；</li>
+<li>推导泛型方法的类型参数；</li>
+<li>检查类型匹配性；</li>
+<li>进行常量折叠；</li>
+<li>检查所有语句都可到达；</li>
+<li>检查所有 checked exception 都被捕获或抛出；</li>
+<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
+<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
+<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
+<li>等…</li>
+</ul>
+<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
+<ul>
+<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
+<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
+<li>最后从符号表生成 class 文件。</li>
+</ul>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
 </ol>
 
           
