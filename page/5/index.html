@@ -266,6 +266,253 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  760 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  3 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>事务</h1>
+<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
+<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
+<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
+<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
+<h1>源码</h1>
+<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
+<ol>
+<li>数据源元数据信息和表元数据信息的收集</li>
+<li>表分库分表策略和算法的配置信息收集</li>
+</ol>
+<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
+-&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
+<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
+<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
+org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
+-&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
+-&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
+-&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
+-&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
+<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; ShardingPreparedStatement#shard<br>
+-&gt; BaseShardingEngine#shard<br>
+-&gt; PreparedQueryShardingEngine#route<br>
+-&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
+-&gt; ParsingSQLRouter#parse<br>
+-&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
+-&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
+-&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
+-&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
+-&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
+-&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
+-&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
+-&gt; ParsingSQLRouter#route<br>
+-&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
+-&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
+-&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
+-&gt; BaseShardingEngine#rewriteAndConvert<br>
+-&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
+<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; …<br>
+-&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
+-&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
+-&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
+-&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
+-&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
+-&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
+-&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
+-&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
+-&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
+-&gt; AbstractStatementExecutor#executeCallback<br>
+-&gt; SQLExecuteTemplate#executeGroup<br>
+-&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
+-&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
+<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; …<br>
+-&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
+-&gt; AbstractStatementExecutor#getResultSets<br>
+-&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
+-&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
+<h1>参考</h1>
+<ol>
+<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
+<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
+<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
+<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
+</ol>
+<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
+<ol>
+<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6577ef90.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -561,7 +808,7 @@ feign.hystrix.enabled=true</p>
 </li>
 <li>
 <p>访问http://localhost:8764/hystrix 接口，进入监控界面<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/HystrixDashboard.png" alt="HystrixDashboard" title="HystrixDashboard"></p>
+<img src="https://tallate.top/imgs/SpringBoot/HystrixDashboard.png" alt="HystrixDashboard" title="HystrixDashboard"></p>
 </li>
 </ol>
 <h3 id="hystrix-turbine"><a class="header-anchor" href="#hystrix-turbine">¶</a>Hystrix Turbine</h3>
@@ -778,439 +1025,6 @@ feign.hystrix.enabled=true</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/abe4b1f3.html" itemprop="url">SpringBoot原理总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  4k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  16 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>开始使用 SpringBoot</h1>
-<h2 id="使用-sdkman-搭建环境"><a class="header-anchor" href="#使用-sdkman-搭建环境">¶</a>使用 sdkman 搭建环境</h2>
-<h3 id="介绍"><a class="header-anchor" href="#介绍">¶</a>介绍</h3>
-<ol>
-<li>sdkman<br>
-工具包管理器，可以用于管理 Spring Boot CLI。</li>
-<li>Spring Boot CLI<br>
-命令行工具。</li>
-<li>groovy<br>
-一种可以运行在 JVM 上的语言，和 Java 的编译器不同（语法、语义不同）。</li>
-</ol>
-<h3 id="安装"><a class="header-anchor" href="#安装">¶</a>安装</h3>
-<ol>
-<li>
-<p>安装 sdkman<br>
-按下面链接中的步骤来，可能需要连接 VPN：<br>
-<a href="http://sdkman.io/install.html" target="_blank" rel="noopener">http://sdkman.io/install.html</a></p>
-</li>
-<li>
-<p>安装 Spring Boot CLI<br>
-默认安装最新版本的（安装位置在$HOME/.sdkman 下）：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk install springboot</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>切换 Spring Boot CLI 版本</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sdk list springboot</span><br><span class="line">sdk install springboot XXX.RELEASE</span><br><span class="line">sdk use springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>设置默认版本</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk default springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>使用本地编译的 springboot</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sdk install springboot dev /path/to/spring-boot/spring-boot-cli/target/spring-boot-cli-2.0.0.BUILD-SNAPSHOT-bin/spring-2.0.0.BUILD-SNAPSHOT/</span><br><span class="line">$ sdk default springboot dev</span><br><span class="line">$ spring --version</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h3 id="第一个-springboot-应用"><a class="header-anchor" href="#第一个-springboot-应用">¶</a>第一个 SpringBoot 应用</h3>
-<ol>
-<li>创建一个 app.groovy 文件：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">class ThisWillActuallyRun &#123;</span><br><span class="line">    @RequestMapping(&quot;/&quot;)</span><br><span class="line">    String home() &#123;</span><br><span class="line">        &quot;Hello World!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>执行</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring run app.groovy</span><br></pre></td></tr></table></figure>
-<ol>
-<li>访问</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">localhost:8080</span><br></pre></td></tr></table></figure>
-<h2 id="idea-下搭建-springboot-项目"><a class="header-anchor" href="#idea-下搭建-springboot-项目">¶</a>IDEA 下搭建 SpringBoot 项目</h2>
-<h3 id="创建一个简单的-web-项目"><a class="header-anchor" href="#创建一个简单的-web-项目">¶</a>创建一个简单的 Web 项目</h3>
-<ol>
-<li>
-<p>创建项目<br>
-new Projects… -&gt; Spring Initializr（这里可能需要连接 VPN） -&gt; 设置项目元数据 -&gt; 添加 Web 组件（对于这个例子来说足够了）</p>
-</li>
-<li>
-<p>添加控制器<br>
-创建 controller.HelloController：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">    @RequestMapping(&quot;/hello&quot;)</span><br><span class="line">    public String hello() &#123;</span><br><span class="line">        System.out.println(&quot;Hello&quot;);</span><br><span class="line">        return &quot;hello&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>执行 XxxApplication.main()</p>
-</li>
-<li>
-<p>访问<br>
-localhost:8080</p>
-</li>
-</ol>
-<h3 id="添加-jpa-支持"><a class="header-anchor" href="#添加-jpa-支持">¶</a>添加 Jpa 支持</h3>
-<ol>
-<li>添加依赖</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>添加配置</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">spring.datasource.driver-class-name=com.mysql.jdbc.Driver</span><br><span class="line">spring.datasource.url=jdbc:mysql://localhost:3306/test</span><br><span class="line">spring.datasource.username=root</span><br><span class="line">spring.datasource.password=85382855</span><br><span class="line">   </span><br><span class="line">spring.jpa.hibernate.ddl-auto=create</span><br><span class="line">spring.jpa.show-sql=true</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>创建实体类</p>
-</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Entity</span><br><span class="line">public class User &#123;</span><br><span class="line">    @Id</span><br><span class="line">    @GeneratedValue</span><br><span class="line">    private Integer id;</span><br><span class="line">    private String username;</span><br><span class="line">    private String password;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>
-<p>创建 Dao 接口</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public interface UserDao extends JpaRepository&lt;User, Integer&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>注入 Dao 接口</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">@Autowired</span><br><span class="line">private UserDao userDao;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@RunWith(SpringRunner.class)</span><br><span class="line">@SpringBootTest</span><br><span class="line">public class HelloTest &#123;</span><br><span class="line"></span><br><span class="line">    private MockMvc mockMvc;</span><br><span class="line">    @Before</span><br><span class="line">    public void setUp() throws Exception &#123;</span><br><span class="line">        //测试 HelloWorldController</span><br><span class="line">        mockMvc = MockMvcBuilders.standaloneSetup(new HelloWorldController()).build();</span><br><span class="line">    &#125;</span><br><span class="line">    @Test</span><br><span class="line">    public void getHello() throws Exception &#123;</span><br><span class="line">        mockMvc.perform(MockMvcRequestBuilders.post(&quot;/hello?name=小明&quot;)</span><br><span class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)).andDo(print());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h1>SpringBoot 原理分析</h1>
-<h2 id="核心思想"><a class="header-anchor" href="#核心思想">¶</a>核心思想</h2>
-<ol>
-<li>约定优于配置（convention over configuration）<br>
-传统 Spring 项目配置繁琐是 SpringBoot 主要解决的痛点之一，autoconfigure 模块会在启动时为自动注入的 Bean 设置默认配置。</li>
-<li>模块化<br>
-类似于 maven 管理项目的依赖、git 管理代码的版本，SpringBoot 提供了对一些常用组件的模块化管理，只要添加依赖几乎就可以马上使用，展现出一种插件化的效果。</li>
-</ol>
-<h2 id="spring-boot-load-模块"><a class="header-anchor" href="#spring-boot-load-模块">¶</a>spring-boot-load 模块</h2>
-<p>正常情况下一个类加载器只能找到加载路径的 jar 包里当前目录或者文件类里面的 *.class 文件，SpringBoot 允许我们使用 java -jar archive.jar 运行包含嵌套依赖 jar 的 jar 或者 war 文件。</p>
-<h3 id="传统类加载器的局限"><a class="header-anchor" href="#传统类加载器的局限">¶</a>传统类加载器的局限</h3>
-<p>传统类加载器无法加载 jar 包中嵌套的 jar 包。比如项目打包后包含如下这些类和 jar 包，则 c.jar 中的类无法被加载：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a1.class</span><br><span class="line">a2.class</span><br><span class="line">b.jar</span><br><span class="line">    b1.class</span><br><span class="line">    b2.class</span><br><span class="line">    c.jar</span><br></pre></td></tr></table></figure>
-<p>为了能够加载嵌套 jar 里面的资源，之前的做法都是把嵌套 jar 里面的 class 文件和应用的 class 文件打包为一个 jar，这样就不存在嵌套 jar 了，但是这样做就不能很清晰的知道哪些是应用自己的，哪些是应用依赖的，另外多个嵌套 jar 里面的 class 文件可能内容不一样但是文件名却一样时候又会引发新的问题。</p>
-<h3 id="加载嵌套-jar-包中的-class-文件"><a class="header-anchor" href="#加载嵌套-jar-包中的-class-文件">¶</a>加载嵌套 jar 包中的 class 文件</h3>
-<p>在 Java 中，AppClassLoader 和 ExtClassLoader 都继承自 URLClassLoader，并通过构造函数来传递需要加载的 class 文件所在的目录。<br>
-<strong>那么只要将 jar 包中嵌套的 jar 包所在的路径作为 URLClassLoader 的扫描路径，就可以实现对嵌套 jar 包的扫描了。</strong><br>
-但是默认情况下 Java 使用 AppClassLoader 加载使用命令启动时指定的 classpath 下的类和 jar 包，那么如何使用自定义的 URLClassLoader 来加载这些类和 jar 包呢？具体做法是加一个中间层。<br>
-原来是直接使用 AppClassLoader 来加载应用：AppClassLoader -&gt; Application。<br>
-现在先加载一个自定义的启动类 <strong>Launcher</strong>，其中自定义 URLClassLoader，再使用该 URLClassLoader 来加载我们真正的 main 函数：AppClassLoader -&gt; Launcher -&gt; URLClassLoader -&gt; Application。</p>
-<h3 id="spring-boot-load-提供的启动器-launcher"><a class="header-anchor" href="#spring-boot-load-提供的启动器-launcher">¶</a>spring-boot-load 提供的启动器 Launcher</h3>
-<p>spring-boot-load 模块允许我们加载嵌套 jar 包中的 class 文件，它包含三种类启动器：</p>
-<ol>
-<li>JarLauncher</li>
-<li>WarLauncher</li>
-<li>PropertiesLauncher</li>
-</ol>
-<h3 id="spring-boot-maven-plugin-打包插件及-springboot-指定的包结构"><a class="header-anchor" href="#spring-boot-maven-plugin-打包插件及-springboot-指定的包结构">¶</a>spring-boot-maven-plugin 打包插件及 SpringBoot 指定的包结构</h3>
-<p>为了为 SpringBoot 应用打包，需要引入如下 Maven 插件：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">      &lt;version&gt;1.5.9.RELEASE&lt;/version&gt;</span><br><span class="line">      &lt;executions&gt;</span><br><span class="line">        &lt;execution&gt;</span><br><span class="line">          &lt;goals&gt;</span><br><span class="line">            &lt;goal&gt;repackage&lt;/goal&gt;</span><br><span class="line">          &lt;/goals&gt;</span><br><span class="line">        &lt;/execution&gt;</span><br><span class="line">      &lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
-<p>SpringBoot项目打包后的jar包结构如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">archive.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF（1）</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org（2）</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-com（3）</span><br><span class="line"> |  +-mycompany</span><br><span class="line"> |     + project</span><br><span class="line"> |        +-YouClasses.class</span><br><span class="line"> +-lib（4）</span><br><span class="line">    +-dependency1.jar</span><br><span class="line">    +-dependency2.jar</span><br></pre></td></tr></table></figure>
-<p>目录（1）是 jar 文件中 MANIFEST.MF 文件的存放处。<br>
-目录（2）是 Spring-boot-loader 本身需要的 class 放置处。<br>
-目录（3）是应用本身的文件资源放置处。<br>
-目录（4）是应用依赖的 jar 固定放置处，即 lib 目录。</p>
-<p>打包按如下顺序进行：</p>
-<ol>
-<li>执行<code>mvn clean package</code>按原流程进行打包生成 jar 文件；</li>
-<li>spring-boot-maven-plugin 插件对 jar 包进行重写。
-<ol>
-<li>改写 MANIFEST.MF 文件：<code>Main-Class: org.springframework.boot.loader.JarLauncher</code>、<code>Start-Class: com.abc.MyApplication</code>，这里的 MyApplication 即项目中被<code>@SpringBootApplication</code>注解了的那个类，指定主类后 AppClassLoader 就会先加载 JarLauncher 并执行其中的 main 方法了；</li>
-<li>写入应用依赖的 jar 包到 lib 目录；</li>
-<li>拷贝 spring-boot-load 包里的 class 文件到 jar 包的目录（2）处。</li>
-</ol>
-<blockquote>
-<p>为什么要拷贝到目录（2）的位置？因为后面启动流程中<code>LaunchedURLClassLoader</code>位于spring-boot-loader.jar包内，AppClassLoader无法加载嵌套的jar中的文件。</p>
-</blockquote>
-</li>
-</ol>
-<p>启动顺序如下，以 JarLauncher 为例，假设 SpringBoot 项目打包后的 jar 包名为 test.jar：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/JarLauncher%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="JarLauncher执行时序图" title="JarLauncher执行时序图"></p>
-<ol>
-<li>使用 AppClassLoader 加载 JarLauncher，执行其 main 函数；</li>
-<li>查找 test.jar 中的嵌套 jar 后生成一个列表<code>List&lt;Archive&gt;</code>，每个<code>Archive</code>包含了一个嵌套 jar 的信息，对应 jar 包 Archive 的子类是 <code>JarFileArchive</code>。</li>
-<li>将 test.jar 本身构造成的 Archive 插入<code>List&lt;Archive&gt;</code>列表的第一个位置；</li>
-<li>将这个列表作为参数构建<code>LaunchedURLClassLoader</code>类加载器，这个类加载器继承自 URLClassLoader；</li>
-<li>使用 LaunchedURLClassLoader 加载并实例化 MyApplication 的一个对象，并通过反射调用 main 函数，这时候 SpringBoot 才正式开始初始化 SpringBoot 的环境，并创建容器。</li>
-</ol>
-<h2 id="spring-boot-autoconfigure-模块"><a class="header-anchor" href="#spring-boot-autoconfigure-模块">¶</a>spring-boot-autoconfigure 模块</h2>
-<p>Spring 的出现给我们管理 Bean 的依赖注入提供了便捷，但是当我们需要使用通过 pom 引入的 jar 里面的一个 Bean 时候，还是需要手动在 XML 配置文件里面配置。<br>
-spring-boot-autoconfigure 思路类似 <strong>SPI(Service Provider Interface)</strong>，都是不同的实现类实现了定义的接口，加载时候去查找 classpath 下的实现类，不同在于前者使用 <strong>autoconfigure</strong> 实现，后者使用的是 <strong>ServiceLoader</strong>。<br>
-autoconfigure 模块的主要功能如下：</p>
-<ol>
-<li>可以依据 classpath 里面的依赖内容自动配置 Bean 到 Spring 容器，并为默认化属性配置。</li>
-<li>尝试推断哪些 Beans 是用户可能会需要的。比如如果 HSQLDB 包在当前 classpath 下，并且用户并没有配置其他数据库链接，这时候 Auto-configuration 功能会自动注入一个基于内存的数据库连接到应用的 IOC 容器。再比如当我们在 pom 引入了 Tomcat 的 start 后，如果当前还没 Web 容器被注入到应用 IOC，那么 SpringBoot 就会为我们自动创建并启动一个内嵌 Tomcat 容器来服务。</li>
-</ol>
-<h3 id="enableautoconfiguration"><a class="header-anchor" href="#enableautoconfiguration">¶</a>EnableAutoConfiguration</h3>
-<p>核心注解<code>@EnableAutoConfiguration</code>的定义如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Inherited</span><br><span class="line">@AutoConfigurationPackage</span><br><span class="line">@Import(&#123;AutoConfigurationImportSelector.class&#125;)</span><br><span class="line">public @interface EnableAutoConfiguration &#123;</span><br><span class="line">    String ENABLED_OVERRIDE_PROPERTY = &quot;spring.boot.enableautoconfiguration&quot;;</span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] exclude() default &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    String[] excludeName() default &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><code>EnableAutoConfiguration</code> 注解主要作用是通过 <code>@Import</code> 注入 <code>EnableAutoConfigurationImportSelector</code> 实例，后者是实现 AutoConfiguration 功能的核心类。<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/EnableAutoConfigurationImportSelector%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="EnableAutoConfigurationImportSelector时序图" title="EnableAutoConfigurationImportSelector时序图"><br>
-<code>EnableAutoConfigurationImportSelector</code> 类实现了 <code>DeferredImportSelector</code> 接口的 <code>String[] selectImports(AnnotationMetadata metadata)</code> 方法，当 Spring 框架解析 <code>@Import</code> 注解时候会调用该方法。<br>
-代码<code>EnableAutoConfigurationImportSelector#getCandidateConfigurations</code>和<code>loadFactoryNames</code>的作用是扫描 classpath 下含有 <code>Meta-INF/spring.factories</code> 文件的 jar，并解析文件中名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项。<br>
-getCandidateConfigurations会返回名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项的值的一个列表并且对列表内容进行去重处理。</p>
-<blockquote>
-<p>正常情况下，去重后的列表里面的类都会被自动注入到 Spring IOC 容器，除非指定不自动注入某些功能，比如若要排除自动创建数据源和事务管理的功能可以：<code>@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class})</code>，getExclusions 就是读取 EnableAutoConfiguration 注解里面的 excludeName 和 exclude 配置项，然后从去重后的列名列表里面剔除。这样在自动注入时候就不会对排除掉的自动配置功能进行注入了。</p>
-</blockquote>
-<p>这个列表中的每个元素就是一个自动配置功能，比如 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration 是 Web 容器自动注入的功能类（比如这个类可以自动扫描 Tomcat 的 start 并创建一个 Tomcat 容器）。</p>
-<h3 id="例子-注入-web-容器"><a class="header-anchor" href="#例子-注入-web-容器">¶</a>例子 - 注入 Web 容器</h3>
-<p>ServletWebServerFactoryAutoConfiguration 的部分核心代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)</span><br><span class="line">@ConditionalOnClass(ServletRequest.class)</span><br><span class="line">@ConditionalOnWebApplication(type = Type.SERVLET)</span><br><span class="line">@EnableConfigurationProperties(ServerProperties.class)</span><br><span class="line">@Import(&#123; ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedTomcat.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedJetty.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedUndertow.class &#125;)</span><br><span class="line">public class ServletWebServerFactoryAutoConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public ServletWebServerFactoryCustomizer servletWebServerFactoryCustomizer(ServerProperties serverProperties) &#123;</span><br><span class="line">		return new ServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@ConditionalOnClass(name = &quot;org.apache.catalina.startup.Tomcat&quot;)</span><br><span class="line">	public TomcatServletWebServerFactoryCustomizer tomcatServletWebServerFactoryCustomizer(</span><br><span class="line">			ServerProperties serverProperties) &#123;</span><br><span class="line">		return new TomcatServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Registers a &#123;@link WebServerFactoryCustomizerBeanPostProcessor&#125;. Registered via</span><br><span class="line">	 * &#123;@link ImportBeanDefinitionRegistrar&#125; for early registration.</span><br><span class="line">	 */</span><br><span class="line">	public static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware &#123;</span><br><span class="line"></span><br><span class="line">		private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void setBeanFactory(BeanFactory beanFactory) throws BeansException &#123;</span><br><span class="line">			if (beanFactory instanceof ConfigurableListableBeanFactory) &#123;</span><br><span class="line">				this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,</span><br><span class="line">				BeanDefinitionRegistry registry) &#123;</span><br><span class="line">			if (this.beanFactory == null) &#123;</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;webServerFactoryCustomizerBeanPostProcessor&quot;,</span><br><span class="line">					WebServerFactoryCustomizerBeanPostProcessor.class);</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;errorPageRegistrarBeanPostProcessor&quot;,</span><br><span class="line">					ErrorPageRegistrarBeanPostProcessor.class);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		private void registerSyntheticBeanIfMissing(BeanDefinitionRegistry registry, String name, Class&lt;?&gt; beanClass) &#123;</span><br><span class="line">			if (ObjectUtils.isEmpty(this.beanFactory.getBeanNamesForType(beanClass, true, false))) &#123;</span><br><span class="line">				RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);</span><br><span class="line">				beanDefinition.setSynthetic(true);</span><br><span class="line">				registry.registerBeanDefinition(name, beanDefinition);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>ServletWebServerFactoryAutoConfiguration 类是 Web 容器自动注入的 Auto-configuration 类。</p>
-<ul>
-<li>@ConditionalOnWebApplication 说明当前是 Web 环境上下文时候才注入本类到 IOC。</li>
-<li>@Import 注解导入了另一个配置<code>ServletWebServerFactoryConfiguration.EmbeddedTomcat.class</code>，这里包含了真正的注入 Tomcat 实例的逻辑：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">class ServletWebServerFactoryConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Configuration</span><br><span class="line">	@ConditionalOnClass(&#123; Servlet.class, Tomcat.class, UpgradeProtocol.class &#125;)</span><br><span class="line">	@ConditionalOnMissingBean(value = ServletWebServerFactory.class, search = SearchStrategy.CURRENT)</span><br><span class="line">	public static class EmbeddedTomcat &#123;</span><br><span class="line"></span><br><span class="line">		@Bean</span><br><span class="line">		public TomcatServletWebServerFactory tomcatServletWebServerFactory() &#123;</span><br><span class="line">			return new TomcatServletWebServerFactory();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-<ul>
-<li>@ConditionalOnClass：只有在 classpath 下存在指定的类的时候 Bean 才能被创建。</li>
-<li>@ConditionalOnMissingBean：只有对应的 Bean 在系统中都没有被创建，它修饰的初始化代码块才会执行，【用户自己手动创建的 Bean 优先】。</li>
-</ul>
-<p>当应用引入 spring-boot-starter-web 时候默认引入的是 Tomcat 的 starter，所以会发现 classpath 下存在 Servlet.class、 Tomcat.class 这两个类，并且 IOC 里面没有 TomcatEmbeddedServletContainerFactory 的实例，因此会创建其实例到 IOC 容器中，最终会创建一个 Tomcat 容器。<br>
-当然，如果需要使用 Jetty 则需要在引用 spring-boot-starter-web 的时候排除掉 Tomcat 的 start，然后在引入 Jetty 的 start 即可。</p>
-<h3 id="总结"><a class="header-anchor" href="#总结">¶</a>总结</h3>
-<p>总而言之，自动配置的生效步骤可以概括如下：</p>
-<ol>
-<li>Spring Boot 在启动时会去依赖的 Starter 包中寻找 resources/META-INF/spring.factories 文件，然后根据文件中配置的 Jar 包去扫描项目所依赖的 Jar 包。</li>
-<li>根据 spring.factories 配置加载 AutoConfigure 类</li>
-<li>根据 @Conditional 注解的条件，进行自动配置并将 Bean 注入 Spring Context</li>
-</ol>
-<h2 id="spring-boot-模块"><a class="header-anchor" href="#spring-boot-模块">¶</a>spring-boot 模块</h2>
-<p>提供了一些特性用来支持 SpringBoot 中其它模块，这些特性包括：</p>
-<ol>
-<li>SpringApplication 类提供了静态方法以便于写一个独立了 Spring 应用程序，该类的主要职责是 create 和 refresh 一个合适的 Spring 应用程序上下文（ApplicationContext）。</li>
-<li>一流的外部配置的支持（application.properties）。</li>
-<li>提供了便捷的应用程序上下文（ApplicationContext）的初始化器，以便在 ApplicationContext 使用前对其进行用户定制。</li>
-<li>给 Web 应用提供了一个可选的 Web 容器（目前有 Tomcat 或 Jetty）。</li>
-</ol>
-<h3 id="springapplication-的执行流程"><a class="header-anchor" href="#springapplication-的执行流程">¶</a>SpringApplication 的执行流程</h3>
-<p>一般的 SpringBoot 项目都会有一个如下所示的 Application 类：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class Web1Application &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(Web1Application.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在<code>JarLauncher</code>启动过后里面实际上就是调用了 SpringApplication#run 方法，SpringApplication 的执行流程如下：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/SpringApplication%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="SpringApplication执行时序图" title="SpringApplication执行时序图"></p>
-<ol>
-<li>SpringApplication 的构造函数里面会调用 initialize 方法在 classpath 的 jar 包里面查找 META-INF/spring.factories，如果找到则看里面是否有配置 <code>ApplicationContextInitializer</code> 类型的 Bean，有则加载到 SpringApplication 的变量 <code>initializers</code> 里面存放，比如 spring-boot.jar 里面。<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/ApplicationContextInitializer%E9%85%8D%E7%BD%AE.png" alt="ApplicationContextInitializer配置" title="ApplicationContextInitializer配置"></li>
-<li>createAndRefreshContext 做了这几件事情：
-<ol>
-<li>设置环境，加载 application.properties 等配置文件；</li>
-<li>根据 classpath 的 jar 里面是否有 ConfigurableWebEnvironment 判断当前是否需要创建 Web 应用程序上下文还是创建一个非 Web 应用程序上下文；</li>
-<li>使用前面加载的应用程序初始化器对创建的应用程序上下文进行初始化；</li>
-<li>刷新应用程序上下文解析 Bean 定义到应用程序上下文里面的 IOC 容器，在刷新过程的 invokeBeanFactoryPostProcessors 过程中(10)(11)会去解析类上面标注的 @import 注解，然后就会调用所有的 ImportSelector 的 selectImports 方法，这也是第二部分时序图开始执行的地方。</li>
-</ol>
-</li>
-</ol>
-<h3 id="web-容器的创建"><a class="header-anchor" href="#web-容器的创建">¶</a>Web 容器的创建</h3>
-<p>通过自动配置将 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 的实例注入 IOC 容器后，我们就可以使用 Web 容器来提供 Web 服务了。<br>
-具体的 Web 容器的创建是在容器刷新过程的 onRefresh 阶段进行的（这个阶段是在刷新过程的 invokeBeanFactoryPostProcessors 阶段的后面）：<br>
-<img src="http://47.88.24.11/imgs/SpringBoot/Web%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B.png" alt="Web容器创建过程" title="Web容器创建过程"></p>
-<ul>
-<li>getBeanNamesForType 获取了 IOC 容器中的 EmbeddedServletContainerFactory 类型的 Bean 的 name 集合，如果 name 集合为空或者多个则抛出异常。还记得 Web 容器工厂是通过自动配置注入到 IOC 的吧，并且 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 都是实现了 EmbeddedServletContainerFactory 接口。</li>
-<li>如果 IOC 里面只有一个 Web 容器工厂 Bean 则获取该 Bean 的实例，然后调用该 Bean 的 getEmbeddedServletContainer 获取 Web 容器，这里假设 Web 容器工厂为 Tomcat ，则创建 Tomcat 容器并进行初始化。</li>
-</ul>
-<h2 id="actuator-模块"><a class="header-anchor" href="#actuator-模块">¶</a>Actuator 模块</h2>
-<p><img src="http://47.88.24.11/imgs/SpringBoot/Actuator%E7%B1%BB%E5%9B%BE.png" alt="Actuator类图" title="Actuator类图"><br>
-Actuator 模块提供了一些组件用于检查应用或中间件的健康状况：</p>
-<ol>
-<li>Inspect：检测应用或中间件的健康状况；</li>
-<li>Aggregate：聚合所有结果。</li>
-</ol>
-<p>基于 Actuator 模块，我们可以开发一个服务探活系统：</p>
-<ol>
-<li>Actuator 为业务服务器暴露出一个探活端口<code>healthcheck</code>，借助 Spring 容器获取到中间件的客户端实例；</li>
-<li>探活服务<code>HealthCheck-Task</code>定时轮询所有服务，统计单位时间内请求出现问题的次数，从而发送报警短信提醒研发同学。</li>
-</ol>
-<p>服务的轮询探活将是这个系统的主要瓶颈，有一些措施可以作为参考：</p>
-<ol>
-<li>灵活使用<code>CompletableFuture</code>这些并发编排组件，因为探活请求一般都是比较&quot;慢&quot;的，因此可以通过并行化来提高效率；</li>
-<li>探活不能占用太多系统资源，合理设置探活超时时间，很多客户端的默认超时时间达到 1 分钟甚至更长，必须额外设置探活请求的超时时间，避免服务器挂掉时所有线程都被<code>hang</code>死，导致服务雪崩。</li>
-</ol>
-<blockquote>
-<p>探活不能和业务代码共用线程池，做到线程池隔离，即使出问题也只影响到<code>HealthCheck-Task</code>。</p>
-</blockquote>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/bbf439c8a203" target="_blank" rel="noopener">从零开始开发一个Spring Boot Starter</a></li>
-<li><a href="https://www.jianshu.com/p/87f101d8ec41" target="_blank" rel="noopener">SpringBoot启动流程解析</a></li>
-</ol>
-<h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
-<ol>
-<li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -1359,7 +1173,7 @@ Actuator 模块提供了一些组件用于检查应用或中间件的健康状�
 <li>调用 Fallback 处理逻辑</li>
 </ol>
 <h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
-<p><img src="http://47.88.24.11/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
 <h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
 <ul>
 <li>toObservable()<br>
@@ -1401,7 +1215,7 @@ AbstractCommand.toObservable<br>
 <p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
 当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
 Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
+<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
 <ol>
 <li>熔断关闭状态（Closed）<br>
 服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
@@ -1496,7 +1310,7 @@ HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException �
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/ad5b98b9.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -1515,254 +1329,7 @@ HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException �
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  760 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  3 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>事务</h1>
-<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
-<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
-<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
-<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
-<h1>源码</h1>
-<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
-<ol>
-<li>数据源元数据信息和表元数据信息的收集</li>
-<li>表分库分表策略和算法的配置信息收集</li>
-</ol>
-<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
--&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
-<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
-<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
-org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
--&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
--&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
--&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
--&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
-<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; ShardingPreparedStatement#shard<br>
--&gt; BaseShardingEngine#shard<br>
--&gt; PreparedQueryShardingEngine#route<br>
--&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
--&gt; ParsingSQLRouter#parse<br>
--&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
--&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
--&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
--&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
--&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
--&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
--&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
--&gt; ParsingSQLRouter#route<br>
--&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
--&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
--&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
--&gt; BaseShardingEngine#rewriteAndConvert<br>
--&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
-<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
--&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
--&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
--&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
--&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
--&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
--&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
--&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
--&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
--&gt; AbstractStatementExecutor#executeCallback<br>
--&gt; SQLExecuteTemplate#executeGroup<br>
--&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
--&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
-<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
--&gt; AbstractStatementExecutor#getResultSets<br>
--&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
--&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
-<h1>参考</h1>
-<ol>
-<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
-<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
-<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
-<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
-</ol>
-<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
-<ol>
-<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
+                <a class="post-title-link" href="/ad5b98b9.html" itemprop="url">JVM 的结构</a></h1>
         
 
         <div class="post-meta">
@@ -1828,7 +1395,7 @@ org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  765 字
+                  5.5k 字
                 </span>
               
 
@@ -1844,7 +1411,7 @@ org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  2 分钟
+                  19 分钟
                 </span>
               
             </div>
@@ -1868,41 +1435,190 @@ org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
         
           
             <a id="more"></a>
-<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
-<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
-<img src="http://47.88.24.11/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
-<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
-<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
-Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
-<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
-<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
-此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
-<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
-<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
+<p><img src="https://tallate.top/imgs/JVM/JVM%E7%BB%93%E6%9E%84.png" alt="JVM结构" title="JVM结构"><br>
+JVM 特指用于运行由 Java 虚拟机规范规定的字节码的运行时系统，它具有以下特征：</p>
 <ul>
-<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
-<li>检查变量使用前是否已声明；</li>
-<li>推导泛型方法的类型参数；</li>
-<li>检查类型匹配性；</li>
-<li>进行常量折叠；</li>
-<li>检查所有语句都可到达；</li>
-<li>检查所有 checked exception 都被捕获或抛出；</li>
-<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
-<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
-<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
-<li>等…</li>
+<li>平台无关性<br>
+JVM 本身是平台相关的，只是对不同平台都有实现，所以我们编译成的字节码才可以在各个平台上执行，因此称 Java 平台无关指的是字节码是平台无关的。</li>
+<li>高度抽象<br>
+JVM 提供了编译器、类加载、动态内存管理、线程等一套工具，作为虚拟机，程序经编译后运行在 JVM 上时，几乎完全不必担心平台的兼容性。<br>
+本地方法接口只是作为一个扩展功能提供，并不是必须的，实际上除了对性能严格要求的场合，本地方法一般不会被使用。</li>
 </ul>
-<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
+<blockquote>
+<p>编译器严格来说和虚拟机并无太大关联，JVM 可以供 Groovy、Kotlin、Scala 等一系列语言作为运行时环境，</p>
+</blockquote>
+<p>下图表示 JVM 的系统结构，包括与 Class 文件打交道的类装载系统、进行运行时数据管理的系统、进行方法执行的系统、本地方法接口（JNI）和本地方法库这些部分。</p>
+<h3 id="类装载子系统"><a class="header-anchor" href="#类装载子系统">¶</a>类装载子系统</h3>
+<p>类装载子系统负责查找并装载类型，类装载器主要包含两种：<strong>启动类装载器（Java 虚拟机实现的一部分）<strong>和</strong>用户自定义类装载器（Java 程序的一部分）</strong>。</p>
+<p>启动类装载器 – Java 虚拟机必须有一个启动类装载器，用于装载受信任的类，如 Java API 的 class 文件。<br>
+用户自定义类装载器 – 继承自 ClassLoader 类，ClassLoader 的如下四个方法，是通往 Java 虚拟机的通道。</p>
 <ul>
-<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
-<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
-<li>最后从符号表生成 class 文件。</li>
+<li>protected final Class defineClass(String name, byte data[], int offset, int length); // data 为二进制的 Java Class 文件数据，表示一个新的可用类型，之后把这个类型导入到方法区中</li>
+<li>protected final Class defineClass(String name, byte data[], int offset, int length, ProtectionDomain protectionDomain);</li>
+<li>protected final Class findSystemClass(String name); // 参数为全限定名，通过类装载器进行装载</li>
+<li>protected final void resolveClass(Class c); // 参数为 Class 实例，完成连接初始化操作</li>
 </ul>
+<p>类装载子系统负责<strong>定位和导入二进制 class 文件，并且保证导入类的正确性，为类变量分配并初始化内存，以及帮助解析符号引用</strong>。类装载器必须严格按照如下顺序进行类的装载。</p>
+<ol>
+<li>装载 – 查找并装载类型的二进制数据</li>
+<li>连接 – 执行验证，准备，以及解析（可选），连接分为如下三个步骤<br>
+验证 – 确保被导入类型的正确性<br>
+准备 – 为类变量（static）分配内存，并将其初始化为默认值<br>
+解析 – 把类型中的符号引用转换为直接引用</li>
+<li>初始化 – 把类变量初始化为正确初始值</li>
+</ol>
+<h2 id="内存管理系统"><a class="header-anchor" href="#内存管理系统">¶</a>内存管理系统</h2>
+<h3 id="方法区"><a class="header-anchor" href="#方法区">¶</a>方法区</h3>
+<p>方法区是线程共享的内存区域，用于存储已被虚拟机加载的类信息、常量、静态变量、即时编译器编译后的代码等数据，当方法区无法满足内存分配需求时，将抛出 OutOfMemoryError。<br>
+类信息包括：</p>
+<ol>
+<li>类型全限定名。</li>
+<li>类型的直接超类的全限定名（除非这个类型是 java.lang.Object，它没有超类）。</li>
+<li>类型是类类型还是接口类型。</li>
+<li>类型的访问修饰符（public、abstract、final 的某个子集）。</li>
+<li>任何直接超接口的全限定名的有序列表。</li>
+<li>类型的常量池。</li>
+<li>字段信息。</li>
+<li>方法信息。</li>
+<li>除了常量以外的所有类（静态）变量。</li>
+<li>一个到类 ClassLoader 的引用。</li>
+<li>一个到 Class 类的引用。</li>
+</ol>
+<p>着重介绍<strong>常量池</strong>，虚拟机必须要为每个被装载的类型维护一个常量池。常量池就是该类型所用常量的一个有序集合，包括直接常量和对其他类型、字段和方法的符号引用。它在 Java 程序的<strong>动态连接</strong>（运行时解析字节码中使用到的符号引用）中起着核心作用。<br>
+除了以上结构外，JVM 的实现者还可以添加一些其他的数据结构，如方法表：对每个加载的非抽象类的类信息中都添加一个方法表，方法表是一组对类实例方法的直接引用——包括从父类继承的方法，JVM 可以通过方法表快速找到实例方法。</p>
+<blockquote>
+<p>C++中 virtual 函数是通过虚函数表实现的，Java 中所有方法都是 virtual 的，因此也就不需要再标注虚拟了，正像 Java 虽然宣称没有指针，但是 Java 里其实全是指针。Java 中类似的检查机制不少，这体现了 Java 的一种设计思想：始终将安全放在效率之上。</p>
+</blockquote>
+<h3 id="元空间"><a class="header-anchor" href="#元空间">¶</a>元空间</h3>
+<p>JDK1.8 的一大改动是方法区变成了元空间，其实就是放开了类空间的大小，容量取决于是 32 位或是 64 位操作系统的可用虚拟内存大小，32 位系统本地最多有 4G 虚拟内存空间，物理内存取决于操作系统的配置。新参数<code>MaxMetaspaceSize</code>用于限制本地内存分配给类元数据的大小，如果没有指定这个参数，元空间会在运行时根据需要动态调整，大小随意。对于没用的类及类加载器的垃圾回收将在元数据使用达到 MaxMetaspaceSize 参数的设定值时进行。</p>
+<h3 id="堆"><a class="header-anchor" href="#堆">¶</a>堆</h3>
+<p>一个虚拟机实例只对应一个堆空间，堆是<strong>线程共享</strong>的，当然还有可能会划分出多个线程私有的分配缓冲区（<strong>TLAB</strong>）。堆空间是存放对象实例的地方，几乎所有对象实例都在这里分配。堆也是<strong>垃圾收集器</strong>管理的主要区域，因此也被称为“GC 堆”。<br>
+堆可以处于物理上不连续的内存空间中，只要逻辑上连续即可，就像磁盘空间一样。<br>
+当堆中没有足够的内存进行对象实例分配时，并且堆也无法扩展时，会抛出 OutOfMemoryError 异常。<br>
+对 OOM 的排查通常是先通过内存映像分析工具对 Dump 出来的堆转储快照进行分析，重点是确认内存中的对象是否是必要的，也就是要先分清楚到底是出现了<strong>内存泄漏</strong>还是<strong>内存溢出</strong>。</p>
+<ul>
+<li>如果是内存泄漏，可进一步通过工具查看泄露对象到 GC Roots 的引用链。于是就能找到泄露对象的类型信息及 GC Roots 引用链的信息，就可以比较准确地定位出泄露代码的位置。</li>
+<li>如果不存在泄露，就是内存中的对象确实都还必须存活着，那就应当检查虚拟机的堆参数（-Xmx 与 -Xms），与机器物理内存对比看是否还可以调大，从代码上检查是否存在某些对象生命周期过长、持有状态时间过长的情况，尝试减少程序运行期的内存消耗。</li>
+</ul>
+<h3 id="程序计数器"><a class="header-anchor" href="#程序计数器">¶</a>程序计数器</h3>
+<p>每个线程拥有自己的程序计数器，线程之间的程序计数器互不影响，在任何一个确定的时刻，一个处理器（对于多核处理器来说是一个内核）都只会执行一条线程中的指令。<br>
+PC 寄存器的内容总是下一条将被执行指令的&quot;地址&quot;，这里的&quot;地址&quot;可以是一个本地指针，也可以是在方法字节码中相对于该方法起始指令的偏移量。</p>
+<ul>
+<li>如果该线程正在执行一个本地方法，则程序计数器内容为 undefined。</li>
+<li>此区域在 Java 虚拟机规范中没有规定任何 OutOfMemoryError 情况的区域。</li>
+</ul>
+<h3 id="虚拟机栈"><a class="header-anchor" href="#虚拟机栈">¶</a>虚拟机栈</h3>
+<p>我们一般会把 Java 内存区分为堆内存和栈内存，而所指的“栈”就是这里的虚拟机栈，或者说是虚拟机栈中局部变量表部分。<br>
+Java 栈也是线程私有的，虚拟机只会对栈进行两种操作，以帧为单位的<strong>入栈</strong>和<strong>出栈</strong>。每个方法在执行时都会创建一个<strong>栈帧</strong>，并入栈，成为当前帧，每一个方法从调用直至执行完成的过程，就对应着一个栈帧在虚拟机栈中从入栈到出栈的过程。栈帧由三部分组成：局部变量区、操作数栈、帧数据区。<br>
+<strong>局部变量区</strong>被组织为一个以字长为单位、从 0 开始计数的数组。字节码指令通过从 0 开始的索引来使用其中的数据。类型为 int、float、reference 和 returnAddress 的值在数组中只占据一项，而类型为 byte、short 和 char 的值存入时都会转化为 int 类型，也占一项，而 long、double 则连续占据两项。<br>
+<strong>操作数栈</strong>也常被称为操作栈，它是一个后入先出栈。当一个方法刚刚执行的时候，这个方法的操作数栈是空的，在方法执行的过程中，会有各种字节码指令向操作数栈中写入和提取值，也就是入栈与出栈操作。在使用操作数栈时需要注意实例方法和类方法：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Example &#123;</span><br><span class="line">    // 类方法</span><br><span class="line">    public static int classMethod(int i, long l, float f, double d, Object o, byte b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    // 实例方法</span><br><span class="line">    public int instanceMethod(char c, double d, short s, boolean b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>类方法和实例方法栈帧结构有所不同，从图中可以看到它们之间的区别：</p>
+<ul>
+<li>类方法帧里没有隐含的 this 引用，而实例方法帧中会隐含一个 this 引用；</li>
+</ul>
+<p>并且注意：</p>
+<ul>
+<li>byte,char,short,boolean 类型存入局部变量区的时候都会被转化成 int 类型值，当被存回堆或者方法区时，才会转化回原来的类型；</li>
+<li>returnAddress 类型数据是指向字节码的指针（方法区的字节码指令），它只存在于字节码层面，与编程语言无关，我们在 Java 语言中是不会直接与 returnAddress 类型数据打交道的。</li>
+</ul>
+<blockquote>
+<p>每个线程所持有的程序计数器（pc）实际上就是 returnAddress 类型的数据，当线程执行 native 方法时，pc 中的值为 undefied。</p>
+</blockquote>
+<ul>
+<li>操作数栈被组织成一个以字长为单位的数组，它是通过标准的栈操作——即入栈和出栈来进行访问，而不是通过索引访问。入栈和出栈也会存在类型的转化；</li>
+<li>当一个方法执行完毕之后，要返回之前调用它的地方，因此在栈帧中必须保存一个方法返回地址。方法退出的过程实际上等同于把当前栈帧出栈，因此退出时可能执行的操作有：恢复上层方法的局部变量表和操作数栈，把返回值(如果有的话)压入调用都栈帧的操作数栈中，调用 PC 计数器的值以指向方法调用指令后面的一条指令等。</li>
+<li>每个栈帧都包含一个指向运行时常量池中该栈帧所属方法的引用，持有这个引用是为了支持方法调用过程中的动态连接。在 Class 文件的常量池中存有大量的符号引用，字节码中的方法调用指令就以常量池中指向方法的符号引用为参数。这些符号引用一部分会在类加载阶段或第一次使用的时候转化为直接引用，这种转化称为静态解析。另外一部分将在每一次的运行期期间转化为直接引用，这部分称为动态连接。</li>
+</ul>
+<p><strong>栈数据区</strong>存放一些用于支持常量池解析、正常方法返回以及异常派发机制的信息。即将常量池的符号引用转化为直接地址引用、恢复发起调用的方法的帧进行正常返回，发生异常时转交异常表进行处理。</p>
+<ul>
+<li>虚拟机规范允许具体的虚拟机实现增加一些规范里没有描述的信息到栈帧中，例如与高度相关的信息，这部分信息完全取决于具体的虚拟机实现。在实际开发中，一般会把动态连接，方法返回地址与其它附加信息全部归为一类，称为<strong>栈帧信息</strong>。</li>
+</ul>
+<p>在 Java 虚拟机规范中，规定了两种异常状况：如果线程请求的栈深度大于虚拟机所允许的深度，将抛出 StackOverflowError 异常；如果虚拟机栈可以动态扩展，当扩展时无法申请到足够的内存，就会抛出 OutOfMemoryError 异常。</p>
+<p>系统分配给每个进程的内存是有限制的，除去 Java 堆、方法区、程序计数器，如果虚拟机进程本身耗费的内存不计算在内，剩下内存就由虚拟机栈和本地方法栈“瓜分”了。每个线程分配到的栈容量越大，可以建立的线程数量自然就越少，建立线程时就越容易把剩下的内存耗尽，出现<strong>虚拟机栈溢出</strong>的情况。</p>
+<ul>
+<li>如果线程请求的栈深度大于虚拟机所允许的最大深度，将抛出 StackOverflowError 异常，出现 StackOverflowError 异常时有错误栈可以阅读，栈深度在大多数情况下达到 1000~2000 完全没有问题，对于正常的方法调用（包括递归），这个深度在一半情况下完全够用。</li>
+<li>如果虚拟机在扩展栈（建立更多的线程）时无法申请到足够的内存空间，则抛出 OutOfMemoryError 异常，在不能减少线程数或者更换 64 位虚拟机的情况下，就只能通过减少最大堆和减少栈容量来换取更多的线程。</li>
+</ul>
+<p>一般可以认为 Java 中的一切变量都是引用，实际的对象存储在堆中，但是基础类型比较特殊，它们可以直接使用操作符进行算数运算，不过基础类型也带来了一些问题，比如装箱拆箱过程中可能产生空指针异常。Java 中引入基础类型的动机应该是性能与空间利用率，毕竟使用引用时还得通过<strong>指针碰撞</strong>或<strong>空闲列表</strong>方法（根据垃圾收集器不同而不同）来找到实际对象，而且基础类型本身占用的空间不多，如果用引用势必占用的空间会加倍。<br>
+基础类型并不是都分配在栈上，具体有以下几种情况：</p>
+<ol>
+<li>在方法中声明的变量，即该变量是局部变量，每当程序调用方法时，系统都会为该方法建立一个方法栈，其所在方法中声明的变量就放在方法栈中，当方法结束系统会释放方法栈，其对应在该方法中声明的变量随着栈的销毁而结束，这就局部变量只能在方法中有效的原因<br>
+在方法中声明的变量可以是基本类型的变量，也可以是引用类型的变量。
+<ul>
+<li>当声明是基本类型的变量的时，其变量名及值（变量名及值是两个概念）是放在方法栈中</li>
+<li>当声明的是引用变量时，所声明的变量（该变量实际上是在方法中存储的是内存地址值）是放在方法的栈中，该变量所指向的对象是放在堆类存中的。</li>
+</ul>
+</li>
+<li>在类中声明的变量是成员变量，也叫全局变量，放在堆中的（因为全局变量不会随着某个方法执行结束而销毁）。<br>
+同样在类中声明的变量即可是基本类型的变量 也可是引用类型的变量
+<ul>
+<li>当声明的是基本类型的变量其变量名及值是放在堆中的</li>
+<li>引用类型时，其声明的变量仍然会存储一个内存地址值，该内存地址值指向所引用的对象。引用变量名和对应的对象仍然存储在相应的堆中</li>
+</ul>
+</li>
+</ol>
+<h3 id="堆外内存"><a class="header-anchor" href="#堆外内存">¶</a>堆外内存</h3>
+<h4 id="一个例子"><a class="header-anchor" href="#一个例子">¶</a>一个例子</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 分配一块1024字节的堆外内存</span><br><span class="line">ByteBuffer buffer = ByteBuffer.allocateDirect(1024);</span><br><span class="line">System.out.println(buffer.capacity());</span><br><span class="line">buffer.putInt(0, 2018);</span><br><span class="line">System.out.println(buffer.getInt(0));</span><br></pre></td></tr></table></figure>
+<h4 id="为什么要使用堆外内存"><a class="header-anchor" href="#为什么要使用堆外内存">¶</a>为什么要使用堆外内存</h4>
+<p>主要是因为堆外内存在 IO 操作方面的优势，举一个例子：在通信中，将存在于堆内存中的数据 flush 到远程时，需要首先将堆内存中的数据拷贝到堆外内存中，然后再写入 Socket 中；如果直接将数据存到堆外内存中就可以避免上述拷贝操作，提升性能。类似的例子还有读写文件。<br>
+但是需要注意的是，直接访问堆外内存并不会比访问 Java 堆更快：<a href="https://mp.weixin.qq.com/s/njCKlx8mBh6kSP2lC9mT4g" target="_blank" rel="noopener">哪个更快：Java 堆还是本地内存</a>。堆外内存更适合用于操作大块的数据（&gt;2G）、可以直接使用操作系统提供的本地 IO 进行操作。</p>
+<h4 id="可用的堆外内存额度"><a class="header-anchor" href="#可用的堆外内存额度">¶</a>可用的堆外内存额度</h4>
+<ol>
+<li>可以通过设定 <code>-XX:MaxDirectMemorySize</code> 来显式指定最大的堆外内存。</li>
+<li>设定 <code>-Dsun.nio.MaxDirectMemorySize</code> 来显式指定：如果该属性为-1，则取<code>directMemory = Runtime.getRuntime().maxMemory()</code>，即 JVM 运行时的最大内存；否则，如果指定这个属性等于-1，则默认为 64M。<br>
+如果是 JDK8，具体代码见<code>VM.saveAndRemoveProperties()</code>，如果是 JDK8 之前，则代码见<code>VM.maxDirectMemory()</code>。<br>
+另外，<code>Runtime.getRuntime().maxMemory()</code>是一个 native 方法，HotSpot 中对应的 C++代码如下所示：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jlong JNICALL</span><br><span class="line">Java_java_lang_Runtime_maxMemory(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">    return JVM_MaxMemory();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">JVM_ENTRY_NO_ENV(jlong, JVM_MaxMemory(void))</span><br><span class="line">  JVMWrapper(&quot;JVM_MaxMemory&quot;);</span><br><span class="line">  size_t n = Universe::heap()-&gt;max_capacity();</span><br><span class="line">  return convert_size_t_to_jlong(n);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
+<p>其中 max_capacity() 实际返回的是 –Xmx 设置值减去一个 survivor space 的预留区大小，与堆内大小存很接近。</p>
+<h4 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h4>
+<ol>
+<li>分配<br>
+ByteBuffer.allocateDirect<br>
+DirectByteBuffer(int)<br>
+-&gt; Bits.reserveMemory 在系统中保存总分配内存（按页分配）的大小和实际内存的大小<br>
+-&gt; Bits.tryReserveMemory 判断系统内存（堆外内存）是否足够，Bits 有一个全局 totalCapacity 变量记录当前已经使用的堆外内存量<br>
+-&gt; JavaLangRefAccess.tryHandlePendingReference 非阻塞，将已经被 JVM 垃圾回收的 DirectBuffer 对象的堆外内存释放。<br>
+-&gt; System.gc 触发一次 FullGC，<code>System.gc</code>并不能保证 FullGC 被马上执行，如果设置了<code>-XX:+DisableExplicitGC</code>则这种显式的 GC 会被禁用<br>
+-&gt; Bits.tryReserveMemory 为了等待 FullGC 释放足够的空间，之后还会重试最多 9 次 tryReserveMemory，每次重试会 sleep 1, 2, 4, 8, 16, 32, 64, 128, 256ms，也就是说最多可以等 0.5s<br>
+-&gt; throw new OutOfMemoryError 分配空间失败，抛出 OOM 异常<br>
+-&gt; Unsafe.allocateMemory native 方法，通过 JNI 调用 C++函数分配堆外内存，并返回内存基地址<br>
+-&gt; Unsafe.setMemory(base, size, (byte) 0) 将分配的内存清零<br>
+-&gt; Cleaner.create 创建一个 Cleaner 用于释放堆空间</li>
+<li>释放<br>
+Cleaner.create Cleaner 内部维护了一个 static 的 Cleaner 对象的链表，create 调用创建了一个 Cleaner 对象并将其加入到该链表中<br>
+-&gt; new Cleaner(DirectByteBuffer, new Deallocator(base, size, cap))</li>
+</ol>
+<p>Cleaner 实现 GC 回收堆外内存的原理是<code>PhantomReference（虚引用）</code>，虚引用必须和引用队列（ReferenceQueue）一起使用，一般用于实现追踪垃圾收集器的回收动作。虚引用不会影响 JVM 是否要 GC 这个对象的判断，当 GC 某个对象时，如果有此对象上还有虚引用，会将虚引用对象插入 <code>ReferenceQueue</code> 队列。<br>
+对于 Cleaner 对象，当 GC 时发现它除了虚引用外已不可达（持有它的 DirectByteBuffer 对象在 GC 中被回收了，此时，只有 Cleaner 对象唯一保存了堆外内存的数据），就会把它放进 Reference 类的 <code>pending</code> 静态变量里。<br>
+PhantomReference 的父类是 Reference，Reference 类内部的 static 块会启动 ReferenceHandler 线程，线程优先级很高，这个线程是用来处理 JVM 在 GC 过程中交接过来的 reference（<code>pending</code>）。<br>
+下面是该线程的大致执行流程：<br>
+ReferenceHandler.run() 死循环处理 JVM 提交的 reference，如果是 Clearner 则调用其 clean 方法<br>
+-&gt; Cleaner.clean<br>
+-&gt; Cleaner.remove(Cleaner) 首先将 Cleaner 从链表中移除，以便 Cleaner 自身可被 GC 回收掉<br>
+-&gt; DirectByteBuffer.Deallocator.run()<br>
+-&gt; Unsafe.freeMemory 释放分配的堆外内存<br>
+-&gt; Bits.unreserveMemory 更新 Bits.totalCapacity</p>
+<h4 id="手动释放堆外内存"><a class="header-anchor" href="#手动释放堆外内存">¶</a>手动释放堆外内存</h4>
+<p>如前面所述，可以通过编码调用 DirectByteBuffer 的 cleaner 的 clean 方法来释放堆外内存。但需要注意：cleaner 是 private 访问权限，所以，需使用反射来实现。</p>
+<h4 id="mappedbytebuffer"><a class="header-anchor" href="#mappedbytebuffer">¶</a>MappedByteBuffer</h4>
+<p>MappedByteBuffer 是用来访问大文件的，其实是利用操作系统的 mapedfile 的机制，把一个大文件映射到物理内存，然后用户进程像访问内存一样访问文件，背后操作系统会把磁盘文件映射到内存中来，这是操作系统预估你想存取哪块提前为你准备好的。</p>
+<h3 id="本地方法栈"><a class="header-anchor" href="#本地方法栈">¶</a>本地方法栈</h3>
+<p>访问本地方式时使用到的栈，为本地方法服务，与虚拟机栈一样，本地方法区域也会抛出 StackOverflowError 和 OutOfMemoryError 异常。</p>
+<h2 id="方法执行引擎"><a class="header-anchor" href="#方法执行引擎">¶</a>方法执行引擎</h2>
+<p>用户所编写的程序如何表现正确的行为需要执行引擎的支持，执行引擎执行字节码指令，完成程序的功能。</p>
+<h2 id="本地方法接口-jni"><a class="header-anchor" href="#本地方法接口-jni">¶</a>本地方法接口（JNI）</h2>
+<p>本地方法接口称为 JNI，是为可移植性准备的。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
-<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
+<li>《Hotspot 实战》</li>
+<li><a href="https://blog.csdn.net/column/details/14851.html" target="_blank" rel="noopener">GC 性能优化</a></li>
+<li><a href="https://blog.csdn.net/lirenzuo/column/info/17179" target="_blank" rel="noopener">JVM 菜鸟进阶高手之路</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jvms/se8/html/index.html" target="_blank" rel="noopener">The Java® Virtual Machine Specification</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jls/se8/html/index.html" target="_blank" rel="noopener">The Java® Language Specification</a></li>
+<li><a href="https://www.jianshu.com/p/7f6832d61880" target="_blank" rel="noopener">Java 和操作系统交互细节</a></li>
 </ol>
 
           
@@ -2088,7 +1804,7 @@ Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，
 <li>Xss512k：用来设置每个线程的堆栈大小；</li>
 </ul>
 <h3 id="堆空间结构调整"><a class="header-anchor" href="#堆空间结构调整">¶</a>堆空间结构调整</h3>
-<p><img src="http://47.88.24.11/imgs/JVM/%E5%A0%86%E7%A9%BA%E9%97%B4%E7%BB%93%E6%9E%84%E8%B0%83%E6%95%B4.png" alt="堆空间结构调整" title="堆空间结构调整"></p>
+<p><img src="https://tallate.top/imgs/JVM/%E5%A0%86%E7%A9%BA%E9%97%B4%E7%BB%93%E6%9E%84%E8%B0%83%E6%95%B4.png" alt="堆空间结构调整" title="堆空间结构调整"></p>
 <ul>
 <li>Xmx4g：JVM 最大允许分配的堆内存，按需分配；</li>
 <li>Xms4g：JVM 初始分配的堆内存，一般和 Xmx 配置成一样以避免每次 gc 后 JVM 重新分配内存；</li>
@@ -2361,9 +2077,9 @@ Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，
 <p>在 IDE 中设置 VM 参数<code>-XX:+PrintGCDetails</code>，再运行，可以得到：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[GC (System.gc()) [PSYoungGen: 5051K-&gt;776K(38400K)] 5051K-&gt;784K(125952K), 0.0014035 secs] [Times: user=0.01 sys=0.00, real=0.00 secs] </span><br><span class="line">[Full GC (System.gc()) Disconnected from the target VM, address: &apos;127.0.0.1:55472&apos;, transport: &apos;socket&apos;</span><br><span class="line">[PSYoungGen: 776K-&gt;0K(38400K)] [ParOldGen: 8K-&gt;684K(87552K)] 784K-&gt;684K(125952K), [Metaspace: 2980K-&gt;2980K(1056768K)], 0.0040080 secs] [Times: user=0.01 sys=0.00, real=0.00 secs] </span><br><span class="line">Heap</span><br><span class="line"> PSYoungGen      total 38400K, used 333K [0x0000000795580000, 0x0000000798000000, 0x00000007c0000000)</span><br><span class="line">  eden space 33280K, 1% used [0x0000000795580000,0x00000007955d34a8,0x0000000797600000)</span><br><span class="line">  from space 5120K, 0% used [0x0000000797600000,0x0000000797600000,0x0000000797b00000)</span><br><span class="line">  to   space 5120K, 0% used [0x0000000797b00000,0x0000000797b00000,0x0000000798000000)</span><br><span class="line"> ParOldGen       total 87552K, used 684K [0x0000000740000000, 0x0000000745580000, 0x0000000795580000)</span><br><span class="line">  object space 87552K, 0% used [0x0000000740000000,0x00000007400ab0d0,0x0000000745580000)</span><br><span class="line"> Metaspace       used 2988K, capacity 4568K, committed 4864K, reserved 1056768K</span><br><span class="line">  class space    used 318K, capacity 392K, committed 512K, reserved 1048576K</span><br></pre></td></tr></table></figure>
 <p>第一行是 YoungGC，其结构如下图所示：<br>
-<img src="http://47.88.24.11/imgs/JVM/JVM-YoungGC%E6%97%A5%E5%BF%97.jpg" alt="JVM-YoungGC日志" title="JVM-YoungGC日志"><br>
+<img src="https://tallate.top/imgs/JVM/JVM-YoungGC%E6%97%A5%E5%BF%97.jpg" alt="JVM-YoungGC日志" title="JVM-YoungGC日志"><br>
 第二行是 FullGC，其结构如下图所示：<br>
-<img src="http://47.88.24.11/imgs/JVM/JVM-FullGC%E6%97%A5%E5%BF%97.jpg" alt="JVM-FullGC日志" title="JVM-FullGC日志"></p>
+<img src="https://tallate.top/imgs/JVM/JVM-FullGC%E6%97%A5%E5%BF%97.jpg" alt="JVM-FullGC日志" title="JVM-FullGC日志"></p>
 <ul>
 <li>GC日志开头的<code>[GC</code>和<code>[Full GC</code>说明了这次垃圾收集的停顿类型，如果有<code>Full</code>，说明这次 GC 发生了<code>Stop-The-World</code>。因为是调用了<code>System.gc()</code>方法触发的收集，所以会显示<code>[Full GC (System.gc())</code>，不然是没有后面的<code>(System.gc())</code>的。</li>
 <li><code>[PSYoungGen</code>和<code>[ParOldGen</code>是指 GC 发生的区域。</li>
@@ -2426,7 +2142,7 @@ jdk1.7 及之后版本，因为“去永久代”，引入了“元空间”（M
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># jps</span><br><span class="line"></span><br><span class="line">4098 Jps</span><br><span class="line">2644 </span><br><span class="line">3991 Launcher</span><br><span class="line">3992 DeadLockTest</span><br><span class="line">2859 RemoteMavenServer</span><br></pre></td></tr></table></figure>
 <p>使用 jstack 查看 Java 进程中的所有线程：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># jstack 3992</span><br><span class="line"></span><br><span class="line">结果见下图</span><br></pre></td></tr></table></figure>
-<p><img src="http://47.88.24.11/imgs/JVM/JVM%E6%AD%BB%E9%94%81.png" alt="JVM死锁" title="JVM死锁"></p>
+<p><img src="https://tallate.top/imgs/JVM/JVM%E6%AD%BB%E9%94%81.png" alt="JVM死锁" title="JVM死锁"></p>
 <h3 id="服务器-cpu-打满怎么排查"><a class="header-anchor" href="#服务器-cpu-打满怎么排查">¶</a>服务器 CPU 打满怎么排查</h3>
 <p>CPU 打满会导致服务器响应速度变慢甚至夯住，一般查看内存没有明显问题后我们就可以怀疑是有线程运行将 CPU 打满了。<br>
 1、查 CPU 占用率较高的进程<br>
@@ -2831,7 +2547,7 @@ wait 方法比较复杂，但是核心过程只有 3 步：</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/ad5b98b9.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -2850,7 +2566,7 @@ wait 方法比较复杂，但是核心过程只有 3 步：</p>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/ad5b98b9.html" itemprop="url">JVM 的结构</a></h1>
+                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
         
 
         <div class="post-meta">
@@ -2916,7 +2632,7 @@ wait 方法比较复杂，但是核心过程只有 3 步：</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  5.5k 字
+                  765 字
                 </span>
               
 
@@ -2932,7 +2648,7 @@ wait 方法比较复杂，但是核心过程只有 3 步：</p>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  19 分钟
+                  2 分钟
                 </span>
               
             </div>
@@ -2956,190 +2672,41 @@ wait 方法比较复杂，但是核心过程只有 3 步：</p>
         
           
             <a id="more"></a>
-<p><img src="http://47.88.24.11/imgs/JVM/JVM%E7%BB%93%E6%9E%84.png" alt="JVM结构" title="JVM结构"><br>
-JVM 特指用于运行由 Java 虚拟机规范规定的字节码的运行时系统，它具有以下特征：</p>
+<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
+<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
+<img src="https://tallate.top/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
+<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
+<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
+Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
+<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
+<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
+此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
+<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
+<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
 <ul>
-<li>平台无关性<br>
-JVM 本身是平台相关的，只是对不同平台都有实现，所以我们编译成的字节码才可以在各个平台上执行，因此称 Java 平台无关指的是字节码是平台无关的。</li>
-<li>高度抽象<br>
-JVM 提供了编译器、类加载、动态内存管理、线程等一套工具，作为虚拟机，程序经编译后运行在 JVM 上时，几乎完全不必担心平台的兼容性。<br>
-本地方法接口只是作为一个扩展功能提供，并不是必须的，实际上除了对性能严格要求的场合，本地方法一般不会被使用。</li>
+<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
+<li>检查变量使用前是否已声明；</li>
+<li>推导泛型方法的类型参数；</li>
+<li>检查类型匹配性；</li>
+<li>进行常量折叠；</li>
+<li>检查所有语句都可到达；</li>
+<li>检查所有 checked exception 都被捕获或抛出；</li>
+<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
+<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
+<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
+<li>等…</li>
 </ul>
-<blockquote>
-<p>编译器严格来说和虚拟机并无太大关联，JVM 可以供 Groovy、Kotlin、Scala 等一系列语言作为运行时环境，</p>
-</blockquote>
-<p>下图表示 JVM 的系统结构，包括与 Class 文件打交道的类装载系统、进行运行时数据管理的系统、进行方法执行的系统、本地方法接口（JNI）和本地方法库这些部分。</p>
-<h3 id="类装载子系统"><a class="header-anchor" href="#类装载子系统">¶</a>类装载子系统</h3>
-<p>类装载子系统负责查找并装载类型，类装载器主要包含两种：<strong>启动类装载器（Java 虚拟机实现的一部分）<strong>和</strong>用户自定义类装载器（Java 程序的一部分）</strong>。</p>
-<p>启动类装载器 – Java 虚拟机必须有一个启动类装载器，用于装载受信任的类，如 Java API 的 class 文件。<br>
-用户自定义类装载器 – 继承自 ClassLoader 类，ClassLoader 的如下四个方法，是通往 Java 虚拟机的通道。</p>
+<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
 <ul>
-<li>protected final Class defineClass(String name, byte data[], int offset, int length); // data 为二进制的 Java Class 文件数据，表示一个新的可用类型，之后把这个类型导入到方法区中</li>
-<li>protected final Class defineClass(String name, byte data[], int offset, int length, ProtectionDomain protectionDomain);</li>
-<li>protected final Class findSystemClass(String name); // 参数为全限定名，通过类装载器进行装载</li>
-<li>protected final void resolveClass(Class c); // 参数为 Class 实例，完成连接初始化操作</li>
+<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
+<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
+<li>最后从符号表生成 class 文件。</li>
 </ul>
-<p>类装载子系统负责<strong>定位和导入二进制 class 文件，并且保证导入类的正确性，为类变量分配并初始化内存，以及帮助解析符号引用</strong>。类装载器必须严格按照如下顺序进行类的装载。</p>
-<ol>
-<li>装载 – 查找并装载类型的二进制数据</li>
-<li>连接 – 执行验证，准备，以及解析（可选），连接分为如下三个步骤<br>
-验证 – 确保被导入类型的正确性<br>
-准备 – 为类变量（static）分配内存，并将其初始化为默认值<br>
-解析 – 把类型中的符号引用转换为直接引用</li>
-<li>初始化 – 把类变量初始化为正确初始值</li>
-</ol>
-<h2 id="内存管理系统"><a class="header-anchor" href="#内存管理系统">¶</a>内存管理系统</h2>
-<h3 id="方法区"><a class="header-anchor" href="#方法区">¶</a>方法区</h3>
-<p>方法区是线程共享的内存区域，用于存储已被虚拟机加载的类信息、常量、静态变量、即时编译器编译后的代码等数据，当方法区无法满足内存分配需求时，将抛出 OutOfMemoryError。<br>
-类信息包括：</p>
-<ol>
-<li>类型全限定名。</li>
-<li>类型的直接超类的全限定名（除非这个类型是 java.lang.Object，它没有超类）。</li>
-<li>类型是类类型还是接口类型。</li>
-<li>类型的访问修饰符（public、abstract、final 的某个子集）。</li>
-<li>任何直接超接口的全限定名的有序列表。</li>
-<li>类型的常量池。</li>
-<li>字段信息。</li>
-<li>方法信息。</li>
-<li>除了常量以外的所有类（静态）变量。</li>
-<li>一个到类 ClassLoader 的引用。</li>
-<li>一个到 Class 类的引用。</li>
-</ol>
-<p>着重介绍<strong>常量池</strong>，虚拟机必须要为每个被装载的类型维护一个常量池。常量池就是该类型所用常量的一个有序集合，包括直接常量和对其他类型、字段和方法的符号引用。它在 Java 程序的<strong>动态连接</strong>（运行时解析字节码中使用到的符号引用）中起着核心作用。<br>
-除了以上结构外，JVM 的实现者还可以添加一些其他的数据结构，如方法表：对每个加载的非抽象类的类信息中都添加一个方法表，方法表是一组对类实例方法的直接引用——包括从父类继承的方法，JVM 可以通过方法表快速找到实例方法。</p>
-<blockquote>
-<p>C++中 virtual 函数是通过虚函数表实现的，Java 中所有方法都是 virtual 的，因此也就不需要再标注虚拟了，正像 Java 虽然宣称没有指针，但是 Java 里其实全是指针。Java 中类似的检查机制不少，这体现了 Java 的一种设计思想：始终将安全放在效率之上。</p>
-</blockquote>
-<h3 id="元空间"><a class="header-anchor" href="#元空间">¶</a>元空间</h3>
-<p>JDK1.8 的一大改动是方法区变成了元空间，其实就是放开了类空间的大小，容量取决于是 32 位或是 64 位操作系统的可用虚拟内存大小，32 位系统本地最多有 4G 虚拟内存空间，物理内存取决于操作系统的配置。新参数<code>MaxMetaspaceSize</code>用于限制本地内存分配给类元数据的大小，如果没有指定这个参数，元空间会在运行时根据需要动态调整，大小随意。对于没用的类及类加载器的垃圾回收将在元数据使用达到 MaxMetaspaceSize 参数的设定值时进行。</p>
-<h3 id="堆"><a class="header-anchor" href="#堆">¶</a>堆</h3>
-<p>一个虚拟机实例只对应一个堆空间，堆是<strong>线程共享</strong>的，当然还有可能会划分出多个线程私有的分配缓冲区（<strong>TLAB</strong>）。堆空间是存放对象实例的地方，几乎所有对象实例都在这里分配。堆也是<strong>垃圾收集器</strong>管理的主要区域，因此也被称为“GC 堆”。<br>
-堆可以处于物理上不连续的内存空间中，只要逻辑上连续即可，就像磁盘空间一样。<br>
-当堆中没有足够的内存进行对象实例分配时，并且堆也无法扩展时，会抛出 OutOfMemoryError 异常。<br>
-对 OOM 的排查通常是先通过内存映像分析工具对 Dump 出来的堆转储快照进行分析，重点是确认内存中的对象是否是必要的，也就是要先分清楚到底是出现了<strong>内存泄漏</strong>还是<strong>内存溢出</strong>。</p>
-<ul>
-<li>如果是内存泄漏，可进一步通过工具查看泄露对象到 GC Roots 的引用链。于是就能找到泄露对象的类型信息及 GC Roots 引用链的信息，就可以比较准确地定位出泄露代码的位置。</li>
-<li>如果不存在泄露，就是内存中的对象确实都还必须存活着，那就应当检查虚拟机的堆参数（-Xmx 与 -Xms），与机器物理内存对比看是否还可以调大，从代码上检查是否存在某些对象生命周期过长、持有状态时间过长的情况，尝试减少程序运行期的内存消耗。</li>
-</ul>
-<h3 id="程序计数器"><a class="header-anchor" href="#程序计数器">¶</a>程序计数器</h3>
-<p>每个线程拥有自己的程序计数器，线程之间的程序计数器互不影响，在任何一个确定的时刻，一个处理器（对于多核处理器来说是一个内核）都只会执行一条线程中的指令。<br>
-PC 寄存器的内容总是下一条将被执行指令的&quot;地址&quot;，这里的&quot;地址&quot;可以是一个本地指针，也可以是在方法字节码中相对于该方法起始指令的偏移量。</p>
-<ul>
-<li>如果该线程正在执行一个本地方法，则程序计数器内容为 undefined。</li>
-<li>此区域在 Java 虚拟机规范中没有规定任何 OutOfMemoryError 情况的区域。</li>
-</ul>
-<h3 id="虚拟机栈"><a class="header-anchor" href="#虚拟机栈">¶</a>虚拟机栈</h3>
-<p>我们一般会把 Java 内存区分为堆内存和栈内存，而所指的“栈”就是这里的虚拟机栈，或者说是虚拟机栈中局部变量表部分。<br>
-Java 栈也是线程私有的，虚拟机只会对栈进行两种操作，以帧为单位的<strong>入栈</strong>和<strong>出栈</strong>。每个方法在执行时都会创建一个<strong>栈帧</strong>，并入栈，成为当前帧，每一个方法从调用直至执行完成的过程，就对应着一个栈帧在虚拟机栈中从入栈到出栈的过程。栈帧由三部分组成：局部变量区、操作数栈、帧数据区。<br>
-<strong>局部变量区</strong>被组织为一个以字长为单位、从 0 开始计数的数组。字节码指令通过从 0 开始的索引来使用其中的数据。类型为 int、float、reference 和 returnAddress 的值在数组中只占据一项，而类型为 byte、short 和 char 的值存入时都会转化为 int 类型，也占一项，而 long、double 则连续占据两项。<br>
-<strong>操作数栈</strong>也常被称为操作栈，它是一个后入先出栈。当一个方法刚刚执行的时候，这个方法的操作数栈是空的，在方法执行的过程中，会有各种字节码指令向操作数栈中写入和提取值，也就是入栈与出栈操作。在使用操作数栈时需要注意实例方法和类方法：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Example &#123;</span><br><span class="line">    // 类方法</span><br><span class="line">    public static int classMethod(int i, long l, float f, double d, Object o, byte b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    // 实例方法</span><br><span class="line">    public int instanceMethod(char c, double d, short s, boolean b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>类方法和实例方法栈帧结构有所不同，从图中可以看到它们之间的区别：</p>
-<ul>
-<li>类方法帧里没有隐含的 this 引用，而实例方法帧中会隐含一个 this 引用；</li>
-</ul>
-<p>并且注意：</p>
-<ul>
-<li>byte,char,short,boolean 类型存入局部变量区的时候都会被转化成 int 类型值，当被存回堆或者方法区时，才会转化回原来的类型；</li>
-<li>returnAddress 类型数据是指向字节码的指针（方法区的字节码指令），它只存在于字节码层面，与编程语言无关，我们在 Java 语言中是不会直接与 returnAddress 类型数据打交道的。</li>
-</ul>
-<blockquote>
-<p>每个线程所持有的程序计数器（pc）实际上就是 returnAddress 类型的数据，当线程执行 native 方法时，pc 中的值为 undefied。</p>
-</blockquote>
-<ul>
-<li>操作数栈被组织成一个以字长为单位的数组，它是通过标准的栈操作——即入栈和出栈来进行访问，而不是通过索引访问。入栈和出栈也会存在类型的转化；</li>
-<li>当一个方法执行完毕之后，要返回之前调用它的地方，因此在栈帧中必须保存一个方法返回地址。方法退出的过程实际上等同于把当前栈帧出栈，因此退出时可能执行的操作有：恢复上层方法的局部变量表和操作数栈，把返回值(如果有的话)压入调用都栈帧的操作数栈中，调用 PC 计数器的值以指向方法调用指令后面的一条指令等。</li>
-<li>每个栈帧都包含一个指向运行时常量池中该栈帧所属方法的引用，持有这个引用是为了支持方法调用过程中的动态连接。在 Class 文件的常量池中存有大量的符号引用，字节码中的方法调用指令就以常量池中指向方法的符号引用为参数。这些符号引用一部分会在类加载阶段或第一次使用的时候转化为直接引用，这种转化称为静态解析。另外一部分将在每一次的运行期期间转化为直接引用，这部分称为动态连接。</li>
-</ul>
-<p><strong>栈数据区</strong>存放一些用于支持常量池解析、正常方法返回以及异常派发机制的信息。即将常量池的符号引用转化为直接地址引用、恢复发起调用的方法的帧进行正常返回，发生异常时转交异常表进行处理。</p>
-<ul>
-<li>虚拟机规范允许具体的虚拟机实现增加一些规范里没有描述的信息到栈帧中，例如与高度相关的信息，这部分信息完全取决于具体的虚拟机实现。在实际开发中，一般会把动态连接，方法返回地址与其它附加信息全部归为一类，称为<strong>栈帧信息</strong>。</li>
-</ul>
-<p>在 Java 虚拟机规范中，规定了两种异常状况：如果线程请求的栈深度大于虚拟机所允许的深度，将抛出 StackOverflowError 异常；如果虚拟机栈可以动态扩展，当扩展时无法申请到足够的内存，就会抛出 OutOfMemoryError 异常。</p>
-<p>系统分配给每个进程的内存是有限制的，除去 Java 堆、方法区、程序计数器，如果虚拟机进程本身耗费的内存不计算在内，剩下内存就由虚拟机栈和本地方法栈“瓜分”了。每个线程分配到的栈容量越大，可以建立的线程数量自然就越少，建立线程时就越容易把剩下的内存耗尽，出现<strong>虚拟机栈溢出</strong>的情况。</p>
-<ul>
-<li>如果线程请求的栈深度大于虚拟机所允许的最大深度，将抛出 StackOverflowError 异常，出现 StackOverflowError 异常时有错误栈可以阅读，栈深度在大多数情况下达到 1000~2000 完全没有问题，对于正常的方法调用（包括递归），这个深度在一半情况下完全够用。</li>
-<li>如果虚拟机在扩展栈（建立更多的线程）时无法申请到足够的内存空间，则抛出 OutOfMemoryError 异常，在不能减少线程数或者更换 64 位虚拟机的情况下，就只能通过减少最大堆和减少栈容量来换取更多的线程。</li>
-</ul>
-<p>一般可以认为 Java 中的一切变量都是引用，实际的对象存储在堆中，但是基础类型比较特殊，它们可以直接使用操作符进行算数运算，不过基础类型也带来了一些问题，比如装箱拆箱过程中可能产生空指针异常。Java 中引入基础类型的动机应该是性能与空间利用率，毕竟使用引用时还得通过<strong>指针碰撞</strong>或<strong>空闲列表</strong>方法（根据垃圾收集器不同而不同）来找到实际对象，而且基础类型本身占用的空间不多，如果用引用势必占用的空间会加倍。<br>
-基础类型并不是都分配在栈上，具体有以下几种情况：</p>
-<ol>
-<li>在方法中声明的变量，即该变量是局部变量，每当程序调用方法时，系统都会为该方法建立一个方法栈，其所在方法中声明的变量就放在方法栈中，当方法结束系统会释放方法栈，其对应在该方法中声明的变量随着栈的销毁而结束，这就局部变量只能在方法中有效的原因<br>
-在方法中声明的变量可以是基本类型的变量，也可以是引用类型的变量。
-<ul>
-<li>当声明是基本类型的变量的时，其变量名及值（变量名及值是两个概念）是放在方法栈中</li>
-<li>当声明的是引用变量时，所声明的变量（该变量实际上是在方法中存储的是内存地址值）是放在方法的栈中，该变量所指向的对象是放在堆类存中的。</li>
-</ul>
-</li>
-<li>在类中声明的变量是成员变量，也叫全局变量，放在堆中的（因为全局变量不会随着某个方法执行结束而销毁）。<br>
-同样在类中声明的变量即可是基本类型的变量 也可是引用类型的变量
-<ul>
-<li>当声明的是基本类型的变量其变量名及值是放在堆中的</li>
-<li>引用类型时，其声明的变量仍然会存储一个内存地址值，该内存地址值指向所引用的对象。引用变量名和对应的对象仍然存储在相应的堆中</li>
-</ul>
-</li>
-</ol>
-<h3 id="堆外内存"><a class="header-anchor" href="#堆外内存">¶</a>堆外内存</h3>
-<h4 id="一个例子"><a class="header-anchor" href="#一个例子">¶</a>一个例子</h4>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 分配一块1024字节的堆外内存</span><br><span class="line">ByteBuffer buffer = ByteBuffer.allocateDirect(1024);</span><br><span class="line">System.out.println(buffer.capacity());</span><br><span class="line">buffer.putInt(0, 2018);</span><br><span class="line">System.out.println(buffer.getInt(0));</span><br></pre></td></tr></table></figure>
-<h4 id="为什么要使用堆外内存"><a class="header-anchor" href="#为什么要使用堆外内存">¶</a>为什么要使用堆外内存</h4>
-<p>主要是因为堆外内存在 IO 操作方面的优势，举一个例子：在通信中，将存在于堆内存中的数据 flush 到远程时，需要首先将堆内存中的数据拷贝到堆外内存中，然后再写入 Socket 中；如果直接将数据存到堆外内存中就可以避免上述拷贝操作，提升性能。类似的例子还有读写文件。<br>
-但是需要注意的是，直接访问堆外内存并不会比访问 Java 堆更快：<a href="https://mp.weixin.qq.com/s/njCKlx8mBh6kSP2lC9mT4g" target="_blank" rel="noopener">哪个更快：Java 堆还是本地内存</a>。堆外内存更适合用于操作大块的数据（&gt;2G）、可以直接使用操作系统提供的本地 IO 进行操作。</p>
-<h4 id="可用的堆外内存额度"><a class="header-anchor" href="#可用的堆外内存额度">¶</a>可用的堆外内存额度</h4>
-<ol>
-<li>可以通过设定 <code>-XX:MaxDirectMemorySize</code> 来显式指定最大的堆外内存。</li>
-<li>设定 <code>-Dsun.nio.MaxDirectMemorySize</code> 来显式指定：如果该属性为-1，则取<code>directMemory = Runtime.getRuntime().maxMemory()</code>，即 JVM 运行时的最大内存；否则，如果指定这个属性等于-1，则默认为 64M。<br>
-如果是 JDK8，具体代码见<code>VM.saveAndRemoveProperties()</code>，如果是 JDK8 之前，则代码见<code>VM.maxDirectMemory()</code>。<br>
-另外，<code>Runtime.getRuntime().maxMemory()</code>是一个 native 方法，HotSpot 中对应的 C++代码如下所示：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jlong JNICALL</span><br><span class="line">Java_java_lang_Runtime_maxMemory(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">    return JVM_MaxMemory();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">JVM_ENTRY_NO_ENV(jlong, JVM_MaxMemory(void))</span><br><span class="line">  JVMWrapper(&quot;JVM_MaxMemory&quot;);</span><br><span class="line">  size_t n = Universe::heap()-&gt;max_capacity();</span><br><span class="line">  return convert_size_t_to_jlong(n);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
-<p>其中 max_capacity() 实际返回的是 –Xmx 设置值减去一个 survivor space 的预留区大小，与堆内大小存很接近。</p>
-<h4 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h4>
-<ol>
-<li>分配<br>
-ByteBuffer.allocateDirect<br>
-DirectByteBuffer(int)<br>
--&gt; Bits.reserveMemory 在系统中保存总分配内存（按页分配）的大小和实际内存的大小<br>
--&gt; Bits.tryReserveMemory 判断系统内存（堆外内存）是否足够，Bits 有一个全局 totalCapacity 变量记录当前已经使用的堆外内存量<br>
--&gt; JavaLangRefAccess.tryHandlePendingReference 非阻塞，将已经被 JVM 垃圾回收的 DirectBuffer 对象的堆外内存释放。<br>
--&gt; System.gc 触发一次 FullGC，<code>System.gc</code>并不能保证 FullGC 被马上执行，如果设置了<code>-XX:+DisableExplicitGC</code>则这种显式的 GC 会被禁用<br>
--&gt; Bits.tryReserveMemory 为了等待 FullGC 释放足够的空间，之后还会重试最多 9 次 tryReserveMemory，每次重试会 sleep 1, 2, 4, 8, 16, 32, 64, 128, 256ms，也就是说最多可以等 0.5s<br>
--&gt; throw new OutOfMemoryError 分配空间失败，抛出 OOM 异常<br>
--&gt; Unsafe.allocateMemory native 方法，通过 JNI 调用 C++函数分配堆外内存，并返回内存基地址<br>
--&gt; Unsafe.setMemory(base, size, (byte) 0) 将分配的内存清零<br>
--&gt; Cleaner.create 创建一个 Cleaner 用于释放堆空间</li>
-<li>释放<br>
-Cleaner.create Cleaner 内部维护了一个 static 的 Cleaner 对象的链表，create 调用创建了一个 Cleaner 对象并将其加入到该链表中<br>
--&gt; new Cleaner(DirectByteBuffer, new Deallocator(base, size, cap))</li>
-</ol>
-<p>Cleaner 实现 GC 回收堆外内存的原理是<code>PhantomReference（虚引用）</code>，虚引用必须和引用队列（ReferenceQueue）一起使用，一般用于实现追踪垃圾收集器的回收动作。虚引用不会影响 JVM 是否要 GC 这个对象的判断，当 GC 某个对象时，如果有此对象上还有虚引用，会将虚引用对象插入 <code>ReferenceQueue</code> 队列。<br>
-对于 Cleaner 对象，当 GC 时发现它除了虚引用外已不可达（持有它的 DirectByteBuffer 对象在 GC 中被回收了，此时，只有 Cleaner 对象唯一保存了堆外内存的数据），就会把它放进 Reference 类的 <code>pending</code> 静态变量里。<br>
-PhantomReference 的父类是 Reference，Reference 类内部的 static 块会启动 ReferenceHandler 线程，线程优先级很高，这个线程是用来处理 JVM 在 GC 过程中交接过来的 reference（<code>pending</code>）。<br>
-下面是该线程的大致执行流程：<br>
-ReferenceHandler.run() 死循环处理 JVM 提交的 reference，如果是 Clearner 则调用其 clean 方法<br>
--&gt; Cleaner.clean<br>
--&gt; Cleaner.remove(Cleaner) 首先将 Cleaner 从链表中移除，以便 Cleaner 自身可被 GC 回收掉<br>
--&gt; DirectByteBuffer.Deallocator.run()<br>
--&gt; Unsafe.freeMemory 释放分配的堆外内存<br>
--&gt; Bits.unreserveMemory 更新 Bits.totalCapacity</p>
-<h4 id="手动释放堆外内存"><a class="header-anchor" href="#手动释放堆外内存">¶</a>手动释放堆外内存</h4>
-<p>如前面所述，可以通过编码调用 DirectByteBuffer 的 cleaner 的 clean 方法来释放堆外内存。但需要注意：cleaner 是 private 访问权限，所以，需使用反射来实现。</p>
-<h4 id="mappedbytebuffer"><a class="header-anchor" href="#mappedbytebuffer">¶</a>MappedByteBuffer</h4>
-<p>MappedByteBuffer 是用来访问大文件的，其实是利用操作系统的 mapedfile 的机制，把一个大文件映射到物理内存，然后用户进程像访问内存一样访问文件，背后操作系统会把磁盘文件映射到内存中来，这是操作系统预估你想存取哪块提前为你准备好的。</p>
-<h3 id="本地方法栈"><a class="header-anchor" href="#本地方法栈">¶</a>本地方法栈</h3>
-<p>访问本地方式时使用到的栈，为本地方法服务，与虚拟机栈一样，本地方法区域也会抛出 StackOverflowError 和 OutOfMemoryError 异常。</p>
-<h2 id="方法执行引擎"><a class="header-anchor" href="#方法执行引擎">¶</a>方法执行引擎</h2>
-<p>用户所编写的程序如何表现正确的行为需要执行引擎的支持，执行引擎执行字节码指令，完成程序的功能。</p>
-<h2 id="本地方法接口-jni"><a class="header-anchor" href="#本地方法接口-jni">¶</a>本地方法接口（JNI）</h2>
-<p>本地方法接口称为 JNI，是为可移植性准备的。</p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
-<li>《Hotspot 实战》</li>
-<li><a href="https://blog.csdn.net/column/details/14851.html" target="_blank" rel="noopener">GC 性能优化</a></li>
-<li><a href="https://blog.csdn.net/lirenzuo/column/info/17179" target="_blank" rel="noopener">JVM 菜鸟进阶高手之路</a></li>
-<li><a href="https://docs.oracle.com/javase/specs/jvms/se8/html/index.html" target="_blank" rel="noopener">The Java® Virtual Machine Specification</a></li>
-<li><a href="https://docs.oracle.com/javase/specs/jls/se8/html/index.html" target="_blank" rel="noopener">The Java® Language Specification</a></li>
-<li><a href="https://www.jianshu.com/p/7f6832d61880" target="_blank" rel="noopener">Java 和操作系统交互细节</a></li>
+<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
 </ol>
 
           
@@ -3373,7 +2940,7 @@ curl <a href="http://localhost:8006/classloader/locate?class=org.apache.xerces.x
 <li>自定义类加载器，继承系统类加载器，实现用户自定义加载逻辑。</li>
 </ul>
 <h3 id="双亲委派模型"><a class="header-anchor" href="#双亲委派模型">¶</a>双亲委派模型</h3>
-<p><img src="http://47.88.24.11/imgs/JVM/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B.png" alt="类加载器执行过程" title="类加载器执行过程"><br>
+<p><img src="https://tallate.top/imgs/JVM/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B.png" alt="类加载器执行过程" title="类加载器执行过程"><br>
 Java 设计者推荐所有自定义加载器都组合一个父加载器，加载类时先委派父加载器去尝试加载，若不成，再由自身去加载。所以一些基类总是由基加载器去加载，可以避免一个程序中有多个 java.lang.Object 类的情况<br>
 注意<strong>各个类加载器之间是组合关系，并非继承关系</strong>。<br>
 当一个类加载器收到类加载的请求，它将这个加载请求委派给父类加载器进行加载，每一层加载器都是如此，最终，所有的请求都会传送到启动类加载器中。只有当父类加载器自己无法完成加载请求时，子类加载器才会尝试自己加载。<br>
@@ -3403,7 +2970,7 @@ Java 设计者推荐所有自定义加载器都组合一个父加载器，加载
 </li>
 </ul>
 <h3 id="类的加载过程"><a class="header-anchor" href="#类的加载过程">¶</a>类的加载过程</h3>
-<p><img src="http://47.88.24.11/imgs/JVM/%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E8%BF%87%E7%A8%8B.png" alt="类的加载过程" title="类的加载过程"></p>
+<p><img src="https://tallate.top/imgs/JVM/%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E8%BF%87%E7%A8%8B.png" alt="类的加载过程" title="类的加载过程"></p>
 <h4 id="加载"><a class="header-anchor" href="#加载">¶</a>加载</h4>
 <ol>
 <li>通过类的完全限定名获取表示类的二进制流；</li>
@@ -3497,7 +3064,7 @@ Java 设计者推荐所有自定义加载器都组合一个父加载器，加载
 <h3 id="定义类加载器和初始类加载器"><a class="header-anchor" href="#定义类加载器和初始类加载器">¶</a>定义类加载器和初始类加载器</h3>
 <p>我们知道不同类加载器加载的类位于不同的命名空间，它们之间是相互隔离的，这里说的隔离仅仅指它们存储位置隔离，并不是说一个自定义的类 A 使用了 java.util.List 类就会报错。<br>
 自定义的类 A 一般会使用系统类加载器加载，而 java.util.List 则会由启动类加载器加载，当加载类 A 时如果遇到了 java.util.List，会首先尝试通过系统类加载器加载，在它发现自己无法加载后，通过双亲委派模型交给父加载器加载。<br>
-<img src="http://47.88.24.11/imgs/JVM/%E5%88%9D%E5%A7%8B%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E5%92%8C%E5%AE%9A%E4%B9%89%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8.png" alt="初始类加载器和定义类加载器" title="初始类加载器和定义类加载器"><br>
+<img src="https://tallate.top/imgs/JVM/%E5%88%9D%E5%A7%8B%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E5%92%8C%E5%AE%9A%E4%B9%89%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8.png" alt="初始类加载器和定义类加载器" title="初始类加载器和定义类加载器"><br>
 如上图所示：</p>
 <ul>
 <li>A 是由系统类加载器加载的，因此系统类加载器是其定义类加载器兼初始类加载器；</li>
@@ -3792,7 +3359,7 @@ Tomcat 实现了两种隔离技术：用于线程隔离的线程池和用于代�
 <p>静态分派过程如下，在编译期阶段，会根据静态类型与参数类型确定调用版本，产生两条分别指向 Father.hardChoice(QQ)和 Father.hardChoice(_360)的指令，可以知道，在编译期，是由多个宗量确定调用版本，是静态多分派。<br>
 动态分派过程如下，在运行期，在执行 hardChoice(QQ)或者 hardChoice(_360)时，已经确定了参数必须为 QQ、_360，方法签名确定，静态类型和实际类型此时都不会对方法本身产生任何影响，而虚拟机会根据实际类型来确定调用版本，只根据一个宗量进行确定，因此，在运行时，是动态单分派。<br>
 在面向对象编程中我们会很频繁地使用到动态分配，虚拟机采用在类的方法区建立一个**虚方法表（非虚方法不会出现在表中）**来实现。<br>
-<img src="http://47.88.24.11/imgs/JVM/%E5%8A%A8%E6%80%81%E5%88%86%E6%B4%BE%E7%9A%84%E5%AE%9E%E7%8E%B0.png" alt="动态分派的实现" title="动态分派的实现"></p>
+<img src="https://tallate.top/imgs/JVM/%E5%8A%A8%E6%80%81%E5%88%86%E6%B4%BE%E7%9A%84%E5%AE%9E%E7%8E%B0.png" alt="动态分派的实现" title="动态分派的实现"></p>
 <ul>
 <li>只有<strong>虚方法</strong>才会出现在虚方法表中，也就是说<strong>静态方法</strong>、<strong>私有方法</strong>、<strong>final 方法</strong>是不会出现在这张表中的。</li>
 <li>从 Object 类继承的方法都会指向 Object 类型数据中各方法的实际入口地址。</li>
@@ -3893,6 +3460,428 @@ JVM 的指令都是基于栈的，比如<code>iadd</code>表示弹出栈顶的�
 
 
     
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e94a0a.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e94a0a.html" itemprop="url">Redis 应用</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-25T13:21:48+08:00">
+                2019-09-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/缓存/" itemprop="url" rel="index">
+                    <span itemprop="name">缓存</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  7.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  32 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="环境准备"><a class="header-anchor" href="#环境准备">¶</a>环境准备</h2>
+<h3 id="搭建环境"><a class="header-anchor" href="#搭建环境">¶</a>搭建环境</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker run --name myredis -d -p6379:6379 redis</span><br><span class="line">docker exec -it myredis redis-cli</span><br></pre></td></tr></table></figure>
+<h3 id="使用"><a class="header-anchor" href="#使用">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"># exists 查看某个key是否存在</span><br><span class="line">exists aa</span><br><span class="line">SET 创建一个key；</span><br><span class="line">GET 获取一个key的值；</span><br><span class="line">DEL ***一个key；</span><br><span class="line">TYPE 获取一个key的类型；</span><br><span class="line">EXISTS 判断一个key是否存在，0：存在，1，不存在；</span><br><span class="line"># KEYS 获取给定模糊匹配的key，但要谨慎使用，因为线上的key一般非常多</span><br><span class="line">keys *</span><br><span class="line">keys a?</span><br><span class="line">EXPIRE 设置一个key过期的秒数；</span><br><span class="line">PERSTST ***一个key过期的秒数；</span><br><span class="line">PEXPIRE 设置一个key过期的毫秒数；</span><br><span class="line">RENAME 将一个key重命名；</span><br><span class="line">RENAMENX 将一个key重命名，且新的key必须是不存在的可以；</span><br><span class="line">TTL 获取key的有效时间，以秒为单位，-1表示永不过期，-2表示已过期、已转移</span><br><span class="line"># dbsize 查看当前库中key数量</span><br><span class="line">dbsize</span><br><span class="line"># flushdb 清除数据库（内存）</span><br><span class="line">flushdb</span><br><span class="line"># move 移动key到另一个库</span><br><span class="line">move aa 2</span><br></pre></td></tr></table></figure>
+<h3 id="容量预估"><a class="header-anchor" href="#容量预估">¶</a>容量预估</h3>
+<p>在实际部署前一般都会先对所需容量进行一个评估，这样可以尽量避免在上线后容量不够还要扩容、或者容量过大造成浪费。<br>
+官方提供了一个<a href="http://www.redis.cn/redis_memory/" target="_blank" rel="noopener">容量预估工具</a>，一些博客比如<a href="https://gameinstitute.qq.com/community/detail/114987" target="_blank" rel="noopener">Redis 容量评估模型</a>贴近 Redis 底层数据结构给出了容量的评估分析，可以作为一个参考，但是业务架构一直在变，实际的容量监控还是必须的，我们下面还会谈到这方面的工具。</p>
+<h2 id="使用redis-cluster"><a class="header-anchor" href="#使用redis-cluster">¶</a>使用Redis Cluster</h2>
+<h3 id="搭建redis-cluster集群"><a class="header-anchor" href="#搭建redis-cluster集群">¶</a>搭建Redis Cluster集群</h3>
+<p><a href="https://blog.csdn.net/qq_42815754/article/details/82912130" target="_blank" rel="noopener">redis集群搭建</a></p>
+<p>1、安装<br>
+到官网找到：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget http://download.redis.io/releases/redis-4.0.8.tar.gz</span><br><span class="line">make &amp;&amp; make install # 默认安装目录为/usr/local/bin</span><br></pre></td></tr></table></figure>
+<p>ruby</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">yum install ruby</span><br><span class="line">yum install rubygems</span><br></pre></td></tr></table></figure>
+<p>还有gem文件在<a href="https://rubygems.org/gems/redis/versions/4.0.1" target="_blank" rel="noopener">此处下载</a>，安装：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gem install /usr/local/redis-3.0.0.gem</span><br></pre></td></tr></table></figure>
+<p>2、创建 redis 节点<br>
+在一个目录（比如编译目录）下创建 redis_cluster 目录，再在这个目录下创建 7001、7002、7003、7004、7005、7006 的子目录，拷贝配置文件 redis.conf 到各个这些子目录中，并编辑以下内容</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">port 7001 //端口7001,7002,7003        </span><br><span class="line">bind 本机ip //默认ip为127.0.0.1 需要改为其他节点机器可访问的ip 否则创建集群时无法访问对应的端口，无法创建集群</span><br><span class="line">daemonize yes //redis后台运行</span><br><span class="line">pidfile /var/run/redis_7001.pid //pidfile文件对应7001,7002,7003</span><br><span class="line">logfile /tmp/redis_7001.log // 日志文件</span><br><span class="line">cluster-enabled yes //开启集群 把注释#去掉</span><br><span class="line">cluster-config-file nodes_7001.conf //集群的配置 配置文件首次启动自动生成 7001,7002,7003</span><br><span class="line">cluster-node-timeout 15000 //请求超时 默认15秒，可自行设置</span><br><span class="line">appendonly yes //aof日志开启 有需要就开启，它会每次写操作都记录一条日志</span><br></pre></td></tr></table></figure>
+<p>3、创建集群<br>
+先安装 ruby，因为 redis 的集群协调程序是用 ruby 写的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum -y install ruby ruby-devel rubygems rpm-build</span><br></pre></td></tr></table></figure>
+<p>再安装gem，在编译目录下执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gem install redis</span><br></pre></td></tr></table></figure>
+<p>运行每个redis实例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-server redis.conf</span><br></pre></td></tr></table></figure>
+<p>复制编译目录下的src目录中的redis-trib.rb到/usr/local/bin，然后运行<br>
+在编译目录的src子目录下执行，其中host为各redis节点的绑定ip（如果绑定的ip是0.0.0.0则必须指定为对外开放的ip，否则会默认绑定127.0.0.1，在slot重定向时会报错），设置每个主分片有一个副本分片</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./redis-trib.rb create --replicas 1 host1:port1 host2:port2 ...</span><br></pre></td></tr></table></figure>
+<p>4、测试<br>
+为了连到集群上，需要在 redis-cli 请求后加上-c 参数，比如</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -h 192.168.31.245 -c -p 7002</span><br></pre></td></tr></table></figure>
+<p>在普通set和get时，redis会自动计算出目标地址。<br>
+5、Java客户端连接</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">public class RedissonTest &#123;</span><br><span class="line"></span><br><span class="line">    private static final Random random = new Random();</span><br><span class="line"></span><br><span class="line">    static int succeed = 0;</span><br><span class="line"></span><br><span class="line">    static int failed = 0;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) throws InterruptedException &#123;</span><br><span class="line">        Config config = new Config();</span><br><span class="line">        config.useClusterServers()</span><br><span class="line">                .setScanInterval(2000)</span><br><span class="line">                .addNodeAddress(&quot;redis://127.0.0.1:7001&quot;, &quot;redis://127.0.0.1:7002&quot;, &quot;127.0.0.1:7003&quot;)</span><br><span class="line">                .addNodeAddress(&quot;redis://127.0.0.1:7004&quot;, &quot;redis://127.0.0.1:7005&quot;, &quot;127.0.0.1:7006&quot;);</span><br><span class="line">        RedissonClient redissonClient = Redisson.create(config);</span><br><span class="line">        while (true) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                RBucket&lt;Object&gt; bucket = redissonClient.getBucket(Integer.toString(random.nextInt()));</span><br><span class="line">                bucket.get();</span><br><span class="line">                succeed++;</span><br><span class="line">                log.info(&quot;调用成功, 当前 succeed:&#123;&#125;, failed:&#123;&#125;&quot;, succeed, failed);</span><br><span class="line">            &#125; catch (Exception e) &#123;</span><br><span class="line">                failed++;</span><br><span class="line">                log.info(&quot;调用失败, 当前 succeed:&#123;&#125;, failed:&#123;&#125;&quot;, succeed, failed, e.getMessage());</span><br><span class="line">            &#125;</span><br><span class="line">            Thread.sleep(500);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="info-命令中涉及集群部署的部分"><a class="header-anchor" href="#info-命令中涉及集群部署的部分">¶</a>info 命令中涉及集群部署的部分</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"># Replication</span><br><span class="line"># 当前副本角色，如果实例不是任何节点的从节点，则该值是“master”，如果实例从某个节点同步数据，则是“slave”</span><br><span class="line">role:master</span><br><span class="line"># 已连接的从节点数</span><br><span class="line">connected_slaves:2</span><br><span class="line"># 每个从节点的信息，包括ID、地址、端口号、状态</span><br><span class="line">slave0:ip=10.32.140.18,port=6222,state=online,offset=1745391794554,lag=0</span><br><span class="line">slave1:ip=10.32.140.15,port=6212,state=online,offset=1745391807778,lag=0</span><br><span class="line">master_replid:6a64bcbbcae91324e72e24745392275e2f1382ea</span><br><span class="line">master_replid2:0000000000000000000000000000000000000000</span><br><span class="line">master_repl_offset:1745391878919</span><br><span class="line">second_repl_offset:-1</span><br><span class="line">repl_backlog_active:1</span><br><span class="line">repl_backlog_size:16777216</span><br><span class="line">repl_backlog_first_byte_offset:1745375101704</span><br><span class="line">repl_backlog_histlen:16777216</span><br></pre></td></tr></table></figure>
+<h3 id="cluster-info-命令"><a class="header-anchor" href="#cluster-info-命令">¶</a>cluster info 命令</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">10.32.140.15:6212&gt; cluster info</span><br><span class="line"># ok状态表示集群可以正常接受查询请求。fail 状态表示，至少有一个哈希槽没有被绑定（说明有哈希槽没有被绑定到任意一个节点），或者在错误的状态（节点可以提供服务但是带有FAIL 标记），或者该节点无法联系到多数master节点。</span><br><span class="line">cluster_state:ok</span><br><span class="line"># 已分配到集群节点的哈希槽数量（不是没有被绑定的数量）。16384个哈希槽全部被分配到集群节点是集群正常运行的必要条件.</span><br><span class="line">cluster_slots_assigned:16384</span><br><span class="line"># 哈希槽状态不是FAIL 和 PFAIL 的数量</span><br><span class="line">cluster_slots_ok:16384</span><br><span class="line"># 哈希槽状态是 PFAIL的数量。只要哈希槽状态没有被升级到FAIL状态，这些哈希槽仍然可以被正常处理。PFAIL状态表示我们当前不能和节点进行交互，但这种状态只是临时的错误状态</span><br><span class="line">cluster_slots_pfail:0</span><br><span class="line"># 哈希槽状态是FAIL的数量。如果值不是0，那么集群节点将无法提供查询服务，除非cluster-require-full-coverage被设置为no</span><br><span class="line">cluster_slots_fail:0</span><br><span class="line"># 集群中节点数量，包括处于握手状态还没有成为集群正式成员的节点</span><br><span class="line">cluster_known_nodes:9</span><br><span class="line"># 至少包含一个哈希槽且能够提供服务的master节点数量</span><br><span class="line">cluster_size:3</span><br><span class="line"># 集群本地Current Epoch变量的值。这个值在节点故障转移过程时有用，它总是递增和唯一的</span><br><span class="line">cluster_current_epoch:3</span><br><span class="line"># 当前正在使用的节点的Config Epoch值. 这个是关联在本节点的版本值</span><br><span class="line">cluster_my_epoch:2</span><br><span class="line">cluster_stats_messages_ping_sent:27870482</span><br><span class="line">cluster_stats_messages_pong_sent:27072640</span><br><span class="line">cluster_stats_messages_meet_sent:4</span><br><span class="line">cluster_stats_messages_sent:54943126</span><br><span class="line">cluster_stats_messages_ping_received:27072636</span><br><span class="line">cluster_stats_messages_pong_received:27865273</span><br><span class="line">cluster_stats_messages_meet_received:4</span><br><span class="line">cluster_stats_messages_fail_received:4</span><br><span class="line">cluster_stats_messages_publish_received:7514286</span><br><span class="line">cluster_stats_messages_received:62452203</span><br></pre></td></tr></table></figure>
+<h3 id="cluster-nodes"><a class="header-anchor" href="#cluster-nodes">¶</a>cluster nodes</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 节点ID，IP地址：端口号，标识，上一次发送 ping 包的时间，上一次收到 pong 包的时间，连接状态，节点使用的哈希槽</span><br><span class="line">127.0.0.1:7001&gt; cluster nodes</span><br><span class="line">fcdcafe5482daa80d0a382f675e8caced2d6ce63 127.0.0.1:7001@17001 myself,slave b2d0be87492d75bce14d3e50f687ce8a7872ef73 0 1603765953000 7 connected</span><br><span class="line">75d6d1e3d4d64eb6fb85d1ac7d883ecef4ac5e7e 127.0.0.1:7002@17002 master - 0 1603765955026 2 connected 5461-10922</span><br><span class="line">b2d0be87492d75bce14d3e50f687ce8a7872ef73 127.0.0.1:7004@17004 master - 0 1603765952012 7 connected 0-5460</span><br><span class="line">8bf573a595a3955293e37f2e34e20c4cfb469060 127.0.0.1:7003@17003 master - 0 1603765954021 3 connected 10923-16383</span><br><span class="line">5d599dea56108003633cd27d13abf87a9ef07d52 127.0.0.1:7005@17005 slave 75d6d1e3d4d64eb6fb85d1ac7d883ecef4ac5e7e 0 1603765953000 2 connected</span><br><span class="line">68e6ddbf689bc6d51ebfadd24064fc6cc8204210 127.0.0.1:7006@17006 slave 8bf573a595a3955293e37f2e34e20c4cfb469060 0 1603765954000 3 connected</span><br></pre></td></tr></table></figure>
+<h3 id="测试结果预期"><a class="header-anchor" href="#测试结果预期">¶</a>测试结果预期</h3>
+<p>测试一些Cluster宕机的情况，预期会有以下结论：</p>
+<ol>
+<li>关闭任意一主，会导致部分写操作失败，是由于从节点不能执行写操作，在Slave升级为Master期间会有少量的失败。</li>
+<li>关闭从节点对于整个集群没有影响。</li>
+<li>如果半数以上 Master 处于关闭状态那么整个集群处于不可用状态。<br>
+原因：Redis Cluster的选举需要有Master参与，如果多半的Master都挂掉了，也就不能再支持选举新Master了。</li>
+<li>关闭任意一对主从节点会导致部分（大约为整个集群的1/3）失败。<br>
+Master宕机了，且没有替补的Slave，则分配给这个Master的slot就不可用了。</li>
+</ol>
+<h3 id="测试-压测"><a class="header-anchor" href="#测试-压测">¶</a>测试 - 压测</h3>
+<h3 id="测试-宕机1台master"><a class="header-anchor" href="#测试-宕机1台master">¶</a>测试 - 宕机1台Master</h3>
+<p>下面的命令将7001干掉后测试集群的主从迁移情况。<br>
+刚开始集群7001、7002、7003是Master：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:7001&gt; cluster nodes</span><br><span class="line">5d599dea56108003633cd27d13abf87a9ef07d52 127.0.0.1:7005@17005 slave 75d6d1e3d4d64eb6fb85d1ac7d883ecef4ac5e7e 0 1603615592617 2 connected</span><br><span class="line">fcdcafe5482daa80d0a382f675e8caced2d6ce63 127.0.0.1:7001@17001 myself,master - 0 1603615591000 1 connected 0-5460</span><br><span class="line">b2d0be87492d75bce14d3e50f687ce8a7872ef73 127.0.0.1:7004@17004 slave fcdcafe5482daa80d0a382f675e8caced2d6ce63 0 1603615591614 1 connected</span><br><span class="line">8bf573a595a3955293e37f2e34e20c4cfb469060 127.0.0.1:7003@17003 master - 0 1603615591000 3 connected 10923-16383</span><br><span class="line">75d6d1e3d4d64eb6fb85d1ac7d883ecef4ac5e7e 127.0.0.1:7002@17002 master - 0 1603615592000 2 connected 5461-10922</span><br><span class="line">68e6ddbf689bc6d51ebfadd24064fc6cc8204210 127.0.0.1:7006@17006 slave 8bf573a595a3955293e37f2e34e20c4cfb469060 0 1603615593620 3 connected</span><br></pre></td></tr></table></figure>
+<p>将7001 kill掉后，请求7001服务器的请求都会失败，大约20秒后请求恢复，且观察日志可以发现，原来7001的Slave-7004现在替补上来成为了Master：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">18:29:28.186 [main] INFO  c.t.l.r.RedissonTest - 调用成功, 当前 succeed:15, failed:0</span><br><span class="line">18:29:33.475 [main] INFO  c.t.l.r.RedissonTest - 调用失败, 当前 succeed:15, failed:1</span><br><span class="line">18:29:38.750 [main] INFO  c.t.l.r.RedissonTest - 调用失败, 当前 succeed:15, failed:2</span><br><span class="line">18:29:39.253 [main] INFO  c.t.l.r.RedissonTest - 调用成功, 当前 succeed:16, failed:2</span><br><span class="line">18:29:39.756 [main] INFO  c.t.l.r.RedissonTest - 调用成功, 当前 succeed:17, failed:2</span><br><span class="line">18:29:40.259 [main] INFO  c.t.l.r.RedissonTest - 调用成功, 当前 succeed:18, failed:2</span><br><span class="line">18:29:40.763 [main] INFO  c.t.l.r.RedissonTest - 调用成功, 当前 succeed:19, failed:2</span><br><span class="line">18:29:45.271 [redisson-netty-2-4] INFO  o.r.c.MasterSlaveEntry - master 127.0.0.1/127.0.0.1:7004 used as slave</span><br><span class="line">18:29:45.274 [redisson-netty-2-14] INFO  o.r.c.p.PubSubConnectionPool - 1 connections initialized for 127.0.0.1/127.0.0.1:7004</span><br><span class="line">18:29:45.280 [redisson-netty-2-4] WARN  o.r.c.ClusterConnectionManager - slave: redis://127.0.0.1:7001 has down for slot ranges: [[0-5460]]</span><br><span class="line">18:29:45.285 [redisson-netty-2-28] INFO  o.r.c.p.SlaveConnectionPool - 24 connections initialized for 127.0.0.1/127.0.0.1:7004</span><br></pre></td></tr></table></figure>
+<p>之后重启7001后，发现7001重新加入到了集群中：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">18:34:18.539 [redisson-netty-2-29] INFO  o.r.c.p.PubSubConnectionPool - 1 connections initialized for 127.0.0.1/127.0.0.1:7001</span><br><span class="line">18:34:18.542 [redisson-netty-2-4] INFO  o.r.c.MasterSlaveEntry - master 127.0.0.1/127.0.0.1:7004 excluded from slaves</span><br><span class="line">18:34:18.542 [redisson-netty-2-4] INFO  o.r.c.ClusterConnectionManager - slave: redis://127.0.0.1:7001 has up for slot ranges: [[0-5460]]</span><br><span class="line">18:34:18.544 [redisson-netty-2-6] INFO  o.r.c.p.SlaveConnectionPool - 24 connections initialized for 127.0.0.1/127.0.0.1:7001</span><br></pre></td></tr></table></figure>
+<h3 id="测试-宕机2台master"><a class="header-anchor" href="#测试-宕机2台master">¶</a>测试 - 宕机2台Master</h3>
+<p>把两台Master干掉后，两个Master均进入fail状态，这时集群也会进入fail状态，选举不会成功。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">localhost:7001&gt; cluster nodes</span><br><span class="line">fcdcafe5482daa80d0a382f675e8caced2d6ce63 127.0.0.1:7001@17001 myself,slave b2d0be87492d75bce14d3e50f687ce8a7872ef73 0 1603622378000 7 connected</span><br><span class="line">75d6d1e3d4d64eb6fb85d1ac7d883ecef4ac5e7e 127.0.0.1:7002@17002 master - 0 1603622381510 2 connected 5461-10922</span><br><span class="line">b2d0be87492d75bce14d3e50f687ce8a7872ef73 127.0.0.1:7004@17004 master - 0 1603622379504 7 connected 0-5460</span><br><span class="line">8bf573a595a3955293e37f2e34e20c4cfb469060 127.0.0.1:7003@17003 master - 0 1603622380507 3 connected 10923-16383</span><br><span class="line">5d599dea56108003633cd27d13abf87a9ef07d52 127.0.0.1:7005@17005 slave 75d6d1e3d4d64eb6fb85d1ac7d883ecef4ac5e7e 0 1603622378498 2 connected</span><br><span class="line">68e6ddbf689bc6d51ebfadd24064fc6cc8204210 127.0.0.1:7006@17006 slave 8bf573a595a3955293e37f2e34e20c4cfb469060 0 1603622380000 3 connected</span><br></pre></td></tr></table></figure>
+<p>集群fail后，客户端之后的请求也都失败了。</p>
+<h2 id="分布式锁"><a class="header-anchor" href="#分布式锁">¶</a>分布式锁</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">set key value ex nx</span><br><span class="line">do sth...</span><br><span class="line">del key</span><br></pre></td></tr></table></figure>
+<ol>
+<li>为什么要加过期时间？<br>
+怕中间遇到异常退出，del 没有执行，导致陷入死锁。<br>
+set 命令现在支持加 ex 和 nx 参数，既保证原子性，又支持加过期时间。</li>
+<li>过早过期释放别人的锁<br>
+业务执行时间过长，锁过期了，可能导致其他线程先获取到了锁，这样当前线程 del 的时候相当于将别人的锁释放掉了。<br>
+可以给 value 设置一个随机数，释放前检查一下，这是个“读后写”的过程，为了保证其原子性，一般会使用 Lua 脚本来实现（类似 Redisson 中的实现）。<br>
+Redisson 中的解决方案是加一个“看门狗”，定时刷新过期时间。</li>
+<li>重入性<br>
+为了实现可重入性，一般是在客户端使用 ThreadLocal 存储当前持有锁的计数。<br>
+在 Redisson 中，可重入锁是通过在 Lua 脚本中对客户端线程 ID 进行计数来实现的。</li>
+</ol>
+<h2 id="延时队列"><a class="header-anchor" href="#延时队列">¶</a>延时队列</h2>
+<h3 id="异步消息队列"><a class="header-anchor" href="#异步消息队列">¶</a>异步消息队列</h3>
+<p>可以使用 list 数据结构来实现异步消息队列，使用 rpush/lpush 操作入队列，使用 lpop 和 rpop 来出队列。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">rpush notify-queue a b</span><br><span class="line">llen notify-queue</span><br><span class="line">lpop notify-queue</span><br><span class="line">llen notify-queue</span><br><span class="line">lpop notify-queue</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>如果队列空了怎么办？<br>
+客户端通过轮询队列 pop 获取消息处理，如果队列空了，那么就会陷入 pop 的死循环。<br>
+一般的解决办法是<code>sleep</code>，每次 pop 后可以暂停个 1 秒。<br>
+但是<code>sleep</code>同样会带来延迟增大的问题，因此，更好的解决办法是<code>blpop / brpop</code>，即阻塞读：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 等待一秒若还没有数据则直接返回</span><br><span class="line">blpop notify-queue 1</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>空闲连接<br>
+如果线程一直阻塞，则 Redis 的客户端连接将成为闲置连接，闲置过久，服务器一般会主动断开连接，减少闲置资源占用。这个时候 blpop/brpop 会抛出异常来，这时要<strong>注意对异常的捕获和重试</strong>。</p>
+</li>
+<li>
+<p>锁冲突处理<br>
+加锁失败一般有 3 种处理方式：</p>
+<ul>
+<li>直接抛出异常，由用户稍后重试；<br>
+适合由用户直接发起的请求，比如商城下单，下单失败后由用户决定是否重新请求。</li>
+<li>sleep<br>
+sleep 会阻塞消息处理线程，会导致后续消息处理出现延迟，不适合高并发（锁冲突频繁）或队列消息较多的情况，并且，如果是由于死锁导致的加锁不成功，sleep 将导致线程一直处于阻塞状态、后续的消息永远得不到处理。</li>
+<li>延时队列<br>
+将当前冲突的请求扔到另一个队列延后处理以避开冲突，适合异步消息处理的场景。</li>
+</ul>
+</li>
+</ol>
+<p>下面的实现例子来自《Redis 深度历险》：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line">public class RedisDelayingQueue&lt;T&gt; &#123;</span><br><span class="line"></span><br><span class="line">  static class TaskItem&lt;T&gt; &#123;</span><br><span class="line">    public String id;</span><br><span class="line">    public T msg;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // fastjson 序列化对象中存在 generic 类型时，需要使用 TypeReference</span><br><span class="line">  private Type TaskType = new TypeReference&lt;TaskItem&lt;T&gt;&gt;() &#123;</span><br><span class="line">  &#125;.getType();</span><br><span class="line"></span><br><span class="line">  private Jedis jedis;</span><br><span class="line">  private String queueKey;</span><br><span class="line"></span><br><span class="line">  public RedisDelayingQueue(Jedis jedis, String queueKey) &#123;</span><br><span class="line">    this.jedis = jedis;</span><br><span class="line">    this.queueKey = queueKey;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public void delay(T msg) &#123;</span><br><span class="line">    TaskItem&lt;T&gt; task = new TaskItem&lt;T&gt;();</span><br><span class="line">    task.id = UUID.randomUUID().toString();</span><br><span class="line">    task.msg = msg;</span><br><span class="line">    String s = JSON.toJSONString(task);</span><br><span class="line">    // key是当前时间</span><br><span class="line">    jedis.zadd(queueKey, System.currentTimeMillis() + 5000, s); // 塞入延时队列 ,5s 后再试</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public void loop() &#123;</span><br><span class="line">    while (!Thread.interrupted()) &#123;</span><br><span class="line">      // 取时间范围是0到当前时间内的一条记录</span><br><span class="line">      // 第3个参数0表示不记分数，</span><br><span class="line">      Set&lt;String&gt; values = jedis.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, 1);</span><br><span class="line">      if (values.isEmpty()) &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">          // 暂停一会，避免浪费CPU</span><br><span class="line">          Thread.sleep(500);</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">          break;</span><br><span class="line">        &#125;</span><br><span class="line">        continue;</span><br><span class="line">      &#125;</span><br><span class="line">      String s = values.iterator().next();</span><br><span class="line">      // 说明抢到了</span><br><span class="line">      if (jedis.zrem(queueKey, s) &gt; 0) &#123;</span><br><span class="line">        TaskItem&lt;T&gt; task = JSON.parseObject(s, TaskType);</span><br><span class="line">        this.handleMsg(task.msg);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public void handleMsg(T msg) &#123;</span><br><span class="line">    System.out.println(msg);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public static void main(String[] args) &#123;</span><br><span class="line">    Jedis jedis = new Jedis();</span><br><span class="line">    RedisDelayingQueue&lt;String&gt; queue = new RedisDelayingQueue&lt;&gt;(jedis, &quot;q-demo&quot;);</span><br><span class="line">    Thread producer = new Thread() &#123;</span><br><span class="line"></span><br><span class="line">      public void run() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 10; i++) &#123;</span><br><span class="line">          queue.delay(&quot;codehole&quot; + i);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line">    Thread consumer = new Thread() &#123;</span><br><span class="line"></span><br><span class="line">      public void run() &#123;</span><br><span class="line">        queue.loop();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line">    producer.start();</span><br><span class="line">    consumer.start();</span><br><span class="line">    try &#123;</span><br><span class="line">      producer.join();</span><br><span class="line">      Thread.sleep(6000);</span><br><span class="line">      consumer.interrupt();</span><br><span class="line">      consumer.join();</span><br><span class="line">    &#125; catch (InterruptedException e) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>一些优化点：</p>
+<ol>
+<li>注意<code>zrangeByScore</code>和<code>zrem</code>不是一个原子操作，可能会有多个线程争抢同一个 key，这可以通过 lua 脚本来优化。</li>
+<li>使用 Redis 作为消息队列并不能保证 100%的可靠性，因为 rem 执行后如果客户端崩溃了消息就丢失了，或者 Redis 崩溃了消息也有可能丢失（这个可以通过主备来避免）。</li>
+</ol>
+<h2 id="阻塞队列"><a class="header-anchor" href="#阻塞队列">¶</a>阻塞队列</h2>
+<p>使用Redis实现队列可以利用lpop/rpush或rpop/lpush，但是这两组命令在遇到队列为空或满时还是会直接返回，如果要实现阻塞队列的阻塞等待能力，可以：<br>
+1、使用lua脚本轮询<br>
+lua脚本中先检测队列是否为空/满，在不空/不满的情况下才执行后续的操作。<br>
+如果为空/满，则客户端先等待一会再执行一次该lua脚本。<br>
+缺点是会有很多空轮询。<br>
+2、使用blpop命令<br>
+在list结构尚不存在元素的情况下，blpop命令会先将客户端挂起，等待：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">void blockForKeys(redisClient *c, robj **keys, int numkeys, mstime_t timeout, robj *target) &#123;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    // 关联阻塞客户端和键的相关信息</span><br><span class="line">    for (j = 0; j &lt; numkeys; j++) &#123;</span><br><span class="line"></span><br><span class="line">        /* If the key already exists in the dict ignore it. */</span><br><span class="line">        // c-&gt;bpop.keys 是一个集合（值为 NULL 的字典）</span><br><span class="line">        // 它记录所有造成客户端阻塞的键</span><br><span class="line">        // 以下语句在键不存在于集合的时候，将它添加到集合</span><br><span class="line">        if (dictAdd(c-&gt;bpop.keys,keys[j],NULL) != DICT_OK) continue;</span><br><span class="line"></span><br><span class="line">        incrRefCount(keys[j]);</span><br><span class="line"></span><br><span class="line">        /* And in the other &quot;side&quot;, to map keys -&gt; clients */</span><br><span class="line">        // c-&gt;db-&gt;blocking_keys 字典的键为造成客户端阻塞的键</span><br><span class="line">        // 而值则是一个链表，链表中包含了所有被阻塞的客户端</span><br><span class="line">        // 以下程序将阻塞键和被阻塞客户端关联起来</span><br><span class="line">        de = dictFind(c-&gt;db-&gt;blocking_keys,keys[j]);</span><br><span class="line">        if (de == NULL) &#123;</span><br><span class="line">            // 链表不存在，新创建一个，并将它关联到字典中</span><br><span class="line">            int retval;</span><br><span class="line"></span><br><span class="line">            /* For every key we take a list of clients blocked for it */</span><br><span class="line">            l = listCreate();</span><br><span class="line">            retval = dictAdd(c-&gt;db-&gt;blocking_keys,keys[j],l);</span><br><span class="line">            incrRefCount(keys[j]);</span><br><span class="line">            redisAssertWithInfo(c,keys[j],retval == DICT_OK);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            l = dictGetVal(de);</span><br><span class="line">        &#125;</span><br><span class="line">        // 将客户端填接到被阻塞客户端的链表中</span><br><span class="line">        listAddNodeTail(l,c);</span><br><span class="line">    &#125;</span><br><span class="line">    blockClient(c,REDIS_BLOCKED_LIST);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>执行指令结束后，处理解除了阻塞的键。<br>
+<code>redis.c</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">int processCommand(redisClient *c) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Exec the command */</span><br><span class="line">    if (c-&gt;flags &amp; REDIS_MULTI &amp;&amp;</span><br><span class="line">        c-&gt;cmd-&gt;proc != execCommand &amp;&amp; c-&gt;cmd-&gt;proc != discardCommand &amp;&amp;</span><br><span class="line">        c-&gt;cmd-&gt;proc != multiCommand &amp;&amp; c-&gt;cmd-&gt;proc != watchCommand)</span><br><span class="line">    &#123;</span><br><span class="line">        // 在事务上下文中</span><br><span class="line">        // 除 EXEC 、 DISCARD 、 MULTI 和 WATCH 命令之外</span><br><span class="line">        // 其他所有命令都会被入队到事务队列中</span><br><span class="line">        queueMultiCommand(c);</span><br><span class="line">        addReply(c,shared.queued);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 执行命令</span><br><span class="line">        call(c,REDIS_CALL_FULL);</span><br><span class="line"></span><br><span class="line">        c-&gt;woff = server.master_repl_offset;</span><br><span class="line">        // 处理那些解除了阻塞的键</span><br><span class="line">        if (listLength(server.ready_keys))</span><br><span class="line">            handleClientsBlockedOnLists();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    return REDIS_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到，执行命令的末尾需要处理解除了阻塞的键，遍历这些键然后唤醒等待的客户端。<br>
+<code>t_list.c</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line">/* 这个函数会在 Redis 每次执行完单个命令、事务块或 Lua 脚本之后调用。</span><br><span class="line"> *</span><br><span class="line"> * 对所有被阻塞在某个客户端的 key 来说，只要这个 key 被执行了某种 PUSH 操作</span><br><span class="line"> * 那么这个 key 就会被放到 serve.ready_keys 去。</span><br><span class="line"> * </span><br><span class="line"> * 这个函数会遍历整个 serve.ready_keys 链表，</span><br><span class="line"> * 并将里面的 key 的元素弹出给被阻塞客户端，</span><br><span class="line"> * 从而解除客户端的阻塞状态。</span><br><span class="line"> *</span><br><span class="line"> * 函数会一次又一次地进行迭代，</span><br><span class="line"> * 因此它在执行 BRPOPLPUSH 命令的情况下也可以正常获取到正确的新被阻塞客户端。</span><br><span class="line"> */</span><br><span class="line">void handleClientsBlockedOnLists(void) &#123;</span><br><span class="line"></span><br><span class="line">    // 遍历整个 ready_keys 链表</span><br><span class="line">    while(listLength(server.ready_keys) != 0) &#123;</span><br><span class="line">        list *l;</span><br><span class="line"></span><br><span class="line">        /* Point server.ready_keys to a fresh list and save the current one</span><br><span class="line">         * locally. This way as we run the old list we are free to call</span><br><span class="line">         * signalListAsReady() that may push new elements in server.ready_keys</span><br><span class="line">         * when handling clients blocked into BRPOPLPUSH. */</span><br><span class="line">        // 备份旧的 ready_keys ，再给服务器端赋值一个新的</span><br><span class="line">        l = server.ready_keys;</span><br><span class="line">        server.ready_keys = listCreate();</span><br><span class="line"></span><br><span class="line">        while(listLength(l) != 0) &#123;</span><br><span class="line"></span><br><span class="line">            // 取出 ready_keys 中的首个链表节点</span><br><span class="line">            listNode *ln = listFirst(l);</span><br><span class="line"></span><br><span class="line">            // 指向 readyList 结构</span><br><span class="line">            readyList *rl = ln-&gt;value;</span><br><span class="line"></span><br><span class="line">            /* First of all remove this key from db-&gt;ready_keys so that</span><br><span class="line">             * we can safely call signalListAsReady() against this key. */</span><br><span class="line">            // 从 ready_keys 中移除就绪的 key</span><br><span class="line">            dictDelete(rl-&gt;db-&gt;ready_keys,rl-&gt;key);</span><br><span class="line"></span><br><span class="line">            /* If the key exists and it&apos;s a list, serve blocked clients</span><br><span class="line">             * with data. */</span><br><span class="line">            // 获取键对象，这个对象应该是非空的，并且是列表</span><br><span class="line">            robj *o = lookupKeyWrite(rl-&gt;db,rl-&gt;key);</span><br><span class="line">            if (o != NULL &amp;&amp; o-&gt;type == REDIS_LIST) &#123;</span><br><span class="line">                dictEntry *de;</span><br><span class="line"></span><br><span class="line">                /* We serve clients in the same order they blocked for</span><br><span class="line">                 * this key, from the first blocked to the last. */</span><br><span class="line">                // 取出所有被这个 key 阻塞的客户端</span><br><span class="line">                de = dictFind(rl-&gt;db-&gt;blocking_keys,rl-&gt;key);</span><br><span class="line">                if (de) &#123;</span><br><span class="line">                    list *clients = dictGetVal(de);</span><br><span class="line">                    int numclients = listLength(clients);</span><br><span class="line"></span><br><span class="line">                    while(numclients--) &#123;</span><br><span class="line">                        // 取出客户端</span><br><span class="line">                        listNode *clientnode = listFirst(clients);</span><br><span class="line">                        redisClient *receiver = clientnode-&gt;value;</span><br><span class="line"></span><br><span class="line">                        // 设置弹出的目标对象（只在 BRPOPLPUSH 时使用）</span><br><span class="line">                        robj *dstkey = receiver-&gt;bpop.target;</span><br><span class="line"></span><br><span class="line">                        // 从列表中弹出元素</span><br><span class="line">                        // 弹出的位置取决于是执行 BLPOP 还是 BRPOP 或者 BRPOPLPUSH</span><br><span class="line">                        int where = (receiver-&gt;lastcmd &amp;&amp;</span><br><span class="line">                                     receiver-&gt;lastcmd-&gt;proc == blpopCommand) ?</span><br><span class="line">                                    REDIS_HEAD : REDIS_TAIL;</span><br><span class="line">                        robj *value = listTypePop(o,where);</span><br><span class="line"></span><br><span class="line">                        // 还有元素可弹出（非 NULL）</span><br><span class="line">                        if (value) &#123;</span><br><span class="line">                            /* Protect receiver-&gt;bpop.target, that will be</span><br><span class="line">                             * freed by the next unblockClient()</span><br><span class="line">                             * call. */</span><br><span class="line">                            if (dstkey) incrRefCount(dstkey);</span><br><span class="line"></span><br><span class="line">                            // 取消客户端的阻塞状态</span><br><span class="line">                            unblockClient(receiver);</span><br><span class="line"></span><br><span class="line">                            // 将值 value 推入到造成客户端 receiver 阻塞的 key 上</span><br><span class="line">                            if (serveClientBlockedOnList(receiver,</span><br><span class="line">                                rl-&gt;key,dstkey,rl-&gt;db,value,</span><br><span class="line">                                where) == REDIS_ERR)</span><br><span class="line">                            &#123;</span><br><span class="line">                                /* If we failed serving the client we need</span><br><span class="line">                                 * to also undo the POP operation. */</span><br><span class="line">                                    listTypePush(o,value,where);</span><br><span class="line">                            &#125;</span><br><span class="line"></span><br><span class="line">                            if (dstkey) decrRefCount(dstkey);</span><br><span class="line">                            decrRefCount(value);</span><br><span class="line">                        &#125; else &#123;</span><br><span class="line">                            // 如果执行到这里，表示还有至少一个客户端被键所阻塞</span><br><span class="line">                            // 这些客户端要等待对键的下次 PUSH</span><br><span class="line">                            break;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                </span><br><span class="line">                // 如果列表元素已经为空，那么从数据库中将它删除</span><br><span class="line">                if (listTypeLength(o) == 0) dbDelete(rl-&gt;db,rl-&gt;key);</span><br><span class="line">                /* We don&apos;t call signalModifiedKey() as it was already called</span><br><span class="line">                 * when an element was pushed on the list. */</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            /* Free this item. */</span><br><span class="line">            decrRefCount(rl-&gt;key);</span><br><span class="line">            zfree(rl);</span><br><span class="line">            listDelNode(l,ln);</span><br><span class="line">        &#125;</span><br><span class="line">        listRelease(l); /* We have the new list on place at this point. */</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="位图"><a class="header-anchor" href="#位图">¶</a>位图</h2>
+<h3 id="场景"><a class="header-anchor" href="#场景">¶</a>场景</h3>
+<p>位图数据结构与 java 中的 Set 类似，占用空间小，但是并不能防止冲突，适合数据离散性比较大且对数据准确性不高的场景。</p>
+<ol>
+<li>统计月活<br>
+统计月活的时候我们需要对 userId 进行去重，每个用户就可以定位到这个位图上的一个确定的位置上，0 表示不活跃，1 表示活跃，遍历一次就可以知道月活用户数有多少。</li>
+</ol>
+<h3 id="使用-v2"><a class="header-anchor" href="#使用-v2">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">set s a</span><br><span class="line">getbit s 2</span><br><span class="line">setbit s 6 1</span><br><span class="line">get s</span><br></pre></td></tr></table></figure>
+<p>注意下标并不是从低位到高位递增的，而是反过来的，a 的 ASCII 码值是<code>01100001</code>，<code>setbit s 6 1</code>设置第 7 位为 1 后值就变成了 c。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// 指定范围内1的个数</span><br><span class="line">bitcount s 0 7</span><br><span class="line">// 第一个1的位置</span><br><span class="line">bitpos s 1</span><br><span class="line">// 下标0到7范围内第一个1的位置</span><br><span class="line">bitpos s 1 0 7</span><br></pre></td></tr></table></figure>
+<p>比如用位数组记录用户登录的日期，bitcount 可以用于统计用户一共签到了多少天，bitpos 可以用于查找用户从哪一天开始第一次签到。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// 从第一个位（0）开始取4个位，结果是无符号数（u）</span><br><span class="line">bitfield s get u4 0</span><br><span class="line">// 从第三个位（2）开始取3个位，结果是有符号数（i）</span><br><span class="line">bitfield s get i3 2</span><br><span class="line">// 一次性执行多个子命令</span><br><span class="line">bitfield s get u4 0 get u3 2 get i4 0 get i3 2</span><br></pre></td></tr></table></figure>
+<p>如果 s 的值是 c，二进制值是<code>0110 0011</code>，取前 4 位结果是 6（0110）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// +1，结果为0，因为溢出了</span><br><span class="line">bitfield s incrby u2 1 1</span><br><span class="line">// 不执行，返回nil</span><br><span class="line">bitfield s overflow fail incrby u2 1 1</span><br><span class="line">// 结果为3</span><br><span class="line">bitfield s overflow sat incrby u2 1 1</span><br></pre></td></tr></table></figure>
+<p>位的增加操作有 3 种策略：</p>
+<ol>
+<li>默认的 wrap：</li>
+<li>fail：失败报错不执行</li>
+<li>sat：饱和截断，如果有溢出就停留在最大最小值。</li>
+</ol>
+<h2 id="hyperloglog"><a class="header-anchor" href="#hyperloglog">¶</a>HyperLogLog</h2>
+<p>HyperLogLog 主要用于大数据量的计数，比如访问频繁的页面需要统计 UV（一天内访问的用户数），不同于 PV，UV 需要去重。<br>
+HyperLogLog 只能粗略统计，理论上会有不到 1%的误差。</p>
+<h3 id="使用-v3"><a class="header-anchor" href="#使用-v3">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">pfadd s user1</span><br><span class="line">pfcount s</span><br><span class="line">pfadd s user1</span><br><span class="line">pfadd s user2</span><br><span class="line">// 结果仍然为2</span><br><span class="line">pfcount s</span><br><span class="line">// 将两个计数器累加</span><br><span class="line">pfmerge s b</span><br></pre></td></tr></table></figure>
+<h2 id="布隆过滤器"><a class="header-anchor" href="#布隆过滤器">¶</a>布隆过滤器</h2>
+<p>HyperLogLog 可以用于计数，但是不能用于判断一个值是否存在于该结构里，这时最好使用布隆过滤器（Bloom Filter）：</p>
+<ol>
+<li>去重；</li>
+<li>支持 contains 判断；</li>
+<li>节省空间；</li>
+<li>不精确，存在误判的可能（当布隆过滤器说某个值存在时，这个值可能不存在，当它说不存在时，那就肯定不存在，这个问题是由 hash 函数的冲突引起的）；</li>
+<li>不支持计数。</li>
+</ol>
+<h3 id="使用-v4"><a class="header-anchor" href="#使用-v4">¶</a>使用</h3>
+<p>插入值并且判断该值是否存在于 bf 对象内：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bf.add s user1</span><br><span class="line">bf.add s user2</span><br><span class="line">bf.madd s user3 user4</span><br><span class="line">bf.exists s user1</span><br><span class="line">bf.mexists s user1 user5</span><br></pre></td></tr></table></figure>
+<p>第一次 bf.add 会创建一个默认参数的布隆过滤器，也可以显式创建：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 创建一个名为key的布隆过滤器，错误率0.1，预计放入的元素数量为10</span><br><span class="line">bf.reserve key 0.1 10</span><br></pre></td></tr></table></figure>
+<ul>
+<li>错误率越低，需要的空间越大，默认值为 0.01<br>
+对于不需要非常精确的场合，错误率设置得稍大一点也无伤大雅。</li>
+<li>当实际数量超出预计放入数量时，误判率会上升，默认值为 100<br>
+该值设置得过大，会浪费存储空间，估计得过小，就会影响准确率，最理想的情况下是略大于实际元素数量。</li>
+</ul>
+<p>当实际元素数超出初始化大小时，应该对布隆过滤器进行重建，重新分配一个 size 更大的过滤器，再将所有的历史元素批量 add 进去（比如如果布隆过滤器保存的是 userId，那么就需要把历史 userId 重新保存到一个新的布隆过滤器中）。</p>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
+<p>布隆过滤器本身是一个大型的位数组和几个不同的无偏 hash 函数。</p>
+<blockquote>
+<p>无偏指的是该 hash 函数能把值分布得比较均匀。</p>
+</blockquote>
+<ul>
+<li>add：使用这些 hash 函数计算 hash(key)%length(bit_arr)，每个 hash 函数都可以得到一个位置，将这些位置置为 1；</li>
+<li>exists：同样用这些 hash 函数计算位置，如果有一个不为 1 说明 key 不存在，如果都为 1 也不一定说明 key 一定存在，因为这些位置可能会被其他 key 设置到。</li>
+</ul>
+<h2 id="geohash"><a class="header-anchor" href="#geohash">¶</a>GeoHash</h2>
+<h3 id="一种简单的方法"><a class="header-anchor" href="#一种简单的方法">¶</a>一种简单的方法</h3>
+<p>找一个节点附近的所有节点，可以近似看做以该节点为中心的一个矩形范围内有哪些节点，可以用类似下面的 SQL 来查询：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select id from positions where x0-r &lt; x &lt; x0+r and y0-r &lt; y &lt; y0+r</span><br></pre></td></tr></table></figure>
+<p>对 x 和 y 字段加索引后该 SQL 的性能也不会太差。</p>
+<h3 id="geohash-v2"><a class="header-anchor" href="#geohash-v2">¶</a>GeoHash</h3>
+<p>GeoHash 的基本思想是“降维”，将二维坐标映射到直线上的一个点，要寻找二维平面上的“附近的人”就相当于在直线上找相邻的点。<br>
+GeoHash 本质是一个 zset（带 score 的 set），底层结构是 skiplist：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">geoadd company 116.489033 40.007669 meituan</span><br><span class="line">geoadd company 116.562108 39.787602 jd 116.334255 40.027400 xiaomi</span><br><span class="line">// geoadd指令添加一个节点，因为geo存储结构上使用的是zset，因此可以使用zset相关的指令来操作，比如可以使用zrem指令来删除</span><br><span class="line">zrem company jd</span><br><span class="line">geoadd company 116.562108 39.787602 jd</span><br><span class="line">// 计算两个节点之间的距离</span><br><span class="line">geodist company meituan jd</span><br><span class="line">// 单位km</span><br><span class="line">geodist company meituan jd km</span><br><span class="line">// 获取节点位置</span><br><span class="line">geopos company meituan jd</span><br><span class="line">// 获取元素的hash值</span><br><span class="line">geohash company meituan</span><br><span class="line">// 查询指定元素附近的其他元素</span><br><span class="line">// 范围20公里内最多3个元素按距离正序排列，</span><br><span class="line">georadiusbymember company meituan 20 km count 3 asc</span><br></pre></td></tr></table></figure>
+<p>GeoHash 算法的执行流程如下：</p>
+<ol>
+<li>将坐标编码为一个 52 位整数，这个整数也可以还原为原坐标；</li>
+<li>zset 的 value 是元素的 key（即上面的 meituan、jd 等），score 是 GeoHash 的 52 位整数值，通过 zset 的 score 排序即可得到坐标附近的其它元素。</li>
+</ol>
+<p>其中主要问题是坐标是如何编码的，编码后为什么可以通过比较大小来判断是否相邻？<br>
+GeoHash 算法的原理是按经纬度区间对半分来进行编码，比如，维度的区间是<code>(-90, 90)</code>，如果坐标的维度值大于 0，则记 1，否则记 0，进一步的，如果坐标维度大于 45，则记 1，否则记 0，以此类推，对于<code>39.918118</code>来说，最后的编码值就是<code>10111000110001011011</code>。</p>
+<blockquote>
+<p>一般实现中还会进行 BASE64 编码，本质是一样的，只是编码后占用的空间更小了。</p>
+</blockquote>
+<h2 id="scan"><a class="header-anchor" href="#scan">¶</a>Scan</h2>
+<p>扫描大量 key 找到目标 key 的需求有两种实现方法：</p>
+<ol>
+<li>keys 命令<br>
+不支持分页，一次性吐出所有满足条件的 key，如果数据量过大、耗时过长，可能导致服务端卡顿。</li>
+</ol>
+<blockquote>
+<p>因为 Redis 是单线程模型。</p>
+</blockquote>
+<ol>
+<li>scan<br>
+和 keys 命令一样提供模式匹配，但它是通过游标扫描的，每次只扫描指定数量的数据，并将其中匹配的结果返回。</li>
+</ol>
+<h3 id="使用-v5"><a class="header-anchor" href="#使用-v5">¶</a>使用</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"># 从cursor=0开始，匹配&quot;key99*&quot;，共扫描1000条</span><br><span class="line">scan 0 match key99* count 1000</span><br><span class="line">1) &quot;11928&quot;</span><br><span class="line">2)  1) &quot;key9956&quot;</span><br><span class="line">    2) &quot;key9993&quot;</span><br><span class="line">    3) &quot;key9911&quot;</span><br><span class="line">    4) &quot;key996&quot;</span><br><span class="line">    5) &quot;key9933&quot;</span><br><span class="line">    6) &quot;key9962&quot;</span><br><span class="line">    7) &quot;key991&quot;</span><br><span class="line">    8) &quot;key9981&quot;</span><br><span class="line">    9) &quot;key9990&quot;</span><br><span class="line">   10) &quot;key9946&quot;</span><br><span class="line">   11) &quot;key9971&quot;</span><br><span class="line">   12) &quot;key99&quot;</span><br><span class="line">   13) &quot;key9951&quot;</span><br></pre></td></tr></table></figure>
+<p>返回值中，第一个&quot;11928&quot;是结果中最后一条的 cursor，下一次遍历时可以使用该值作为初始 cursor。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">scan 11928 match key99* count 10</span><br><span class="line">1) &quot;3480&quot;</span><br><span class="line">2) (empty list or set)</span><br></pre></td></tr></table></figure>
+<p>结果为空集合并不意味着遍历结束了，只有 cursor=0 才是遍历结束的标识。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">scan 11928 match key99* count 10000</span><br><span class="line">1) &quot;0&quot;</span><br><span class="line">2)  1) &quot;key9952&quot;</span><br><span class="line">    2) &quot;key9961&quot;</span><br><span class="line">    3) &quot;key9988&quot;</span><br><span class="line">    4) &quot;key9931&quot;</span><br><span class="line">    5) &quot;key9998&quot;</span><br><span class="line">    ...忽略更多的</span><br></pre></td></tr></table></figure>
+<h3 id="原理-v2"><a class="header-anchor" href="#原理-v2">¶</a>原理</h3>
+<p>Redis 中所有 key 都存储在一个非常大的字典中，这个字典的结构和 Java 的 HashMap 类似：<br>
+<img src="https://tallate.top/imgs/Redis/Redis-%E5%AD%97%E5%85%B8.png" alt="Redis-字典" title="Redis-字典"></p>
+<ol>
+<li>一维数组大小为 2^n（n &gt;= 0），扩容一次大小翻倍，保存的是所有 key 的下标，或者称为槽（slot）；</li>
+<li>二维链表保存的是所有的 key，不同 key 是有可能被 hash 到同一个槽上的，这时这个槽里所有元素都会被模式匹配过滤后一次性返回。</li>
+</ol>
+<p>scan 的遍历并不是从 0 开始递增，而是通过二进制高位进位加法来遍历，比如遍历顺序：</p>
+<ol>
+<li>0000 -&gt; 0</li>
+<li>1000 -&gt; 8</li>
+<li>0100 -&gt; 4</li>
+<li>1100 -&gt; 12</li>
+<li>以此类推</li>
+</ol>
+<p><img src="https://tallate.top/imgs/Redis/Redis-%E9%AB%98%E4%BD%8D%E9%80%92%E5%A2%9E%E9%81%8D%E5%8E%86.png" alt="Redis-高位递增遍历" title="Redis-高位递增遍历"><br>
+这种遍历方式的好处是可以避免扩容缩容后相同元素被反复遍历到。<br>
+因为槽数组的长度总是 2 的 n 次方，因此取模运算等价于位与操作，比如原来数组长度为 8，15（1111）会被 hash 到 7 号槽，而扩容后数组长度变成 16，增加了一个高位的 1，15（1111）会被 hash 到 15 号槽。<br>
+因此从低到高的遍历方式可能会导致重复遍历，而从高到低的方式则可以避免。</p>
+<p>Redis 的 rehash 是渐进式的，在 rehash 的过程中，操作需要同时访问新旧的两个数组结构，如果旧的找不到就需要再到新的下面去找，scan 同理。</p>
+<h3 id="大-key-问题"><a class="header-anchor" href="#大-key-问题">¶</a>大 key 问题</h3>
+<p>大 key 会导致数据迁移和扩容时需要分配更大的一块内存空间，导致卡顿，删除时，同样需要一次性回收大 key，卡顿会再一次产生。<br>
+为了定位大 key，可以使用 redis-cli 的扫描功能</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -h 127.0.0.1 -p 7001 –-bigkeys</span><br><span class="line"># 如果担心这个指令会大幅抬升 Redis 的 ops 导致线上报警，还可以增加一个休眠参数</span><br><span class="line"># 每隔100条scan指令就会休眠0.1s</span><br><span class="line">redis-cli -h 127.0.0.1 -p 7001 –-bigkeys -i 0.1</span><br></pre></td></tr></table></figure>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
   </section>
 
   
@@ -3943,7 +3932,7 @@ JVM 的指令都是基于栈的，比如<code>iadd</code>表示弹出栈顶的�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">133</span>
+                  <span class="site-state-item-count">132</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -3954,7 +3943,7 @@ JVM 的指令都是基于栈的，比如<code>iadd</code>表示弹出栈顶的�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">23</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>

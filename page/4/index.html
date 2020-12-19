@@ -266,416 +266,6 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/a87bf883.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/a87bf883.html" itemprop="url">MySQL 的其他主题</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-05-30T10:18:28+08:00">
-                2020-05-30
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/MySQL/" itemprop="url" rel="index">
-                    <span itemprop="name">MySQL</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  4.9k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  18 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>常用服务器配置</h1>
-<ul>
-<li>启动选项和系统变量<br>
-启动选项是运维启动 MySQL 时传入的一些参数，包括命令行启动选项和配置文件 my.cnf<br>
-系统变量会影响 MySQL 进程的运行行为，大部分是由启动选项初始化的，有些是运行时自动生成的</li>
-<li>查看系统变量<br>
-<code>show [GLOBAL|SESSION] variables [like 匹配的模式];</code></li>
-<li>配置文件中配置组的概念</li>
-<li>配置作用范围<br>
-1、GLOBAL 指配置文件或命令行启动选项设置的系统变量<br>
-2、SESSION（LOCAL）刚连接时会被初始化为 GLOBAL 的变量，可以通过以下命令来设置<br>
-<code>SET [GLOBAL|SESSION] 系统变量名 = 值;</code></li>
-<li>状态变量<br>
-指关于程序运行状态的变量，是只读的，不能手动修改<br>
-比方说 Threads_connected 表示当前有多少客户端与服务器建立了连接，Handler_update 表示已经更新了多少行记录<br>
-SHOW [GLOBAL|SESSION] STATUS [LIKE 匹配的模式];</li>
-</ul>
-<h1>InnoDB 统计数据</h1>
-<h2 id="两种统计数据"><a class="header-anchor" href="#两种统计数据">¶</a>两种统计数据</h2>
-<p>InnoDB 中有两种统计数据：<br>
-1、永久性：服务器重启也不会消失，这些数据被存储到了<code>innodb_table_stats</code>和<code>innodb_index_stats</code>这两张表中；<br>
-2、非永久性：重启即消失。<br>
-可以通过服务器的<code>innodb_stats_persistent</code>变量来查看这个统计数据的方式。</p>
-<h2 id="innodb-table-stats-统计方式"><a class="header-anchor" href="#innodb-table-stats-统计方式">¶</a>innodb_table_stats 统计方式</h2>
-<p>1、n_rows(一个表中的记录行数)统计项的收集<br>
-按照一定算法选取几个叶子节点页面，计算每个页面中主键值记录数量，然后计算平均一个页面中主键值的记录数量乘以全部叶子节点的数量就算是该表的 n_rows 值<br>
-2、clustered_index_size 和 sum_of_other_index_sizes</p>
-<ul>
-<li>从数据字典里找到表的各个索引对应的根页面位置。<br>
-系统表 SYS_INDEXES 里存储了各个索引对应的根页面信息。</li>
-<li>从根页面的 Page Header 里找到叶子节点段和非叶子节点段对应的 Segment Header。<br>
-在每个索引的根页面的 Page Header 部分都有两个字段：<br>
-PAGE_BTR_SEG_LEAF：表示 B+树叶子段的 Segment Header 信息。<br>
-PAGE_BTR_SEG_TOP：表示 B+树非叶子段的 Segment Header 信息。</li>
-<li>从叶子节点段和非叶子节点段的 Segment Header 中找到这两个段对应的 INODE Entry 结构。<br>
-这个是 Segment Header 结构：<br>
-<img src="https://user-gold-cdn.xitu.io/2018/12/26/167e94d5b165a91f?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""></li>
-<li>从对应的 INODE Entry 结构中可以找到该段对应所有零散的页面地址以及 FREE、NOT_FULL、FULL 链表的基节点。<br>
-这个是 INODE Entry 结构：<br>
-<img src="https://user-gold-cdn.xitu.io/2018/12/26/167e94d5b1e44524?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""></li>
-<li>直接统计零散的页面有多少个，然后从那三个链表的 List Length 字段中读出该段占用的区的大小，每个区占用 64 个页，所以就可以统计出整个段占用的页面。<br>
-这个是链表基节点的示意图：<br>
-<img src="https://user-gold-cdn.xitu.io/2018/12/26/167e94d5b17c24e3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""></li>
-<li>分别计算聚簇索引的叶子结点段和非叶子节点段占用的页面数，它们的和就是 clustered_index_size 的值，按照同样的套路把其余索引占用的页面数都算出来，加起来之后就是 sum_of_other_index_sizes 的值。</li>
-</ul>
-<h2 id="innodb-index-stats-统计方式"><a class="header-anchor" href="#innodb-index-stats-统计方式">¶</a>innodb_index_stats 统计方式</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM mysql.innodb_index_stats WHERE table_name = &apos;single_table&apos;;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>n_leaf_pages：表示该索引的叶子节点占用多少页面。</li>
-<li>size：表示该索引共占用多少页面。</li>
-<li>n_diff_pfxNN：表示对应的索引列不重复的值有多少。其中的 NN 长得有点儿怪呀，啥意思呢？<br>
-其实 NN 可以被替换为 01、02、03… 这样的数字。比如对于 idx_key_part 来说：<br>
-n_diff_pfx01 表示的是统计 key_part1 这单单一个列不重复的值有多少。<br>
-n_diff_pfx02 表示的是统计 key_part1、key_part2 这两个列组合起来不重复的值有多少。<br>
-n_diff_pfx03 表示的是统计 key_part1、key_part2、key_part3 这三个列组合起来不重复的值有多少。<br>
-n_diff_pfx04 表示的是统计 key_part1、key_part2、key_part3、id 这四个列组合起来不重复的值有多少。</li>
-<li>在计算某些索引列中包含多少不重复值时，需要对一些叶子节点页面进行采样，sample_size 列就表明了采样的页面数量是多少。</li>
-</ul>
-<h2 id="基于内存的非永久性统计数据"><a class="header-anchor" href="#基于内存的非永久性统计数据">¶</a>基于内存的非永久性统计数据</h2>
-<p>开启非永久性统计数据的方法：<br>
-1、将<code>innodb_stats_persistent</code>的值设置为 OFF；<br>
-2、直接在创建表或修改表时设置<code>STATS_PERSISTENT</code>属性的值为 0；</p>
-<h1>MySQL Server 统计数据</h1>
-<p>Server 层而不是 InnoDB（存储引擎层）统计数据。<br>
-1、查看连接数配置</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show variables like &apos;%max_connections%&apos;</span><br></pre></td></tr></table></figure>
-<p>2、查看当前连接数</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show full processlist;</span><br></pre></td></tr></table></figure>
-<h1>数据恢复</h1>
-<p>数据的误删基本分以下几种情况：</p>
-<ol>
-<li>使用 delete 语句误删数据行；</li>
-<li>使用 drop table 或 truncate table 误删表；</li>
-<li>使用 drop database 误删数据库；</li>
-<li>使用 rm 命令误删整个 MySQL 实例。</li>
-</ol>
-<h2 id="误删行"><a class="header-anchor" href="#误删行">¶</a>误删行</h2>
-<p>使用 Flashback 工具通过闪回把数据恢复。<br>
-Flashback 恢复数据的原理，是<strong>修改 binlog 的内容</strong>（事务里的语句顺序颠倒、语句的语义颠倒比如 insert 变成 delete），拿回原库重放。而能够使用这个方案的前提是，需要确保 binlog_format=row 和 binlog_row_image=FULL。</p>
-<h2 id="误删库-表"><a class="header-anchor" href="#误删库-表">¶</a>误删库 / 表</h2>
-<p>误删库表的情况不能使用 Flashback 恢复，因为即使配置 binlog_format=row，truncate/drop 语句在 binlog 中也只会记录一条对应的语句，而用这些信息是无法恢复数据的。<br>
-这种情况下，恢复需要使用全量备份，加增量日志。这个方案要求线上有定期的全量备份，并且实时备份 binlog。</p>
-<h2 id="rm-删除数据"><a class="header-anchor" href="#rm-删除数据">¶</a>rm 删除数据</h2>
-<p>仅仅删除某个节点的数据的情况，HA 系统可以选出新的主库，从而保证整个集群的正常工作。<br>
-之后，我们可以在这个被删节点上把数据恢复回来，再接入整个集群。</p>
-<h1>中断查询</h1>
-<p>有时候因为查询耗时过长，或出现死锁等待，我们不得不提早终止执行 SQL 的线程，可以通过<code>information_schema.processlist</code> 和 <code>performance_schema.threads</code>这两张表来查看正在执行的线程：</p>
-<ul>
-<li>processlist 表中每一行对应一个客户端连接，也对应一个线程；</li>
-<li>threads 每一行对应一个线程。</li>
-</ul>
-<p><code>kill query pid</code>可以杀死线程，但是客户端的连接还在，可以看到被 kill 后该连接进入了 Sleep 状态：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># Id, User, Host, db, Command, Time, State, Info</span><br><span class="line">&apos;494633&apos;, &apos;beta&apos;, &apos;192.168.19.142:56193&apos;, &apos;ds_0&apos;, &apos;Sleep&apos;, &apos;26&apos;, &apos;&apos;, NULL</span><br></pre></td></tr></table></figure>
-<p><code>kill pid</code>可以中断连接，执行后再用<code>processlist</code>就找不到那个 pid 了。</p>
-<p>在客户端 Ctrl + C 并不能中断服务器线程，只能中断客户端进程，</p>
-<h1>大表查询</h1>
-<h2 id="server-层"><a class="header-anchor" href="#server-层">¶</a>Server 层</h2>
-<p>MySQL 使用缓存来保证一次性查询大量数据的情况下不会把服务器内存打满，服务器并不需要保存一个完整的结果集。取数据和发数据的流程如下：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E6%9F%A5%E8%AF%A2%E7%BB%93%E6%9E%9C%E5%8F%91%E9%80%81%E6%B5%81%E7%A8%8B.png" alt="MySQL-查询结果发送流程" title="MySQL-查询结果发送流程"></p>
-<ol>
-<li>获取一行，写到 <strong>net_buffer</strong> 中。这块内存的大小是由参数 net_buffer_length 定义的，默认是 16k。</li>
-<li>重复获取行，直到 net_buffer 写满，调用网络接口发出去。</li>
-<li>如果发送成功，就清空 net_buffer，然后继续取下一行，并写入 net_buffer。</li>
-<li>如果发送函数返回 EAGAIN 或 WSAEWOULDBLOCK，就表示**本地网络栈（socket send buffer）**写满了，进入等待。直到网络栈重新可写，再继续发送。</li>
-</ol>
-<p>从上面的流程可知，MySQL 一次查询占用的内存是有限的，最大是<strong>min(net_buffer_length, socket send buffer)</strong>，即不能超过 net_buffer_length 和 socket send buffer；</p>
-<h2 id="存储引擎层-innodb"><a class="header-anchor" href="#存储引擎层-innodb">¶</a>存储引擎层（InnoDB）</h2>
-<p>InnoDB 使用 Buffer Pool 管理内存数据页，如果 Buffer Pool 命中率足够高，那么大部分时候是不需要读磁盘的，直接从内存拿结果，可以加快查询速度。<br>
-执行 <code>show engine innodb status</code> ，可以看到“<code>Buffer pool hit rate</code>”字样，显示的就是当前的命中率，一般一个稳定服务的线上系统，要保证响应时间符合要求的话，内存命中率要在 99% 以上。<br>
-Buffer Pool 的空间是有限的，新旧页面的更替是通过 LRU 算法控制的，但 InnoDB 中的 LRU 并不是单纯的新页面替换老页面（因为这样相当于每次大查询都会把整个 Buffer Pool 都刷新一遍），而是将 LRU 链表分成了 young 区和 old 区，页面第一次被访问时会被添加到 old 区，old 区的页面如果是短期内被多次访问，则其不会被移动到链表的头部（young 区），会很快被淘汰掉。</p>
-<h1>临时表</h1>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">create temporary table temp_t like t1;</span><br><span class="line">alter table temp_t add index(b);</span><br><span class="line">insert into temp_t select * from t2 where b&gt;=1 and b&lt;=2000;</span><br><span class="line">select * from t1 join temp_t on (t1.b=temp_t.b);</span><br></pre></td></tr></table></figure>
-<p>临时表特性：</p>
-<ol>
-<li>不同 session 的临时表是可以重名的，常被用在复杂查询的优化过程中，比如有多个 session 同时执行 join 优化，不需要担心表名重复导致建表失败的问题。</li>
-<li>不需要担心数据删除问题。如果使用普通表，在流程执行过程中客户端发生了异常断开，或者数据库发生异常重启，还需要专门来清理中间过程中生成的数据表。而临时表由于会自动回收，所以不需要这个额外的操作。</li>
-</ol>
-<h2 id="临时表的使用场景"><a class="header-anchor" href="#临时表的使用场景">¶</a>临时表的使用场景</h2>
-<h3 id="union-语句"><a class="header-anchor" href="#union-语句">¶</a>union 语句</h3>
-<p>表 t1 在执行前已初始化插入了 1~1000 的数据。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">(select 1000 as f) union (select id from t1 order by id desc limit 2);</span><br></pre></td></tr></table></figure>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-union%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.png" alt="MySQL-union执行流程" title="MySQL-union执行流程"><br>
-上面语句将两个子查询的结果合并去重，union 合并时会生成临时表，这可以通过 explain 来验证。</p>
-<h3 id="group-by"><a class="header-anchor" href="#group-by">¶</a>group by</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select id%10 as m, count(*) as c from t1 group by m;</span><br></pre></td></tr></table></figure>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-groupby%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.png" alt="MySQL-groupby执行流程" title="MySQL-groupby执行流程"><br>
-上面语句先创建内存临时表，表里有 m 和 c 两个字段，主键是 m，扫描 t1 索引 a，将<code>id%10</code>的结果插入临时表，如果出现主键冲突则计算 c 值+1。</p>
-<ol>
-<li>加索引<br>
-默认情况下<code>id%10</code>是无序的，所以需要先在临时表中统计排序后再返回，但是如果原表本身就是有序的，则不需要临时表、也不需要额外排序了，实际上只要引入索引就可以解决这个问题，因为<strong>索引是有序的</strong>。</li>
-<li>如果不能加索引，也可以加一列 generated column<br>
-MySQL5.7 支持 generated column 机制，并可以在该列上创建索引：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">alter table t1 add column z int generated always as(id % 100), add index(z);</span><br></pre></td></tr></table></figure>
-<p>上面的 group by 语句可以改成如下的形式：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select z, count(*) as c from t1 group by z;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>如果不需要排序，可以显式声明忽略排序<br>
-如果对 group by 语句的结果没有排序要求，要在语句后面加 order by null</li>
-<li>数据量小时使用内存临时表<br>
-如果 group by 需要统计的数据量不大，尽量只使用内存临时表；也可以通过适当调大 tmp_table_size 参数，来避免用到磁盘临时表；</li>
-<li>数据量大时使用磁盘临时表<br>
-如果数据量较大，因为内存临时表的空间是有限的，当达到上限后就会转到磁盘内存表，与其这样转一下，不如直接使用磁盘内存表。<br>
-因此，如果数据量实在太大，使用 <code>SQL_BIG_RESULT</code> 这个提示，来告诉优化器直接使用排序算法得到 group by 的结果。</li>
-</ol>
-<h1>Memory 引擎</h1>
-<h2 id="memory-引擎与-innodb-引擎区别"><a class="header-anchor" href="#memory-引擎与-innodb-引擎区别">¶</a>Memory 引擎与 InnoDB 引擎区别</h2>
-<ol>
-<li>数据组织方式<br>
-InnoDB 引擎采用 B+树来组织数据，主键是有序存储的。InnoDB 引擎把数据放在主键索引上，其他索引上保存的是主键 id。这种方式，我们称之为<strong>索引组织表（Index Organizied Table）</strong>。<br>
-Memory 引擎的数据和索引是分开的，数据以数组的方式单独存放，而主键索引是 hash 索引，存的是每个数据的位置，索引上的 key 并不是有序的：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-Memory%E5%BC%95%E6%93%8E%E6%95%B0%E6%8D%AE%E7%BB%84%E7%BB%87.png" alt="MySQL-Memory引擎数据组织" title="MySQL-Memory引擎数据组织"><br>
-Memory 引擎采用的是把数据单独存放，索引上保存数据位置的数据组织形式，我们称之为<strong>堆组织表（Heap Organizied Table）</strong>。</li>
-<li>存放顺序<br>
-InnoDB 表的数据总是有序存放的，而内存表的数据就是按照写入顺序存放的；</li>
-<li>当数据文件有空洞的时候，InnoDB 表在插入新数据的时候，为了保证数据有序性，只能在固定的位置写入新值，而内存表找到空位就可以插入新值；</li>
-<li>数据位置发生变化的时候，InnoDB 表只需要修改主键索引，而内存表需要修改所有索引；</li>
-<li>InnoDB 表用主键索引查询时需要走一次索引查找，用普通索引查询的时候，需要走两次索引查找。而内存表没有这个区别，所有索引的“地位”都是相同的。</li>
-<li>InnoDB 支持变长数据类型，不同记录的长度可能不同；内存表不支持 Blob 和 Text 字段，并且即使定义了 varchar(N)，实际也当作 char(N)，也就是固定长度字符串来存储，因此内存表的每行数据长度相同。</li>
-</ol>
-<h2 id="hash-索引和-b-tree-索引"><a class="header-anchor" href="#hash-索引和-b-tree-索引">¶</a>hash 索引和 B-Tree 索引</h2>
-<p>内存表也支持 B-Tree 索引：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">alter table t1 add index a_btree_index using btree (id);</span><br></pre></td></tr></table></figure>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%86%85%E5%AD%98%E8%A1%A8B-Tree%E7%B4%A2%E5%BC%95.png" alt="MySQL-内存表B-Tree索引" title="MySQL-内存表B-Tree索引"><br>
-可以查看以下两个语句的输出：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-- 命中索引a_btree_index，因此输出结果是有序的</span><br><span class="line">select * from t1 where id &lt; 5;</span><br><span class="line">-- 强制使用主键id索引，因此是无序的</span><br><span class="line">select * from t1 force index (primary) where id &lt; 5;</span><br></pre></td></tr></table></figure>
-<h2 id="不推荐在生产环境使用-memory-引擎"><a class="header-anchor" href="#不推荐在生产环境使用-memory-引擎">¶</a>不推荐在生产环境使用 Memory 引擎</h2>
-<ol>
-<li>锁粒度问题<br>
-内存表不支持行锁，只支持表锁，只要这张表上有更新，就会堵住所有其他在这张表上的读写操作，因此在处理并发事务时性能也不会太好。</li>
-<li>数据持久化问题<br>
-因为数据被存放在内存中，数据库重启时所有的内存表都会被清空。</li>
-</ol>
-<p>虽然一般情况下不适合使用内存表，但是还有一种情况可以考虑使用内存表：用户临时表，只是临时数据，如果数据可控，不会消耗过多内存的情况下，可以考虑使用内存表。<br>
-内存临时表（通过 create temporary table 语句创建）刚好可以无视内存表的两个不足，主要是下面的三个原因：</p>
-<ol>
-<li>临时表不会被其他线程访问，没有并发性的问题；</li>
-<li>临时表重启后也是需要删除的，清空数据这个问题不存在；</li>
-<li>备库的临时表也不会影响主库的用户线程。</li>
-</ol>
-<h1>备份</h1>
-<ul>
-<li>将数据导出成一组 insert 语句</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqldump -h$host -P$port -u$user --add-locks=0 --no-create-info --single-transaction  --set-gtid-purged=OFF db1 t --where=&quot;a&gt;900&quot; --result-file=/client_tmp/t.sql</span><br></pre></td></tr></table></figure>
-<p>恢复：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -h127.0.0.1 -P13000  -uroot db2 -e &quot;source /client_tmp/t.sql&quot;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>导出 CSV 文件</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from db1.t where a&gt;900 into outfile &apos;/server_tmp/t.csv&apos;;</span><br></pre></td></tr></table></figure>
-<p>恢复，将数据导入到目标表 db2.t 中：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">load data infile &apos;/server_tmp/t.csv&apos; into table db2.t;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>物理拷贝<br>
-不能通过直接拷贝表的.frm 文件和.ibd 文件来实现物理拷贝，因为一个 InnoDB 表除了包含这两个物理文件外，还需要在数据字典中注册，直接拷贝的情况下系统不会识别。<br>
-在 MySQL 5.6 版本引入了<strong>可传输表空间(transportable tablespace)</strong> 的方法，可以通过导出 + 导入表空间的方式，实现物理拷贝表的功能。
-<ol>
-<li>执行 create table r like t，创建一个相同表结构的空表；</li>
-<li>执行 alter table r discard tablespace，这时候 r.ibd 文件会被删除；</li>
-<li>执行 flush table t for export，这时候 db1 目录下会生成一个 t.cfg 文件；</li>
-<li>在 db1 目录下执行 cp t.cfg r.cfg; cp t.ibd r.ibd；</li>
-<li>这两个命令（这里需要注意的是，拷贝得到的两个文件，MySQL 进程要有读写权限）；</li>
-<li>执行 unlock tables，这时候 t.cfg 文件会被删除；</li>
-<li>执行 alter table r import tablespace，将这个 r.ibd 文件作为表 r 的新的表空间，由于这个文件的数据内容和 t.ibd 是相同的，所以表 r 中就有了和表 t 相同的数据。</li>
-</ol>
-</li>
-</ul>
-<p>这三种方法各有优劣：</p>
-<ol>
-<li>物理拷贝的方式速度最快，尤其对于大表拷贝来说是最快的方法。如果出现误删表的情况，用备份恢复出误删之前的临时库，然后再把临时库中的表拷贝到生产库上，是恢复数据最快的方法。但是，这种方法的使用也有一定的局限性：
-<ul>
-<li>必须是全表拷贝，不能只拷贝部分数据；</li>
-<li>需要到服务器上拷贝数据，在用户无法登录数据库主机的场景下无法使用；……</li>
-<li>由于是通过拷贝物理文件实现的，源表和目标表都是使用 InnoDB 引擎时才能使用。</li>
-</ul>
-</li>
-<li>用 mysqldump 生成包含 INSERT 语句文件的方法，可以在 where 参数增加过滤条件，来实现只导出部分数据。这个方式的不足之一是，不能使用 join 这种比较复杂的 where 条件写法。</li>
-<li>用 select … into outfile 的方法是最灵活的，支持所有的 SQL 写法。但，这个方法的缺点之一就是，每次只能导出一张表的数据，而且表结构也需要另外的语句单独备份。</li>
-</ol>
-<h1>MySQL 中的自增 ID</h1>
-<h2 id="表的自增-id"><a class="header-anchor" href="#表的自增-id">¶</a>表的自增 id</h2>
-<p>我们经常给表的主键加上自增属性，用于唯一标识一条记录，但是因为自增值达到上限后再申请得到的值不变，因此自增字段的范围应该略大一些，尽可能创建成<code>bigint unsigned</code>。</p>
-<h2 id="row-id"><a class="header-anchor" href="#row-id">¶</a>row_id</h2>
-<p>如果没有指定主键，InnoDB 会创建一个不可见的、长度为 6 字节的 row_id，超过上限后再申请时会得到 0，<strong>如果新写入的行的 row_id 在表中已存在，则会直接覆盖原有的行</strong>，因此，最好优先使用自增 ID 而不是 row_id。</p>
-<h2 id="xid"><a class="header-anchor" href="#xid">¶</a>Xid</h2>
-<p>Xid 用于唯一标识一个事务。Xid 的值由一个内存变量 global_query_id 给出，重启后清零，但是因为每次重启时 binlog 都会重新生成，所以 binlog 中的 Xid 也不会重复。global_query_id 的长度为 8 个字节，除非 MySQL 实例一直执行了<code>2^64 - 1</code>次查询且期间没有重启，不然不会出现 Xid 重复的情况。</p>
-<h2 id="max-trx-id"><a class="header-anchor" href="#max-trx-id">¶</a>max_trx_id</h2>
-<p>Xid 由 server 层维护。InnoDB 内部使用 Xid，就是为了能够在 InnoDB 事务和 server 之间做关联。但是，InnoDB 自己的 trx_id，是另外维护的。<br>
-InnoDB 内部维护了一个 max_trx_id 全局变量，每次需要申请一个新的 trx_id 时，就获得 max_trx_id 的当前值，然后并将 max_trx_id 加 1。</p>
-<blockquote>
-<p>InnoDB 事务在读操作时不会申请 trx_id，trx_id 的值就是 0，只有在加锁或执行写操作时才会申请。<br>
-只读事务不申请 trx_id 的原因是只读事务不影响事务的可见性判断，且能减少 trx_id 的申请次数、减少并发事务申请 trx_id 的锁冲突。</p>
-</blockquote>
-<p>MVCC 判断数据可见性的核心思想：每一行数据都记录了更新它的 trx_id，当一个事务读到一行数据的时候，判断这个数据是否可见的方法，就是通过事务的一致性视图与这行数据的 trx_id 做对比。</p>
-<h2 id="thread-id"><a class="header-anchor" href="#thread-id">¶</a>thread_id</h2>
-<p>系统保存一个全局变量 thread_id_counter，每新建一个连接就将 thread_id_counter 赋值给这个新连接的线程变量。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/f2150593.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -814,7 +404,7 @@ Netty 是一个提供 asynchronous event-driven （异步事件驱动）的网�
 有一些用户可能已经发现其他的一些网络框架也声称自己有同样的优势，所以你可能会问是 Netty 和它们的不同之处。答案就是 Netty 的哲学设计理念。Netty 从开始就为用户提供了用户体验最好的 API 以及实现设计。正是因为 Netty 的哲学设计理念，才让您得以轻松地阅读本指南并使用 Netty。</li>
 </ol>
 <h1>架构总览</h1>
-<p><img src="http://47.88.24.11/imgs/Netty/Netty%E6%9E%B6%E6%9E%84%E6%80%BB%E8%A7%88.png" alt="Netty架构总览" title="Netty架构总览"><br>
+<p><img src="https://tallate.top/imgs/Netty/Netty%E6%9E%B6%E6%9E%84%E6%80%BB%E8%A7%88.png" alt="Netty架构总览" title="Netty架构总览"><br>
 Netty 的架构由三部分组成——缓冲（buffer），通道（channel），事件模型（event model）——所有的高级特性都构建在这三个核心组件之上。</p>
 <h2 id="nio"><a class="header-anchor" href="#nio">¶</a>NIO</h2>
 <ol>
@@ -835,7 +425,7 @@ NIO 可以一个线程监听多个 Socket 的连接、读、写请求，而不�
 <li>Pipeline</li>
 </ol>
 <h1>服务端</h1>
-<p><img src="http://47.88.24.11/imgs/Netty/Netty%E6%B5%81%E7%A8%8B.png" alt="Netty流程" title="Netty流程"></p>
+<p><img src="https://tallate.top/imgs/Netty/Netty%E6%B5%81%E7%A8%8B.png" alt="Netty流程" title="Netty流程"></p>
 <h2 id="代码"><a class="header-anchor" href="#代码">¶</a>代码</h2>
 <p>下面是一个启动Netty服务端的代码：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">ServerBootstrap bootstrap = new ServerBootstrap();</span><br><span class="line">        bootstrap.group(bossGroup(), workerGroup())</span><br><span class="line">                .channel(NioServerSocketChannel.class)</span><br><span class="line">                .childHandler(new ChannelInitializer&lt;SocketChannel&gt;() &#123;</span><br><span class="line"></span><br><span class="line">                    @Override</span><br><span class="line">                    protected void initChannel(SocketChannel ch) throws Exception &#123;</span><br><span class="line">                        // 空闲检测</span><br><span class="line">                        ch.pipeline().addLast(&quot;idleStateHandler&quot;, new IdleStateHandler(15, 0, 0,</span><br><span class="line">                                TimeUnit.MINUTES));</span><br><span class="line"></span><br><span class="line">                        // 半包/粘包分解器</span><br><span class="line">                        ch.pipeline().addLast(</span><br><span class="line">                                new DelimiterBasedFrameDecoder(2048, true, getFirstBytes()</span><br><span class="line">                                ));</span><br><span class="line">                        ch.pipeline().addLast(其他Handler比如解码之类的);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;).option(ChannelOption.SO_BACKLOG, 1024);</span><br><span class="line">bootstrap.bind(10885).sync()</span><br></pre></td></tr></table></figure>
@@ -1025,7 +615,7 @@ netty 默认实现了 dns、haproxy、http、http2、memcache、mqtt、redis、s
 <li>不再需要调用的 flip()方法。</li>
 <li>正常情况下具有比 ByteBuffer 更快的响应速度。</li>
 </ul>
-<p><img src="http://47.88.24.11/imgs/Netty/ByteBuf%E7%BB%93%E6%9E%84.png" alt="ByteBuf结构" title="ByteBuf结构"><br>
+<p><img src="https://tallate.top/imgs/Netty/ByteBuf%E7%BB%93%E6%9E%84.png" alt="ByteBuf结构" title="ByteBuf结构"><br>
 以上就是一个 ByteBuf 的结构图，从上面这幅图可以看到</p>
 <ol>
 <li>ByteBuf 是一个字节容器，容器里面的的数据分为三个部分，第一个部分是已经丢弃的字节，这部分数据是无效的；第二部分是可读字节，这部分数据是 ByteBuf 的主体数据， 从 ByteBuf 里面读取的数据都来自这一部分;最后一部分的数据是可写字节，所有写到 ByteBuf 的数据都会写到这一段。最后一部分虚线表示的是该 ByteBuf 最多还能扩容多少容量</li>
@@ -1064,7 +654,7 @@ ByteBuf 具有丰富的操作集,可以快速的实现协议的优化。例如�
 </ol>
 <h2 id="粘包拆包和半包合并"><a class="header-anchor" href="#粘包拆包和半包合并">¶</a>粘包拆包和半包合并</h2>
 <p>基于流的传输比如 TCP/IP, 接收到数据是存在 socket 接收的 buffer 中。不幸的是，基于流的传输并不是一个数据包队列，而是一个字节队列。造成粘包的原因，主要是由于缓冲区的介入，所以需要严格约定去所传输的包的格式——何时开始何时结束。意味着，即使你发送了 2 个独立的数据包，操作系统也不会作为 2 个消息处理而仅仅是作为一连串的字节而言。因此这是不能保证你远程写入的数据就会准确地读取。举个例子，让我们假设操作系统的 TCP/TP 协议栈已经接收了 3 个数据包，在应用程序中读取数据的时候可能被分成下面的片段：<br>
-<img src="http://47.88.24.11/imgs/Netty/%E7%B2%98%E5%8C%85%E5%92%8C%E5%8D%8A%E5%8C%85%E9%97%AE%E9%A2%98.png" alt="粘包和半包问题" title="粘包和半包问题"><br>
+<img src="https://tallate.top/imgs/Netty/%E7%B2%98%E5%8C%85%E5%92%8C%E5%8D%8A%E5%8C%85%E9%97%AE%E9%A2%98.png" alt="粘包和半包问题" title="粘包和半包问题"><br>
 因此，一个接收方不管他是客户端还是服务端，都应该把接收到的数据整理成一个或者多个更有意义并且能够让程序的业务逻辑更好理解的数据。<br>
 在没有 Netty 的情况下，用户如果自己需要拆包，基本原理就是不断从 TCP 缓冲区中读取数据，每次读取完都需要判断是否是一个完整的数据包</p>
 <ul>
@@ -1132,7 +722,7 @@ TODO: 什么时候刷新buffer队列？</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">serverBootstrap</span><br><span class="line">        .childHandler(new ChannelInitializer&lt;NioSocketChannel&gt;() &#123;</span><br><span class="line">            protected void initChannel(NioSocketChannel ch) &#123;</span><br><span class="line">                // inBound，处理读数据的逻辑链</span><br><span class="line">                ch.pipeline().addLast(new InBoundHandlerA());</span><br><span class="line">                ch.pipeline().addLast(new InBoundHandlerB());</span><br><span class="line">                ch.pipeline().addLast(new InBoundHandlerC());</span><br><span class="line">                </span><br><span class="line">                // outBound，处理写数据的逻辑链</span><br><span class="line">                ch.pipeline().addLast(new OutBoundHandlerA());</span><br><span class="line">                ch.pipeline().addLast(new OutBoundHandlerB());</span><br><span class="line">                ch.pipeline().addLast(new OutBoundHandlerC());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
 <p>其执行顺序如下图所示：<br>
-<img src="http://47.88.24.11/imgs/Netty/pipeline%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F.png" alt="pipeline执行顺序" title="pipeline执行顺序"></p>
+<img src="https://tallate.top/imgs/Netty/pipeline%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F.png" alt="pipeline执行顺序" title="pipeline执行顺序"></p>
 <h2 id="异常处理"><a class="header-anchor" href="#异常处理">¶</a>异常处理</h2>
 <p>netty 由于其异步化的开发方式，以及其事件机制，在异常处理方面就显得异常重要。为了保证连接的高可靠性，许多异常需要静悄悄的忽略，或者在用户态没有感知。<br>
 netty 的异常会通过 pipeline 进行传播，所以在任何一层进行处理都是可行的，但编程习惯上，习惯性抛到最外层集中处理。<br>
@@ -1431,9 +1021,9 @@ Netty 已经实现了 WebSocket 和一些老版本的规范：<a href="http://ne
 <h1>主备切换</h1>
 <p>主备功能主要是通过 bin log 实现的。</p>
 <h2 id="主备切换流程"><a class="header-anchor" href="#主备切换流程">¶</a>主备切换流程</h2>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%B8%BB%E5%A4%87%E5%88%87%E6%8D%A2%E6%B5%81%E7%A8%8B.png" alt="MySQL-主备切换流程" title="MySQL-主备切换流程"><br>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E4%B8%BB%E5%A4%87%E5%88%87%E6%8D%A2%E6%B5%81%E7%A8%8B.png" alt="MySQL-主备切换流程" title="MySQL-主备切换流程"><br>
 如图示，客户端的读写都是直接访问的节点 A，而节点 B 是 A 的备库，通常是只读的，只是将 A 的更新同步过来到本地执行，节点 A 的 update 同步到节点 B 的流程图如下所示：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%B8%BB%E5%A4%87%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%9B%BE.png" alt="MySQL-主备同步流程图" title="MySQL-主备同步流程图"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E4%B8%BB%E5%A4%87%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%9B%BE.png" alt="MySQL-主备同步流程图" title="MySQL-主备同步流程图"></p>
 <ol>
 <li>主库接收到客户端的更新请求后，执行内部事务的更新逻辑，同时写 binlog；</li>
 <li>备库 B 跟主库 A 之间维持了一个长连接，专门用于服务备库 B 的事务日志同步；</li>
@@ -1441,7 +1031,7 @@ Netty 已经实现了 WebSocket 和一些老版本的规范：<a href="http://ne
 <p>当需要切换时，切换到状态 2，这时候客户端读写访问的都是节点 B，而节点 A 是 B 的备库；</p>
 <h2 id="双-m-架构"><a class="header-anchor" href="#双-m-架构">¶</a>双 M 架构</h2>
 <p>实际生产中更多采用的是双 M 架构：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%8F%8CM%E6%9E%B6%E6%9E%84%E4%B8%BB%E5%A4%87%E5%88%87%E6%8D%A2%E6%B5%81%E7%A8%8B.png" alt="MySQL-双M架构主备切换流程" title="MySQL-双M架构主备切换流程"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E5%8F%8CM%E6%9E%B6%E6%9E%84%E4%B8%BB%E5%A4%87%E5%88%87%E6%8D%A2%E6%B5%81%E7%A8%8B.png" alt="MySQL-双M架构主备切换流程" title="MySQL-双M架构主备切换流程"><br>
 与原先的方案相比，只是节点 A 和 B 之间多了一条线，这样，节点 A 和 B 之间总是互为主备关系，在切换的时候就不用再修改主备关系。</p>
 <h3 id="可靠性优先策略"><a class="header-anchor" href="#可靠性优先策略">¶</a>可靠性优先策略</h3>
 <p>双 M 结构的可靠性优先主备切换流程如下：</p>
@@ -1461,13 +1051,13 @@ Netty 已经实现了 WebSocket 和一些老版本的规范：<a href="http://ne
 <p>可靠性优先策略中，同步流程中存在一段系统不可用的时间，如果强行把步骤 4、5 调整到最开始执行，也就是说不等主备数据同步，直接把连接切到备库 B，并且让备库 B 可以读写，那么系统几乎就没有不可用时间了，这个流程称为可用性优先策略。</p>
 <h2 id="一主多从"><a class="header-anchor" href="#一主多从">¶</a>一主多从</h2>
 <p>平时使用数据库一般都是读多写少，在发展过程中很可能会先遇到读性能问题，为了解决读性能问题，在架构上的解决方式是<strong>一主多从</strong>。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%B8%80%E4%B8%BB%E5%A4%9A%E4%BB%8E%E5%9F%BA%E6%9C%AC%E7%BB%93%E6%9E%84.png" alt="MySQL-一主多从基本结构" title="MySQL-一主多从基本结构"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E4%B8%80%E4%B8%BB%E5%A4%9A%E4%BB%8E%E5%9F%BA%E6%9C%AC%E7%BB%93%E6%9E%84.png" alt="MySQL-一主多从基本结构" title="MySQL-一主多从基本结构"><br>
 其中：</p>
 <ul>
 <li>A 和 A’互为主备；</li>
 <li>从库 B、C、D 指向主库 A，主库负责所有写入和一部分读，其他的读请求由从库分担。</li>
 </ul>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%B8%80%E4%B8%BB%E5%A4%9A%E4%BB%8E%E7%9A%84%E4%B8%BB%E5%A4%87%E5%88%87%E6%8D%A2.png" alt="MySQL-一主多从的主备切换" title="MySQL-一主多从的主备切换"></p>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E4%B8%80%E4%B8%BB%E5%A4%9A%E4%BB%8E%E7%9A%84%E4%B8%BB%E5%A4%87%E5%88%87%E6%8D%A2.png" alt="MySQL-一主多从的主备切换" title="MySQL-一主多从的主备切换"></p>
 <ul>
 <li>主备切换后，A’将成为新的主库；</li>
 <li>从库 B、C、D 改成连接到 A’。</li>
@@ -1475,7 +1065,7 @@ Netty 已经实现了 WebSocket 和一些老版本的规范：<a href="http://ne
 <h1>读写分离</h1>
 <p>上述的主从结构其实形成了一种读写分离的架构，连接信息一般保存到客户端，由客户端执行负载均衡。<br>
 另一种读写分离架构在客户端和服务器之间架设了一个代理层 proxy，客户端全部连接到这个 proxy，由 proxy 根据请求类型和上下文执行请求的路由分发。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%B8%A6proxy%E7%9A%84%E8%AF%BB%E5%86%99%E5%88%86%E7%A6%BB%E6%9E%B6%E6%9E%84.png" alt="MySQL-带proxy的读写分离架构" title="MySQL-带proxy的读写分离架构"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E5%B8%A6proxy%E7%9A%84%E8%AF%BB%E5%86%99%E5%88%86%E7%A6%BB%E6%9E%B6%E6%9E%84.png" alt="MySQL-带proxy的读写分离架构" title="MySQL-带proxy的读写分离架构"></p>
 <ul>
 <li>直连的架构，少了一层 proxy，因此性能稍微更好一点，排查问题也更方便，但是主备切换库迁移时客户端会感知到，所以客户端需要一个后端管理组件，比如 Zookeeper。</li>
 <li>带 proxy 架构，对客户端友好，但是同时 proxy 架构也更加复杂。</li>
@@ -2076,7 +1666,7 @@ MySQL 解决幻读问题有两种方案：<br>
 第一种是 MVCC，因为新插入的数据事务 ID 必然不在 ReadView 内，因此读取这些记录后会被直接忽略，但是快照读只在普通读操作中生效，如果发生了当前读仍然会有幻读问题；<br>
 第二种是加锁，但是加锁有一个问题，就是事务没法给尚不存在的记录加锁。<br>
 如果我们希望为 number 值为 8 的记录加 gap 锁，则该记录的前后间隙都不允许别的事务立即插入记录：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-gap%E9%94%81.png" alt="MySQL-gap锁" title="MySQL-gap锁"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-gap%E9%94%81.png" alt="MySQL-gap锁" title="MySQL-gap锁"><br>
 如图中为 number 值为 8 的记录加了 gap 锁，意味着不允许别的事务在 number 值为 8 的记录前边的间隙插入新记录，其实就是 number 列的值(3, 8)这个区间的新记录是不允许立即插入的。比方说有另外一个事务再想插入一条 number 值为 4 的新记录，它定位到该条新记录的下一条记录的 number 值为 8，而这条记录上又有一个 gap 锁，所以就会阻塞插入操作，直到拥有这个 gap 锁的事务提交了之后，number 列的值在区间(3, 8)中的新记录才可以被插入。<br>
 另外，如何为(20, +∞)这个区间加 gap 锁？其实是为数据页中的 Infimum 和 Supremum 记录加上了 gap 锁。<br>
 比如假设此时表里有 5、25 这两条数据，则<code>SELECT c1 FROM t WHERE c1 BETWEEN 10 and 20 FOR UPDATE</code>查询 10 到 20 范围内的记录，并加上范围<code>(5, 10)</code>、<code>[10, 20]</code>、<code>(20, 25]</code>以内的 gap 锁。<br>
@@ -2550,7 +2140,7 @@ InnoDB 引擎遍历整张表，但不取值。server 层对于返回的每一行
 <p>对于外连接来说，由于驱动表中的记录即使在被驱动表中找不到符合 ON 子句条件的记录时也会被加入到结果集，所以左连接和右连接的驱动表和被驱动表的位置不能轻易互换。</p>
 <h2 id="连接的原理"><a class="header-anchor" href="#连接的原理">¶</a>连接的原理</h2>
 <h3 id="嵌套循环连接-nested-loop-join"><a class="header-anchor" href="#嵌套循环连接-nested-loop-join">¶</a>嵌套循环连接（Nested-Loop Join）</h3>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-NestedLoopJoin%E7%AE%97%E6%B3%95.png" alt="MySQL-NestedLoopJoin算法" title="MySQL-NestedLoopJoin算法"><br>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-NestedLoopJoin%E7%AE%97%E6%B3%95.png" alt="MySQL-NestedLoopJoin算法" title="MySQL-NestedLoopJoin算法"><br>
 驱动表中查询到的每条记录都需要分别到被驱动表中查找匹配的记录，当有 3 张表进行连接时，上一步得到的结果集就会成为新的驱动表，第 3 张表则成为了新的被驱动表，重复这个过程。<br>
 这个过程就像是一个嵌套的循环，所以这种驱动表只访问一次，但被驱动表却可能被多次访问，访问次数取决于对驱动表执行单表查询后的结果集中的记录条数的连接执行方式称之为<strong>嵌套循环连接（Nested-Loop Join）</strong>。</p>
 <h3 id="simple-nested-loop-join"><a class="header-anchor" href="#simple-nested-loop-join">¶</a>Simple Nested-Loop Join</h3>
@@ -3084,10 +2674,10 @@ WAL 保证了 InnoDB 是<strong>crash-safe</strong>的，因为即使数据库�
 比如插入一条记录的时候，如果数据页的空闲空间不足，需要进行页分裂操作：新建一个叶子节点，然后把原先数据页中的一部分记录复制到这个新的数据页中，然后再把记录插入进去，把这个叶子节点插入到叶子节点链表中，最后还要在内节点中添加一条目录项记录指向这个新创建的页面。这个过程中需要对多个页面进行改改，因此会产生多条 redo log，这个过程必须是原子的，InnoDB 会以组的形式来记录 redo log，崩溃恢复时要么整组恢复、要么一条也不恢复，因此被称为<strong>悲观插入</strong>。</p>
 <blockquote>
 <p>如果数据页的空闲空间充足则可以直接插入，这种方式被称为<strong>乐观插入</strong>。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-MiniTransaction.png" alt="MySQL-MiniTransaction" title="MySQL-MiniTransaction"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-MiniTransaction.png" alt="MySQL-MiniTransaction" title="MySQL-MiniTransaction"></p>
 </blockquote>
 <h2 id="redo-日志的存储结构"><a class="header-anchor" href="#redo-日志的存储结构">¶</a>redo 日志的存储结构</h2>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-redolog.png" alt="MySQL-redolog" title="MySQL-redolog"><br>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-redolog.png" alt="MySQL-redolog" title="MySQL-redolog"><br>
 MySQL 会向操作系统申请一块<strong>redo log buffer</strong>连续内存空间，这块内存空间之后被划分为若干连续 redo log block。<br>
 InnoDB 会维护一个全局变量<code>buf_free</code>，指示后续 redo 日志应该写入到 log buffer 中的哪个位置。<br>
 最终 redo log 会被刷新到磁盘中被称为<strong>block</strong>的页中，其中关键字段包括：</p>
@@ -3165,14 +2755,14 @@ MySQL 偶尔的<strong>抖动</strong>，很有可能就是在<strong>刷脏页�
 <li>事务提交的时候，再把 binlog cache 写入到 binlog 文件中。</li>
 </ol>
 <p>binlog 写入的关键是要保证原子性：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-binlog%E5%86%99%E7%9B%98.png" alt="MySQL-binlog写盘" title="MySQL-binlog写盘"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-binlog%E5%86%99%E7%9B%98.png" alt="MySQL-binlog写盘" title="MySQL-binlog写盘"></p>
 <ol>
 <li>每个线程有自己的 binlog cache，但是共用同一份 binlog 文件；</li>
 <li>上图的<code>write</code>指的是把日志写入文件系统的<code>page cache</code>，并没有把数据持久化到磁盘，所以速度较快；</li>
 <li>上图的<code>fsync</code>才是将数据持久化到磁盘的操作。</li>
 </ol>
 <p>redo log 会被先写入到 <strong>redo log buffer</strong> 内，分以下几种情况：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-redolog%E5%AD%98%E5%82%A8%E7%8A%B6%E6%80%81.png" alt="MySQL-redolog存储状态" title="MySQL-redolog存储状态"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-redolog%E5%AD%98%E5%82%A8%E7%8A%B6%E6%80%81.png" alt="MySQL-redolog存储状态" title="MySQL-redolog存储状态"></p>
 <ol>
 <li>存在 redo log buffer 中，物理上是在 MySQL 进程内存中，就是图中的红色部分；</li>
 <li>写到磁盘 (write)，但是没有持久化（fsync)，物理上是在文件系统的 page cache 里面，也就是图中的黄色部分；</li>
@@ -3480,7 +3070,7 @@ DDL：CREATE、ALTER、DROP<br>
 <p>持久性是指一个事务一旦提交，它对数据库中数据的改变就是永久性的。接下来的操作或故障不应该对其执行结果有影响。(每一次的事务提交之后就会保证不丢失)</p>
 <h2 id="事务的状态"><a class="header-anchor" href="#事务的状态">¶</a>事务的状态</h2>
 <p>事务是一个抽象的概念，它对应一个或多个数据库操作。根据这些操作所执行的不同阶段，我们可以把事务大致划分为以下几个状态：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%BA%8B%E5%8A%A1%E7%8A%B6%E6%80%81.png" alt="MySQL-事务状态" title="MySQL-事务状态"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E4%BA%8B%E5%8A%A1%E7%8A%B6%E6%80%81.png" alt="MySQL-事务状态" title="MySQL-事务状态"><br>
 如上图可知，事务从活动的开始，直到提交或中止状态时生命周期才算结束，当事务是已提交的，它做的修改会持久生效（事务的<strong>持久性</strong>），当事务中止，该事务所做的一切修改都会被回滚（<strong>原子性</strong>）。<br>
 1、活动的（active）<br>
 事务对应的数据库操作正在执行过程中时，我们就说该事务处在活动的状态。<br>
@@ -3524,7 +3114,7 @@ SERIALIZABLE	Not Possible	Not Possible	Not Possible</p>
 序列化 | 否，所有事务序列化执行，没有使用 MVCC 的必要了 | 是 | 是</li>
 </ul>
 <h3 id="幻读与间隙锁"><a class="header-anchor" href="#幻读与间隙锁">¶</a>幻读与间隙锁</h3>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%BD%93%E5%89%8D%E8%AF%BB%E4%BE%8B%E5%AD%902.png" alt="MySQL-当前读例子2" title="MySQL-当前读例子2"><br>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E5%BD%93%E5%89%8D%E8%AF%BB%E4%BE%8B%E5%AD%902.png" alt="MySQL-当前读例子2" title="MySQL-当前读例子2"><br>
 注意上图中的 Q1、Q2、Q3 语句末尾带了<code>for update</code>，说明均为当前读，并会加上写锁，可以看到，Q3 语句看到了 Session B 和 Session C 插入的记录，说明发生了<strong>幻读</strong>的现象。</p>
 <ol>
 <li>在<strong>可重复读隔离级别</strong>下，普通的查询是<strong>快照读</strong>，是不会看到别的事务插入的数据的。因此，幻读在<strong>当前读</strong>下才会出现。<br>
@@ -3536,7 +3126,7 @@ SERIALIZABLE	Not Possible	Not Possible	Not Possible</p>
 </blockquote>
 <h4 id="幻读可能导致的问题及解决办法-间隙锁"><a class="header-anchor" href="#幻读可能导致的问题及解决办法-间隙锁">¶</a>幻读可能导致的问题及解决办法 - 间隙锁</h4>
 <p>由于当前读只会对<strong>当前可见</strong>的那些记录进行加锁，因此上述两种情况引入的<strong>新记录</strong>都是锁不上的，锁不上一方面导致可重复读的语义被破坏，因为我要把所有满足条件的记录都锁住，但是事务执行期间却有其他事务引入的满足条件的记录没有被锁住；另一方面是数据一致性问题，如下图所示：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%B9%BB%E8%AF%BB%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E4%B8%8D%E4%B8%80%E8%87%B4%E9%97%AE%E9%A2%98.png" alt="MySQL-幻读导致的数据不一致问题" title="MySQL-幻读导致的数据不一致问题"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E5%B9%BB%E8%AF%BB%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E4%B8%8D%E4%B8%80%E8%87%B4%E9%97%AE%E9%A2%98.png" alt="MySQL-幻读导致的数据不一致问题" title="MySQL-幻读导致的数据不一致问题"><br>
 执行期间：</p>
 <ol>
 <li>经过 T1 时刻，id=5 这一行变成 (5,5,100)，当然这个结果最终是在 T6 时刻正式提交的；</li>
@@ -3562,7 +3152,7 @@ MySQL 中解决幻读的方式是<strong>间隙锁</strong>，在给对应记录
 </ol>
 <h4 id="间隙锁存在的问题-死锁"><a class="header-anchor" href="#间隙锁存在的问题-死锁">¶</a>间隙锁存在的问题 - 死锁</h4>
 <p>间隙锁可能会引起<strong>死锁</strong>，如下图所示：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E9%97%B4%E9%9A%99%E9%94%81%E5%BC%95%E8%B5%B7%E7%9A%84%E6%AD%BB%E9%94%81.png" alt="MySQL-间隙锁引起的死锁" title="MySQL-间隙锁引起的死锁">……</p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E9%97%B4%E9%9A%99%E9%94%81%E5%BC%95%E8%B5%B7%E7%9A%84%E6%AD%BB%E9%94%81.png" alt="MySQL-间隙锁引起的死锁" title="MySQL-间隙锁引起的死锁">……</p>
 <ol>
 <li>session A 执行 select … for update 语句，由于 id=9 这一行并不存在，因此会加上间隙锁 (5,10)；</li>
 <li>session B 执行 select … for update 语句，同样会加上间隙锁 (5,10)，间隙锁之间不会冲突，因此这个语句可以执行成功；</li>
@@ -3584,20 +3174,20 @@ MySQL 中解决幻读的方式是<strong>间隙锁</strong>，在给对应记录
 <ul>
 <li>trx_id：每次一个事务对某条聚簇索引记录进行改动时，都会把该事务的事务 id 赋值给 trx_id 隐藏列。</li>
 <li>roll_pointer：每次对某条聚簇索引记录进行改动时，都会把旧的版本写入到 undo 日志中，然后这个隐藏列就相当于一个指针，可以通过它来找到该记录修改前的信息。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-undolog.png" alt="MySQL-undolog" title="MySQL-undolog"></li>
+<img src="https://tallate.top/imgs/MySQL/MySQL-undolog.png" alt="MySQL-undolog" title="MySQL-undolog"></li>
 </ul>
 <p>这个<strong>undo log</strong>就是 MVCC 的核心，undo log 的类型包括：<br>
 1、insert undo：在事务正式提交之后就可以被释放掉了，因为要回滚插入操作直接将记录删掉即可；<br>
 2、update undo：因为 update undo 还需要支持 MVCC，不能直接释放。</p>
 <p>每次修改记录时，都会记录一条 undo log，每条 undo log 都有一个 roll_pointer 属性，因此所有 undo log 实际山可以组成一个链表，称为<strong>版本链</strong>：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E7%89%88%E6%9C%AC%E9%93%BE.png" alt="MySQL-版本链" title="MySQL-版本链"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E7%89%88%E6%9C%AC%E9%93%BE.png" alt="MySQL-版本链" title="MySQL-版本链"><br>
 版本链的头节点就是当前记录最新的值，注意每条 undo log 都含有一个事务 id（trx_id）。</p>
 <h3 id="read-view-一致性读视图"><a class="header-anchor" href="#read-view-一致性读视图">¶</a>Read View (一致性读视图)</h3>
 <p>Read View 只有在 READ COMMITTED、REPEATABLE READ 两种隔离级别下才能生效。<br>
 READ UNCOMMITTED：由于可以读到未提交事务修改过的记录，所以直接读取记录的最新版本；<br>
 SERIALIZABLE：加锁；<br>
 READ COMMITTED、REPEATABLE READ：只能读到已提交的事务修改过的记录，因此需要判断一下版本链中的<strong>哪个版本是当前事务可见的</strong>。</p>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E6%95%B0%E6%8D%AE%E7%89%88%E6%9C%AC%E5%8F%AF%E8%A7%81%E6%80%A7%E8%A7%84%E5%88%99.png" alt="MySQL-数据版本可见性规则" title="MySQL-数据版本可见性规则"><br>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E6%95%B0%E6%8D%AE%E7%89%88%E6%9C%AC%E5%8F%AF%E8%A7%81%E6%80%A7%E8%A7%84%E5%88%99.png" alt="MySQL-数据版本可见性规则" title="MySQL-数据版本可见性规则"><br>
 对于当前事务的启动瞬间来说，一个数据版本的 row trx_id，有以下几种可能：</p>
 <ul>
 <li>落在中间部分，表示这个版本是已提交的事务或者是当前事务自己生成的，这个数据是可见的；</li>
@@ -3620,7 +3210,7 @@ ID 为 100 的事务：</p>
 <p>ID 为 200 的事务：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># Transaction 200</span><br><span class="line">BEGIN;</span><br><span class="line"></span><br><span class="line"># 更新了一些别的表的记录</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 <p>此时，表 hero 中 number 为 1 的记录得到的版本链表如下所示：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-ReadView%E7%89%88%E6%9C%AC%E9%93%BE.png" alt="MySQL-ReadView版本链" title="MySQL-ReadView版本链"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-ReadView%E7%89%88%E6%9C%AC%E9%93%BE.png" alt="MySQL-ReadView版本链" title="MySQL-ReadView版本链"></p>
 <p>2、上面两个事务正在执行的过程中，如果有一个使用 READ COMMITTED 隔离级别的事务开始执行：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 使用READ COMMITTED隔离级别的事务</span><br><span class="line">BEGIN;</span><br><span class="line"></span><br><span class="line"># SELECT1：Transaction 100、200未提交</span><br><span class="line">SELECT * FROM hero WHERE number = 1; # 得到的列name的值为&apos;刘备&apos;</span><br></pre></td></tr></table></figure>
 <p>这个 SELECT1 的执行过程如下：</p>
@@ -3635,7 +3225,7 @@ ID 为 100 的事务：</p>
 <p>然后再到事务 id 为 200 的事务中更新一下表 hero 中 number 为 1 的记录：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># Transaction 200</span><br><span class="line">BEGIN;</span><br><span class="line"></span><br><span class="line"># 更新了一些别的表的记录</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">UPDATE hero SET name = &apos;赵云&apos; WHERE number = 1;</span><br><span class="line"></span><br><span class="line">UPDATE hero SET name = &apos;诸葛亮&apos; WHERE number = 1;</span><br></pre></td></tr></table></figure>
 <p>此刻，表 hero 中 number 为 1 的记录的版本链如下所示：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-ReadView%E7%89%88%E6%9C%AC%E9%93%BE1.png" alt="MySQL-ReadView版本链1" title="MySQL-ReadView版本链1"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-ReadView%E7%89%88%E6%9C%AC%E9%93%BE1.png" alt="MySQL-ReadView版本链1" title="MySQL-ReadView版本链1"></p>
 <p>4、然后再到刚才使用 READ COMMITTED 隔离级别的事务中继续查找这个 number 为 1 的记录，如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 使用READ COMMITTED隔离级别的事务</span><br><span class="line">BEGIN;</span><br><span class="line"></span><br><span class="line"># SELECT1：Transaction 100、200均未提交</span><br><span class="line">SELECT * FROM hero WHERE number = 1; # 得到的列name的值为&apos;刘备&apos;</span><br><span class="line"></span><br><span class="line"># SELECT2：Transaction 100提交，Transaction 200未提交</span><br><span class="line">SELECT * FROM hero WHERE number = 1; # 得到的列name的值为&apos;张飞&apos;</span><br></pre></td></tr></table></figure>
 <p>这个 SELECT2 的执行过程如下：</p>
@@ -3660,7 +3250,7 @@ ID 为 100 的事务：</p>
 <blockquote>
 <p>除了 update 语句外，如果 select 语句加锁也是当前读，可以用 lock in share mock（读锁）或 for update（写锁）语句来加锁。</p>
 </blockquote>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%BD%93%E5%89%8D%E8%AF%BB.png" alt="MySQL-当前读" title="MySQL-当前读"><br>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E5%BD%93%E5%89%8D%E8%AF%BB.png" alt="MySQL-当前读" title="MySQL-当前读"><br>
 如上图所示，事务 A、B 刚开始时就创建了视图，事务 C 没有显式使用 begin/commit，表示该 update 语句本身就是一个事务。</p>
 <ol>
 <li>刚开始，id 为 1 的记录的字段 k 值为 1；</li>
@@ -3670,7 +3260,7 @@ ID 为 100 的事务：</p>
 </ol>
 <p>可见，虽然期间这一行数据被修改过，但是事务 A 不论在什么时候查询，看到这行数据的结果都是一致的，我们称之为<strong>一致性读</strong>。</p>
 <p>注意，上面的事务 C 更新完后直接提交了，如果不提交，由于二段锁协议，事务 B 将一直等待 C 提交事务。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E6%AD%BB%E9%94%81.png" alt="MySQL-死锁" title="MySQL-死锁"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E6%AD%BB%E9%94%81.png" alt="MySQL-死锁" title="MySQL-死锁"></p>
 <h3 id="删除"><a class="header-anchor" href="#删除">¶</a>删除</h3>
 <p>DELETE 语句并不会立即将记录从页面中清除，而是执行一个所谓的<strong>delete mark</strong>操作，为此，表的每一行记录都会额外增加一个删除版本号（delete_version）。<br>
 1、新增<br>
@@ -3755,7 +3345,7 @@ ID 为 100 的事务：</p>
 <p>上述讨论的 count(*)都是不带查询条件的，不然肯定还要用到索引来过滤数据，MyISAM 也不能这么快返回。</p>
 </blockquote>
 <p>InnoDB 不把数据总数存起来的原因是，由于 MVCC，即使多个查询是在同一时刻发生的，它们该返回多少行数据也是不确定的，如下图所示：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MVCC%E4%B8%8Ecount%E6%98%9F%E6%9F%A5%E8%AF%A2.png" alt="MVCC与count星查询" title="MVCC与count星查询"><br>
+<img src="https://tallate.top/imgs/MySQL/MVCC%E4%B8%8Ecount%E6%98%9F%E6%9F%A5%E8%AF%A2.png" alt="MVCC与count星查询" title="MVCC与count星查询"><br>
 三个会话，最后查出的数据总量是不同的。<br>
 <code>show table status</code>命令输出结果中也有一个<code>TABLE_ROWS</code>字段用于显示该表当前有多少行，但是由于误差比较大，不能直接拿来用。</p>
 <p>由于上述方法存在的缺陷，当需要获取数据库表记录总数时，我们一般会自己计数：</p>
@@ -3764,7 +3354,7 @@ ID 为 100 的事务：</p>
 由于更新数据库和更新缓存并不是一个原子操作，可能会导致其他线程读到缓存中的计数但是读不到新数据的情况。</li>
 <li>在数据库保存计数<br>
 由于会话 A 的事务还未提交，对表 C 的技术值的修改对会话 B 就是不可见的，因此可以保证逻辑上是一致的。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%BD%BF%E7%94%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E8%AE%A1%E6%95%B0%E8%A7%A3%E5%86%B3%E7%BB%9F%E8%AE%A1%E9%97%AE%E9%A2%98.png" alt="MySQL-使用数据库计数解决统计问题" title="MySQL-使用数据库计数解决统计问题"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E4%BD%BF%E7%94%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E8%AE%A1%E6%95%B0%E8%A7%A3%E5%86%B3%E7%BB%9F%E8%AE%A1%E9%97%AE%E9%A2%98.png" alt="MySQL-使用数据库计数解决统计问题" title="MySQL-使用数据库计数解决统计问题"><br>
 注意，最好先插入操作记录再更新计数表，因为更新计数表涉及到行锁的竞争，先插入再更新能最大程度地减少了事务之间的锁等待，提升了并发度。</li>
 </ol>
 <p><code>count(主键ID)</code>、<code>count(*)</code>、<code>count(1)</code>、<code>count(字段)</code>之间的比较：</p>
@@ -3798,7 +3388,7 @@ ID 为 100 的事务：</p>
 <p>以下事务可能并不能将所有 c 都置为 0。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">begin;</span><br><span class="line">select * from t;</span><br><span class="line">update t set c = 0 where id = c;</span><br><span class="line">commit;</span><br></pre></td></tr></table></figure>
 <p>比如：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E6%9B%B4%E6%96%B0%E4%B8%A2%E5%A4%B1.png" alt="MySQL-更新丢失" title="MySQL-更新丢失"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E6%9B%B4%E6%96%B0%E4%B8%A2%E5%A4%B1.png" alt="MySQL-更新丢失" title="MySQL-更新丢失"><br>
 其中，事务 A 开始后，在还未对数据进行加锁的情况下，被事务 B 修改了数据，这时，读操作由于<strong>快照读规则</strong>，只能读取到老版本数据，而写操作由于<strong>当前读规则</strong>可以读取到事务 B 写入的数据。<br>
 现实中，给数据加乐观锁时也有可能会出现这种情况。</p>
 <h3 id="mysql-实现各隔离级别的方式"><a class="header-anchor" href="#mysql-实现各隔离级别的方式">¶</a>MySQL 实现各隔离级别的方式</h3>
@@ -4022,7 +3612,7 @@ ID 为 100 的事务：</p>
 <p>1、数据页被组织为一个双向链表；<br>
 2、每个数据页中的记录会按照主键值从小到大的顺序组成一个单向链表；<br>
 3、每个数据页都会为存储在它里面的记录生成一个页目录，页目录又按 ID 分段形成一个个槽，遍历该槽对应分组中的记录即可快速找到指定的记录；<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E9%A1%B5%E7%BB%93%E6%9E%84.png" alt="MySQL-页结构" title="MySQL-页结构"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E9%A1%B5%E7%BB%93%E6%9E%84.png" alt="MySQL-页结构" title="MySQL-页结构"></p>
 <h1>数据目录</h1>
 <h2 id="查看-mysql-数据目录"><a class="header-anchor" href="#查看-mysql-数据目录">¶</a>查看 MySQL 数据目录</h2>
 <p>数据目录不同于安装目录，可以使用以下命令来查看：</p>
@@ -4240,10 +3830,10 @@ List Base Node for SEG_INODES_FREE List	16 字节	SEG_INODES_FREE 链表的基�
 <h2 id="一个简单的索引方案"><a class="header-anchor" href="#一个简单的索引方案">¶</a>一个简单的索引方案</h2>
 <p>1、插入数据时需要保证主键值是递增的<br>
 每页的记录数必须不超过 3 条，因此当要插入更多数据时，必须执行一个页分裂的操作，并且这个过程中如果不满足主键的递增要求，记录则必须要执行移动操作，这个过程称为页分裂：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E6%95%B0%E6%8D%AE%E9%A1%B5%E5%88%86%E8%A3%82.png" alt="MySQL-数据页分裂" title="MySQL-数据页分裂"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E6%95%B0%E6%8D%AE%E9%A1%B5%E5%88%86%E8%A3%82.png" alt="MySQL-数据页分裂" title="MySQL-数据页分裂"><br>
 2、给所有页建立目录项<br>
 页的用户记录中最小的主键值用 key 来表示；页号用 page_no 表示<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E7%9B%AE%E5%BD%95%E9%A1%B5.png" alt="MySQL-目录页" title="MySQL-目录页"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E7%9B%AE%E5%BD%95%E9%A1%B5.png" alt="MySQL-目录页" title="MySQL-目录页"><br>
 如上所示，每个目录项实际上记录了对应页中最小的主键值（已经有点像 B+树的结构了）。<br>
 当要查找一个 key 时，会先在目录中根据二分法找到其所处的页，然后再到对应页中搜索。</p>
 <h2 id="innodb-索引方案"><a class="header-anchor" href="#innodb-索引方案">¶</a>InnoDB 索引方案</h2>
@@ -4252,7 +3842,7 @@ List Base Node for SEG_INODES_FREE List	16 字节	SEG_INODES_FREE 链表的基�
 <li>InnoDB 中使用页来管理存储空间，最多只能保证 16KB 的连续存储空间，而随着表中的数据量增多，一页是无法存储下所有的目录项的；</li>
 <li>我们如果一页中的记录都已经被删除光了，该页也就没必要存在了，但是删除该页后却需要将其所处目录项之后的目录项都向前移动一下，这显然是非常低效的。<br>
 因此，InnoDB 中使用目录项来管理多级的页：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-InnoDB%E4%B8%AD%E7%9A%84B%E5%8A%A0%E6%A0%91.png" alt="MySQL-InnoDB中的B加树" title="MySQL-InnoDB中的B加树"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-InnoDB%E4%B8%AD%E7%9A%84B%E5%8A%A0%E6%A0%91.png" alt="MySQL-InnoDB中的B加树" title="MySQL-InnoDB中的B加树"><br>
 当我们要查找一条记录时，先根据主键值在目录项记录的页中查找，查找方式其实和之前说的一样，定位到后再去下一级的页中查找，直到查到底层数据页中的记录或根本没找到。<br>
 实际上上面描述的是一种称为 B+树的结构，不论是存放用户记录的数据页，还是存放目录项记录的数据页，我们都把它们存放到 B+树这个数据结构中了，所以我们也称这些数据页为节点。从图中可以看出来，我们的实际用户记录其实都存放在 B+树的最底层的节点上，这些节点也被称为叶子节点或叶节点，其余用来存放目录项的节点称为非叶子节点或者内节点，其中 B+树最上边的那个节点也称为根节点。<br>
 在真实情况中 B+树存放的记录数是非常多的，层数也不会太高，如果每个数据页能存放 100 条记录，目录页能存放 1000 条记录，那么3层就能存1000x1000x100=1亿条数据，4 层就是 1000×1000×1000×100=1*10^11 条记录，所以我们用到的 B+树都不会超过 4 层，通过主键值去查找某条记录最多只需要做 4 个页面内的查找（查找 3 个目录项页和一个数据页），又因为在每个页面内有所谓的 Page Directory（页目录），所以在页面内也可以通过二分法实现快速定位记录。</li>
@@ -4273,7 +3863,7 @@ List Base Node for SEG_INODES_FREE List	16 字节	SEG_INODES_FREE 链表的基�
 这种聚簇索引不需要手动用 INDEX 语句创建，InnoDB 引擎会为我们自动创建聚簇索引，实际上在 InnoDB 中聚簇索引就是数据的存储方式。</p>
 <h3 id="二级索引"><a class="header-anchor" href="#二级索引">¶</a>二级索引</h3>
 <p>聚簇索引只能根据主键的查询，如果我们需要根据别的列来查询数据，则必须另外建几棵对应字段的 B+树。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%BA%8C%E7%BA%A7%E7%B4%A2%E5%BC%95.png" alt="MySQL-二级索引" title="MySQL-二级索引"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E4%BA%8C%E7%BA%A7%E7%B4%A2%E5%BC%95.png" alt="MySQL-二级索引" title="MySQL-二级索引"><br>
 这棵 B+树为字段 a 增加了索引，和之前的聚簇索引的区别包括：<br>
 1、页内的记录是按字段 a 排列成一个单向链表；<br>
 2、各个存放数据的页也是根据页中记录的 a 列大小顺序排成一个双向链表；<br>
@@ -4288,7 +3878,7 @@ List Base Node for SEG_INODES_FREE List	16 字节	SEG_INODES_FREE 链表的基�
 <ol>
 <li>将表中的记录按照记录的插入顺序单独存储在一个文件中，称之为数据文件。这个文件并不划分为若干个数据页，有多少记录就往这个文件中塞多少记录就成了。我们可以通过行号而快速访问到一条记录。<br>
 当然 MyISAM 同样需要记录头信息来存储一些额外数据：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-MyISAM%E7%B4%A2%E5%BC%95.png" alt="MySQL-MyISAM索引" title="MySQL-MyISAM索引"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-MyISAM%E7%B4%A2%E5%BC%95.png" alt="MySQL-MyISAM索引" title="MySQL-MyISAM索引"><br>
 注意插入记录的时候并没有可以按照主键大小排序，因此无法直接使用二分查找。</li>
 <li>使用 MyISAM 存储引擎的表会把索引信息另外存储到一个称为索引文件的另一个文件中。MyISAM 会单独为表的主键创建一个索引，只不过在索引的叶子节点中存储的不是完整的用户记录，而是主键值 + 行号的组合。也就是先通过索引找到对应的行号，再通过行号去找对应的记录<br>
 这一点和 InnoDB 是完全不相同的，在 InnoDB 存储引擎中，我们只需要根据主键值对聚簇索引进行一次查找就能找到对应的记录，而在 MyISAM 中却需要进行一次回表操作，意味着 MyISAM 中建立的索引相当于全部都是二级索引！</li>
@@ -4359,7 +3949,7 @@ List Base Node for SEG_INODES_FREE List	16 字节	SEG_INODES_FREE 链表的基�
 <li>对 sort_buffer 中的数据按照字段 name 做快速排序；</li>
 <li>按照排序结果取前 1000 行返回给客户端。</li>
 </ol>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E5%85%A8%E5%AD%97%E6%AE%B5%E6%8E%92%E5%BA%8F%E4%BE%8B%E5%AD%90.png" alt="MySQL-全字段排序例子" title="MySQL-全字段排序例子"></p>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E5%85%A8%E5%AD%97%E6%AE%B5%E6%8E%92%E5%BA%8F%E4%BE%8B%E5%AD%90.png" alt="MySQL-全字段排序例子" title="MySQL-全字段排序例子"></p>
 <h3 id="不可以使用索引进行排序的几种情况"><a class="header-anchor" href="#不可以使用索引进行排序的几种情况">¶</a>不可以使用索引进行排序的几种情况</h3>
 <p>1、ASC、DESC 混用<br>
 在使用联合索引进行排序时，要求各个排序的列的顺序是一致的，要么都是 ASC，要么都是 DESC，举个例子：</p>
@@ -4490,7 +4080,7 @@ MySQL 本身不支持反向索引，但可以将字符串反转后存储，并�
 </ol>
 <h1>update 语句的执行流程</h1>
 <p>一条 SQL 语句的整体执行流程如下：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-SQL%E8%AF%AD%E5%8F%A5%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.png" alt="MySQL-SQL语句执行流程" title="MySQL-SQL语句执行流程"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-SQL%E8%AF%AD%E5%8F%A5%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.png" alt="MySQL-SQL语句执行流程" title="MySQL-SQL语句执行流程"></p>
 <ol>
 <li>执行语句前要先通过连接器连接数据库；</li>
 <li>分析器通过词法和语法解析得知该语句为更新语句；</li>
@@ -4499,7 +4089,7 @@ MySQL 本身不支持反向索引，但可以将字符串反转后存储，并�
 <li>执行器负责具体执行，找到该行数据并执行更新。</li>
 </ol>
 <h2 id="两阶段提交协议"><a class="header-anchor" href="#两阶段提交协议">¶</a>两阶段提交协议</h2>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8D%8F%E8%AE%AE.jpg" alt="MySQL-两阶段提交协议" title="MySQL-两阶段提交协议"></p>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8D%8F%E8%AE%AE.jpg" alt="MySQL-两阶段提交协议" title="MySQL-两阶段提交协议"></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">update T set c=c+1 where ID=2;</span><br></pre></td></tr></table></figure>
 <p>对于上面这行简单的 update 语句，执行器和 InnoDB 引擎在执行时的内部流程如下：</p>
 <ol>
@@ -4524,7 +4114,7 @@ MySQL 本身不支持反向索引，但可以将字符串反转后存储，并�
 </blockquote>
 <h3 id="两阶段提交的异常情况"><a class="header-anchor" href="#两阶段提交的异常情况">¶</a>两阶段提交的异常情况</h3>
 <p>两阶段提交异常主要体现在：如果各阶段发生重启，数据库的一致性是否会受到影响。<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8D%8F%E8%AE%AE.jpg" alt="MySQL-两阶段提交协议" title="MySQL-两阶段提交协议"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8D%8F%E8%AE%AE.jpg" alt="MySQL-两阶段提交协议" title="MySQL-两阶段提交协议"></p>
 <ol>
 <li>图中A处，写入 redo log 处于 prepare 阶段之后、写 binlog 之前，发生了崩溃（crash）<br>
 由于此时 binlog 还没写，redo log 也还没提交，所以崩溃恢复的时候，这个事务会回滚。这时候，binlog 还没写，所以也不会传到备库。</li>
@@ -4643,7 +4233,7 @@ alter table T engine=InnoDB</p>
 <p>查询语句：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">explain select * from x</span><br><span class="line">where a = 5</span><br><span class="line">order by b, c;</span><br></pre></td></tr></table></figure>
 <p>其中，如下图所示，key_len 字段为 5，这是 a 字段的数据长度，因此 b、c 字段实际上并没有走索引：<br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-%E6%9F%90%E4%BA%9B%E6%9D%A1%E4%BB%B6%E4%B8%8B%E4%B8%8D%E8%B5%B0%E7%B4%A2%E5%BC%951.png" alt="MySQL-某些条件下不走索引1" title="MySQL-某些条件下不走索引1"></p>
+<img src="https://tallate.top/imgs/MySQL/MySQL-%E6%9F%90%E4%BA%9B%E6%9D%A1%E4%BB%B6%E4%B8%8B%E4%B8%8D%E8%B5%B0%E7%B4%A2%E5%BC%951.png" alt="MySQL-某些条件下不走索引1" title="MySQL-某些条件下不走索引1"></p>
 <p>没有走索引的原因是：SQL 查询的执行流程是先根据<code>where</code>子句条件查二级索引，将数据回表带出<code>select</code>所需的所有字段，加载到<code>sort_buffer</code>内，然后排序。所以无法利用索引结构的有序性来实现排序。</p>
 <h2 id="为什么要加主键"><a class="header-anchor" href="#为什么要加主键">¶</a>为什么要加主键</h2>
 <p>主键唯一确定一行，没有主键我们无法 CRUD 特定的某行。</p>
@@ -4658,8 +4248,8 @@ alter table T engine=InnoDB</p>
 <p>因为维护索引开销大，当我们修改一个字段时，需要同步修改到使用了这个字段的所有索引上，也就是说会对 insert/update/delete 语句会有负面影响。<br>
 原则上应该只有查询的字段才建立索引、这些字段重复度不高且基本不变，或者通过读写分离等分库分表技术来提高数据库整体效率。</p>
 <h2 id="b-树和-b-树之间的区别"><a class="header-anchor" href="#b-树和-b-树之间的区别">¶</a>B 树和 B+树之间的区别</h2>
-<p><img src="http://47.88.24.11/imgs/MySQL/MySQL-B%E6%A0%91%E7%A4%BA%E4%BE%8B.png" alt="MySQL-B树示例" title="MySQL-B树示例"><br>
-<img src="http://47.88.24.11/imgs/MySQL/MySQL-B%E5%8A%A0%E6%A0%91%E7%A4%BA%E4%BE%8B.png" alt="MySQL-B加树示例" title="MySQL-B加树示例"></p>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-B%E6%A0%91%E7%A4%BA%E4%BE%8B.png" alt="MySQL-B树示例" title="MySQL-B树示例"><br>
+<img src="https://tallate.top/imgs/MySQL/MySQL-B%E5%8A%A0%E6%A0%91%E7%A4%BA%E4%BE%8B.png" alt="MySQL-B加树示例" title="MySQL-B加树示例"></p>
 <ol>
 <li>B 树内部节点也会存储数据，而 B+树只有叶子节点会存储数据<br>
 对于数据库的场景来说，因为 B+树只有叶子节点存储数据，内部节点只存储每个叶子节点中最大的键值，相当于一个页面的“指针”，因为这个“指针”占用的空间很小，因此内部节点就可以存储很多叶子节点的指针，即使这个 B+树的高度只有 3 也可以存储千万级别的页面。</li>
@@ -5168,7 +4758,7 @@ Redisson启动后会创建一个定时任务每5秒更新一次节点状态，�
 </ol>
 <h4 id="看门狗"><a class="header-anchor" href="#看门狗">¶</a>看门狗</h4>
 <p>看门狗原理，下图来自于<a href="https://www.cnblogs.com/wang-meng/p/12525029.html" target="_blank" rel="noopener">这里</a><br>
-<img src="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E7%9C%8B%E9%97%A8%E7%8B%97.png" alt="红锁-看门狗" title="红锁-看门狗"><br>
+<img src="https://tallate.top/imgs/Redis/%E7%BA%A2%E9%94%81-%E7%9C%8B%E9%97%A8%E7%8B%97.png" alt="红锁-看门狗" title="红锁-看门狗"><br>
 加锁时启动定时任务刷新锁的过期时间：<br>
 org.redisson.RedissonLock#tryAcquireOnceAsync<br>
 -&gt; org.redisson.RedissonLock#scheduleExpirationRenewal<br>
@@ -5177,7 +4767,7 @@ org.redisson.RedissonLock#unlock<br>
 -&gt; org.redisson.RedissonLock#cancelExpirationRenewal</p>
 <h4 id="可重入性"><a class="header-anchor" href="#可重入性">¶</a>可重入性</h4>
 <p>可重入性原理，下图来自于<a href="https://www.cnblogs.com/wang-meng/p/12525029.html" target="_blank" rel="noopener">这里</a><br>
-<img src="http://47.88.24.11/imgs/Redis/%E7%BA%A2%E9%94%81-%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7.png" alt="红锁-可重入性" title="红锁-可重入性"></p>
+<img src="https://tallate.top/imgs/Redis/%E7%BA%A2%E9%94%81-%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7.png" alt="红锁-可重入性" title="红锁-可重入性"></p>
 <h4 id="红锁存在的问题"><a class="header-anchor" href="#红锁存在的问题">¶</a>红锁存在的问题</h4>
 <ol>
 <li>一般Redis集群都是多主多从，但是使用多主多从的情况下，锁是加到主服务器上的，而主从复制是异步完成的，如果在客户端获取到锁之后，主复制锁到从的过程中崩溃了，导致没有复制到从Redis中，那么之后即使再选举出一个从升级为主，主服务器里也是没有锁的，并且能够成功被获取到锁，导致互斥失效。<br>
@@ -5277,6 +4867,439 @@ ERR Client sent AUTH, but no password is set<br>
 
 
     
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/abe4b1f3.html" itemprop="url">SpringBoot原理总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  4k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  16 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>开始使用 SpringBoot</h1>
+<h2 id="使用-sdkman-搭建环境"><a class="header-anchor" href="#使用-sdkman-搭建环境">¶</a>使用 sdkman 搭建环境</h2>
+<h3 id="介绍"><a class="header-anchor" href="#介绍">¶</a>介绍</h3>
+<ol>
+<li>sdkman<br>
+工具包管理器，可以用于管理 Spring Boot CLI。</li>
+<li>Spring Boot CLI<br>
+命令行工具。</li>
+<li>groovy<br>
+一种可以运行在 JVM 上的语言，和 Java 的编译器不同（语法、语义不同）。</li>
+</ol>
+<h3 id="安装"><a class="header-anchor" href="#安装">¶</a>安装</h3>
+<ol>
+<li>
+<p>安装 sdkman<br>
+按下面链接中的步骤来，可能需要连接 VPN：<br>
+<a href="http://sdkman.io/install.html" target="_blank" rel="noopener">http://sdkman.io/install.html</a></p>
+</li>
+<li>
+<p>安装 Spring Boot CLI<br>
+默认安装最新版本的（安装位置在$HOME/.sdkman 下）：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk install springboot</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>切换 Spring Boot CLI 版本</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sdk list springboot</span><br><span class="line">sdk install springboot XXX.RELEASE</span><br><span class="line">sdk use springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>设置默认版本</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sdk default springboot XXX.RELEASE</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>使用本地编译的 springboot</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sdk install springboot dev /path/to/spring-boot/spring-boot-cli/target/spring-boot-cli-2.0.0.BUILD-SNAPSHOT-bin/spring-2.0.0.BUILD-SNAPSHOT/</span><br><span class="line">$ sdk default springboot dev</span><br><span class="line">$ spring --version</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="第一个-springboot-应用"><a class="header-anchor" href="#第一个-springboot-应用">¶</a>第一个 SpringBoot 应用</h3>
+<ol>
+<li>创建一个 app.groovy 文件：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">class ThisWillActuallyRun &#123;</span><br><span class="line">    @RequestMapping(&quot;/&quot;)</span><br><span class="line">    String home() &#123;</span><br><span class="line">        &quot;Hello World!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>执行</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring run app.groovy</span><br></pre></td></tr></table></figure>
+<ol>
+<li>访问</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">localhost:8080</span><br></pre></td></tr></table></figure>
+<h2 id="idea-下搭建-springboot-项目"><a class="header-anchor" href="#idea-下搭建-springboot-项目">¶</a>IDEA 下搭建 SpringBoot 项目</h2>
+<h3 id="创建一个简单的-web-项目"><a class="header-anchor" href="#创建一个简单的-web-项目">¶</a>创建一个简单的 Web 项目</h3>
+<ol>
+<li>
+<p>创建项目<br>
+new Projects… -&gt; Spring Initializr（这里可能需要连接 VPN） -&gt; 设置项目元数据 -&gt; 添加 Web 组件（对于这个例子来说足够了）</p>
+</li>
+<li>
+<p>添加控制器<br>
+创建 controller.HelloController：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">    @RequestMapping(&quot;/hello&quot;)</span><br><span class="line">    public String hello() &#123;</span><br><span class="line">        System.out.println(&quot;Hello&quot;);</span><br><span class="line">        return &quot;hello&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>执行 XxxApplication.main()</p>
+</li>
+<li>
+<p>访问<br>
+localhost:8080</p>
+</li>
+</ol>
+<h3 id="添加-jpa-支持"><a class="header-anchor" href="#添加-jpa-支持">¶</a>添加 Jpa 支持</h3>
+<ol>
+<li>添加依赖</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">spring.datasource.driver-class-name=com.mysql.jdbc.Driver</span><br><span class="line">spring.datasource.url=jdbc:mysql://localhost:3306/test</span><br><span class="line">spring.datasource.username=root</span><br><span class="line">spring.datasource.password=85382855</span><br><span class="line">   </span><br><span class="line">spring.jpa.hibernate.ddl-auto=create</span><br><span class="line">spring.jpa.show-sql=true</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建实体类</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Entity</span><br><span class="line">public class User &#123;</span><br><span class="line">    @Id</span><br><span class="line">    @GeneratedValue</span><br><span class="line">    private Integer id;</span><br><span class="line">    private String username;</span><br><span class="line">    private String password;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>
+<p>创建 Dao 接口</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public interface UserDao extends JpaRepository&lt;User, Integer&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>注入 Dao 接口</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">@Autowired</span><br><span class="line">private UserDao userDao;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="测试"><a class="header-anchor" href="#测试">¶</a>测试</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@RunWith(SpringRunner.class)</span><br><span class="line">@SpringBootTest</span><br><span class="line">public class HelloTest &#123;</span><br><span class="line"></span><br><span class="line">    private MockMvc mockMvc;</span><br><span class="line">    @Before</span><br><span class="line">    public void setUp() throws Exception &#123;</span><br><span class="line">        //测试 HelloWorldController</span><br><span class="line">        mockMvc = MockMvcBuilders.standaloneSetup(new HelloWorldController()).build();</span><br><span class="line">    &#125;</span><br><span class="line">    @Test</span><br><span class="line">    public void getHello() throws Exception &#123;</span><br><span class="line">        mockMvc.perform(MockMvcRequestBuilders.post(&quot;/hello?name=小明&quot;)</span><br><span class="line">                .accept(MediaType.APPLICATION_JSON_UTF8)).andDo(print());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1>SpringBoot 原理分析</h1>
+<h2 id="核心思想"><a class="header-anchor" href="#核心思想">¶</a>核心思想</h2>
+<ol>
+<li>约定优于配置（convention over configuration）<br>
+传统 Spring 项目配置繁琐是 SpringBoot 主要解决的痛点之一，autoconfigure 模块会在启动时为自动注入的 Bean 设置默认配置。</li>
+<li>模块化<br>
+类似于 maven 管理项目的依赖、git 管理代码的版本，SpringBoot 提供了对一些常用组件的模块化管理，只要添加依赖几乎就可以马上使用，展现出一种插件化的效果。</li>
+</ol>
+<h2 id="spring-boot-load-模块"><a class="header-anchor" href="#spring-boot-load-模块">¶</a>spring-boot-load 模块</h2>
+<p>正常情况下一个类加载器只能找到加载路径的 jar 包里当前目录或者文件类里面的 *.class 文件，SpringBoot 允许我们使用 java -jar archive.jar 运行包含嵌套依赖 jar 的 jar 或者 war 文件。</p>
+<h3 id="传统类加载器的局限"><a class="header-anchor" href="#传统类加载器的局限">¶</a>传统类加载器的局限</h3>
+<p>传统类加载器无法加载 jar 包中嵌套的 jar 包。比如项目打包后包含如下这些类和 jar 包，则 c.jar 中的类无法被加载：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a1.class</span><br><span class="line">a2.class</span><br><span class="line">b.jar</span><br><span class="line">    b1.class</span><br><span class="line">    b2.class</span><br><span class="line">    c.jar</span><br></pre></td></tr></table></figure>
+<p>为了能够加载嵌套 jar 里面的资源，之前的做法都是把嵌套 jar 里面的 class 文件和应用的 class 文件打包为一个 jar，这样就不存在嵌套 jar 了，但是这样做就不能很清晰的知道哪些是应用自己的，哪些是应用依赖的，另外多个嵌套 jar 里面的 class 文件可能内容不一样但是文件名却一样时候又会引发新的问题。</p>
+<h3 id="加载嵌套-jar-包中的-class-文件"><a class="header-anchor" href="#加载嵌套-jar-包中的-class-文件">¶</a>加载嵌套 jar 包中的 class 文件</h3>
+<p>在 Java 中，AppClassLoader 和 ExtClassLoader 都继承自 URLClassLoader，并通过构造函数来传递需要加载的 class 文件所在的目录。<br>
+<strong>那么只要将 jar 包中嵌套的 jar 包所在的路径作为 URLClassLoader 的扫描路径，就可以实现对嵌套 jar 包的扫描了。</strong><br>
+但是默认情况下 Java 使用 AppClassLoader 加载使用命令启动时指定的 classpath 下的类和 jar 包，那么如何使用自定义的 URLClassLoader 来加载这些类和 jar 包呢？具体做法是加一个中间层。<br>
+原来是直接使用 AppClassLoader 来加载应用：AppClassLoader -&gt; Application。<br>
+现在先加载一个自定义的启动类 <strong>Launcher</strong>，其中自定义 URLClassLoader，再使用该 URLClassLoader 来加载我们真正的 main 函数：AppClassLoader -&gt; Launcher -&gt; URLClassLoader -&gt; Application。</p>
+<h3 id="spring-boot-load-提供的启动器-launcher"><a class="header-anchor" href="#spring-boot-load-提供的启动器-launcher">¶</a>spring-boot-load 提供的启动器 Launcher</h3>
+<p>spring-boot-load 模块允许我们加载嵌套 jar 包中的 class 文件，它包含三种类启动器：</p>
+<ol>
+<li>JarLauncher</li>
+<li>WarLauncher</li>
+<li>PropertiesLauncher</li>
+</ol>
+<h3 id="spring-boot-maven-plugin-打包插件及-springboot-指定的包结构"><a class="header-anchor" href="#spring-boot-maven-plugin-打包插件及-springboot-指定的包结构">¶</a>spring-boot-maven-plugin 打包插件及 SpringBoot 指定的包结构</h3>
+<p>为了为 SpringBoot 应用打包，需要引入如下 Maven 插件：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">      &lt;version&gt;1.5.9.RELEASE&lt;/version&gt;</span><br><span class="line">      &lt;executions&gt;</span><br><span class="line">        &lt;execution&gt;</span><br><span class="line">          &lt;goals&gt;</span><br><span class="line">            &lt;goal&gt;repackage&lt;/goal&gt;</span><br><span class="line">          &lt;/goals&gt;</span><br><span class="line">        &lt;/execution&gt;</span><br><span class="line">      &lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
+<p>SpringBoot项目打包后的jar包结构如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">archive.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF（1）</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org（2）</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-com（3）</span><br><span class="line"> |  +-mycompany</span><br><span class="line"> |     + project</span><br><span class="line"> |        +-YouClasses.class</span><br><span class="line"> +-lib（4）</span><br><span class="line">    +-dependency1.jar</span><br><span class="line">    +-dependency2.jar</span><br></pre></td></tr></table></figure>
+<p>目录（1）是 jar 文件中 MANIFEST.MF 文件的存放处。<br>
+目录（2）是 Spring-boot-loader 本身需要的 class 放置处。<br>
+目录（3）是应用本身的文件资源放置处。<br>
+目录（4）是应用依赖的 jar 固定放置处，即 lib 目录。</p>
+<p>打包按如下顺序进行：</p>
+<ol>
+<li>执行<code>mvn clean package</code>按原流程进行打包生成 jar 文件；</li>
+<li>spring-boot-maven-plugin 插件对 jar 包进行重写。
+<ol>
+<li>改写 MANIFEST.MF 文件：<code>Main-Class: org.springframework.boot.loader.JarLauncher</code>、<code>Start-Class: com.abc.MyApplication</code>，这里的 MyApplication 即项目中被<code>@SpringBootApplication</code>注解了的那个类，指定主类后 AppClassLoader 就会先加载 JarLauncher 并执行其中的 main 方法了；</li>
+<li>写入应用依赖的 jar 包到 lib 目录；</li>
+<li>拷贝 spring-boot-load 包里的 class 文件到 jar 包的目录（2）处。</li>
+</ol>
+<blockquote>
+<p>为什么要拷贝到目录（2）的位置？因为后面启动流程中<code>LaunchedURLClassLoader</code>位于spring-boot-loader.jar包内，AppClassLoader无法加载嵌套的jar中的文件。</p>
+</blockquote>
+</li>
+</ol>
+<p>启动顺序如下，以 JarLauncher 为例，假设 SpringBoot 项目打包后的 jar 包名为 test.jar：<br>
+<img src="https://tallate.top/imgs/SpringBoot/JarLauncher%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="JarLauncher执行时序图" title="JarLauncher执行时序图"></p>
+<ol>
+<li>使用 AppClassLoader 加载 JarLauncher，执行其 main 函数；</li>
+<li>查找 test.jar 中的嵌套 jar 后生成一个列表<code>List&lt;Archive&gt;</code>，每个<code>Archive</code>包含了一个嵌套 jar 的信息，对应 jar 包 Archive 的子类是 <code>JarFileArchive</code>。</li>
+<li>将 test.jar 本身构造成的 Archive 插入<code>List&lt;Archive&gt;</code>列表的第一个位置；</li>
+<li>将这个列表作为参数构建<code>LaunchedURLClassLoader</code>类加载器，这个类加载器继承自 URLClassLoader；</li>
+<li>使用 LaunchedURLClassLoader 加载并实例化 MyApplication 的一个对象，并通过反射调用 main 函数，这时候 SpringBoot 才正式开始初始化 SpringBoot 的环境，并创建容器。</li>
+</ol>
+<h2 id="spring-boot-autoconfigure-模块"><a class="header-anchor" href="#spring-boot-autoconfigure-模块">¶</a>spring-boot-autoconfigure 模块</h2>
+<p>Spring 的出现给我们管理 Bean 的依赖注入提供了便捷，但是当我们需要使用通过 pom 引入的 jar 里面的一个 Bean 时候，还是需要手动在 XML 配置文件里面配置。<br>
+spring-boot-autoconfigure 思路类似 <strong>SPI(Service Provider Interface)</strong>，都是不同的实现类实现了定义的接口，加载时候去查找 classpath 下的实现类，不同在于前者使用 <strong>autoconfigure</strong> 实现，后者使用的是 <strong>ServiceLoader</strong>。<br>
+autoconfigure 模块的主要功能如下：</p>
+<ol>
+<li>可以依据 classpath 里面的依赖内容自动配置 Bean 到 Spring 容器，并为默认化属性配置。</li>
+<li>尝试推断哪些 Beans 是用户可能会需要的。比如如果 HSQLDB 包在当前 classpath 下，并且用户并没有配置其他数据库链接，这时候 Auto-configuration 功能会自动注入一个基于内存的数据库连接到应用的 IOC 容器。再比如当我们在 pom 引入了 Tomcat 的 start 后，如果当前还没 Web 容器被注入到应用 IOC，那么 SpringBoot 就会为我们自动创建并启动一个内嵌 Tomcat 容器来服务。</li>
+</ol>
+<h3 id="enableautoconfiguration"><a class="header-anchor" href="#enableautoconfiguration">¶</a>EnableAutoConfiguration</h3>
+<p>核心注解<code>@EnableAutoConfiguration</code>的定义如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE&#125;)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Documented</span><br><span class="line">@Inherited</span><br><span class="line">@AutoConfigurationPackage</span><br><span class="line">@Import(&#123;AutoConfigurationImportSelector.class&#125;)</span><br><span class="line">public @interface EnableAutoConfiguration &#123;</span><br><span class="line">    String ENABLED_OVERRIDE_PROPERTY = &quot;spring.boot.enableautoconfiguration&quot;;</span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] exclude() default &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    String[] excludeName() default &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>EnableAutoConfiguration</code> 注解主要作用是通过 <code>@Import</code> 注入 <code>EnableAutoConfigurationImportSelector</code> 实例，后者是实现 AutoConfiguration 功能的核心类。<br>
+<img src="https://tallate.top/imgs/SpringBoot/EnableAutoConfigurationImportSelector%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="EnableAutoConfigurationImportSelector时序图" title="EnableAutoConfigurationImportSelector时序图"><br>
+<code>EnableAutoConfigurationImportSelector</code> 类实现了 <code>DeferredImportSelector</code> 接口的 <code>String[] selectImports(AnnotationMetadata metadata)</code> 方法，当 Spring 框架解析 <code>@Import</code> 注解时候会调用该方法。<br>
+代码<code>EnableAutoConfigurationImportSelector#getCandidateConfigurations</code>和<code>loadFactoryNames</code>的作用是扫描 classpath 下含有 <code>Meta-INF/spring.factories</code> 文件的 jar，并解析文件中名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项。<br>
+getCandidateConfigurations会返回名字为 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的配置项的值的一个列表并且对列表内容进行去重处理。</p>
+<blockquote>
+<p>正常情况下，去重后的列表里面的类都会被自动注入到 Spring IOC 容器，除非指定不自动注入某些功能，比如若要排除自动创建数据源和事务管理的功能可以：<code>@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class})</code>，getExclusions 就是读取 EnableAutoConfiguration 注解里面的 excludeName 和 exclude 配置项，然后从去重后的列名列表里面剔除。这样在自动注入时候就不会对排除掉的自动配置功能进行注入了。</p>
+</blockquote>
+<p>这个列表中的每个元素就是一个自动配置功能，比如 org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration 是 Web 容器自动注入的功能类（比如这个类可以自动扫描 Tomcat 的 start 并创建一个 Tomcat 容器）。</p>
+<h3 id="例子-注入-web-容器"><a class="header-anchor" href="#例子-注入-web-容器">¶</a>例子 - 注入 Web 容器</h3>
+<p>ServletWebServerFactoryAutoConfiguration 的部分核心代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)</span><br><span class="line">@ConditionalOnClass(ServletRequest.class)</span><br><span class="line">@ConditionalOnWebApplication(type = Type.SERVLET)</span><br><span class="line">@EnableConfigurationProperties(ServerProperties.class)</span><br><span class="line">@Import(&#123; ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedTomcat.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedJetty.class,</span><br><span class="line">		ServletWebServerFactoryConfiguration.EmbeddedUndertow.class &#125;)</span><br><span class="line">public class ServletWebServerFactoryAutoConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public ServletWebServerFactoryCustomizer servletWebServerFactoryCustomizer(ServerProperties serverProperties) &#123;</span><br><span class="line">		return new ServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@ConditionalOnClass(name = &quot;org.apache.catalina.startup.Tomcat&quot;)</span><br><span class="line">	public TomcatServletWebServerFactoryCustomizer tomcatServletWebServerFactoryCustomizer(</span><br><span class="line">			ServerProperties serverProperties) &#123;</span><br><span class="line">		return new TomcatServletWebServerFactoryCustomizer(serverProperties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Registers a &#123;@link WebServerFactoryCustomizerBeanPostProcessor&#125;. Registered via</span><br><span class="line">	 * &#123;@link ImportBeanDefinitionRegistrar&#125; for early registration.</span><br><span class="line">	 */</span><br><span class="line">	public static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware &#123;</span><br><span class="line"></span><br><span class="line">		private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void setBeanFactory(BeanFactory beanFactory) throws BeansException &#123;</span><br><span class="line">			if (beanFactory instanceof ConfigurableListableBeanFactory) &#123;</span><br><span class="line">				this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,</span><br><span class="line">				BeanDefinitionRegistry registry) &#123;</span><br><span class="line">			if (this.beanFactory == null) &#123;</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;webServerFactoryCustomizerBeanPostProcessor&quot;,</span><br><span class="line">					WebServerFactoryCustomizerBeanPostProcessor.class);</span><br><span class="line">			registerSyntheticBeanIfMissing(registry, &quot;errorPageRegistrarBeanPostProcessor&quot;,</span><br><span class="line">					ErrorPageRegistrarBeanPostProcessor.class);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		private void registerSyntheticBeanIfMissing(BeanDefinitionRegistry registry, String name, Class&lt;?&gt; beanClass) &#123;</span><br><span class="line">			if (ObjectUtils.isEmpty(this.beanFactory.getBeanNamesForType(beanClass, true, false))) &#123;</span><br><span class="line">				RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);</span><br><span class="line">				beanDefinition.setSynthetic(true);</span><br><span class="line">				registry.registerBeanDefinition(name, beanDefinition);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>ServletWebServerFactoryAutoConfiguration 类是 Web 容器自动注入的 Auto-configuration 类。</p>
+<ul>
+<li>@ConditionalOnWebApplication 说明当前是 Web 环境上下文时候才注入本类到 IOC。</li>
+<li>@Import 注解导入了另一个配置<code>ServletWebServerFactoryConfiguration.EmbeddedTomcat.class</code>，这里包含了真正的注入 Tomcat 实例的逻辑：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">class ServletWebServerFactoryConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Configuration</span><br><span class="line">	@ConditionalOnClass(&#123; Servlet.class, Tomcat.class, UpgradeProtocol.class &#125;)</span><br><span class="line">	@ConditionalOnMissingBean(value = ServletWebServerFactory.class, search = SearchStrategy.CURRENT)</span><br><span class="line">	public static class EmbeddedTomcat &#123;</span><br><span class="line"></span><br><span class="line">		@Bean</span><br><span class="line">		public TomcatServletWebServerFactory tomcatServletWebServerFactory() &#123;</span><br><span class="line">			return new TomcatServletWebServerFactory();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<ul>
+<li>@ConditionalOnClass：只有在 classpath 下存在指定的类的时候 Bean 才能被创建。</li>
+<li>@ConditionalOnMissingBean：只有对应的 Bean 在系统中都没有被创建，它修饰的初始化代码块才会执行，【用户自己手动创建的 Bean 优先】。</li>
+</ul>
+<p>当应用引入 spring-boot-starter-web 时候默认引入的是 Tomcat 的 starter，所以会发现 classpath 下存在 Servlet.class、 Tomcat.class 这两个类，并且 IOC 里面没有 TomcatEmbeddedServletContainerFactory 的实例，因此会创建其实例到 IOC 容器中，最终会创建一个 Tomcat 容器。<br>
+当然，如果需要使用 Jetty 则需要在引用 spring-boot-starter-web 的时候排除掉 Tomcat 的 start，然后在引入 Jetty 的 start 即可。</p>
+<h3 id="总结"><a class="header-anchor" href="#总结">¶</a>总结</h3>
+<p>总而言之，自动配置的生效步骤可以概括如下：</p>
+<ol>
+<li>Spring Boot 在启动时会去依赖的 Starter 包中寻找 resources/META-INF/spring.factories 文件，然后根据文件中配置的 Jar 包去扫描项目所依赖的 Jar 包。</li>
+<li>根据 spring.factories 配置加载 AutoConfigure 类</li>
+<li>根据 @Conditional 注解的条件，进行自动配置并将 Bean 注入 Spring Context</li>
+</ol>
+<h2 id="spring-boot-模块"><a class="header-anchor" href="#spring-boot-模块">¶</a>spring-boot 模块</h2>
+<p>提供了一些特性用来支持 SpringBoot 中其它模块，这些特性包括：</p>
+<ol>
+<li>SpringApplication 类提供了静态方法以便于写一个独立了 Spring 应用程序，该类的主要职责是 create 和 refresh 一个合适的 Spring 应用程序上下文（ApplicationContext）。</li>
+<li>一流的外部配置的支持（application.properties）。</li>
+<li>提供了便捷的应用程序上下文（ApplicationContext）的初始化器，以便在 ApplicationContext 使用前对其进行用户定制。</li>
+<li>给 Web 应用提供了一个可选的 Web 容器（目前有 Tomcat 或 Jetty）。</li>
+</ol>
+<h3 id="springapplication-的执行流程"><a class="header-anchor" href="#springapplication-的执行流程">¶</a>SpringApplication 的执行流程</h3>
+<p>一般的 SpringBoot 项目都会有一个如下所示的 Application 类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class Web1Application &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(Web1Application.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>JarLauncher</code>启动过后里面实际上就是调用了 SpringApplication#run 方法，SpringApplication 的执行流程如下：<br>
+<img src="https://tallate.top/imgs/SpringBoot/SpringApplication%E6%89%A7%E8%A1%8C%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="SpringApplication执行时序图" title="SpringApplication执行时序图"></p>
+<ol>
+<li>SpringApplication 的构造函数里面会调用 initialize 方法在 classpath 的 jar 包里面查找 META-INF/spring.factories，如果找到则看里面是否有配置 <code>ApplicationContextInitializer</code> 类型的 Bean，有则加载到 SpringApplication 的变量 <code>initializers</code> 里面存放，比如 spring-boot.jar 里面。<br>
+<img src="https://tallate.top/imgs/SpringBoot/ApplicationContextInitializer%E9%85%8D%E7%BD%AE.png" alt="ApplicationContextInitializer配置" title="ApplicationContextInitializer配置"></li>
+<li>createAndRefreshContext 做了这几件事情：
+<ol>
+<li>设置环境，加载 application.properties 等配置文件；</li>
+<li>根据 classpath 的 jar 里面是否有 ConfigurableWebEnvironment 判断当前是否需要创建 Web 应用程序上下文还是创建一个非 Web 应用程序上下文；</li>
+<li>使用前面加载的应用程序初始化器对创建的应用程序上下文进行初始化；</li>
+<li>刷新应用程序上下文解析 Bean 定义到应用程序上下文里面的 IOC 容器，在刷新过程的 invokeBeanFactoryPostProcessors 过程中(10)(11)会去解析类上面标注的 @import 注解，然后就会调用所有的 ImportSelector 的 selectImports 方法，这也是第二部分时序图开始执行的地方。</li>
+</ol>
+</li>
+</ol>
+<h3 id="web-容器的创建"><a class="header-anchor" href="#web-容器的创建">¶</a>Web 容器的创建</h3>
+<p>通过自动配置将 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 的实例注入 IOC 容器后，我们就可以使用 Web 容器来提供 Web 服务了。<br>
+具体的 Web 容器的创建是在容器刷新过程的 onRefresh 阶段进行的（这个阶段是在刷新过程的 invokeBeanFactoryPostProcessors 阶段的后面）：<br>
+<img src="https://tallate.top/imgs/SpringBoot/Web%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B.png" alt="Web容器创建过程" title="Web容器创建过程"></p>
+<ul>
+<li>getBeanNamesForType 获取了 IOC 容器中的 EmbeddedServletContainerFactory 类型的 Bean 的 name 集合，如果 name 集合为空或者多个则抛出异常。还记得 Web 容器工厂是通过自动配置注入到 IOC 的吧，并且 TomcatEmbeddedServletContainerFactory 或者 JettyEmbeddedServletContainerFactory 都是实现了 EmbeddedServletContainerFactory 接口。</li>
+<li>如果 IOC 里面只有一个 Web 容器工厂 Bean 则获取该 Bean 的实例，然后调用该 Bean 的 getEmbeddedServletContainer 获取 Web 容器，这里假设 Web 容器工厂为 Tomcat ，则创建 Tomcat 容器并进行初始化。</li>
+</ul>
+<h2 id="actuator-模块"><a class="header-anchor" href="#actuator-模块">¶</a>Actuator 模块</h2>
+<p><img src="https://tallate.top/imgs/SpringBoot/Actuator%E7%B1%BB%E5%9B%BE.png" alt="Actuator类图" title="Actuator类图"><br>
+Actuator 模块提供了一些组件用于检查应用或中间件的健康状况：</p>
+<ol>
+<li>Inspect：检测应用或中间件的健康状况；</li>
+<li>Aggregate：聚合所有结果。</li>
+</ol>
+<p>基于 Actuator 模块，我们可以开发一个服务探活系统：</p>
+<ol>
+<li>Actuator 为业务服务器暴露出一个探活端口<code>healthcheck</code>，借助 Spring 容器获取到中间件的客户端实例；</li>
+<li>探活服务<code>HealthCheck-Task</code>定时轮询所有服务，统计单位时间内请求出现问题的次数，从而发送报警短信提醒研发同学。</li>
+</ol>
+<p>服务的轮询探活将是这个系统的主要瓶颈，有一些措施可以作为参考：</p>
+<ol>
+<li>灵活使用<code>CompletableFuture</code>这些并发编排组件，因为探活请求一般都是比较&quot;慢&quot;的，因此可以通过并行化来提高效率；</li>
+<li>探活不能占用太多系统资源，合理设置探活超时时间，很多客户端的默认超时时间达到 1 分钟甚至更长，必须额外设置探活请求的超时时间，避免服务器挂掉时所有线程都被<code>hang</code>死，导致服务雪崩。</li>
+</ol>
+<blockquote>
+<p>探活不能和业务代码共用线程池，做到线程池隔离，即使出问题也只影响到<code>HealthCheck-Task</code>。</p>
+</blockquote>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="原理"><a class="header-anchor" href="#原理">¶</a>原理</h3>
+<ol>
+<li><a href="https://www.jianshu.com/p/bbf439c8a203" target="_blank" rel="noopener">从零开始开发一个Spring Boot Starter</a></li>
+<li><a href="https://www.jianshu.com/p/87f101d8ec41" target="_blank" rel="noopener">SpringBoot启动流程解析</a></li>
+</ol>
+<h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
+<ol>
+<li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
   </section>
 
   
@@ -5327,7 +5350,7 @@ ERR Client sent AUTH, but no password is set<br>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">133</span>
+                  <span class="site-state-item-count">132</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -5338,7 +5361,7 @@ ERR Client sent AUTH, but no password is set<br>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">23</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>

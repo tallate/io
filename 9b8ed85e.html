@@ -87,12 +87,12 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="¶参考  数据库范式简单讲解(1NF、2NF、3NF、4NF、BCNF) 缓存与数据库一致性之二：高并发下的 key 重建（先淘汰 cache 再写 db）的问题  ¶由来 公司比较看重这批新员工（基本来自 985 院校），做了比较多的培训，从公司文化到衣着讲究都专门开了课，很切合应届毕业生的需求（强制参加的…）。 规范类似设计模式，是对最佳实践的总结，有点收获，这里把还记得的部分总结一下。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://47.88.24.11/imgs/%E5%85%AC%E5%8F%B8%E5%A4%A7%E4%BD%AC%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E6%AC%A1%E5%88%86%E4%BA%AB/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E9%97%AE%E9%A2%98.png">
-<meta property="og:updated_time" content="2020-12-19T08:56:01.031Z">
+<meta property="og:image" content="https://tallate.top/imgs/%E5%85%AC%E5%8F%B8%E5%A4%A7%E4%BD%AC%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E6%AC%A1%E5%88%86%E4%BA%AB/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E9%97%AE%E9%A2%98.png">
+<meta property="og:updated_time" content="2020-12-19T11:58:32.448Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="公司大佬关于编码规范的一次分享">
 <meta name="twitter:description" content="¶参考  数据库范式简单讲解(1NF、2NF、3NF、4NF、BCNF) 缓存与数据库一致性之二：高并发下的 key 重建（先淘汰 cache 再写 db）的问题  ¶由来 公司比较看重这批新员工（基本来自 985 院校），做了比较多的培训，从公司文化到衣着讲究都专门开了课，很切合应届毕业生的需求（强制参加的…）。 规范类似设计模式，是对最佳实践的总结，有点收获，这里把还记得的部分总结一下。">
-<meta name="twitter:image" content="http://47.88.24.11/imgs/%E5%85%AC%E5%8F%B8%E5%A4%A7%E4%BD%AC%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E6%AC%A1%E5%88%86%E4%BA%AB/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E9%97%AE%E9%A2%98.png">
+<meta name="twitter:image" content="https://tallate.top/imgs/%E5%85%AC%E5%8F%B8%E5%A4%A7%E4%BD%AC%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E6%AC%A1%E5%88%86%E4%BA%AB/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E9%97%AE%E9%A2%98.png">
 
 
 
@@ -563,7 +563,7 @@ NoSQL 常用于冗余数据，可以避免复杂的关联查询。</li>
 <strong>缓存淘汰</strong>是在服务器内存不够用时触发的，将一些<strong>价值较小的</strong>数据从缓存中淘汰，减少不必要的 swap，提升内存的有效利用率。<br>
 缓存淘汰还有一个问题：是先写入还是先淘汰呢？<br>
 首先看先写入再淘汰的情况，如下图所示。<br>
-<img src="http://47.88.24.11/imgs/%E5%85%AC%E5%8F%B8%E5%A4%A7%E4%BD%AC%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E6%AC%A1%E5%88%86%E4%BA%AB/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E9%97%AE%E9%A2%98.png" alt="X"><br>
+<img src="https://tallate.top/imgs/%E5%85%AC%E5%8F%B8%E5%A4%A7%E4%BD%AC%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E6%AC%A1%E5%88%86%E4%BA%AB/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E9%97%AE%E9%A2%98.png" alt="X"><br>
 我们交换操作 3 和 4 的顺序，第一步数据库操作成功，第二步如果淘汰缓存失败，则会出现 DB 中是新数据，Cache 中是旧数据的情况，即产生了<strong>数据不一致</strong>的问题。<br>
 然后是先淘汰再写入的情况，同样如上图所示。<br>
 写和读操作是并发执行的，应用实例 1 首先发起对缓存的淘汰，应用实例 2 读缓存 miss，于是从数据库读，而应用实例 1 这才将新值写入数据库，此时实例 2 得到的数就是<strong>脏数据</strong>了，注意在分布式环境下这种执行顺序完全是有可能的。</p>
@@ -821,7 +821,7 @@ D、推荐使用 Executors.newFixedThreadPool(int x)生成指定大小的线程�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">133</span>
+                  <span class="site-state-item-count">132</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -832,7 +832,7 @@ D、推荐使用 Executors.newFixedThreadPool(int x)生成指定大小的线程�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">23</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
