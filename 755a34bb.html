@@ -87,14 +87,14 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="熔断是兜底杀手锏之一，在一个远程调用框架中，一个服务接口被调用时，如果出错应该优先采取重试的方案，如果多次超时——表明服务确实不可用之后——才会考虑熔断，以避免“灾害”进一步的扩大。 熔断本身没有特别难的算法，但是需要考虑比较多的细节。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png">
-<meta property="og:image" content="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E4%B8%8B%E6%B8%B8%E5%A4%9A%E5%AE%9E%E4%BE%8B%E7%9A%84%E9%93%BE%E8%B7%AF.png">
-<meta property="og:image" content="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%87%8D%E8%AF%95%E7%AD%96%E7%95%A5.png">
-<meta property="og:updated_time" content="2020-12-19T08:19:24.717Z">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E4%B8%8B%E6%B8%B8%E5%A4%9A%E5%AE%9E%E4%BE%8B%E7%9A%84%E9%93%BE%E8%B7%AF.png">
+<meta property="og:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%87%8D%E8%AF%95%E7%AD%96%E7%95%A5.png">
+<meta property="og:updated_time" content="2020-12-19T08:56:00.931Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="实现一个服务熔断器">
 <meta name="twitter:description" content="熔断是兜底杀手锏之一，在一个远程调用框架中，一个服务接口被调用时，如果出错应该优先采取重试的方案，如果多次超时——表明服务确实不可用之后——才会考虑熔断，以避免“灾害”进一步的扩大。 熔断本身没有特别难的算法，但是需要考虑比较多的细节。">
-<meta name="twitter:image" content="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png">
+<meta name="twitter:image" content="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png">
 
 
 
@@ -423,7 +423,7 @@
 因此以接口作为熔断粒度更合适，服务熔断其实熔断的是服务中有问题的那部分接口。</p>
 <h3 id="添加熔断的位置-上游-or-下游"><a class="header-anchor" href="#添加熔断的位置-上游-or-下游">¶</a>添加熔断的位置——上游 Or 下游</h3>
 <p>正如之前所示，一条服务链路可能是复杂的、多级的，如下图所示：<br>
-<img src="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png" alt="链路示例" title="链路示例"></p>
+<img src="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%93%BE%E8%B7%AF%E7%A4%BA%E4%BE%8B.png" alt="链路示例" title="链路示例"></p>
 <p>如上图所示，熔断规则的添加方式可以有以下 3 种：</p>
 <ol>
 <li>仅在 A1 和 A2 上添加熔断规则。如果 B1 不可用了，会触发 A1 的降级，但是 A2 并不知道，于是又会对 B 发起无用的调用。其实当下游的某个服务不可用之后，以该服务为下游的所有链路其实都报废掉了，所以这里在 A1 已经试出 B1 的问题后 A2 再去请求已经没有意义了。</li>
@@ -434,7 +434,7 @@
 <h3 id="熔断与服务发现是一对搭档-下游有多个实例的情况"><a class="header-anchor" href="#熔断与服务发现是一对搭档-下游有多个实例的情况">¶</a>熔断与服务发现是一对搭档——下游有多个实例的情况</h3>
 <p>在分布式系统里，我们默认网络是不稳定的、容易发生抖动的，有时候请求一时不能正常地打到目标服务器上，但是可以通过重试来达到目的，一般这样的情况会比较少，所以我们会定一个<code>调用成功率</code>来决定是否开启熔断模式将这条链路降级，那么这个成功率应该怎么设定呢？<br>
 我们先考虑最简单的情况——下游服务只有一个实例，如果这个实例挂掉，那么对其的请求就都不好使了，因此<code>调用成功率</code>可以设置得比较大，比如约<code>80% ~ 90% / min</code>的一个数。<br>
-<img src="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E4%B8%8B%E6%B8%B8%E5%A4%9A%E5%AE%9E%E4%BE%8B%E7%9A%84%E9%93%BE%E8%B7%AF.png" alt="下游多实例的链路" title="下游多实例的链路"><br>
+<img src="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E4%B8%8B%E6%B8%B8%E5%A4%9A%E5%AE%9E%E4%BE%8B%E7%9A%84%E9%93%BE%E8%B7%AF.png" alt="下游多实例的链路" title="下游多实例的链路"><br>
 但是服务为了保证可用性，怎么可能只有一个副本？如上图所示，下游服务有多个副本的情况下，如果其中有一个副本出了问题，经过<strong>服务发现</strong>组件的刷新（Watch 机制），A 能够“感知”到下游服务结构的变动、忽略掉已经不可用的实例，当然这个“感知”有一定的延迟时间，如果我们容忍这样的延迟，那么<code>调用成功率</code>的值也可以相对设置得大胆一些，比如约<code>60% ~ 70% / min</code>；反过来说，如果我们希望熔断器更严格，则会导致熔断器将整个下游服务的流量阻断掉，这是一个需要权衡的设计问题。</p>
 <h3 id="异步请求-or-同步请求"><a class="header-anchor" href="#异步请求-or-同步请求">¶</a>异步请求 Or 同步请求</h3>
 <p>服务接口可以分为同步的和异步的，我们说的服务不可用其实都发生在同步调用中，而异步请求一般都是非阻塞的，不可能出现超时现象。</p>
@@ -464,7 +464,7 @@ mysql 挂的场景确实不多见，常见的情况是我们自己没有用好�
 <li>等抖动: 临时 = 基数 * 2^尝试次数; 休眠时间 = 临时 / 2 + rand(0, 临时 / 2)</li>
 <li>不相关抖动: 休眠时间 = rand(基数, 休眠时间 * 3);</li>
 </ul>
-<p><img src="http://tallate.top/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%87%8D%E8%AF%95%E7%AD%96%E7%95%A5.png" alt="重试策略" title="客户端数量与负载总量和完成时间之间的关系"></p>
+<p><img src="http://47.88.24.11/imgs/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E2%80%94%E2%80%94%E7%86%94%E6%96%AD/%E9%87%8D%E8%AF%95%E7%AD%96%E7%95%A5.png" alt="重试策略" title="客户端数量与负载总量和完成时间之间的关系"></p>
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
 <li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>

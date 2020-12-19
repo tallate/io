@@ -776,7 +776,7 @@ InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证�
 <p>如果协调者收到了参与者的失败消息或者超时，直接给每个参与者发送回滚(Rollback)消息；否则，发送提交(Commit)消息；参与者根据协调者的指令执行提交或者回滚操作，释放所有事务处理过程中使用的锁资源。(注意:必须在最后阶段释放锁资源)<br>
 接下来分两种情况分别讨论提交阶段的过程。<br>
 当协调者节点从所有参与者节点获得的相应消息都为”同意”时:<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E6%8F%90%E4%BA%A4.png" alt="2PC提交" title="2PC提交"></p>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E6%8F%90%E4%BA%A4.png" alt="2PC提交" title="2PC提交"></p>
 <ol>
 <li>协调者节点向所有参与者节点发出”正式提交(commit)”的请求。</li>
 <li>参与者节点正式完成操作，并释放在整个事务期间内占用的资源。</li>
@@ -784,7 +784,7 @@ InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证�
 <li>协调者节点受到所有参与者节点反馈的”完成”消息后，完成事务。</li>
 </ol>
 <p>如果任一参与者节点在第一阶段返回的<strong>响应消息为”中止”</strong>，或者 <strong>协调者节点在第一阶段的询问超时之前无法获取所有参与者节点的响应消息</strong>时：<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%9B%9E%E6%BB%9A.png" alt="2PC回滚" title="2PC回滚"></p>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%9B%9E%E6%BB%9A.png" alt="2PC回滚" title="2PC回滚"></p>
 <ol>
 <li>协调者节点向所有参与者节点发出”回滚操作(rollback)”的请求。</li>
 <li>参与者节点利用之前写入的Undo信息执行回滚，并释放在整个事务期间内占用的资源。</li>
@@ -794,7 +794,7 @@ InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证�
 <h3 id="优点"><a class="header-anchor" href="#优点">¶</a>优点</h3>
 <p>确实能保证事务的原子性</p>
 <h3 id="缺点"><a class="header-anchor" href="#缺点">¶</a>缺点</h3>
-<p><img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%BC%82%E5%B8%B8%E7%82%B9.jpeg" alt="2PC异常点" title="2PC异常点"><br>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%BC%82%E5%B8%B8%E7%82%B9.jpeg" alt="2PC异常点" title="2PC异常点"><br>
 图中有问号的条目,是不确定的地方,但是不影响这个分布式事务的结果<br>
 图中的感叹号条目,个人感觉其实也是允许先发消息再记录日志的,但是如果这样子做以后发生Down机,客户端或者TM都需要向其它机器询问结果才能得到结论(而这样子做的话会大大加长分布事务的阻塞时间和事务处理的复杂度,同时这样做会有一个致命的缺陷,抹除了一部分可以自恢复场景。</p>
 <ol>
@@ -819,7 +819,7 @@ InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证�
 <li>在第一阶段和第二阶段中插入一个准备阶段。保证了在最后提交阶段之前各参与节点的状态是一致的。</li>
 </ol>
 <p>也就是说，除了引入超时机制之外，3PC把2PC的准备阶段再次一分为二，这样三阶段提交就有CanCommit、PreCommit、DoCommit三个阶段。<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/3PC.png" alt="3PC" title="3PC"></p>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/3PC.png" alt="3PC" title="3PC"></p>
 <h3 id="cancommit阶段"><a class="header-anchor" href="#cancommit阶段">¶</a>CanCommit阶段</h3>
 <p>3PC的CanCommit阶段其实和2PC的准备阶段很像。协调者向参与者发送commit请求，参与者如果可以提交就返回Yes响应，否则返回No响应。</p>
 <ol>
@@ -866,7 +866,7 @@ InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证�
 <li>但是这种机制也会导致数据一致性问题，因为，由于网络原因，<strong>协调者发送的abort响应没有及时被参与者接收到</strong>，那么参与者在等待超时之后执行了commit操作。这样就和其他接到abort命令并执行回滚的参与者之间存在数据不一致的情况。</li>
 </ol>
 <h2 id="tcc"><a class="header-anchor" href="#tcc">¶</a>TCC</h2>
-<p><img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC.png" alt="TCC" title="TCC"><br>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC.png" alt="TCC" title="TCC"><br>
 所谓的TCC编程模式，也是两阶段提交的一个变种。TCC提供了一个编程框架，将整个业务逻辑分为三块：Try、Confirm和Cancel三个操作。以在线下单为例，Try阶段会去扣库存，Confirm阶段则是去更新订单状态，如果更新订单失败，则进入Cancel阶段，会去恢复库存。总之，TCC就是通过代码人为实现了两阶段提交，不同的业务场景所写的代码都不一样，复杂度也不一样，因此，这种模式并不能很好地被复用。<br>
 TCC补偿性方案，分为三个阶段TRYING-CONFIRMING-CANCELING。每个阶段做不同的处理。</p>
 <ul>
@@ -945,12 +945,12 @@ Spring容器还支持使用setRollbackOnly的方式显式的控制事务完成�
 <p>实际应用中，会有各种故障出现，很多都会造成事务的中断，从而使得统一提交/回滚全局事务的目标不能达到，甚至出现”一部分分支事务已经提交，而另一部分分支事务则已回滚”的情况。常见错误包括：<br>
 业务系统服务器宕机、重启；数据库服务器宕机、重启；网络故障；断电等。这些故障可能单独发生，也可能会同时发生。</p>
 <p>在整个流程,我们主要需要关注的是<code>cancel</code>失败和<code>confirm</code>失败引起的数据不一致现象：<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E5%BC%82%E5%B8%B8%E5%88%86%E6%9E%90.jpeg" alt="TCC异常分析" title="TCC异常分析"><br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E5%BC%82%E5%B8%B8%E5%88%86%E6%9E%90.jpeg" alt="TCC异常分析" title="TCC异常分析"><br>
 TCC事务框架要支持故障恢复，就必须记录相应的事务日志。事务日志是故障恢复的基础和前提，它记录了事务的各项数据。TCC事务框架做故障恢复时，可以根据事务日志的数据将中断的事务恢复至正确的状态，并在此基础上继续执行先前未完成的提交/回滚操作。</p>
 <h3 id="异常情况-cancel与try乱序-或并发执行"><a class="header-anchor" href="#异常情况-cancel与try乱序-或并发执行">¶</a>异常情况 - Cancel与Try乱序（或并发执行）</h3>
 <p>这应该算TCC事务机制特有的一个不可思议的陷阱。一般来说，一个特定的TCC服务，其Try操作的执行，是应该在其Confirm/Cancel操作之前的。Try操作执行完毕之后，Spring容器再根据Try操作的执行情况，指示TCC事务框架提交/回滚全局事务。然后，TCC事务框架再去逐个调用各TCC服务的Confirm/Cancel操作。<br>
 然而，超时、网络故障、服务器的重启等故障的存在，使得这个顺序会被打乱。比如：<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/Cancel%E4%B8%8ETry%E4%B9%B1%E5%BA%8F.jpg" alt="Cancel与Try乱序" title="Cancel与Try乱序"><br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/Cancel%E4%B8%8ETry%E4%B9%B1%E5%BA%8F.jpg" alt="Cancel与Try乱序" title="Cancel与Try乱序"><br>
 上图中，假设[B:Try]操作执行过程中，网络闪断，[A:Try]会收到一个RPC远程调用异常。A不处理该异常，导致全局事务决定回滚，TCC事务框架就会去调用[B:Cancel]，而此刻A、B之间网络刚好已经恢复。如果[B:Try]操作耗时较长（网络阻塞/数据库操作阻塞），就会出现[B:Try]和[B:Cancel]二者并行处理的现象，甚至[B:Cancel]先完成的现象。<br>
 这种情况下，由于[B:Cancel]执行时，[B:Try]尚未生效（其RM本地事务尚未提交），因此，[B:Cancel]是不能执行的，至少是不能生效（执行了其RM本地事务也要rollback）的。<br>
 然而，当[B:Cancel]处理完毕（跳过执行、或者执行后rollback其RM本地事务）后，[B:Try]操作完成又生效了（其RM本地事务成功提交），这就使得[B:Cancel]虽然提供了，但却没有起到回撤[B:Try]的作用，导致数据的不一致。</p>
@@ -970,7 +970,7 @@ TCC事务框架要支持故障恢复，就必须记录相应的事务日志。�
 </ol>
 <h3 id="tcc中心化-使用一个tcc服务器来集中回调confirm和cancel方法"><a class="header-anchor" href="#tcc中心化-使用一个tcc服务器来集中回调confirm和cancel方法">¶</a>TCC中心化（使用一个TCC服务器来集中回调confirm和cancel方法）</h3>
 <p>基于TCC的中心化事务一致性解决方法,各个应用服务器如果需要感知某次事务是否成功的成本很高,所以对于自身而言进行事务补偿成本就会很高.举个例子：<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E4%B8%AD%E5%BF%83%E5%8C%96.jpeg" alt="TCC中心化" title="TCC中心化"></p>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E4%B8%AD%E5%BF%83%E5%8C%96.jpeg" alt="TCC中心化" title="TCC中心化"></p>
 <ol>
 <li>每次成功的执行本应用服务器的事务以后,都需要把成功执行的事务Id记录</li>
 <li>继续confirm或者将confirm完的数据回滚,对用户都很不友好,特别是需要confirm订单或者回滚订单数据</li>
@@ -992,13 +992,13 @@ TCC事务框架要支持故障恢复，就必须记录相应的事务日志。�
 <h2 id="结合mq消息中间件实现的可靠消息最终一致性"><a class="header-anchor" href="#结合mq消息中间件实现的可靠消息最终一致性">¶</a>结合MQ消息中间件实现的可靠消息最终一致性</h2>
 <p>可靠消息最终一致性，需要业务系统结合MQ消息中间件实现，在实现过程中需要保证消息的成功发送及成功消费。即需要通过业务系统控制MQ的消息状态。<br>
 所谓的消息事务本质上就是基于消息中间件的两阶段提交，是对消息中间件的一种特殊利用，它是将本地事务和发消息放在了一个分布式事务里，保证要么本地操作成功成功并且对外发消息成功，要么两者都失败，开源的RocketMQ就支持这一特性，具体原理如下：<br>
-<img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1.png" alt="消息事务" title="消息事务"><br>
+<img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1.png" alt="消息事务" title="消息事务"><br>
 步骤1失败：则整个事务失败，不会执行A的本地操作；<br>
 步骤2失败：同样整个事务失败，不会执行A的本地操作（被本地数据库回滚掉了）；<br>
 步骤3失败：消息中间件需要有回查机制，回查A系统该事务是否被本地执行成功了，如果成功则照常继续执行，如果失败则将预备消息回滚了，其实这指的就是步骤4的回调。</p>
 <p>虽然上面的方案能够完成A和B的操作，但是A和B并不是严格一致的，而是最终一致的，我们在这里牺牲了一致性，换来了性能的大幅度提升。当然，这种玩法也是有风险的，如果B一直执行不成功，那么一致性会被破坏，具体要不要玩，还是得看业务能够承担多少风险。</p>
 <h3 id="实例-下单"><a class="header-anchor" href="#实例-下单">¶</a>实例 - 下单</h3>
-<p><img src="http://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1-%E4%B8%8B%E5%8D%95.jpeg" alt="消息事务-下单" title="消息事务-下单"></p>
+<p><img src="http://47.88.24.11/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1-%E4%B8%8B%E5%8D%95.jpeg" alt="消息事务-下单" title="消息事务-下单"></p>
 <ol>
 <li>预创建订单失败:如果实际预创建订单成功,订单定时补偿机制,定时删除这部分订单,不影响数据一致性,下单失败；</li>
 <li>预扣减库存失败:如果预扣减库存真实失败,则下单失败(订单由定时补偿机制定时删除,其它应用参照场景4的处理方式,下单失败;如果实际预扣减库存成功,参照场景4的处理方式,下单失败；</li>
@@ -2197,7 +2197,7 @@ EXPIRE 和 TTL 命令搭配使用，TTL 可以查看 key 的当前生存时间�
 <li>一个散列表记录某个 key 是否存在，并可以找到其在链表中的位置；</li>
 </ol>
 <p>Redis 中的 LRU<br>
-<img src="http://tallate.top/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"><br>
+<img src="http://47.88.24.11/imgs/Redis/Redis-LRU%E7%AE%97%E6%B3%95.png" alt="Redis-LRU算法" title="Redis-LRU算法"><br>
 代码位置：<code>evict.c/freeMemoryIfNeeded</code><br>
 Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链表开销较大，而是退一步使用了抽样淘汰的机制：</p>
 <ol>
@@ -2207,8 +2207,8 @@ Redis 中并没有直接使用上述的 LRU 算法，主要是因为维护LRU链
 <li>如果有多于25%的key是过期了的，则重复步骤1。</li>
 </ol>
 <h2 id="缓存系统中存在的问题"><a class="header-anchor" href="#缓存系统中存在的问题">¶</a>缓存系统中存在的问题</h2>
-<p><img src="http://tallate.top/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E9%9B%AA%E5%B4%A9%E3%80%81%E5%87%BB%E7%A9%BF%E3%80%81%E7%A9%BF%E9%80%8F%E9%97%AE%E9%A2%98.jpg" alt="旁路缓存的雪崩、击穿、穿透问题" title="旁路缓存的雪崩、击穿、穿透问题"><br>
-<img src="http://tallate.top/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E4%B8%8D%E4%B8%80%E8%87%B4%E9%97%AE%E9%A2%98.jpg" alt="旁路缓存的不一致问题" title="旁路缓存的不一致问题"></p>
+<p><img src="http://47.88.24.11/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E9%9B%AA%E5%B4%A9%E3%80%81%E5%87%BB%E7%A9%BF%E3%80%81%E7%A9%BF%E9%80%8F%E9%97%AE%E9%A2%98.jpg" alt="旁路缓存的雪崩、击穿、穿透问题" title="旁路缓存的雪崩、击穿、穿透问题"><br>
+<img src="http://47.88.24.11/imgs/JVM/%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98%E7%9A%84%E4%B8%8D%E4%B8%80%E8%87%B4%E9%97%AE%E9%A2%98.jpg" alt="旁路缓存的不一致问题" title="旁路缓存的不一致问题"></p>
 <h3 id="缓存穿透"><a class="header-anchor" href="#缓存穿透">¶</a>缓存穿透</h3>
 <p>缓存穿透即即黑客故意去请求缓存中不存在的数据，导致所有的请求都怼到数据库上，从而数据库连接异常。这也是经常提的缓存命中率问题。<br>
 应付大规模缓存穿透的方案如下：</p>
@@ -3085,7 +3085,7 @@ N变大的情况下将原来对其他节点的请求打到新节点上。<br>
 <li>Audit: 审计信息，记录用户在何时使用何种方式操作了哪个实体。</li>
 </ul>
 <h1>Apollo架构</h1>
-<p><img src="http://tallate.top/imgs/Apollo/Apollo%E6%9E%B6%E6%9E%84.png" alt="Apollo架构——图片来自Apollo-github"></p>
+<p><img src="http://47.88.24.11/imgs/Apollo/Apollo%E6%9E%B6%E6%9E%84.png" alt="Apollo架构——图片来自Apollo-github"></p>
 <ul>
 <li>Apollo Client：为应用提供配置查询功能；</li>
 <li>Apollo Config Service：提供配置的读取、推送等功能，服务对象是 Apollo Client；</li>
@@ -3116,7 +3116,7 @@ Meta Server只是一个逻辑角色，在部署时和Config Service是在一个J
 <li>Config Service收到ReleaseMessage后，<strong>通知对应的客户端</strong></li>
 </ol>
 <h2 id="发送releasemessage给config-service的过程"><a class="header-anchor" href="#发送releasemessage给config-service的过程">¶</a>发送ReleaseMessage给Config Service的过程</h2>
-<p><img src="http://tallate.top/imgs/Apollo/Apollo%E9%85%8D%E7%BD%AE%E4%BF%A1%E6%81%AF%E7%9A%84%E5%8F%91%E5%B8%83.png" alt="Apollo配置信息的发布——图片来自Apollo-github"><br>
+<p><img src="http://47.88.24.11/imgs/Apollo/Apollo%E9%85%8D%E7%BD%AE%E4%BF%A1%E6%81%AF%E7%9A%84%E5%8F%91%E5%B8%83.png" alt="Apollo配置信息的发布——图片来自Apollo-github"><br>
 用户操作配置发布后，Admin Service会往<strong>ReleaseMessage</strong>表插入一条消息记录，然后Config Service<strong>定时轮询</strong>这张表来消费消息。<br>
 ApolloPortol会调Admin服务发出<strong>消息</strong>，这时，Admin Service作为<strong>Producer</strong>发出消息，各个ConfigService作为<strong>Consumer</strong>消费消息，为了减少对外部的依赖，Apollo发送消息的功能是<strong>通过数据库自己实现的一个简单的消息队列</strong>。</p>
 <ol>
@@ -3147,7 +3147,7 @@ Config Service会从消息中获取配置发布的AppId+Cluster+Namespace，然�
 </ol>
 <h1>客户端实现原理</h1>
 <p>客户端主要任务是从Config Service获取配置信息（Push和Pull都有），并在本地维护一个配置文件缓存。<br>
-<img src="http://tallate.top/imgs/Apollo/Apollo%E9%85%8D%E7%BD%AE%E5%9C%A8%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E7%BB%B4%E6%8A%A4.png" alt="Apollo配置在客户端的维护——图片来自Apollo-github"></p>
+<img src="http://47.88.24.11/imgs/Apollo/Apollo%E9%85%8D%E7%BD%AE%E5%9C%A8%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E7%BB%B4%E6%8A%A4.png" alt="Apollo配置在客户端的维护——图片来自Apollo-github"></p>
 <h2 id="客户端long-polling"><a class="header-anchor" href="#客户端long-polling">¶</a>客户端long-polling</h2>
 <p>客户端会和服务端维持一个长连接，以及时接收到配置的变更信息。<br>
 入口：<code>com.ctrip.framework.apollo.internals.RemoteConfigLongPollService#startLongPolling</code><br>
