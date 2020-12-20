@@ -79,13 +79,13 @@
 
 
 
-<meta name="description" content="¶XA规范 X/Open 组织（即现在的 Open Group ）定义了分布式事务处理模型。 X/Open DTP 模型（ 1994 ）包括应用程序（ AP ）、事务管理器（ TM ）、资源管理器（ RM ）、通信资源管理器（ CRM ）四部分。一般，常见的事务管理器（ TM ）是交易中间件，常见的资源管理器（ RM ）是数据库，常见的通信资源管理器（ CRM ）是消息中间件。 通常把一个数据库">
+<meta name="description" content="这篇总结各种常见分布式事务的实现方式，有很多技术细节，但是没有提太多具体实现，之后有时间再梳理一下tcc-transaction这些框架。">
 <meta name="keywords" content="分布式事务">
 <meta property="og:type" content="article">
 <meta property="og:title" content="分布式事务实现">
 <meta property="og:url" content="https://tallate.github.io/c6369e85.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="¶XA规范 X/Open 组织（即现在的 Open Group ）定义了分布式事务处理模型。 X/Open DTP 模型（ 1994 ）包括应用程序（ AP ）、事务管理器（ TM ）、资源管理器（ RM ）、通信资源管理器（ CRM ）四部分。一般，常见的事务管理器（ TM ）是交易中间件，常见的资源管理器（ RM ）是数据库，常见的通信资源管理器（ CRM ）是消息中间件。 通常把一个数据库">
+<meta property="og:description" content="这篇总结各种常见分布式事务的实现方式，有很多技术细节，但是没有提太多具体实现，之后有时间再梳理一下tcc-transaction这些框架。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E6%8F%90%E4%BA%A4.png">
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E5%9B%9E%E6%BB%9A.png">
@@ -97,10 +97,10 @@
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/TCC%E4%B8%AD%E5%BF%83%E5%8C%96.jpeg">
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1.png">
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/%E6%B6%88%E6%81%AF%E4%BA%8B%E5%8A%A1-%E4%B8%8B%E5%8D%95.jpeg">
-<meta property="og:updated_time" content="2020-12-20T11:25:41.776Z">
+<meta property="og:updated_time" content="2020-12-20T11:33:55.805Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="分布式事务实现">
-<meta name="twitter:description" content="¶XA规范 X/Open 组织（即现在的 Open Group ）定义了分布式事务处理模型。 X/Open DTP 模型（ 1994 ）包括应用程序（ AP ）、事务管理器（ TM ）、资源管理器（ RM ）、通信资源管理器（ CRM ）四部分。一般，常见的事务管理器（ TM ）是交易中间件，常见的资源管理器（ RM ）是数据库，常见的通信资源管理器（ CRM ）是消息中间件。 通常把一个数据库">
+<meta name="twitter:description" content="这篇总结各种常见分布式事务的实现方式，有很多技术细节，但是没有提太多具体实现，之后有时间再梳理一下tcc-transaction这些框架。">
 <meta name="twitter:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/2PC%E6%8F%90%E4%BA%A4.png">
 
 
@@ -369,7 +369,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  9k 字
+                  9.1k 字
                 </span>
               
 
@@ -406,7 +406,8 @@
       
 
       
-        <a id="more"></a>
+        <p>这篇总结各种常见分布式事务的实现方式，有很多技术细节，但是没有提太多具体实现，之后有时间再梳理一下tcc-transaction这些框架。</p>
+<a id="more"></a>
 <h2 id="xa规范"><a class="header-anchor" href="#xa规范">¶</a>XA规范</h2>
 <p>X/Open 组织（即现在的 Open Group ）定义了分布式事务处理模型。 X/Open DTP 模型（ 1994 ）包括应用程序（ AP ）、事务管理器（ TM ）、资源管理器（ RM ）、通信资源管理器（ CRM ）四部分。一般，常见的事务管理器（ TM ）是交易中间件，常见的资源管理器（ RM ）是数据库，常见的通信资源管理器（ CRM ）是消息中间件。<br>
 通常把一个数据库内部的事务处理，如对多个表的操作，作为本地事务看待。数据库的事务处理对象是本地事务，而分布式事务处理的对象是全局事务。<br>
