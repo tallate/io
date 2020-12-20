@@ -94,7 +94,7 @@
 <meta property="og:image" content="https://tallate.top/imgs/Redis/RedisCluster%E6%95%85%E9%9A%9C%E5%8F%91%E7%8E%B01.png">
 <meta property="og:image" content="https://tallate.top/imgs/Redis/RedisCluster%E6%95%85%E9%9A%9C%E5%8F%91%E7%8E%B02.png">
 <meta property="og:image" content="https://tallate.top/imgs/Redis/RedisCluster%E6%95%85%E9%9A%9C%E5%8F%91%E7%8E%B03.png">
-<meta property="og:updated_time" content="2020-12-19T11:58:32.008Z">
+<meta property="og:updated_time" content="2020-12-20T06:41:09.453Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis高可用方案Cluster">
 <meta name="twitter:description" content="¶Redis Cluster介绍 ¶Cluster 优势  线性的可扩展性：扩容即迁移槽，已有很多迁移案例； 没有合并操作：因为 Redis 中的 List 和 Set 中保存的 Value 通常是比较大的，可能会达数以百万计的元素，而它们可能被存储到了不同的 Redis 实例上，传输和合并这样的值将很容易称为一个主要的性能瓶颈； 写入安全（Write Safety）：只有在非常少见的 Mast">
@@ -366,7 +366,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  19.6k 字
+                  21.4k 字
                 </span>
               
 
@@ -382,7 +382,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  85 分钟
+                  92 分钟
                 </span>
               
             </div>
@@ -572,7 +572,7 @@ M值最小为3，最大为<code>N - 2</code>，一般情况下<code>M = N / 10</
 <h4 id="迁移过程中对新请求的响应"><a class="header-anchor" href="#迁移过程中对新请求的响应">¶</a>迁移过程中对新请求的响应</h4>
 <p>迁移过程中：</p>
 <ul>
-<li>如果迁出节点接收请求，迁出节点判断slot是否已迁出，若是则<strong>ASK重定向</strong>到迁入节点上，否则迁出节点自己负责处理请求；</li>
+<li>如果迁出节点接收请求，迁出节点判断slot或key是否已迁出，若是则<strong>ASK重定向</strong>到迁入节点上，否则迁出节点自己负责处理请求；</li>
 <li>如果迁入节点接收请求，会把请求重定向到迁出节点上，除非请求中包含<strong>ASKING</strong>命令；</li>
 <li>其他节点接收到的相关请求会被重定向到迁出节点上；</li>
 </ul>
@@ -584,6 +584,41 @@ M值最小为3，最大为<code>N - 2</code>，一般情况下<code>M = N / 10</
 槽的迁移过程和上边扩容中描述的没有区别，主要区别是在迁移完毕后需要轮询每个节点发送<code>cluster forget</code>命令，让它们能忘记下线的节点。<br>
 节点在接收<code>cluster forget</code>命令后，会将目标节点的状态从自己保存的集群状态中移除，并将其加入黑名单中60s，这期间其他节点不会再去更新自己维护的该节点的信息，也就是说这60秒内该节点无法重新加入集群内。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">def delnode_cluster_cmd(downNode):</span><br><span class="line">    # 下线节点不允许包含slots</span><br><span class="line">    if downNode.slots.length != 0</span><br><span class="line">        exit 1</span><br><span class="line">    end</span><br><span class="line">    # 向集群内节点发送cluster forget</span><br><span class="line">    for n in nodes:</span><br><span class="line">        if n.id == downNode.id:</span><br><span class="line">            # 不能对自己做forget操作</span><br><span class="line">            continue;</span><br><span class="line">        # 如果下线节点有从节点则把从节点指向其他主节点</span><br><span class="line">        if n.replicate &amp;&amp; n.replicate.nodeId == downNode.id :</span><br><span class="line">            # 指向拥有最少从节点的主节点</span><br><span class="line">            master = get_master_with_least_replicas();</span><br><span class="line">            n.cluster(&quot;replicate&quot;,master.nodeId);</span><br><span class="line">        #发送忘记节点命令</span><br><span class="line">        n.cluster(&apos;forget&apos;,downNode.id)</span><br><span class="line">    # 节点关闭</span><br><span class="line">    downNode.shutdown();</span><br></pre></td></tr></table></figure>
+<h3 id="集群规模估算"><a class="header-anchor" href="#集群规模估算">¶</a>集群规模估算</h3>
+<p>集群规模并不是没有限制的，理论上每个节点一个slot集群可以扩容到16384个节点，但是Redis官方给出的规模上限是一个集群1000个节点，因为<strong>实例间的通信开销会随着实例规模增加而增大</strong>。<br>
+下面来讨论下集群内部有哪些交互，并分析它们会对性能有什么样的影响。</p>
+<h4 id="实例间数据的同步"><a class="header-anchor" href="#实例间数据的同步">¶</a>实例间数据的同步</h4>
+<p>集群每个节点都会记录slot和实例间的映射关系，用于请求的重定向。<br>
+每个实例都需要通过Gossip协议将数据同步到其他节点，大致流程为：</p>
+<ol>
+<li>每个实例之间会按照<strong>一定的频率</strong>，从集群中<strong>随机挑选一些实例</strong>，把 PING 消息发送给挑选出来的实例，用来检测这些实例是否在线，并交换彼此的状态信息。PING 消息中封装了发送消息的实例自身的状态信息、部分其它实例的状态信息，以及 Slot 映射表。<br>
+发送的<strong>节点状态信息</strong>在源码中由<code>clusterMsgDataGossip</code>这个结构来表示，大小为104字节。每个实例在发送Gossip消息时，除了传递自身的状态信息，默认还会传递集群十分之一实例的状态信息，比如，对于一个包含了 1000 个实例的集群来说，每个实例发送一个 PING 消息时，会包含 100 个实例的状态信息，总的数据量是 10400 字节，再加上发送实例自身的信息，一个 Gossip 消息大约是 10KB。<br>
+另外，Slot映射表是一个16384位的bitmap，算上上面的10KB就是12KB的内容。</li>
+<li>一个实例在接收到 PING 消息后，会给发送 PING 消息的实例，发送一个 PONG 消息。PONG 消息包含的内容和 PING 消息一样，也是12KB。</li>
+<li>另外，上面是随机选节点发PING请求的，如果部分节点一直没有被选到，就会导致这些节点和其他节点不同步。<br>
+为了避免这种情况，Redis Cluster 的实例会按照每 100ms 一次的频率，扫描本地的实例列表，如果发现有实例最近一次接收 PONG 消息的时间，已经大于配置项 cluster-node-timeout 的一半了（cluster-node-timeout/2），就会立刻给该实例发送 PING 消息，更新这个实例上的集群状态信息。<br>
+当集群规模扩大之后，因为网络拥塞或是不同服务器间的流量竞争，会导致实例间的网络通信延迟增加。如果有部分实例无法收到其它实例发送的 PONG 消息，就会引起实例之间频繁地发送 PING 消息，这又会对集群网络通信带来额外的开销了。</li>
+</ol>
+<p>从上可知，实例间的数据同步受到<strong>通信消息大小</strong>和<strong>通信频率</strong>这两方面的影响。<br>
+当集群规模扩大后，PING/PONG会占用大量的集群内网络带宽，降低集群服务正常请求的吞吐量。<br>
+单实例<strong>每秒</strong>会发送的PING消息数量大致可以算出是（注意cron是100ms执行一次）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PING 消息发送数量 = 1 + 10 * 实例数（最近一次接收 PONG 消息的时间超出 cluster-node-timeout/2）</span><br></pre></td></tr></table></figure>
+<p>其中，1 是指单实例常规按照每 1 秒发送一个 PING 消息，10 是指每 1 秒内实例会执行 10 次检查，每次检查后会给 PONG 消息超时的实例发送消息。<br>
+假设单个实例检测发现，每 100 毫秒有 10 个实例的 PONG 消息接收超时，那么，这个实例每秒就会发送 101 个 PING 消息，约占 1.2MB/s 带宽。如果集群中有 30 个实例按照这种频率发送消息，就会占用 36MB/s 带宽，这就会挤占集群中用于服务正常请求的带宽。</p>
+<p>因此实例间的通信开销优化主要是：</p>
+<ol>
+<li>减少实例传输的消息大小（PING/PONG 消息、Slot 分配信息）<br>
+但是，因为集群实例依赖 PING、PONG 消息和 Slot 分配信息，来维持集群状态的统一，一旦减小了传递的消息大小，就会导致实例间的通信信息减少，不利于集群维护，所以，我们不能采用这种方式。</li>
+<li>降低实例间发送消息的频率<br>
+从上面<code>PING消息发送数量</code>公式可以看出，每秒发送一条PING消息的频率不算高，如果要降低可能导致集群内数据同步延迟；每100ms做一次检测并给延迟超过<code>cluster-node-timeout/2</code>的节点发送PING消息，这个配置是可以适当调大的。
+<ul>
+<li>如果配置得比较小，则在大规模集群中会频繁出现PONG超时的情况；</li>
+<li>如果配置得过大，则如果真得发生了故障，我们反而需要等比较长的时间才能检测出来。<br>
+可以在调整前后使用tcpdump抓取实例发送心跳网络包的情况。<br>
+<code>tcpdump host 192.168.10.3 port 16379 -i 网卡名 -w /tmp/r1.cap</code></li>
+</ul>
+</li>
+</ol>
 <h2 id="故障恢复-容错"><a class="header-anchor" href="#故障恢复-容错">¶</a>故障恢复（容错）</h2>
 <p>Redis故障恢复主要分为以下3个步骤：</p>
 <ol>
@@ -688,6 +723,28 @@ min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时�
 </ul>
 <p>我们可以把 min-slaves-to-write 和 min-slaves-max-lag 这两个配置项搭配起来使用，分别给它们设置一定的阈值，假设为 N 和 T。这两个配置项组合后的要求是，主库连接的从库中至少有 N 个从库，和主库进行数据复制时的 ACK 消息延迟不能超过 T 秒，否则，主库就不会再接收客户端的请求了。即使原主库是假故障，它在假故障期间也无法响应哨兵心跳，也不能和从库进行同步，自然也就无法和从库进行 ACK 确认了。这样一来，min-slaves-to-write 和 min-slaves-max-lag 的组合要求就无法得到满足，原主库就会被限制接收客户端请求，客户端也就不能在原主库中写入新数据了。等到新主库上线时，就只有新主库能接收和处理客户端请求，此时，新写的数据会被直接写到新主库中。而原主库会被哨兵降为从库，即使它的数据被清空了，也不会有新数据丢失。<br>
 举个例子：假设我们将min-slaves-to-write 设置为 1，把 min-slaves-max-lag 设置为 12s，把哨兵的 down-after-milliseconds 设置为 10s，主库因为某些原因卡住了 15s，导致哨兵判断主库客观下线，开始进行主从切换。同时，因为原主库卡住了 15s，没有一个从库能和原主库在 12s 内进行数据复制，原主库也无法接收客户端请求了。这样一来，主从切换完成后，也只有新主库能接收请求，不会发生脑裂，也就不会发生数据丢失的问题了。</p>
+<h2 id="数据倾斜"><a class="header-anchor" href="#数据倾斜">¶</a>数据倾斜</h2>
+<p>Cluster集群通过CRC16算法将key hash到节点槽上，这个过程还是存在很多不确定性，可能很多数据会被hash到固定的某几个槽上，造成数据分布的不均匀，或者某些key是热点数据，被访问得尤其频繁。</p>
+<h3 id="数据倾斜的危害"><a class="header-anchor" href="#数据倾斜的危害">¶</a>数据倾斜的危害</h3>
+<p>数据倾斜的危害主要是保存热点数据的节点处理压力会增大，速度变慢，甚至内存资源耗尽而崩溃。</p>
+<h3 id="数据倾斜的成因"><a class="header-anchor" href="#数据倾斜的成因">¶</a>数据倾斜的成因</h3>
+<p>数据倾斜的成因主要有3个：</p>
+<ol>
+<li>bigkey<br>
+bigkey一般是value值很大的string或保存了大量对象的集合类型。<br>
+bigkey可能会造成实例IO线程阻塞，影响其他请求的执行效率。<br>
+为了处理bigkey，设计的时候最好避免把过多的数据保存在同一个键值对中，如果是集合类型，还可以把bigkey拆分成多个小的集合类型数据，分散保存在不同的实例上。</li>
+<li>slot分配不均衡<br>
+如果没有均衡地分配slot，就会有大量的数据被分配到同一个slot中，而同一个slot只会在一个实例上分布，并导致大量数据被集中到同一个实例上。</li>
+<li>Hash Tag<br>
+hash tag指针对key的某个部分进行hash，比如user:123，可以加上hash tag后变成user:{123}，只针对123进行hash。<br>
+hash tag的意义主要在于可以将同类的数据hash到同一个槽上，便于范围查询。<br>
+hash tag的缺点也在于分布到同一槽内后，对该槽所在节点的压力会变大。</li>
+</ol>
+<h3 id="数据倾斜的解决办法"><a class="header-anchor" href="#数据倾斜的解决办法">¶</a>数据倾斜的解决办法</h3>
+<p>数据倾斜可以通过重分配slot来解决。<br>
+但是热点数据往往是少部分数据被频繁访问，这种情况下重分配slot是无法解决的，为此可以通过热点数据多副本的方法来解决，比如同一key添加一个前缀然后hash到其他slot上。<br>
+但是多副本只能用于只读热点key，对于有读有写的热点数据，就只能给实例本身增加资源了，比如改成配置更高的机器。</p>
 <h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
 <ol>
 <li>Redis Cluster哈希槽通过CRC16算法将key哈希到实例上的槽，这样做有什么好处？为什么不直接用一张表来存储key和哈希槽之间的对应关系？<br>
@@ -743,8 +800,8 @@ min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/9dda6023.html" rel="prev" title="Redis 进程和 IO 模型">
-                Redis 进程和 IO 模型 <i class="fa fa-chevron-right"></i>
+              <a href="/a2b16944.html" rel="prev" title="Redis 持久化">
+                Redis 持久化 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -884,7 +941,7 @@ min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-cluster介绍"><span class="nav-number">1.</span> <span class="nav-text">¶Redis Cluster介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-优势"><span class="nav-number">1.1.</span> <span class="nav-text">¶Cluster 优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-缺点"><span class="nav-number">1.2.</span> <span class="nav-text">¶Cluster 缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster的去中心化架构"><span class="nav-number">1.3.</span> <span class="nav-text">¶Cluster的去中心化架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一致性"><span class="nav-number">1.4.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-vs-codis"><span class="nav-number">1.5.</span> <span class="nav-text">¶Cluster VS Codis</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据分布-分区-和查询路由"><span class="nav-number">2.</span> <span class="nav-text">¶数据分布（分区）和查询路由</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分区策略"><span class="nav-number">2.1.</span> <span class="nav-text">¶分区策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的实现层次"><span class="nav-number">2.2.</span> <span class="nav-text">¶分区的实现层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的缺点"><span class="nav-number">2.3.</span> <span class="nav-text">¶分区的缺点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点通信"><span class="nav-number">3.</span> <span class="nav-text">¶节点通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#扩容-缩容"><span class="nav-number">4.</span> <span class="nav-text">¶扩容 / 缩容</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#新节点加入流程"><span class="nav-number">4.1.</span> <span class="nav-text">¶新节点加入流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#节点迁移过程"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶节点迁移过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#迁移过程中对新请求的响应"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶迁移过程中对新请求的响应</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#旧节点退出流程"><span class="nav-number">4.2.</span> <span class="nav-text">¶旧节点退出流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障恢复-容错"><span class="nav-number">5.</span> <span class="nav-text">¶故障恢复（容错）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#故障发现"><span class="nav-number">5.1.</span> <span class="nav-text">¶故障发现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#pfail"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶PFAIL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fail"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶FAIL</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#子节点选举-故障迁移"><span class="nav-number">5.2.</span> <span class="nav-text">¶子节点选举（故障迁移）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置更新"><span class="nav-number">5.3.</span> <span class="nav-text">¶配置更新</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cluster数据丢失隐患及处理方案"><span class="nav-number">6.</span> <span class="nav-text">¶Cluster数据丢失隐患及处理方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么会发生脑裂？"><span class="nav-number">6.1.</span> <span class="nav-text">¶为什么会发生脑裂？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么脑裂会导致数据丢失？"><span class="nav-number">6.2.</span> <span class="nav-text">¶为什么脑裂会导致数据丢失？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决这种脑裂问题？"><span class="nav-number">6.3.</span> <span class="nav-text">¶如何解决这种脑裂问题？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">7.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">8.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-cluster介绍"><span class="nav-number">1.</span> <span class="nav-text">¶Redis Cluster介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-优势"><span class="nav-number">1.1.</span> <span class="nav-text">¶Cluster 优势</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-缺点"><span class="nav-number">1.2.</span> <span class="nav-text">¶Cluster 缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster的去中心化架构"><span class="nav-number">1.3.</span> <span class="nav-text">¶Cluster的去中心化架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一致性"><span class="nav-number">1.4.</span> <span class="nav-text">¶一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-vs-codis"><span class="nav-number">1.5.</span> <span class="nav-text">¶Cluster VS Codis</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据分布-分区-和查询路由"><span class="nav-number">2.</span> <span class="nav-text">¶数据分布（分区）和查询路由</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分区策略"><span class="nav-number">2.1.</span> <span class="nav-text">¶分区策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的实现层次"><span class="nav-number">2.2.</span> <span class="nav-text">¶分区的实现层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分区的缺点"><span class="nav-number">2.3.</span> <span class="nav-text">¶分区的缺点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点通信"><span class="nav-number">3.</span> <span class="nav-text">¶节点通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#扩容-缩容"><span class="nav-number">4.</span> <span class="nav-text">¶扩容 / 缩容</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#新节点加入流程"><span class="nav-number">4.1.</span> <span class="nav-text">¶新节点加入流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#节点迁移过程"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶节点迁移过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#迁移过程中对新请求的响应"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶迁移过程中对新请求的响应</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#旧节点退出流程"><span class="nav-number">4.2.</span> <span class="nav-text">¶旧节点退出流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群规模估算"><span class="nav-number">4.3.</span> <span class="nav-text">¶集群规模估算</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#实例间数据的同步"><span class="nav-number">4.3.1.</span> <span class="nav-text">¶实例间数据的同步</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障恢复-容错"><span class="nav-number">5.</span> <span class="nav-text">¶故障恢复（容错）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#故障发现"><span class="nav-number">5.1.</span> <span class="nav-text">¶故障发现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#pfail"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶PFAIL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fail"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶FAIL</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#子节点选举-故障迁移"><span class="nav-number">5.2.</span> <span class="nav-text">¶子节点选举（故障迁移）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置更新"><span class="nav-number">5.3.</span> <span class="nav-text">¶配置更新</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cluster数据丢失隐患及处理方案"><span class="nav-number">6.</span> <span class="nav-text">¶Cluster数据丢失隐患及处理方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么会发生脑裂？"><span class="nav-number">6.1.</span> <span class="nav-text">¶为什么会发生脑裂？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么脑裂会导致数据丢失？"><span class="nav-number">6.2.</span> <span class="nav-text">¶为什么脑裂会导致数据丢失？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何解决这种脑裂问题？"><span class="nav-number">6.3.</span> <span class="nav-text">¶如何解决这种脑裂问题？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据倾斜"><span class="nav-number">7.</span> <span class="nav-text">¶数据倾斜</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#数据倾斜的危害"><span class="nav-number">7.1.</span> <span class="nav-text">¶数据倾斜的危害</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据倾斜的成因"><span class="nav-number">7.2.</span> <span class="nav-text">¶数据倾斜的成因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据倾斜的解决办法"><span class="nav-number">7.3.</span> <span class="nav-text">¶数据倾斜的解决办法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">8.</span> <span class="nav-text">¶QA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">9.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>
