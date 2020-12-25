@@ -79,23 +79,23 @@
 
 
 
-<meta name="description" content="查询缓存缓存失效的情况：  如果两个查询请求在任何字符上的不同（例如：空格、注释、大小写），都会导致缓存不会命中 如果查询请求中包含某些系统函数、用户自定义变量和函数、一些系统表，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存 MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表使">
+<meta name="description" content="查询缓存 缓存失效的情况：  如果两个查询请求在任何字符上的不同（例如：空格、注释、大小写），都会导致缓存不会命中 如果查询请求中包含某些系统函数、用户自定义变量和函数、一些系统表，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存 MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表">
 <meta name="keywords" content="MySQL">
 <meta property="og:type" content="article">
 <meta property="og:title" content="MySQL 中的查询">
 <meta property="og:url" content="https://tallate.github.io/b7a6e835.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="查询缓存缓存失效的情况：  如果两个查询请求在任何字符上的不同（例如：空格、注释、大小写），都会导致缓存不会命中 如果查询请求中包含某些系统函数、用户自定义变量和函数、一些系统表，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存 MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表使">
+<meta property="og:description" content="查询缓存 缓存失效的情况：  如果两个查询请求在任何字符上的不同（例如：空格、注释、大小写），都会导致缓存不会命中 如果查询请求中包含某些系统函数、用户自定义变量和函数、一些系统表，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存 MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e05c8e33?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e5e227f1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e8927bee?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
-<meta property="og:image" content="https://tallate.top/imgs/MySQL/MySQL-NestedLoopJoin算法.png">
+<meta property="og:image" content="https://tallate.top/imgs/MySQL/MySQL-NestedLoopJoin%E7%AE%97%E6%B3%95.png">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/12/25/167e43ab3e5fa2f6?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 <meta property="og:updated_time" content="2020-12-20T11:26:46.860Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MySQL 中的查询">
-<meta name="twitter:description" content="查询缓存缓存失效的情况：  如果两个查询请求在任何字符上的不同（例如：空格、注释、大小写），都会导致缓存不会命中 如果查询请求中包含某些系统函数、用户自定义变量和函数、一些系统表，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存 MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表使">
+<meta name="twitter:description" content="查询缓存 缓存失效的情况：  如果两个查询请求在任何字符上的不同（例如：空格、注释、大小写），都会导致缓存不会命中 如果查询请求中包含某些系统函数、用户自定义变量和函数、一些系统表，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存 MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表">
 <meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e05c8e33?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 
 
@@ -402,234 +402,452 @@
 
       
         <a id="more"></a>
-<h1 id="查询缓存"><a href="#查询缓存" class="headerlink" title="查询缓存"></a>查询缓存</h1><p>缓存失效的情况：</p>
+<h1>查询缓存</h1>
+<p>缓存失效的情况：</p>
 <ol>
 <li>如果两个查询请求<strong>在任何字符上的不同</strong>（例如：空格、注释、大小写），都会导致缓存不会命中</li>
 <li>如果查询请求中<strong>包含某些系统函数、用户自定义变量和函数、一些系统表</strong>，如 mysql 、information_schema、 performance_schema 数据库中的表，那这个请求就不会被缓存</li>
 <li>MySQL 的缓存系统会监测涉及到的每张表，只要该表的结构或者数据被修改，如对该表使用了 INSERT、 UPDATE、DELETE、TRUNCATE TABLE、ALTER TABLE、DROP TABLE 或 DROP DATABASE 语句，那使用该表的所有高速缓存查询都将变为无效并从高速缓存中删除。</li>
 </ol>
 <p>查询缓存的维护开销大、且容易引起数据一致性问题，因此在 MySQL8.0 中已经被删除。</p>
-<h1 id="查询-单表查询方法"><a href="#查询-单表查询方法" class="headerlink" title="查询 - 单表查询方法"></a>查询 - 单表查询方法</h1><p>MySQL 查询优化器会解析 SQL 得到执行计划，然后按照执行计划中的顺序调用 InnoDB 的接口来执行查询。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE `single_table` (</span><br><span class="line">  `id` int(11) NOT NULL AUTO_INCREMENT,</span><br><span class="line">  `key1` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key2` int(11) DEFAULT NULL,</span><br><span class="line">  `key3` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part1` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part2` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part3` varchar(100) DEFAULT NULL,</span><br><span class="line">  `common_field` varchar(100) DEFAULT NULL,</span><br><span class="line">  PRIMARY KEY (`id`),</span><br><span class="line">  UNIQUE KEY `idx_key2` (`key2`),</span><br><span class="line">  KEY `idx_key1` (`key1`),</span><br><span class="line">  KEY `idx_key3` (`key3`),</span><br><span class="line">  KEY `idx_key_part` (`key_part1`,`key_part2`,`key_part3`)</span><br><span class="line">) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8;</span><br></pre></td></tr></table></figure></p>
-<h2 id="索引查询方法"><a href="#索引查询方法" class="headerlink" title="索引查询方法"></a>索引查询方法</h2><p>根据优化器的结果不同，可能会生成多种查询方法，可以使用 explain 来查看一个 SQL 使用了哪种查询方法。</p>
-<h3 id="const"><a href="#const" class="headerlink" title="const"></a>const</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e05c8e33?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>例子：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE id = 1438;</span><br></pre></td></tr></table></figure></p>
-<p>这种查询因为命中了聚簇索引，所以会直接用主键到聚簇索引中去查找。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 = 3841;</span><br></pre></td></tr></table></figure></p>
-<p>这种通过<strong>唯一(unique)</strong>二级索引直接定位某几条数据的查询语句同样是非常快的，因此被称为 const。<br>但是等值的查询还有一个例外，如果查询的是 NULL 值的记录，则可能访问到多条记录而导致无法使用 const 查询方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 IS NULL;</span><br></pre></td></tr></table></figure></p>
-<h3 id="ref"><a href="#ref" class="headerlink" title="ref"></a>ref</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e5e227f1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>普通二级索引不限制索引列的唯一性，因此可能会检索到多条记录，然后再回表得到具体数据，这种情况相对 const 来说会稍微耗时一些，因此被称为 ref。<br>注意：<br>1、就算是唯一索引，NULL 值的匹配仍可能会匹配到多条，因此 key is null 这种形式的搜索会采用 ref 的访问方式。<br>2、如果查询中包含范围查询则不是 ref：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key_part1 = &apos;god like&apos; AND key_part2 &gt; &apos;legendary&apos;;</span><br></pre></td></tr></table></figure></p>
-<h3 id="ref-or-null"><a href="#ref-or-null" class="headerlink" title="ref_or_null"></a>ref_or_null</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e8927bee?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>当使用二级索引而且既查某个常数又查 NULL 值记录时，会采用 ref_or_null 查询方式。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;abc&apos; OR key1 IS NULL;</span><br></pre></td></tr></table></figure></p>
-<h3 id="range"><a href="#range" class="headerlink" title="range"></a>range</h3><p>对索引进行范围查询：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 IN (1438, 6328) OR (key2 &gt;= 38 AND key2 &lt;= 79);</span><br></pre></td></tr></table></figure></p>
-<h3 id="index"><a href="#index" class="headerlink" title="index"></a>index</h3><p>要查询的列在二级索引内，但是又不是最左索引列，因此就算不能高效使用索引，InnoDB 也会优先从索引中遍历获取数据：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT key_part1, key_part2, key_part3 FROM single_table WHERE key_part2 = &apos;abc&apos;;</span><br></pre></td></tr></table></figure></p>
-<h3 id="all"><a href="#all" class="headerlink" title="all"></a>all</h3><p>扫描聚簇索引，即全表扫描。</p>
-<h2 id="确定范围区间"><a href="#确定范围区间" class="headerlink" title="确定范围区间"></a>确定范围区间</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 AND common_field = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
-<p>如上 SQL，因为 common_field 字段没有索引，因此确定范围时没有作用，优化器会先使用 idx_key2 索引确定范围，然后回表查到数据后再用<code>common_field = &#39;abc&#39;</code>过滤。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 OR common_field = &apos;abc&apos;;</span><br></pre></td></tr></table></figure></p>
-<p>其中关联条件被我们改成了 OR，这会导致全表扫描。<br>为了直观地确定范围区间，我们可以把用不到索引的搜索条件直接替换成 TRUE：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 OR TRUE;</span><br></pre></td></tr></table></figure></p>
-<p>显然，这条语句会触发全表扫描。<br>这种方法也可以应用到一些比较复杂的查询语句中：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE </span><br><span class="line">        (key1 &gt; &apos;xyz&apos; AND key2 = 748 ) OR</span><br><span class="line">        (key1 &lt; &apos;abc&apos; AND key1 &gt; &apos;lmn&apos;) OR</span><br><span class="line">        (key1 LIKE &apos;%suf&apos; AND key1 &gt; &apos;zzz&apos; AND (key2 &lt; 8000 OR common_field = &apos;abc&apos;)) ;</span><br></pre></td></tr></table></figure></p>
-<p>1、因为 where 语句中 key1、key2 都可以命中索引，因此候选的索引包括 idx_key1 和 idx_key2<br>2、假设使用 idx_key1 执行查询，将不涉及该索引的条件都化简：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &gt; &apos;xyz&apos;;</span><br></pre></td></tr></table></figure></p>
-<p>3、假设使用 idx_key2 执行查询，同理可化简：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE TRUE;</span><br></pre></td></tr></table></figure></p>
+<h1>查询 - 单表查询方法</h1>
+<p>MySQL 查询优化器会解析 SQL 得到执行计划，然后按照执行计划中的顺序调用 InnoDB 的接口来执行查询。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE `single_table` (</span><br><span class="line">  `id` int(11) NOT NULL AUTO_INCREMENT,</span><br><span class="line">  `key1` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key2` int(11) DEFAULT NULL,</span><br><span class="line">  `key3` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part1` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part2` varchar(100) DEFAULT NULL,</span><br><span class="line">  `key_part3` varchar(100) DEFAULT NULL,</span><br><span class="line">  `common_field` varchar(100) DEFAULT NULL,</span><br><span class="line">  PRIMARY KEY (`id`),</span><br><span class="line">  UNIQUE KEY `idx_key2` (`key2`),</span><br><span class="line">  KEY `idx_key1` (`key1`),</span><br><span class="line">  KEY `idx_key3` (`key3`),</span><br><span class="line">  KEY `idx_key_part` (`key_part1`,`key_part2`,`key_part3`)</span><br><span class="line">) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8;</span><br></pre></td></tr></table></figure>
+<h2 id="索引查询方法"><a class="header-anchor" href="#索引查询方法">¶</a>索引查询方法</h2>
+<p>根据优化器的结果不同，可能会生成多种查询方法，可以使用 explain 来查看一个 SQL 使用了哪种查询方法。</p>
+<h3 id="const"><a class="header-anchor" href="#const">¶</a>const</h3>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e05c8e33?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
+例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE id = 1438;</span><br></pre></td></tr></table></figure>
+<p>这种查询因为命中了聚簇索引，所以会直接用主键到聚簇索引中去查找。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 = 3841;</span><br></pre></td></tr></table></figure>
+<p>这种通过**唯一(unique)**二级索引直接定位某几条数据的查询语句同样是非常快的，因此被称为 const。<br>
+但是等值的查询还有一个例外，如果查询的是 NULL 值的记录，则可能访问到多条记录而导致无法使用 const 查询方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 IS NULL;</span><br></pre></td></tr></table></figure>
+<h3 id="ref"><a class="header-anchor" href="#ref">¶</a>ref</h3>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e5e227f1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
+普通二级索引不限制索引列的唯一性，因此可能会检索到多条记录，然后再回表得到具体数据，这种情况相对 const 来说会稍微耗时一些，因此被称为 ref。<br>
+注意：<br>
+1、就算是唯一索引，NULL 值的匹配仍可能会匹配到多条，因此 key is null 这种形式的搜索会采用 ref 的访问方式。<br>
+2、如果查询中包含范围查询则不是 ref：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key_part1 = &apos;god like&apos; AND key_part2 &gt; &apos;legendary&apos;;</span><br></pre></td></tr></table></figure>
+<h3 id="ref-or-null"><a class="header-anchor" href="#ref-or-null">¶</a>ref_or_null</h3>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/3/16a7b843e8927bee?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
+当使用二级索引而且既查某个常数又查 NULL 值记录时，会采用 ref_or_null 查询方式。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;abc&apos; OR key1 IS NULL;</span><br></pre></td></tr></table></figure>
+<h3 id="range"><a class="header-anchor" href="#range">¶</a>range</h3>
+<p>对索引进行范围查询：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 IN (1438, 6328) OR (key2 &gt;= 38 AND key2 &lt;= 79);</span><br></pre></td></tr></table></figure>
+<h3 id="index"><a class="header-anchor" href="#index">¶</a>index</h3>
+<p>要查询的列在二级索引内，但是又不是最左索引列，因此就算不能高效使用索引，InnoDB 也会优先从索引中遍历获取数据：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT key_part1, key_part2, key_part3 FROM single_table WHERE key_part2 = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
+<h3 id="all"><a class="header-anchor" href="#all">¶</a>all</h3>
+<p>扫描聚簇索引，即全表扫描。</p>
+<h2 id="确定范围区间"><a class="header-anchor" href="#确定范围区间">¶</a>确定范围区间</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 AND common_field = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
+<p>如上 SQL，因为 common_field 字段没有索引，因此确定范围时没有作用，优化器会先使用 idx_key2 索引确定范围，然后回表查到数据后再用<code>common_field = 'abc'</code>过滤。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 OR common_field = &apos;abc&apos;;</span><br></pre></td></tr></table></figure>
+<p>其中关联条件被我们改成了 OR，这会导致全表扫描。<br>
+为了直观地确定范围区间，我们可以把用不到索引的搜索条件直接替换成 TRUE：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key2 &gt; 100 OR TRUE;</span><br></pre></td></tr></table></figure>
+<p>显然，这条语句会触发全表扫描。<br>
+这种方法也可以应用到一些比较复杂的查询语句中：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE </span><br><span class="line">        (key1 &gt; &apos;xyz&apos; AND key2 = 748 ) OR</span><br><span class="line">        (key1 &lt; &apos;abc&apos; AND key1 &gt; &apos;lmn&apos;) OR</span><br><span class="line">        (key1 LIKE &apos;%suf&apos; AND key1 &gt; &apos;zzz&apos; AND (key2 &lt; 8000 OR common_field = &apos;abc&apos;)) ;</span><br></pre></td></tr></table></figure>
+<p>1、因为 where 语句中 key1、key2 都可以命中索引，因此候选的索引包括 idx_key1 和 idx_key2<br>
+2、假设使用 idx_key1 执行查询，将不涉及该索引的条件都化简：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &gt; &apos;xyz&apos;;</span><br></pre></td></tr></table></figure>
+<p>3、假设使用 idx_key2 执行查询，同理可化简：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE TRUE;</span><br></pre></td></tr></table></figure>
 <p>因此优化器最终会采用 idx_key1。</p>
-<h2 id="索引合并"><a href="#索引合并" class="headerlink" title="索引合并"></a>索引合并</h2><p>使用到多个索引来完成一次查询的执行方法被称为<strong>index merge</strong>，分 3 种情况：</p>
-<h3 id="Intersection-合并"><a href="#Intersection-合并" class="headerlink" title="Intersection 合并"></a>Intersection 合并</h3><p>某个查询可以使用多个二级索引，将从多个二级索引中查询到的结果取交集。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;a&apos; AND key3 = &apos;b&apos;;</span><br></pre></td></tr></table></figure></p>
-<p>为什么使用 2 个索引查询 merge 而不是一个查完后再过滤其他条件？主要是因为二级索引的操作是<strong>顺序 I/O</strong>，而回表操作是<strong>随机 I/O</strong>，所以如果只读取一个二级索引时需要回表的记录数特别多，而读取多个二级索引之后取交集的记录数相对更少，因此当节省的因为回表而造成的性能损耗比访问多个二级索引带来的性能损耗更高时，读取多个二级索引后取交集比只读取一个二级索引的成本更低。<br>发生 Intersection 合并的条件：<br>1、针对主键的范围查询；<br>2、针对二级索引的等值匹配；<br>为什么范围查询不行？因为二级索引中是按索引列排序的，只有等值匹配时结果才会按 id 列排序，而求并集时<br>3、单独使用某个二级索引获取到的记录数太多，导致回表开销太大。</p>
-<h3 id="Union-合并"><a href="#Union-合并" class="headerlink" title="Union 合并"></a>Union 合并</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;a&apos; OR key3 = &apos;b&apos;</span><br></pre></td></tr></table></figure>
-<p>OR 相连的不同查询条件可能会使用到不同的索引，这种情况可能会使用到 Union 索引合并，具体的还分以下几种情况：<br>1、二级索引列是等值匹配的情况，对于联合索引来说，在联合索引中的每个列都必须等值匹配，不能出现只出现匹配部分列的情况。<br>比如范围查询就无法使用 Union 合并。<br>2、主键列可以是范围匹配；<br>3、使用 Intersection 索引合并的搜索条件<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key_part1 = &apos;a&apos; AND key_part2 = &apos;b&apos; AND key_part3 = &apos;c&apos; OR (key1 = &apos;a&apos; AND key3 = &apos;b&apos;);</span><br></pre></td></tr></table></figure></p>
+<h2 id="索引合并"><a class="header-anchor" href="#索引合并">¶</a>索引合并</h2>
+<p>使用到多个索引来完成一次查询的执行方法被称为<strong>index merge</strong>，分 3 种情况：</p>
+<h3 id="intersection-合并"><a class="header-anchor" href="#intersection-合并">¶</a>Intersection 合并</h3>
+<p>某个查询可以使用多个二级索引，将从多个二级索引中查询到的结果取交集。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;a&apos; AND key3 = &apos;b&apos;;</span><br></pre></td></tr></table></figure>
+<p>为什么使用 2 个索引查询 merge 而不是一个查完后再过滤其他条件？主要是因为二级索引的操作是<strong>顺序 I/O</strong>，而回表操作是<strong>随机 I/O</strong>，所以如果只读取一个二级索引时需要回表的记录数特别多，而读取多个二级索引之后取交集的记录数相对更少，因此当节省的因为回表而造成的性能损耗比访问多个二级索引带来的性能损耗更高时，读取多个二级索引后取交集比只读取一个二级索引的成本更低。<br>
+发生 Intersection 合并的条件：<br>
+1、针对主键的范围查询；<br>
+2、针对二级索引的等值匹配；<br>
+为什么范围查询不行？因为二级索引中是按索引列排序的，只有等值匹配时结果才会按 id 列排序，而求并集时<br>
+3、单独使用某个二级索引获取到的记录数太多，导致回表开销太大。</p>
+<h3 id="union-合并"><a class="header-anchor" href="#union-合并">¶</a>Union 合并</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 = &apos;a&apos; OR key3 = &apos;b&apos;</span><br></pre></td></tr></table></figure>
+<p>OR 相连的不同查询条件可能会使用到不同的索引，这种情况可能会使用到 Union 索引合并，具体的还分以下几种情况：<br>
+1、二级索引列是等值匹配的情况，对于联合索引来说，在联合索引中的每个列都必须等值匹配，不能出现只出现匹配部分列的情况。<br>
+比如范围查询就无法使用 Union 合并。<br>
+2、主键列可以是范围匹配；<br>
+3、使用 Intersection 索引合并的搜索条件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key_part1 = &apos;a&apos; AND key_part2 = &apos;b&apos; AND key_part3 = &apos;c&apos; OR (key1 = &apos;a&apos; AND key3 = &apos;b&apos;);</span><br></pre></td></tr></table></figure>
 <p>Intersection 索引合并得到的是一个主键的集合，Union 合并可以将多个这样的主键集合取交集。</p>
-<h3 id="Sort-Union"><a href="#Sort-Union" class="headerlink" title="Sort-Union"></a>Sort-Union</h3><p>Union 合并的条件比较苛刻，要求全部查询条件都是等值查询，比如下面的查询语句就无法使用 Union 索引合并：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &lt; &apos;a&apos; OR key3 &gt; &apos;z&apos;;</span><br></pre></td></tr></table></figure></p>
+<h3 id="sort-union"><a class="header-anchor" href="#sort-union">¶</a>Sort-Union</h3>
+<p>Union 合并的条件比较苛刻，要求全部查询条件都是等值查询，比如下面的查询语句就无法使用 Union 索引合并：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &lt; &apos;a&apos; OR key3 &gt; &apos;z&apos;;</span><br></pre></td></tr></table></figure>
 <p>因为按照两种查询条件得到的主键值并不是有序的，如果这两批主键值数量并不大，InnoDB 会再对这两批主键值进行排序，最后按照 Union 合并的方式进行合并。</p>
-<h3 id="联合索引"><a href="#联合索引" class="headerlink" title="联合索引"></a>联合索引</h3><p>上面这个例子中，key1 和 key3 分别属于两个索引，如果把这两个列合一块搞一个联合索引，效率会更高。</p>
-<h1 id="count"><a href="#count" class="headerlink" title="count"></a>count</h1><h2 id="count-的实现方式"><a href="#count-的实现方式" class="headerlink" title="count(*) 的实现方式"></a>count(*) 的实现方式</h2><p>不同引擎对<code>count(*)</code>有不同的实现方式：</p>
+<h3 id="联合索引"><a class="header-anchor" href="#联合索引">¶</a>联合索引</h3>
+<p>上面这个例子中，key1 和 key3 分别属于两个索引，如果把这两个列合一块搞一个联合索引，效率会更高。</p>
+<h1>count</h1>
+<h2 id="count-的实现方式"><a class="header-anchor" href="#count-的实现方式">¶</a>count(*) 的实现方式</h2>
+<p>不同引擎对<code>count(*)</code>有不同的实现方式：</p>
 <ul>
 <li>MyISAM 引擎把一个表的总行数存在了磁盘上，因此执行 count(*) 的时候会直接返回这个数，效率很高；</li>
 <li>而 InnoDB 引擎就麻烦了，它执行 count(*) 的时候，需要把数据一行一行地从引擎里面读出来，然后累积计数。</li>
 </ul>
-<h3 id="为什么-InnoDB-不把数字存起来？"><a href="#为什么-InnoDB-不把数字存起来？" class="headerlink" title="为什么 InnoDB 不把数字存起来？"></a>为什么 InnoDB 不把数字存起来？</h3><p>因为<strong>MVCC</strong>的存在，对每个事务来说返回多少行都是不确定的。</p>
-<h3 id="InnoDB对count-的优化"><a href="#InnoDB对count-的优化" class="headerlink" title="InnoDB对count(*)的优化"></a>InnoDB对count(*)的优化</h3><p>普通索引树比主键索引树小很多，因此对于<code>count(*)</code>这样的操作，MySQL更倾向于找到最小的那棵树来遍历。</p>
-<h3 id="table-rows能替代count-吗？"><a href="#table-rows能替代count-吗？" class="headerlink" title="table_rows能替代count(*)吗？"></a>table_rows能替代count(*)吗？</h3><p><code>show table status</code>命令结果里也有一个table_rows用于显示这个表当前有多少行，但是这个值其实只是一个估计值，并不准。</p>
-<h3 id="有什么办法能替代count-？"><a href="#有什么办法能替代count-？" class="headerlink" title="有什么办法能替代count(*)？"></a>有什么办法能替代count(*)？</h3><p>为了替代<code>count(*)</code>，我们只能自己计数，也就是找一个地方存储表的行数。</p>
+<h3 id="为什么-innodb-不把数字存起来？"><a class="header-anchor" href="#为什么-innodb-不把数字存起来？">¶</a>为什么 InnoDB 不把数字存起来？</h3>
+<p>因为<strong>MVCC</strong>的存在，对每个事务来说返回多少行都是不确定的。</p>
+<h3 id="innodb对count-的优化"><a class="header-anchor" href="#innodb对count-的优化">¶</a>InnoDB对count(*)的优化</h3>
+<p>普通索引树比主键索引树小很多，因此对于<code>count(*)</code>这样的操作，MySQL更倾向于找到最小的那棵树来遍历。</p>
+<h3 id="table-rows能替代count-吗？"><a class="header-anchor" href="#table-rows能替代count-吗？">¶</a>table_rows能替代count(*)吗？</h3>
+<p><code>show table status</code>命令结果里也有一个table_rows用于显示这个表当前有多少行，但是这个值其实只是一个估计值，并不准。</p>
+<h3 id="有什么办法能替代count-？"><a class="header-anchor" href="#有什么办法能替代count-？">¶</a>有什么办法能替代count(*)？</h3>
+<p>为了替代<code>count(*)</code>，我们只能自己计数，也就是找一个地方存储表的行数。</p>
 <ol>
-<li>用缓存计数<br>优点是速度快，但是缺点是缓存系统可能会丢失更新，比如两个事务都读了一遍Redis的值，然后在操作后将最新的值覆盖上，但是先写入的事务所做的更新会被后来的事务覆盖，也就是说发生了丢失更新。<br>而且，Redis的重启、宕机都是不可避免的，发生这种情况后，怎么保证计数不丢失呢？<br>一般来说需要将数据再持久化到DB上，但是如果写DB成功、同步Redis失败了，又会导致二者的不一致。这种情况当然是有解决的办法，比如Redis异常重启后就到数据库里面单独执行一次<code>count(*)</code>获取真实的行数，再把这个值写回到Redis里就可以了。<br>总而言之，因为与数据库并不在一个事务内，不能保证Redis与数据库的绝对一致，因此Redis并不能提供精确的计数，只能供粗略的计数。</li>
-<li>用数据库计数<br>不同于Redis，只要保证计数和插入/删除数据命令处于同一条SQL内，基于数据库的计数就是精确的。</li>
+<li>用缓存计数<br>
+优点是速度快，但是缺点是缓存系统可能会丢失更新，比如两个事务都读了一遍Redis的值，然后在操作后将最新的值覆盖上，但是先写入的事务所做的更新会被后来的事务覆盖，也就是说发生了丢失更新。<br>
+而且，Redis的重启、宕机都是不可避免的，发生这种情况后，怎么保证计数不丢失呢？<br>
+一般来说需要将数据再持久化到DB上，但是如果写DB成功、同步Redis失败了，又会导致二者的不一致。这种情况当然是有解决的办法，比如Redis异常重启后就到数据库里面单独执行一次<code>count(*)</code>获取真实的行数，再把这个值写回到Redis里就可以了。<br>
+总而言之，因为与数据库并不在一个事务内，不能保证Redis与数据库的绝对一致，因此Redis并不能提供精确的计数，只能供粗略的计数。</li>
+<li>用数据库计数<br>
+不同于Redis，只要保证计数和插入/删除数据命令处于同一条SQL内，基于数据库的计数就是精确的。</li>
 </ol>
-<h2 id="不同count的区别"><a href="#不同count的区别" class="headerlink" title="不同count的区别"></a>不同count的区别</h2><ol>
-<li><code>count(*)</code><br><code>count(*)</code>并不会把全部字段取出来，而是专门做了优化，不取值，因为<code>count(*)</code>肯定不是null，直接按行累加即可。</li>
-<li><code>count(主键ID)</code><br>InnoDB 引擎会遍历整张表，把每一行的 id 值都取出来，返回给 server 层。server 层拿到 id 后，判断是不可能为空的，就按行累加。</li>
-<li><code>count(1)</code><br>InnoDB 引擎遍历整张表，但不取值。server 层对于返回的每一行，放一个数字“1”进去，判断是不可能为空的，按行累加。</li>
-<li><code>count(字段)</code><br>表示返回满足条件的数据行里面，参数<code>字段</code>不为NULL的总个数。<br>如果<code>字段</code>被定义成了<code>null</code>，则这个操作相对<code>count(主键ID)</code>会更慢一些，因为server层还需要一行一行判断值是否为null，只有不是null的才累加。</li>
+<h2 id="不同count的区别"><a class="header-anchor" href="#不同count的区别">¶</a>不同count的区别</h2>
+<ol>
+<li><code>count(*)</code><br>
+<code>count(*)</code>并不会把全部字段取出来，而是专门做了优化，不取值，因为<code>count(*)</code>肯定不是null，直接按行累加即可。</li>
+<li><code>count(主键ID)</code><br>
+InnoDB 引擎会遍历整张表，把每一行的 id 值都取出来，返回给 server 层。server 层拿到 id 后，判断是不可能为空的，就按行累加。</li>
+<li><code>count(1)</code><br>
+InnoDB 引擎遍历整张表，但不取值。server 层对于返回的每一行，放一个数字“1”进去，判断是不可能为空的，按行累加。</li>
+<li><code>count(字段)</code><br>
+表示返回满足条件的数据行里面，参数<code>字段</code>不为NULL的总个数。<br>
+如果<code>字段</code>被定义成了<code>null</code>，则这个操作相对<code>count(主键ID)</code>会更慢一些，因为server层还需要一行一行判断值是否为null，只有不是null的才累加。</li>
 </ol>
 <p>所以结论是：按照效率排序的话，<code>count(字段)</code> &lt; <code>count(主键 id)</code> &lt; <code>count(1)</code> ≈ <code>count(*)</code>，所以建议尽量使用 <code>count(*)</code>。</p>
-<h1 id="连接（Join）"><a href="#连接（Join）" class="headerlink" title="连接（Join）"></a>连接（Join）</h1><h2 id="连接查询的大致执行过程"><a href="#连接查询的大致执行过程" class="headerlink" title="连接查询的大致执行过程"></a>连接查询的大致执行过程</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM t1, t2 WHERE t1.m1 &gt; 1 AND t1.m1 = t2.m2 AND t2.n2 &lt; &apos;d&apos;;</span><br></pre></td></tr></table></figure>
-<p>这个查询语句包含 3 个过滤条件，大致执行过程如下：<br>1、确定第一个需要查询的表，称之为<strong>驱动表</strong>，InnoDB 会选取代价最小的方法去执行查询（从 const、ref、ref_or_null、range、index、all 这些执行方法中选取代价最小的去执行查询）；<br>2、针对从驱动表中查询出的每一条记录，<strong>分别</strong>到其他表中查询匹配的记录，这些表称为<strong>被驱动表</strong>。<br>因此，驱动表只会被查询一次，而被驱动表则会被查询多次。</p>
-<h2 id="内连接和外连接"><a href="#内连接和外连接" class="headerlink" title="内连接和外连接"></a>内连接和外连接</h2><p>内连接<br>左连接（左外连接）：左侧的表为驱动表。<br>右连接（右外连接）：右侧的表为驱动表。</p>
+<h1>连接（Join）</h1>
+<h2 id="连接查询的大致执行过程"><a class="header-anchor" href="#连接查询的大致执行过程">¶</a>连接查询的大致执行过程</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM t1, t2 WHERE t1.m1 &gt; 1 AND t1.m1 = t2.m2 AND t2.n2 &lt; &apos;d&apos;;</span><br></pre></td></tr></table></figure>
+<p>这个查询语句包含 3 个过滤条件，大致执行过程如下：<br>
+1、确定第一个需要查询的表，称之为<strong>驱动表</strong>，InnoDB 会选取代价最小的方法去执行查询（从 const、ref、ref_or_null、range、index、all 这些执行方法中选取代价最小的去执行查询）；<br>
+2、针对从驱动表中查询出的每一条记录，<strong>分别</strong>到其他表中查询匹配的记录，这些表称为<strong>被驱动表</strong>。<br>
+因此，驱动表只会被查询一次，而被驱动表则会被查询多次。</p>
+<h2 id="内连接和外连接"><a class="header-anchor" href="#内连接和外连接">¶</a>内连接和外连接</h2>
+<p>内连接<br>
+左连接（左外连接）：左侧的表为驱动表。<br>
+右连接（右外连接）：右侧的表为驱动表。</p>
 <p>对于外连接来说，由于驱动表中的记录即使在被驱动表中找不到符合 ON 子句条件的记录时也会被加入到结果集，所以左连接和右连接的驱动表和被驱动表的位置不能轻易互换。</p>
-<h2 id="连接的原理"><a href="#连接的原理" class="headerlink" title="连接的原理"></a>连接的原理</h2><h3 id="嵌套循环连接（Nested-Loop-Join）"><a href="#嵌套循环连接（Nested-Loop-Join）" class="headerlink" title="嵌套循环连接（Nested-Loop Join）"></a>嵌套循环连接（Nested-Loop Join）</h3><p><img src="https://tallate.top/imgs/MySQL/MySQL-NestedLoopJoin算法.png" alt="MySQL-NestedLoopJoin算法" title="MySQL-NestedLoopJoin算法"><br>驱动表中查询到的每条记录都需要分别到被驱动表中查找匹配的记录，当有 3 张表进行连接时，上一步得到的结果集就会成为新的驱动表，第 3 张表则成为了新的被驱动表，重复这个过程。<br>这个过程就像是一个嵌套的循环，所以这种驱动表只访问一次，但被驱动表却可能被多次访问，访问次数取决于对驱动表执行单表查询后的结果集中的记录条数的连接执行方式称之为<strong>嵌套循环连接（Nested-Loop Join）</strong>。</p>
-<h3 id="Simple-Nested-Loop-Join"><a href="#Simple-Nested-Loop-Join" class="headerlink" title="Simple Nested-Loop Join"></a>Simple Nested-Loop Join</h3><p>到被驱动表上查询的时候没有命中索引，导致每次查询都是全表扫描，时间复杂度退化为<code>N * M</code>。<br>实际上，MySQL 并没有使用这么简单粗暴的算法，而是<code>Block Nested-Loop Join</code>。</p>
-<h3 id="基于块的嵌套循环连接（Block-Nested-Loop-Join）"><a href="#基于块的嵌套循环连接（Block-Nested-Loop-Join）" class="headerlink" title="基于块的嵌套循环连接（Block Nested-Loop Join）"></a>基于块的嵌套循环连接（Block Nested-Loop Join）</h3><p>因为嵌套循环连接中，被驱动表可能被访问非常多次（现实中单表的数据量是非常大的），这个过程中涉及到随机磁盘扫描，因此效率并不高，为了减少这个 IO 代价，所以我们应该尽量减少访问被驱动表的次数。<br>当被驱动表中的数据非常多时，每次访问被驱动表，被驱动表的记录会被加载到内存中，在内存中的每一条记录只会和驱动表结果集的一条记录做匹配，之后就会被从内存中清除掉。然后再从驱动表结果集中拿出另一条记录，再一次把被驱动表的记录加载到内存中一遍，周而复始，驱动表结果集中有多少条记录，就得把被驱动表从磁盘上加载到内存中多少次。<br>优化方法是在把被驱动表的记录加载到内存的时候，一次性和多条驱动表中的记录做匹配，这样就可以大大减少重复从磁盘上加载被驱动表的代价了。<strong>join buffer</strong>就是执行连接查询前申请的一块固定大小的内存，先把若干条驱动表结果集中的记录装在这个 join buffer 中，然后开始扫描被驱动表，每一条被驱动表的记录一次性和 join buffer 中的多条驱动表记录做匹配，因为匹配的过程都是在内存中完成的，所以这样可以显著减少被驱动表的 I/O 代价。<br><img src="https://user-gold-cdn.xitu.io/2018/12/25/167e43ab3e5fa2f6?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>这种加入了 join buffer 的嵌套循环连接算法被称为<strong>基于块的嵌套循环连接（Block Nested-Loop Join）</strong>。</p>
+<h2 id="连接的原理"><a class="header-anchor" href="#连接的原理">¶</a>连接的原理</h2>
+<h3 id="嵌套循环连接-nested-loop-join"><a class="header-anchor" href="#嵌套循环连接-nested-loop-join">¶</a>嵌套循环连接（Nested-Loop Join）</h3>
+<p><img src="https://tallate.top/imgs/MySQL/MySQL-NestedLoopJoin%E7%AE%97%E6%B3%95.png" alt="MySQL-NestedLoopJoin算法" title="MySQL-NestedLoopJoin算法"><br>
+驱动表中查询到的每条记录都需要分别到被驱动表中查找匹配的记录，当有 3 张表进行连接时，上一步得到的结果集就会成为新的驱动表，第 3 张表则成为了新的被驱动表，重复这个过程。<br>
+这个过程就像是一个嵌套的循环，所以这种驱动表只访问一次，但被驱动表却可能被多次访问，访问次数取决于对驱动表执行单表查询后的结果集中的记录条数的连接执行方式称之为<strong>嵌套循环连接（Nested-Loop Join）</strong>。</p>
+<h3 id="simple-nested-loop-join"><a class="header-anchor" href="#simple-nested-loop-join">¶</a>Simple Nested-Loop Join</h3>
+<p>到被驱动表上查询的时候没有命中索引，导致每次查询都是全表扫描，时间复杂度退化为<code>N * M</code>。<br>
+实际上，MySQL 并没有使用这么简单粗暴的算法，而是<code>Block Nested-Loop Join</code>。</p>
+<h3 id="基于块的嵌套循环连接-block-nested-loop-join"><a class="header-anchor" href="#基于块的嵌套循环连接-block-nested-loop-join">¶</a>基于块的嵌套循环连接（Block Nested-Loop Join）</h3>
+<p>因为嵌套循环连接中，被驱动表可能被访问非常多次（现实中单表的数据量是非常大的），这个过程中涉及到随机磁盘扫描，因此效率并不高，为了减少这个 IO 代价，所以我们应该尽量减少访问被驱动表的次数。<br>
+当被驱动表中的数据非常多时，每次访问被驱动表，被驱动表的记录会被加载到内存中，在内存中的每一条记录只会和驱动表结果集的一条记录做匹配，之后就会被从内存中清除掉。然后再从驱动表结果集中拿出另一条记录，再一次把被驱动表的记录加载到内存中一遍，周而复始，驱动表结果集中有多少条记录，就得把被驱动表从磁盘上加载到内存中多少次。<br>
+优化方法是在把被驱动表的记录加载到内存的时候，一次性和多条驱动表中的记录做匹配，这样就可以大大减少重复从磁盘上加载被驱动表的代价了。<strong>join buffer</strong>就是执行连接查询前申请的一块固定大小的内存，先把若干条驱动表结果集中的记录装在这个 join buffer 中，然后开始扫描被驱动表，每一条被驱动表的记录一次性和 join buffer 中的多条驱动表记录做匹配，因为匹配的过程都是在内存中完成的，所以这样可以显著减少被驱动表的 I/O 代价。<br>
+<img src="https://user-gold-cdn.xitu.io/2018/12/25/167e43ab3e5fa2f6?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""><br>
+这种加入了 join buffer 的嵌套循环连接算法被称为<strong>基于块的嵌套循环连接（Block Nested-Loop Join）</strong>。</p>
 <ul>
 <li>另外需要注意的是，驱动表的记录并不是所有列都会被放到 join buffer 中，只有查询列表中的列和过滤条件中的列才会被放到 join buffer 中，所以最好不要把*作为查询列表。</li>
 <li>相对<code>Simple Nested-Loop Join</code>来说，<code>Block Nested-Loop Join</code>在时间复杂度上并没有提高，但是由于所有匹配操作都是内存操作，速度会快很多，性能也更好。</li>
 <li>join buffer 的空间是有限的，如果放不下所有数据，则每次只放入一批，匹配完后清空 join buffer，再放另一批。</li>
 </ul>
-<h3 id="连接优化"><a href="#连接优化" class="headerlink" title="连接优化"></a>连接优化</h3><ol>
-<li>索引<br>对每一步得到的结果集（第一步时，这个结果集就是第一张驱动表），到被驱动表中匹配记录时，相当于执行等值查询，因此我们可以在被驱动表上的这个被关联字段上加索引来提高效率。这种在连接查询中对被驱动表使用主键值或者唯一二级索引列的值进行等值查找的查询执行方式称之为：<strong>eq_ref</strong>。</li>
-<li>用小表作驱动表（能命中索引的情况下）<br>假设驱动表的行数是 N，则遍历驱动表时间复杂度为<code>N</code>，假设被驱动表的行数是 M，则在被驱动表上查一行数据的时间复杂度是<code>2 * log2(M)</code>（这里假设索引树的基为 2，<code>2 *</code>是因为要先从二级索引找到记录的主键，然后再用主键从聚簇索引找到记录的其他字段），因此，join 查询的近似复杂度为<code>N + N*2*log2M</code>。<br>显然，N 对扫描行数的影响更大，因此最好使用小表作为驱动表。</li>
-<li>用小表作驱动表（不能命中索引，即 Block Nested-Loop Join 的情况）<br>驱动表会被放入 join_buffer 中和被驱动表匹配，总的时间复杂度仍为<code>N * M</code>，N 被分成 K 段，K 与 N 成正比，可以表示为<code>K = λ * N</code>，因此，这个算法的扫描行数是<code>N + λ * N * M</code>，由于<code>N * M</code>的值不变，因此 N 越小这个算式的结果也会越小，所以，应该用小表作为驱动表。<blockquote>
+<h3 id="连接优化"><a class="header-anchor" href="#连接优化">¶</a>连接优化</h3>
+<ol>
+<li>索引<br>
+对每一步得到的结果集（第一步时，这个结果集就是第一张驱动表），到被驱动表中匹配记录时，相当于执行等值查询，因此我们可以在被驱动表上的这个被关联字段上加索引来提高效率。这种在连接查询中对被驱动表使用主键值或者唯一二级索引列的值进行等值查找的查询执行方式称之为：<strong>eq_ref</strong>。</li>
+<li>用小表作驱动表（能命中索引的情况下）<br>
+假设驱动表的行数是 N，则遍历驱动表时间复杂度为<code>N</code>，假设被驱动表的行数是 M，则在被驱动表上查一行数据的时间复杂度是<code>2 * log2(M)</code>（这里假设索引树的基为 2，<code>2 *</code>是因为要先从二级索引找到记录的主键，然后再用主键从聚簇索引找到记录的其他字段），因此，join 查询的近似复杂度为<code>N + N*2*log2M</code>。<br>
+显然，N 对扫描行数的影响更大，因此最好使用小表作为驱动表。</li>
+<li>用小表作驱动表（不能命中索引，即 Block Nested-Loop Join 的情况）<br>
+驱动表会被放入 join_buffer 中和被驱动表匹配，总的时间复杂度仍为<code>N * M</code>，N 被分成 K 段，K 与 N 成正比，可以表示为<code>K = λ * N</code>，因此，这个算法的扫描行数是<code>N + λ * N * M</code>，由于<code>N * M</code>的值不变，因此 N 越小这个算式的结果也会越小，所以，应该用小表作为驱动表。</li>
+</ol>
+<blockquote>
 <p>小表的定义：各表按查询条件过滤，最终得到的总数据量中较小的那个。</p>
 </blockquote>
-</li>
-<li>调大<code>join_buffer_size</code><br>上式中，除了 N 外，<code>λ</code>也是关键，这里<code>λ</code>其实主要与<code>join_buffer_size</code>有关，<code>join_buffer_size</code>越大，一次性放入 join_buffer 的行数越大，分成的段数也越少，对被驱动表的全表扫描次数也越少。</li>
+<ol>
+<li>调大<code>join_buffer_size</code><br>
+上式中，除了 N 外，<code>λ</code>也是关键，这里<code>λ</code>其实主要与<code>join_buffer_size</code>有关，<code>join_buffer_size</code>越大，一次性放入 join_buffer 的行数越大，分成的段数也越少，对被驱动表的全表扫描次数也越少。</li>
 </ol>
-<h3 id="什么情况下可以使用-join"><a href="#什么情况下可以使用-join" class="headerlink" title="什么情况下可以使用 join"></a>什么情况下可以使用 join</h3><p>查看 explain 结果里 Extra 字段里有没有出现<code>Block Nested Loop</code>：</p>
+<h3 id="什么情况下可以使用-join"><a class="header-anchor" href="#什么情况下可以使用-join">¶</a>什么情况下可以使用 join</h3>
+<p>查看 explain 结果里 Extra 字段里有没有出现<code>Block Nested Loop</code>：</p>
 <ul>
 <li>如果出现，则该 join 查询属于<code>Block Nested-Loop Join</code>，扫描行数过多，会占用大量资源，因此这种 join 尽量不要使用；</li>
 <li>如果没有出现，说明该 join 查询属于<code>Index Nested-Loop Join</code>，这种 join 查询是没有问题的。</li>
 </ul>
-<h3 id="join-的进一步优化"><a href="#join-的进一步优化" class="headerlink" title="join 的进一步优化"></a>join 的进一步优化</h3><ol>
-<li>MRR（Multi-Range Read）<br>普通回表过程是一行一行地查数据——普通索引上定位到主键 id、然后从主键索引上查到整行数据，一般来说这个过程是随机读磁盘的，性能比较差。<br>MRR 的核心思路是将 id 先保存到<code>read_rnd_buffer</code>，批量、按顺序地回表，这样排序后能达到接近顺序读磁盘的效果。</li>
-<li><p>BKA（Batched Key Access）<br>BKA 是对 NLJ 的优化。<br>类似 MRR，从驱动表取值到被驱动表上执行 join 时，BKA 会先将驱动表上的记录先放到<code>join_buffer</code>，然后批量到执行 join 操作。<br>如果要使用 BKA 优化算法的话，你需要在执行 SQL 语句之前，先设置：</p>
+<h3 id="join-的进一步优化"><a class="header-anchor" href="#join-的进一步优化">¶</a>join 的进一步优化</h3>
+<ol>
+<li>
+<p>MRR（Multi-Range Read）<br>
+普通回表过程是一行一行地查数据——普通索引上定位到主键 id、然后从主键索引上查到整行数据，一般来说这个过程是随机读磁盘的，性能比较差。<br>
+MRR 的核心思路是将 id 先保存到<code>read_rnd_buffer</code>，批量、按顺序地回表，这样排序后能达到接近顺序读磁盘的效果。</p>
+</li>
+<li>
+<p>BKA（Batched Key Access）<br>
+BKA 是对 NLJ 的优化。<br>
+类似 MRR，从驱动表取值到被驱动表上执行 join 时，BKA 会先将驱动表上的记录先放到<code>join_buffer</code>，然后批量到执行 join 操作。<br>
+如果要使用 BKA 优化算法的话，你需要在执行 SQL 语句之前，先设置：</p>
  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set optimizer_switch=&apos;mrr=on,mrr_cost_based=off,batched_key_access=on&apos;;</span><br></pre></td></tr></table></figure>
-<p> 其中前两个参数的作用是要启用 MRR。这么做的原因是，BKA 算法的优化要依赖于 MRR。</p>
+<p>其中前两个参数的作用是要启用 MRR。这么做的原因是，BKA 算法的优化要依赖于 MRR。</p>
 </li>
 </ol>
-<h1 id="基于成本的优化"><a href="#基于成本的优化" class="headerlink" title="基于成本的优化"></a>基于成本的优化</h1><p>MySQL 的查询优化器会比较多种查询方案，得到成本最低的方案，即所谓<strong>执行计划</strong>，之后才会调用存储引擎提供的接口来执行查询，这个过程大致如下：<br>1、根据搜索条件，找出所有可能使用的索引（<strong>possible keys</strong>）；<br>2、计算全表扫描的代价；<br>3、计算使用不同索引执行查询的代价；<br>4、对比各种执行方案的代价，找出成本最低的那一个。</p>
-<h2 id="计算代价"><a href="#计算代价" class="headerlink" title="计算代价"></a>计算代价</h2><p>1、全表扫描的代价<br>全表扫描需要将聚簇索引所有页面加载到内存然后一一匹配，对全表扫描的性能统计涉及到聚簇索引占用的页面数和该表中的记录数，可以使用<code>SHOW TABLE STATUS</code>来统计这个信息。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW TABLE STATUS LIKE &apos;ad_content&apos;;</span><br></pre></td></tr></table></figure></p>
-<p>结果中的<strong>Rows</strong>表示记录条数，在 MyISAM 中是准确的，而在 InnoDB 中则是一个估计值。因为全表扫描时需要判断每条记录是否满足条件，因此该值能粗略代表对该表执行全表扫描所需的<strong>CPU 成本</strong>。<br><strong>Data_length</strong>表示表占用的存储空间字节数，对于 MyISAM 来说就是数据文件的大小，对于 InnoDB 来说就是聚簇索引占用的存储空间大小。因为默认页面大小为 16KB，因此可以推导出聚簇索引的页面数量是<code>Data_length / 16 / 1024</code>，实际上可以粗略代表对该表执行全表扫描所需的<strong>IO 成本</strong>。<br>2、二级索引的代价<br>从二级索引中定位数据的 ID，<strong>回表</strong>（到聚簇索引）根据上一步的 ID 值找到完整的记录。<br>另外，统计记录数量时，还会用到一个<strong>index dive</strong>的方法（MySQL 自创的一个方法），比如：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 IN (&apos;aa1&apos;, &apos;aa2&apos;, &apos;aa3&apos;, ... , &apos;zzz&apos;);</span><br></pre></td></tr></table></figure></p>
-<p>由于 idx_key1 并不是唯一（unique）索引，因此<code>key1=&#39;aa1&#39;</code>这些条件并不一定能唯一确定一条记录，查询优化器会先获取索引对应的 B+树的<strong>区间最左记录</strong>和<strong>区间最右记录</strong>，然后估算这两条记录之间有多少条记录，这种方式被称为<strong>index dive</strong>。<br>当然<strong>index dive</strong>并不是一定会生效，如果 in 条件中的参数超过了<strong>阈值</strong>就不能生效，这个阈值可以通过<code>SHOW VARIABLES LIKE &#39;%dive%&#39;;</code>查到。<br>如果因为超过阈值（默认 200）而无法生效，则需要改用所谓的索引统计数据来进行估算，MySQL 也会为表中的每一个索引维护一份统计数据，可以使用<code>show index from 表名</code>来查看，其中有一个比较关键的字段<code>Cardinality</code>表示基数，即索引列中不重复值的个数，计算平均一个值重复次数即<code>Rows / Cardinality</code>，比如表里现在有 100 行数据，表基数为 2，则最终计算出的每个值会有的记录条数就是 50，对于上面那条 sql，如果<code>IN</code>条件中有 10000 个参数，则统计结果约需要回表的记录数就是<code>50 * 10000 = 500000</code>，不过这种方式相对<code>index dive</code>来说虽然简单，但是并不精确。<br>3、多个二级索引的代价（索引合并 Index Merge）<br>将多个搜索条件用 AND 连接之后，查询优化器还需要判断一下是否满足 Intersection 索引合并的条件，简而言之，如果查询出的记录都是按主键排序的，则可以采用 Intersection 索引合并。<br>4、对比多种执行方案，找出成本最低的一种<br>查询优化器在统计每种查询方式的代价时都会给一个<strong>代价常量</strong>，用于计算每一种方式的代价值，最后比较选取代价最小的那个。</p>
-<h2 id="连接查询的成本"><a href="#连接查询的成本" class="headerlink" title="连接查询的成本"></a>连接查询的成本</h2><h3 id="单表连接"><a href="#单表连接" class="headerlink" title="单表连接"></a>单表连接</h3><p>对两表的连接查询来说，查询成本主要包括：<br>1、单次查询驱动表的成本；<br>2、根据第一步查出的结果（称为<strong>扇出</strong>）多次查询被驱动表的成本。</p>
-<p>所以，判断连接查询成本的方法是计算扇出值的大小：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">连接查询总成本 = 单次访问驱动表的成本 + 驱动表扇出数 x 单次访问被驱动表的成本</span><br></pre></td></tr></table></figure></p>
+<h1>基于成本的优化</h1>
+<p>MySQL 的查询优化器会比较多种查询方案，得到成本最低的方案，即所谓<strong>执行计划</strong>，之后才会调用存储引擎提供的接口来执行查询，这个过程大致如下：<br>
+1、根据搜索条件，找出所有可能使用的索引（<strong>possible keys</strong>）；<br>
+2、计算全表扫描的代价；<br>
+3、计算使用不同索引执行查询的代价；<br>
+4、对比各种执行方案的代价，找出成本最低的那一个。</p>
+<h2 id="计算代价"><a class="header-anchor" href="#计算代价">¶</a>计算代价</h2>
+<p>1、全表扫描的代价<br>
+全表扫描需要将聚簇索引所有页面加载到内存然后一一匹配，对全表扫描的性能统计涉及到聚簇索引占用的页面数和该表中的记录数，可以使用<code>SHOW TABLE STATUS</code>来统计这个信息。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW TABLE STATUS LIKE &apos;ad_content&apos;;</span><br></pre></td></tr></table></figure>
+<p>结果中的<strong>Rows</strong>表示记录条数，在 MyISAM 中是准确的，而在 InnoDB 中则是一个估计值。因为全表扫描时需要判断每条记录是否满足条件，因此该值能粗略代表对该表执行全表扫描所需的<strong>CPU 成本</strong>。<br>
+<strong>Data_length</strong>表示表占用的存储空间字节数，对于 MyISAM 来说就是数据文件的大小，对于 InnoDB 来说就是聚簇索引占用的存储空间大小。因为默认页面大小为 16KB，因此可以推导出聚簇索引的页面数量是<code>Data_length / 16 / 1024</code>，实际上可以粗略代表对该表执行全表扫描所需的<strong>IO 成本</strong>。<br>
+2、二级索引的代价<br>
+从二级索引中定位数据的 ID，<strong>回表</strong>（到聚簇索引）根据上一步的 ID 值找到完整的记录。<br>
+另外，统计记录数量时，还会用到一个<strong>index dive</strong>的方法（MySQL 自创的一个方法），比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 IN (&apos;aa1&apos;, &apos;aa2&apos;, &apos;aa3&apos;, ... , &apos;zzz&apos;);</span><br></pre></td></tr></table></figure>
+<p>由于 idx_key1 并不是唯一（unique）索引，因此<code>key1='aa1'</code>这些条件并不一定能唯一确定一条记录，查询优化器会先获取索引对应的 B+树的<strong>区间最左记录</strong>和<strong>区间最右记录</strong>，然后估算这两条记录之间有多少条记录，这种方式被称为<strong>index dive</strong>。<br>
+当然<strong>index dive</strong>并不是一定会生效，如果 in 条件中的参数超过了<strong>阈值</strong>就不能生效，这个阈值可以通过<code>SHOW VARIABLES LIKE '%dive%';</code>查到。<br>
+如果因为超过阈值（默认 200）而无法生效，则需要改用所谓的索引统计数据来进行估算，MySQL 也会为表中的每一个索引维护一份统计数据，可以使用<code>show index from 表名</code>来查看，其中有一个比较关键的字段<code>Cardinality</code>表示基数，即索引列中不重复值的个数，计算平均一个值重复次数即<code>Rows / Cardinality</code>，比如表里现在有 100 行数据，表基数为 2，则最终计算出的每个值会有的记录条数就是 50，对于上面那条 sql，如果<code>IN</code>条件中有 10000 个参数，则统计结果约需要回表的记录数就是<code>50 * 10000 = 500000</code>，不过这种方式相对<code>index dive</code>来说虽然简单，但是并不精确。<br>
+3、多个二级索引的代价（索引合并 Index Merge）<br>
+将多个搜索条件用 AND 连接之后，查询优化器还需要判断一下是否满足 Intersection 索引合并的条件，简而言之，如果查询出的记录都是按主键排序的，则可以采用 Intersection 索引合并。<br>
+4、对比多种执行方案，找出成本最低的一种<br>
+查询优化器在统计每种查询方式的代价时都会给一个<strong>代价常量</strong>，用于计算每一种方式的代价值，最后比较选取代价最小的那个。</p>
+<h2 id="连接查询的成本"><a class="header-anchor" href="#连接查询的成本">¶</a>连接查询的成本</h2>
+<h3 id="单表连接"><a class="header-anchor" href="#单表连接">¶</a>单表连接</h3>
+<p>对两表的连接查询来说，查询成本主要包括：<br>
+1、单次查询驱动表的成本；<br>
+2、根据第一步查出的结果（称为<strong>扇出</strong>）多次查询被驱动表的成本。</p>
+<p>所以，判断连接查询成本的方法是计算扇出值的大小：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">连接查询总成本 = 单次访问驱动表的成本 + 驱动表扇出数 x 单次访问被驱动表的成本</span><br></pre></td></tr></table></figure>
 <p>当连接方式为外连接，则驱动表是固定的，因此查询时只要为驱动表和被驱动表选择最优访问方式即可，但是如果是内连接，驱动表和被驱动表的位置是可以互换的，那么优化器会使用索引统计数据来进行比较选择。</p>
-<h3 id="多表连接"><a href="#多表连接" class="headerlink" title="多表连接"></a>多表连接</h3><p>如果是 n 张表的内连接，计算的时间复杂度将是单表连接的 n!倍，当然优化器并不是老老实实地这么做：<br>1、预先设定最小连接成本，只要少于这个值就采用这种连接方式；<br>2、只对<code>optimizer_search_depth</code>张表执行连接顺序成本的分析，这个值是一个系统变量，显然越大则成本分析越精确；<br>3、启发式规则：如果满足一些规则则直接不分析，这些规则被称为启发式规则。</p>
-<h1 id="Explain"><a href="#Explain" class="headerlink" title="Explain"></a>Explain</h1><h2 id="Explain-各列的含义"><a href="#Explain-各列的含义" class="headerlink" title="Explain 各列的含义"></a>Explain 各列的含义</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; explain select * from auth_user;</span><br><span class="line"></span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |</span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">| 1 | SIMPLE | auth_user | NULL | ALL | NULL | NULL | NULL | NULL | 1 | 100.00 | NULL |</span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">1 row in set, 1 warning (0.00 sec)</span><br></pre></td></tr></table></figure>
-<p>列名    描述<br>id    在一个大的查询语句中每个 SELECT 关键字都对应一个唯一的 id<br>select_type    SELECT 关键字对应的那个查询的类型<br>table    表名<br>partitions    匹配的分区信息<br>type    针对单表的访问方法<br>possible_keys    可能用到的索引<br>key    实际上使用的索引<br>key_len    实际使用到的索引长度<br>ref    当使用索引列等值查询时，与索引列进行等值匹配的对象信息<br>rows    预估的需要读取的记录条数<br>filtered    某个表经过搜索条件过滤后剩余记录条数的百分比<br>Extra    一些额外的信息</p>
-<h2 id="Explain-各列描述"><a href="#Explain-各列描述" class="headerlink" title="Explain 各列描述"></a>Explain 各列描述</h2><h3 id="table"><a href="#table" class="headerlink" title="table"></a>table</h3><p>表示该查询的目标表，当涉及到连接时会有多行分别表示对各张表的访问方式。</p>
-<h3 id="id"><a href="#id" class="headerlink" title="id"></a>id</h3><p>查询语句中每有一个 select 关键字，MySQL 就会为其分配一个唯一的 id 值，如果 select 中包含多张表的连接，则每张表都会有一条记录、且这些记录中的 id 值都是相同的。</p>
-<h3 id="select-type"><a href="#select-type" class="headerlink" title="select_type"></a>select_type</h3><ul>
-<li><p>SIMPLE<br>查询语句中不包含 UNION 或者子查询的查询都算作是 SIMPLE 类型。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1;</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>PRIMARY<br>对于包含 UNION、UNION ALL 或者子查询的大查询来说，它是由几个小查询组成的，其中最左边的那个查询的 select_type 值就是 PRIMARY。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 UNION SELECT * FROM s2;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>UNION<br>对于包含 UNION 或者 UNION ALL 的大查询来说，它是由几个小查询组成的，其中除了最左边的那个小查询以外，其余的小查询的 select_type 值就是 UNION。</p>
-</li>
-<li>UNION RESULT<br>MySQL 选择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。</li>
-<li><p>SUBQUERY<br>如果包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是不相关子查询，并且查询优化器决定采用将该子查询物化的方案来执行该子查询时，该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 SUBQUERY。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>DEPENDENT SUBQUERY<br>如果包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是相关子查询，则该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 DEPENDENT SUBQUERY。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2 WHERE s1.key2 = s2.key2) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>DEPENDENT UNION<br>在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2 WHERE key1 = &apos;a&apos; UNION SELECT key1 FROM s1 WHERE key1 = &apos;b&apos;);</span><br></pre></td></tr></table></figure>
-</li>
-</ul>
-<p>其中<code>SELECT key1 FROM s2 WHERE key1 = &#39;a&#39;</code>这个查询是 DEPENDENT SUBQUERY，而<code>UNION</code>后面的那个查询就是 DEPENDENT UNION。</p>
+<h3 id="多表连接"><a class="header-anchor" href="#多表连接">¶</a>多表连接</h3>
+<p>如果是 n 张表的内连接，计算的时间复杂度将是单表连接的 n!倍，当然优化器并不是老老实实地这么做：<br>
+1、预先设定最小连接成本，只要少于这个值就采用这种连接方式；<br>
+2、只对<code>optimizer_search_depth</code>张表执行连接顺序成本的分析，这个值是一个系统变量，显然越大则成本分析越精确；<br>
+3、启发式规则：如果满足一些规则则直接不分析，这些规则被称为启发式规则。</p>
+<h1>Explain</h1>
+<h2 id="explain-各列的含义"><a class="header-anchor" href="#explain-各列的含义">¶</a>Explain 各列的含义</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; explain select * from auth_user;</span><br><span class="line"></span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">| id | select_type | table | partitions | type | possible_keys | key | key_len | ref | rows | filtered | Extra |</span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">| 1 | SIMPLE | auth_user | NULL | ALL | NULL | NULL | NULL | NULL | 1 | 100.00 | NULL |</span><br><span class="line">+----+-------------+-----------+------------+------+---------------+------+---------+------+------+----------+-------+</span><br><span class="line">1 row in set, 1 warning (0.00 sec)</span><br></pre></td></tr></table></figure>
+<p>列名	描述<br>
+id	在一个大的查询语句中每个 SELECT 关键字都对应一个唯一的 id<br>
+select_type	SELECT 关键字对应的那个查询的类型<br>
+table	表名<br>
+partitions	匹配的分区信息<br>
+type	针对单表的访问方法<br>
+possible_keys	可能用到的索引<br>
+key	实际上使用的索引<br>
+key_len	实际使用到的索引长度<br>
+ref	当使用索引列等值查询时，与索引列进行等值匹配的对象信息<br>
+rows	预估的需要读取的记录条数<br>
+filtered	某个表经过搜索条件过滤后剩余记录条数的百分比<br>
+Extra	一些额外的信息</p>
+<h2 id="explain-各列描述"><a class="header-anchor" href="#explain-各列描述">¶</a>Explain 各列描述</h2>
+<h3 id="table"><a class="header-anchor" href="#table">¶</a>table</h3>
+<p>表示该查询的目标表，当涉及到连接时会有多行分别表示对各张表的访问方式。</p>
+<h3 id="id"><a class="header-anchor" href="#id">¶</a>id</h3>
+<p>查询语句中每有一个 select 关键字，MySQL 就会为其分配一个唯一的 id 值，如果 select 中包含多张表的连接，则每张表都会有一条记录、且这些记录中的 id 值都是相同的。</p>
+<h3 id="select-type"><a class="header-anchor" href="#select-type">¶</a>select_type</h3>
 <ul>
-<li><p>DERIVED<br>对于采用物化的方式执行的包含派生表的查询，该派生表对应的子查询的 select_type 就是 DERIVED。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM (SELECT key1, count(*) as c FROM s1 GROUP BY key1) AS derived_s1 where c &gt; 1;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>MATERIALIZED<br>当查询优化器在执行包含子查询的语句时，选择将子查询物化之后与外层查询进行连接查询时，该子查询对应的 select_type 属性就是 MATERIALIZED。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>UNCACHEABLE SUBQUERY<br>不常用</p>
-</li>
-<li>UNCACHEABLE UNION<br>不常用</li>
+<li>SIMPLE<br>
+查询语句中不包含 UNION 或者子查询的查询都算作是 SIMPLE 类型。</li>
 </ul>
-<h3 id="partitions"><a href="#partitions" class="headerlink" title="partitions"></a>partitions</h3><p>分区，一般查询计划中的该字段都是 NULL。</p>
-<h3 id="type"><a href="#type" class="headerlink" title="type"></a>type</h3><p>对某张表执行查询时的访问方法。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos;;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1;</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>PRIMARY<br>
+对于包含 UNION、UNION ALL 或者子查询的大查询来说，它是由几个小查询组成的，其中最左边的那个查询的 select_type 值就是 PRIMARY。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 UNION SELECT * FROM s2;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>UNION<br>
+对于包含 UNION 或者 UNION ALL 的大查询来说，它是由几个小查询组成的，其中除了最左边的那个小查询以外，其余的小查询的 select_type 值就是 UNION。</li>
+<li>UNION RESULT<br>
+MySQL 选择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。</li>
+<li>SUBQUERY<br>
+如果包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是不相关子查询，并且查询优化器决定采用将该子查询物化的方案来执行该子查询时，该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 SUBQUERY。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>DEPENDENT SUBQUERY<br>
+如果包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是相关子查询，则该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 DEPENDENT SUBQUERY。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2 WHERE s1.key2 = s2.key2) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>DEPENDENT UNION<br>
+在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2 WHERE key1 = &apos;a&apos; UNION SELECT key1 FROM s1 WHERE key1 = &apos;b&apos;);</span><br></pre></td></tr></table></figure>
+<p>其中<code>SELECT key1 FROM s2 WHERE key1 = 'a'</code>这个查询是 DEPENDENT SUBQUERY，而<code>UNION</code>后面的那个查询就是 DEPENDENT UNION。</p>
+<ul>
+<li>DERIVED<br>
+对于采用物化的方式执行的包含派生表的查询，该派生表对应的子查询的 select_type 就是 DERIVED。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM (SELECT key1, count(*) as c FROM s1 GROUP BY key1) AS derived_s1 where c &gt; 1;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>MATERIALIZED<br>
+当查询优化器在执行包含子查询的语句时，选择将子查询物化之后与外层查询进行连接查询时，该子查询对应的 select_type 属性就是 MATERIALIZED。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key1 FROM s2);</span><br></pre></td></tr></table></figure>
+<ul>
+<li>UNCACHEABLE SUBQUERY<br>
+不常用</li>
+<li>UNCACHEABLE UNION<br>
+不常用</li>
+</ul>
+<h3 id="partitions"><a class="header-anchor" href="#partitions">¶</a>partitions</h3>
+<p>分区，一般查询计划中的该字段都是 NULL。</p>
+<h3 id="type"><a class="header-anchor" href="#type">¶</a>type</h3>
+<p>对某张表执行查询时的访问方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
 <p>由于 idx_key1 二级索引的存在，因此这个等值查询的 type 列的值为 ref。具体的访问方法如下所示：</p>
 <ul>
-<li><p>system<br>当表中只有一条记录并且该表使用的存储引擎的统计数据是精确的，比如<strong>MyISAM</strong>、<strong>Memory</strong>，那么对该表的访问方法就是 system。</p>
+<li>system<br>
+当表中只有一条记录并且该表使用的存储引擎的统计数据是精确的，比如<strong>MyISAM</strong>、<strong>Memory</strong>，那么对该表的访问方法就是 system。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM t;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>const<br>当我们根据主键或者唯一二级索引列与常数进行等值匹配时，对单表的访问方法就是 const。</p>
+<ul>
+<li>const<br>
+当我们根据主键或者唯一二级索引列与常数进行等值匹配时，对单表的访问方法就是 const。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE id = 5;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>eq_ref<br>在连接查询时，如果被驱动表是通过主键或者唯一二级索引列等值匹配的方式进行访问的（如果该主键或者唯一二级索引是联合索引的话，所有的索引列都必须进行等值比较），则对该被驱动表的访问方法就是 eq_ref。</p>
+<ul>
+<li>eq_ref<br>
+在连接查询时，如果被驱动表是通过主键或者唯一二级索引列等值匹配的方式进行访问的（如果该主键或者唯一二级索引是联合索引的话，所有的索引列都必须进行等值比较），则对该被驱动表的访问方法就是 eq_ref。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.id = s2.id;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>ref<br>当通过普通的二级索引列与常量进行等值匹配时来查询某个表，那么对该表的访问方法就可能是 ref。</p>
-</li>
-<li>fulltext<br>全文索引。</li>
-<li><p>ref_or_null<br>当对普通二级索引进行等值匹配查询，该索引列的值也可以是 NULL 值时，那么对该表的访问方法就可能是 ref_or_null。</p>
+<ul>
+<li>ref<br>
+当通过普通的二级索引列与常量进行等值匹配时来查询某个表，那么对该表的访问方法就可能是 ref。</li>
+<li>fulltext<br>
+全文索引。</li>
+<li>ref_or_null<br>
+当对普通二级索引进行等值匹配查询，该索引列的值也可以是 NULL 值时，那么对该表的访问方法就可能是 ref_or_null。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; OR key1 IS NULL;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>index_merge<br>包括 Intersection、Union、Sort-Union 这三种索引合并方式</p>
-</li>
-<li><p>unique_subquery<br>类似于两表连接中被驱动表的 eq_ref 访问方法，unique_subquery 是针对在一些包含 IN 子查询的查询语句中，如果查询优化器决定将 IN 子查询转换为 EXISTS 子查询，而且子查询可以使用到主键进行等值匹配的话，那么该子查询执行计划的 type 列的值就是 unique_subquery，比如下边的这个查询语句：</p>
+<ul>
+<li>index_merge<br>
+包括 Intersection、Union、Sort-Union 这三种索引合并方式</li>
+<li>unique_subquery<br>
+类似于两表连接中被驱动表的 eq_ref 访问方法，unique_subquery 是针对在一些包含 IN 子查询的查询语句中，如果查询优化器决定将 IN 子查询转换为 EXISTS 子查询，而且子查询可以使用到主键进行等值匹配的话，那么该子查询执行计划的 type 列的值就是 unique_subquery，比如下边的这个查询语句：</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key2 IN (SELECT id FROM s2 where s1.key1 = s2.key1) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>index_subquery<br>index_subquery 与 unique_subquery 类似，只不过访问子查询中的表时使用的是普通的索引</p>
+<ul>
+<li>index_subquery<br>
+index_subquery 与 unique_subquery 类似，只不过访问子查询中的表时使用的是普通的索引</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field IN (SELECT key3 FROM s2 where s1.key1 = s2.key1) OR key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>range<br>如果使用索引获取某些范围区间的记录，那么就可能使用到 range 访问方法。</p>
+<ul>
+<li>range<br>
+如果使用索引获取某些范围区间的记录，那么就可能使用到 range 访问方法。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (&apos;a&apos;, &apos;b&apos;, &apos;c&apos;);</span><br><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 &gt; &apos;a&apos; AND key1 &lt; &apos;b&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>index<br>当我们可以使用索引覆盖，但需要扫描全部的索引记录时，该表的访问方法就是 index。</p>
+<ul>
+<li>index<br>
+当我们可以使用索引覆盖，但需要扫描全部的索引记录时，该表的访问方法就是 index。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT key_part2 FROM s1 WHERE key_part3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>ALL<br>全表扫描。</p>
+<ul>
+<li>ALL<br>
+全表扫描。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1;</span><br></pre></td></tr></table></figure>
-</li>
-</ul>
-<h3 id="possible-keys-和-key"><a href="#possible-keys-和-key" class="headerlink" title="possible_keys 和 key"></a>possible_keys 和 key</h3><p>possible_keys 列表示在某个查询语句中，对某个表执行单表查询时可能用到的索引有哪些，key 列表示实际用到的索引有哪些。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure></p>
+<h3 id="possible-keys-和-key"><a class="header-anchor" href="#possible-keys-和-key">¶</a>possible_keys 和 key</h3>
+<p>possible_keys 列表示在某个查询语句中，对某个表执行单表查询时可能用到的索引有哪些，key 列表示实际用到的索引有哪些。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
 <p>上面这条 sql，因为 key1 和 key3 分别可以命中 idx_key1 和 idx_key3 这两个索引，因此 possible_keys 列的值包含这二者。</p>
-<h3 id="key-len"><a href="#key-len" class="headerlink" title="key_len"></a>key_len</h3><p>key_len 列表示当优化器决定使用某个索引执行查询时，该索引记录的最大长度。</p>
-<h3 id="ref-1"><a href="#ref-1" class="headerlink" title="ref"></a>ref</h3><p>当使用索引列等值匹配的条件去执行查询时，也就是在访问方法是 const、eq_ref、ref、ref_or_null、unique_subquery、index_subquery 其中之一时，ref 列表示与索引列进行匹配的目标类型：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">-- 因为与key1进行匹配的&apos;a&apos;是常量，因此ref列的值为const</span><br><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos;;</span><br><span class="line">-- 与id列比较，ref值为对应库.对应表.id</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.id = s2.id;</span><br><span class="line">-- 与函数进行比较，ref值为func</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s2.key1 = UPPER(s1.key1);</span><br></pre></td></tr></table></figure></p>
-<h3 id="rows"><a href="#rows" class="headerlink" title="rows"></a>rows</h3><p>如果查询优化器决定使用全表扫描的方式对某个表执行查询时，执行计划的 rows 列就代表预计需要扫描的行数，如果使用索引来执行查询时，执行计划的 rows 列就代表预计扫描的索引记录行数。</p>
-<h3 id="filtered"><a href="#filtered" class="headerlink" title="filtered"></a>filtered</h3><p>优化器估算 rows 中满足搜索条件的记录的百分比。</p>
-<h3 id="Extra"><a href="#Extra" class="headerlink" title="Extra"></a>Extra</h3><p>额外信息的种类比较多：</p>
+<h3 id="key-len"><a class="header-anchor" href="#key-len">¶</a>key_len</h3>
+<p>key_len 列表示当优化器决定使用某个索引执行查询时，该索引记录的最大长度。</p>
+<h3 id="ref-v2"><a class="header-anchor" href="#ref-v2">¶</a>ref</h3>
+<p>当使用索引列等值匹配的条件去执行查询时，也就是在访问方法是 const、eq_ref、ref、ref_or_null、unique_subquery、index_subquery 其中之一时，ref 列表示与索引列进行匹配的目标类型：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">-- 因为与key1进行匹配的&apos;a&apos;是常量，因此ref列的值为const</span><br><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos;;</span><br><span class="line">-- 与id列比较，ref值为对应库.对应表.id</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.id = s2.id;</span><br><span class="line">-- 与函数进行比较，ref值为func</span><br><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s2.key1 = UPPER(s1.key1);</span><br></pre></td></tr></table></figure>
+<h3 id="rows"><a class="header-anchor" href="#rows">¶</a>rows</h3>
+<p>如果查询优化器决定使用全表扫描的方式对某个表执行查询时，执行计划的 rows 列就代表预计需要扫描的行数，如果使用索引来执行查询时，执行计划的 rows 列就代表预计扫描的索引记录行数。</p>
+<h3 id="filtered"><a class="header-anchor" href="#filtered">¶</a>filtered</h3>
+<p>优化器估算 rows 中满足搜索条件的记录的百分比。</p>
+<h3 id="extra"><a class="header-anchor" href="#extra">¶</a>Extra</h3>
+<p>额外信息的种类比较多：</p>
 <ul>
-<li>No tables used<br>当查询语句的没有 FROM 子句时将会提示该额外信息</li>
-<li><p>Impossible WHERE<br>查询语句的 WHERE 子句永远为 FALSE 时将会提示该额外信息：</p>
+<li>No tables used<br>
+当查询语句的没有 FROM 子句时将会提示该额外信息</li>
+<li>Impossible WHERE<br>
+查询语句的 WHERE 子句永远为 FALSE 时将会提示该额外信息：</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE 1 != 1;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>No matching min/max row<br>当查询列表处有 MIN 或者 MAX 聚集函数，但是并没有符合 WHERE 子句中的搜索条件的记录时，将会提示该额外信息</p>
+<ul>
+<li>No matching min/max row<br>
+当查询列表处有 MIN 或者 MAX 聚集函数，但是并没有符合 WHERE 子句中的搜索条件的记录时，将会提示该额外信息</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT MIN(key1) FROM s1 WHERE key1 = &apos;abcdefg&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Using index<br>当我们的查询列表以及搜索条件中只包含属于某个索引的列，也就是在可以使用<strong>索引覆盖</strong>的情况下，在 Extra 列将会提示该额外信息。</p>
+<ul>
+<li>Using index<br>
+当我们的查询列表以及搜索条件中只包含属于某个索引的列，也就是在可以使用<strong>索引覆盖</strong>的情况下，在 Extra 列将会提示该额外信息。</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT key1 FROM s1 WHERE key1 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Using index condition<br>有些搜索条件中虽然出现了索引列，但却不能使用到索引</p>
+<ul>
+<li>Using index condition<br>
+有些搜索条件中虽然出现了索引列，但却不能使用到索引</li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key1 LIKE &apos;%a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-</ul>
-<p>上面这个条件中，优化器会先根据<code>key1 &gt; &#39;z&#39;</code>从二级索引<code>idx_key1</code>中定位到符合的二级索引记录，但是不会直接回表，而是先根据<code>key1 LIKE &#39;%a&#39;</code>找到匹配的记录再回表，这被称为<strong>索引条件下推</strong>。<br>索引下推应用于多条件查询上，5.6之前，查了一个条件后就会尝试回表得到结果，然后再对结果过滤其他字段，比如上面查完<code>key1 &gt; &#39;z&#39;</code>后就会回表；而5.6之后，如果有多个条件会先尝试在联合索引上进行过滤再回表，比如上面先根据<code>key1 &gt; &#39;z&#39;</code>查询，再使用<code>key1 LIKE &#39;%a&#39;</code>过滤，最后才回表。</p>
+<p>上面这个条件中，优化器会先根据<code>key1 &gt; 'z'</code>从二级索引<code>idx_key1</code>中定位到符合的二级索引记录，但是不会直接回表，而是先根据<code>key1 LIKE '%a'</code>找到匹配的记录再回表，这被称为<strong>索引条件下推</strong>。<br>
+索引下推应用于多条件查询上，5.6之前，查了一个条件后就会尝试回表得到结果，然后再对结果过滤其他字段，比如上面查完<code>key1 &gt; 'z'</code>后就会回表；而5.6之后，如果有多个条件会先尝试在联合索引上进行过滤再回表，比如上面先根据<code>key1 &gt; 'z'</code>查询，再使用<code>key1 LIKE '%a'</code>过滤，最后才回表。</p>
 <ul>
-<li>Using Where<br>当我们使用全表扫描来执行对某个表的查询，并且该语句的 WHERE 子句中有针对该表的搜索条件时，在 Extra 列中会提示上述额外信息。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
+<li>Using Where<br>
+当我们使用全表扫描来执行对某个表的查询，并且该语句的 WHERE 子句中有针对该表的搜索条件时，在 Extra 列中会提示上述额外信息。</li>
 </ul>
-<p>当使用索引访问来执行对某个表的查询，并且该语句的 WHERE 子句中有除了该索引包含的列之外的其他搜索条件时，在 Extra 列中也会提示上述额外信息。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; AND common_field = &apos;a&apos;;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
+<p>当使用索引访问来执行对某个表的查询，并且该语句的 WHERE 子句中有除了该索引包含的列之外的其他搜索条件时，在 Extra 列中也会提示上述额外信息。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; AND common_field = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
 <ul>
-<li><p>Using join buffer (Block Nested Loop)<br>在连接查询执行过程中，当被驱动表不能有效的利用索引加快访问速度，MySQL 一般会为其分配一块名叫<strong>join buffer</strong>的内存块来加快查询速度，也就是我们所讲的<strong>基于块的嵌套循环算法</strong></p>
+<li>Using join buffer (Block Nested Loop)<br>
+在连接查询执行过程中，当被驱动表不能有效的利用索引加快访问速度，MySQL 一般会为其分配一块名叫<strong>join buffer</strong>的内存块来加快查询速度，也就是我们所讲的<strong>基于块的嵌套循环算法</strong></li>
+</ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 INNER JOIN s2 ON s1.common_field = s2.common_field;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Not exists<br>当我们使用左（外）连接时，如果 WHERE 子句中包含要求被驱动表的某个列等于 NULL 值的搜索条件，而且那个列又是不允许存储 NULL 值的，那么在该表的执行计划的 Extra 列就会提示 Not exists 额外信息。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 LEFT JOIN s2 ON s1.key1 = s2.key1 WHERE s2.id IS NULL;</span><br></pre></td></tr></table></figure>
-</li>
-</ul>
-<p>左外连接时如果被驱动表中匹配不到驱动表的某条记录，则该条记录对应的 s2.id 就为 NULL。</p>
 <ul>
-<li><p>Using intersect(…)、Using union(…)和 Using sort_union(…)<br>如果执行计划的 Extra 列出现了 Using intersect(…)提示，说明准备使用 Intersect 索引合并的方式执行查询，括号中的…表示需要进行索引合并的索引名称；如果出现了 Using union(…)提示，说明准备使用 Union 索引合并的方式执行查询；出现了 Using sort_union(…)提示，说明准备使用 Sort-Union 索引合并的方式执行查询。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; AND key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Zero limit<br>当我们的 LIMIT 子句的参数为 0 时，表示压根儿不打算从表中读出任何记录，将会提示该额外信息</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 LIMIT 0;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Using filesort<br>有一些情况下对结果集中的记录进行排序是可以使用到索引的。但是很多情况下排序操作无法使用到索引，只能在内存中（记录较少的时候）或者磁盘中（记录较多的时候）进行排序，这种在内存中或者磁盘上进行排序的方式统称为文件排序（filesort）。如果某个查询需要使用<strong>文件排序</strong>的方式执行查询，就会在执行计划的 Extra 列中显示 Using filesort 提示</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 ORDER BY key1 LIMIT 10;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Using temporary<br>在许多查询的执行过程中，MySQL 可能会借助临时表来完成一些功能，比如去重、排序之类的，比如我们在执行许多包含 DISTINCT、GROUP BY、UNION 等子句的查询过程中，如果不能有效利用索引来完成查询，MySQL 很有可能寻求通过建立内部的<strong>临时表</strong>来执行查询。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT DISTINCT common_field FROM s1;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Start temporary, End temporary<br>我们前边唠叨子查询的时候说过，查询优化器会优先尝试将 IN 子查询转换成 semi-join，而 semi-join 又有好多种执行策略，当执行策略为 DuplicateWeedout 时，也就是通过建立临时表来实现为外层查询中的记录进行去重操作时，驱动表查询执行计划的 Extra 列将显示 Start temporary 提示，被驱动表查询执行计划的 Extra 列将显示 End temporary 提示</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key3 FROM s2 WHERE common_field = &apos;a&apos;);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>LooseScan<br>在将 In 子查询转为 semi-join 时，如果采用的是 LooseScan 执行策略，则在驱动表执行计划的 Extra 列就是显示 LooseScan 提示</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key3 IN (SELECT key1 FROM s2 WHERE key1 &gt; &apos;z&apos;);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>FirstMatch(tbl_name)<br>在将 In 子查询转为 semi-join 时，如果采用的是 FirstMatch 执行策略，则在被驱动表执行计划的 Extra 列就是显示 FirstMatch(tbl_name)提示</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field IN (SELECT key1 FROM s2 where s1.key3 = s2.key3);</span><br></pre></td></tr></table></figure>
-</li>
+<li>Not exists<br>
+当我们使用左（外）连接时，如果 WHERE 子句中包含要求被驱动表的某个列等于 NULL 值的搜索条件，而且那个列又是不允许存储 NULL 值的，那么在该表的执行计划的 Extra 列就会提示 Not exists 额外信息。</li>
 </ul>
-<h2 id="optimizer-trace"><a href="#optimizer-trace" class="headerlink" title="optimizer trace"></a>optimizer trace</h2><p>查看优化器生成执行计划的整个过程，这个功能的开启与关闭由系统变量 optimizer_trace 决定：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW VARIABLES LIKE &apos;optimizer_trace&apos;;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 LEFT JOIN s2 ON s1.key1 = s2.key1 WHERE s2.id IS NULL;</span><br></pre></td></tr></table></figure>
+<p>左外连接时如果被驱动表中匹配不到驱动表的某条记录，则该条记录对应的 <a href="http://s2.id" target="_blank" rel="noopener">s2.id</a> 就为 NULL。</p>
+<ul>
+<li>Using intersect(…)、Using union(…)和 Using sort_union(…)<br>
+如果执行计划的 Extra 列出现了 Using intersect(…)提示，说明准备使用 Intersect 索引合并的方式执行查询，括号中的…表示需要进行索引合并的索引名称；如果出现了 Using union(…)提示，说明准备使用 Union 索引合并的方式执行查询；出现了 Using sort_union(…)提示，说明准备使用 Sort-Union 索引合并的方式执行查询。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 = &apos;a&apos; AND key3 = &apos;a&apos;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Zero limit<br>
+当我们的 LIMIT 子句的参数为 0 时，表示压根儿不打算从表中读出任何记录，将会提示该额外信息</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 LIMIT 0;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Using filesort<br>
+有一些情况下对结果集中的记录进行排序是可以使用到索引的。但是很多情况下排序操作无法使用到索引，只能在内存中（记录较少的时候）或者磁盘中（记录较多的时候）进行排序，这种在内存中或者磁盘上进行排序的方式统称为文件排序（filesort）。如果某个查询需要使用<strong>文件排序</strong>的方式执行查询，就会在执行计划的 Extra 列中显示 Using filesort 提示</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 ORDER BY key1 LIMIT 10;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Using temporary<br>
+在许多查询的执行过程中，MySQL 可能会借助临时表来完成一些功能，比如去重、排序之类的，比如我们在执行许多包含 DISTINCT、GROUP BY、UNION 等子句的查询过程中，如果不能有效利用索引来完成查询，MySQL 很有可能寻求通过建立内部的<strong>临时表</strong>来执行查询。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT DISTINCT common_field FROM s1;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Start temporary, End temporary<br>
+我们前边唠叨子查询的时候说过，查询优化器会优先尝试将 IN 子查询转换成 semi-join，而 semi-join 又有好多种执行策略，当执行策略为 DuplicateWeedout 时，也就是通过建立临时表来实现为外层查询中的记录进行去重操作时，驱动表查询执行计划的 Extra 列将显示 Start temporary 提示，被驱动表查询执行计划的 Extra 列将显示 End temporary 提示</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key1 IN (SELECT key3 FROM s2 WHERE common_field = &apos;a&apos;);</span><br></pre></td></tr></table></figure>
+<ul>
+<li>LooseScan<br>
+在将 In 子查询转为 semi-join 时，如果采用的是 LooseScan 执行策略，则在驱动表执行计划的 Extra 列就是显示 LooseScan 提示</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE key3 IN (SELECT key1 FROM s2 WHERE key1 &gt; &apos;z&apos;);</span><br></pre></td></tr></table></figure>
+<ul>
+<li>FirstMatch(tbl_name)<br>
+在将 In 子查询转为 semi-join 时，如果采用的是 FirstMatch 执行策略，则在被驱动表执行计划的 Extra 列就是显示 FirstMatch(tbl_name)提示</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT * FROM s1 WHERE common_field IN (SELECT key1 FROM s2 where s1.key3 = s2.key3);</span><br></pre></td></tr></table></figure>
+<h2 id="optimizer-trace"><a class="header-anchor" href="#optimizer-trace">¶</a>optimizer trace</h2>
+<p>查看优化器生成执行计划的整个过程，这个功能的开启与关闭由系统变量 optimizer_trace 决定：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW VARIABLES LIKE &apos;optimizer_trace&apos;;</span><br></pre></td></tr></table></figure>
 <p>这个 optimizer_trace 表中有 4 个列：</p>
 <ul>
 <li>QUERY：表示我们的查询语句。</li>
@@ -637,11 +855,21 @@
 <li>MISSING_BYTES_BEYOND_MAX_MEM_SIZE：由于优化过程可能会输出很多，如果超过某个限制时，多余的文本将不会被显示，这个字段展示了被忽略的文本字节数。</li>
 <li>INSUFFICIENT_PRIVILEGES：表示是否没有权限查看优化过程，默认值是 0，只有某些特殊情况下才会是 1，我们暂时不关心这个字段的值。</li>
 </ul>
-<p>optimizer trace 使用步骤如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># 1. 打开optimizer trace功能 (默认情况下它是关闭的):</span><br><span class="line">SET optimizer_trace=&quot;enabled=on&quot;;</span><br><span class="line"></span><br><span class="line"># 2. 这里输入你自己的查询语句</span><br><span class="line">SELECT ...; </span><br><span class="line"></span><br><span class="line"># 3. 从OPTIMIZER_TRACE表中查看上一个查询的优化过程</span><br><span class="line">SELECT * FROM information_schema.OPTIMIZER_TRACE;</span><br><span class="line"></span><br><span class="line"># 4. 可能你还要观察其他语句执行的优化过程，重复上边的第2、3步</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"># 5. 当你停止查看语句的优化过程时，把optimizer trace功能关闭</span><br><span class="line">SET optimizer_trace=&quot;enabled=off&quot;;</span><br></pre></td></tr></table></figure></p>
-<p>优化过程大致分为了三个阶段：<br>1、prepare 阶段<br>2、optimize 阶段<br>单表查询需要重点关注 rows_estimation 这个过程，因为分析了对单表查询的各种执行方案的成本；<br>对于夺标连接查询，更多的需要关注 considered_execution_plans 这个过程，因为这个过程里会写明各种不同的连接方式所对应的成本。<br>3、execute 阶段</p>
-<h1 id="QA"><a href="#QA" class="headerlink" title="QA"></a>QA</h1><h2 id="什么时候会发生文件排序？如何优化"><a href="#什么时候会发生文件排序？如何优化" class="headerlink" title="什么时候会发生文件排序？如何优化"></a>什么时候会发生文件排序？如何优化</h2><p>如果没有用到索引，InnoDB 排序前一般会先将数据加载到内存的<strong>sort_buffer</strong>中，或者由于数据量太大需要借助磁盘空间来存放中间结果，排序完后再将结果集返回给客户端，在 MySQL 中，这种在内存或磁盘上进行排序的方式被称为<strong>文件排序（filesort）</strong>。<br>order by 语句最好能使用到覆盖索引，因为索引本身就对记录进行了排序，并且需要注意索引字段的顺序。</p>
-<h2 id="什么是索引下推"><a href="#什么是索引下推" class="headerlink" title="什么是索引下推"></a>什么是索引下推</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key1 LIKE &apos;%a&apos;;</span><br></pre></td></tr></table></figure>
-<p>上面这个条件中，优化器会先根据<code>key1 &gt; &#39;z&#39;</code>从二级索引<code>idx_key1</code>中定位到符合的二级索引记录，但是不会直接回表，而是先根据<code>key1 LIKE &#39;%a&#39;</code>找到匹配的记录再回表，这被称为<strong>索引条件下推</strong>。</p>
+<p>optimizer trace 使用步骤如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># 1. 打开optimizer trace功能 (默认情况下它是关闭的):</span><br><span class="line">SET optimizer_trace=&quot;enabled=on&quot;;</span><br><span class="line"></span><br><span class="line"># 2. 这里输入你自己的查询语句</span><br><span class="line">SELECT ...; </span><br><span class="line"></span><br><span class="line"># 3. 从OPTIMIZER_TRACE表中查看上一个查询的优化过程</span><br><span class="line">SELECT * FROM information_schema.OPTIMIZER_TRACE;</span><br><span class="line"></span><br><span class="line"># 4. 可能你还要观察其他语句执行的优化过程，重复上边的第2、3步</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"># 5. 当你停止查看语句的优化过程时，把optimizer trace功能关闭</span><br><span class="line">SET optimizer_trace=&quot;enabled=off&quot;;</span><br></pre></td></tr></table></figure>
+<p>优化过程大致分为了三个阶段：<br>
+1、prepare 阶段<br>
+2、optimize 阶段<br>
+单表查询需要重点关注 rows_estimation 这个过程，因为分析了对单表查询的各种执行方案的成本；<br>
+对于夺标连接查询，更多的需要关注 considered_execution_plans 这个过程，因为这个过程里会写明各种不同的连接方式所对应的成本。<br>
+3、execute 阶段</p>
+<h1>QA</h1>
+<h2 id="什么时候会发生文件排序？如何优化"><a class="header-anchor" href="#什么时候会发生文件排序？如何优化">¶</a>什么时候会发生文件排序？如何优化</h2>
+<p>如果没有用到索引，InnoDB 排序前一般会先将数据加载到内存的<strong>sort_buffer</strong>中，或者由于数据量太大需要借助磁盘空间来存放中间结果，排序完后再将结果集返回给客户端，在 MySQL 中，这种在内存或磁盘上进行排序的方式被称为<strong>文件排序（filesort）</strong>。<br>
+order by 语句最好能使用到覆盖索引，因为索引本身就对记录进行了排序，并且需要注意索引字段的顺序。</p>
+<h2 id="什么是索引下推"><a class="header-anchor" href="#什么是索引下推">¶</a>什么是索引下推</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM s1 WHERE key1 &gt; &apos;z&apos; AND key1 LIKE &apos;%a&apos;;</span><br></pre></td></tr></table></figure>
+<p>上面这个条件中，优化器会先根据<code>key1 &gt; 'z'</code>从二级索引<code>idx_key1</code>中定位到符合的二级索引记录，但是不会直接回表，而是先根据<code>key1 LIKE '%a'</code>找到匹配的记录再回表，这被称为<strong>索引条件下推</strong>。</p>
 
       
     </div>
@@ -823,7 +1051,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#查询缓存"><span class="nav-number">1.</span> <span class="nav-text">查询缓存</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#查询-单表查询方法"><span class="nav-number">2.</span> <span class="nav-text">查询 - 单表查询方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#索引查询方法"><span class="nav-number">2.1.</span> <span class="nav-text">索引查询方法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#const"><span class="nav-number">2.1.1.</span> <span class="nav-text">const</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref"><span class="nav-number">2.1.2.</span> <span class="nav-text">ref</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref-or-null"><span class="nav-number">2.1.3.</span> <span class="nav-text">ref_or_null</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#range"><span class="nav-number">2.1.4.</span> <span class="nav-text">range</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#index"><span class="nav-number">2.1.5.</span> <span class="nav-text">index</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#all"><span class="nav-number">2.1.6.</span> <span class="nav-text">all</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#确定范围区间"><span class="nav-number">2.2.</span> <span class="nav-text">确定范围区间</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引合并"><span class="nav-number">2.3.</span> <span class="nav-text">索引合并</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Intersection-合并"><span class="nav-number">2.3.1.</span> <span class="nav-text">Intersection 合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Union-合并"><span class="nav-number">2.3.2.</span> <span class="nav-text">Union 合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Sort-Union"><span class="nav-number">2.3.3.</span> <span class="nav-text">Sort-Union</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#联合索引"><span class="nav-number">2.3.4.</span> <span class="nav-text">联合索引</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#count"><span class="nav-number">3.</span> <span class="nav-text">count</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#count-的实现方式"><span class="nav-number">3.1.</span> <span class="nav-text">count(*) 的实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么-InnoDB-不把数字存起来？"><span class="nav-number">3.1.1.</span> <span class="nav-text">为什么 InnoDB 不把数字存起来？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#InnoDB对count-的优化"><span class="nav-number">3.1.2.</span> <span class="nav-text">InnoDB对count(*)的优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#table-rows能替代count-吗？"><span class="nav-number">3.1.3.</span> <span class="nav-text">table_rows能替代count(*)吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有什么办法能替代count-？"><span class="nav-number">3.1.4.</span> <span class="nav-text">有什么办法能替代count(*)？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#不同count的区别"><span class="nav-number">3.2.</span> <span class="nav-text">不同count的区别</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#连接（Join）"><span class="nav-number">4.</span> <span class="nav-text">连接（Join）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#连接查询的大致执行过程"><span class="nav-number">4.1.</span> <span class="nav-text">连接查询的大致执行过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内连接和外连接"><span class="nav-number">4.2.</span> <span class="nav-text">内连接和外连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接的原理"><span class="nav-number">4.3.</span> <span class="nav-text">连接的原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#嵌套循环连接（Nested-Loop-Join）"><span class="nav-number">4.3.1.</span> <span class="nav-text">嵌套循环连接（Nested-Loop Join）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Simple-Nested-Loop-Join"><span class="nav-number">4.3.2.</span> <span class="nav-text">Simple Nested-Loop Join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于块的嵌套循环连接（Block-Nested-Loop-Join）"><span class="nav-number">4.3.3.</span> <span class="nav-text">基于块的嵌套循环连接（Block Nested-Loop Join）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#连接优化"><span class="nav-number">4.3.4.</span> <span class="nav-text">连接优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么情况下可以使用-join"><span class="nav-number">4.3.5.</span> <span class="nav-text">什么情况下可以使用 join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#join-的进一步优化"><span class="nav-number">4.3.6.</span> <span class="nav-text">join 的进一步优化</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#基于成本的优化"><span class="nav-number">5.</span> <span class="nav-text">基于成本的优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#计算代价"><span class="nav-number">5.1.</span> <span class="nav-text">计算代价</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接查询的成本"><span class="nav-number">5.2.</span> <span class="nav-text">连接查询的成本</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#单表连接"><span class="nav-number">5.2.1.</span> <span class="nav-text">单表连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多表连接"><span class="nav-number">5.2.2.</span> <span class="nav-text">多表连接</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Explain"><span class="nav-number">6.</span> <span class="nav-text">Explain</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain-各列的含义"><span class="nav-number">6.1.</span> <span class="nav-text">Explain 各列的含义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain-各列描述"><span class="nav-number">6.2.</span> <span class="nav-text">Explain 各列描述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#table"><span class="nav-number">6.2.1.</span> <span class="nav-text">table</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#id"><span class="nav-number">6.2.2.</span> <span class="nav-text">id</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#select-type"><span class="nav-number">6.2.3.</span> <span class="nav-text">select_type</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#partitions"><span class="nav-number">6.2.4.</span> <span class="nav-text">partitions</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#type"><span class="nav-number">6.2.5.</span> <span class="nav-text">type</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#possible-keys-和-key"><span class="nav-number">6.2.6.</span> <span class="nav-text">possible_keys 和 key</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#key-len"><span class="nav-number">6.2.7.</span> <span class="nav-text">key_len</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref-1"><span class="nav-number">6.2.8.</span> <span class="nav-text">ref</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rows"><span class="nav-number">6.2.9.</span> <span class="nav-text">rows</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#filtered"><span class="nav-number">6.2.10.</span> <span class="nav-text">filtered</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Extra"><span class="nav-number">6.2.11.</span> <span class="nav-text">Extra</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#optimizer-trace"><span class="nav-number">6.3.</span> <span class="nav-text">optimizer trace</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#QA"><span class="nav-number">7.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么时候会发生文件排序？如何优化"><span class="nav-number">7.1.</span> <span class="nav-text">什么时候会发生文件排序？如何优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是索引下推"><span class="nav-number">7.2.</span> <span class="nav-text">什么是索引下推</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">查询缓存</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">查询 - 单表查询方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#索引查询方法"><span class="nav-number">2.1.</span> <span class="nav-text">¶索引查询方法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#const"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶const</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶ref</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref-or-null"><span class="nav-number">2.1.3.</span> <span class="nav-text">¶ref_or_null</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#range"><span class="nav-number">2.1.4.</span> <span class="nav-text">¶range</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#index"><span class="nav-number">2.1.5.</span> <span class="nav-text">¶index</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#all"><span class="nav-number">2.1.6.</span> <span class="nav-text">¶all</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#确定范围区间"><span class="nav-number">2.2.</span> <span class="nav-text">¶确定范围区间</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引合并"><span class="nav-number">2.3.</span> <span class="nav-text">¶索引合并</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#intersection-合并"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶Intersection 合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#union-合并"><span class="nav-number">2.3.2.</span> <span class="nav-text">¶Union 合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sort-union"><span class="nav-number">2.3.3.</span> <span class="nav-text">¶Sort-Union</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#联合索引"><span class="nav-number">2.3.4.</span> <span class="nav-text">¶联合索引</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">count</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#count-的实现方式"><span class="nav-number">3.1.</span> <span class="nav-text">¶count(*) 的实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么-innodb-不把数字存起来？"><span class="nav-number">3.1.1.</span> <span class="nav-text">¶为什么 InnoDB 不把数字存起来？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#innodb对count-的优化"><span class="nav-number">3.1.2.</span> <span class="nav-text">¶InnoDB对count(*)的优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#table-rows能替代count-吗？"><span class="nav-number">3.1.3.</span> <span class="nav-text">¶table_rows能替代count(*)吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有什么办法能替代count-？"><span class="nav-number">3.1.4.</span> <span class="nav-text">¶有什么办法能替代count(*)？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#不同count的区别"><span class="nav-number">3.2.</span> <span class="nav-text">¶不同count的区别</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">连接（Join）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#连接查询的大致执行过程"><span class="nav-number">4.1.</span> <span class="nav-text">¶连接查询的大致执行过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内连接和外连接"><span class="nav-number">4.2.</span> <span class="nav-text">¶内连接和外连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接的原理"><span class="nav-number">4.3.</span> <span class="nav-text">¶连接的原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#嵌套循环连接-nested-loop-join"><span class="nav-number">4.3.1.</span> <span class="nav-text">¶嵌套循环连接（Nested-Loop Join）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#simple-nested-loop-join"><span class="nav-number">4.3.2.</span> <span class="nav-text">¶Simple Nested-Loop Join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于块的嵌套循环连接-block-nested-loop-join"><span class="nav-number">4.3.3.</span> <span class="nav-text">¶基于块的嵌套循环连接（Block Nested-Loop Join）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#连接优化"><span class="nav-number">4.3.4.</span> <span class="nav-text">¶连接优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么情况下可以使用-join"><span class="nav-number">4.3.5.</span> <span class="nav-text">¶什么情况下可以使用 join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#join-的进一步优化"><span class="nav-number">4.3.6.</span> <span class="nav-text">¶join 的进一步优化</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">基于成本的优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#计算代价"><span class="nav-number">5.1.</span> <span class="nav-text">¶计算代价</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接查询的成本"><span class="nav-number">5.2.</span> <span class="nav-text">¶连接查询的成本</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#单表连接"><span class="nav-number">5.2.1.</span> <span class="nav-text">¶单表连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多表连接"><span class="nav-number">5.2.2.</span> <span class="nav-text">¶多表连接</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">Explain</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#explain-各列的含义"><span class="nav-number">6.1.</span> <span class="nav-text">¶Explain 各列的含义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#explain-各列描述"><span class="nav-number">6.2.</span> <span class="nav-text">¶Explain 各列描述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#table"><span class="nav-number">6.2.1.</span> <span class="nav-text">¶table</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#id"><span class="nav-number">6.2.2.</span> <span class="nav-text">¶id</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#select-type"><span class="nav-number">6.2.3.</span> <span class="nav-text">¶select_type</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#partitions"><span class="nav-number">6.2.4.</span> <span class="nav-text">¶partitions</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#type"><span class="nav-number">6.2.5.</span> <span class="nav-text">¶type</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#possible-keys-和-key"><span class="nav-number">6.2.6.</span> <span class="nav-text">¶possible_keys 和 key</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#key-len"><span class="nav-number">6.2.7.</span> <span class="nav-text">¶key_len</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref-v2"><span class="nav-number">6.2.8.</span> <span class="nav-text">¶ref</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rows"><span class="nav-number">6.2.9.</span> <span class="nav-text">¶rows</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#filtered"><span class="nav-number">6.2.10.</span> <span class="nav-text">¶filtered</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#extra"><span class="nav-number">6.2.11.</span> <span class="nav-text">¶Extra</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#optimizer-trace"><span class="nav-number">6.3.</span> <span class="nav-text">¶optimizer trace</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么时候会发生文件排序？如何优化"><span class="nav-number">7.1.</span> <span class="nav-text">¶什么时候会发生文件排序？如何优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是索引下推"><span class="nav-number">7.2.</span> <span class="nav-text">¶什么是索引下推</span></a></li></ol></li></ol></div>
             
 
           </div>
