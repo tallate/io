@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="对ES源码的阅读记录。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-12-24T16:59:57.424Z">
+<meta property="og:updated_time" content="2020-12-25T12:41:06.409Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES原理总结">
 <meta name="twitter:description" content="对ES源码的阅读记录。">
@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  161 字
+                  411 字
                 </span>
               
 
@@ -397,38 +397,32 @@
       
         <p>对ES源码的阅读记录。</p>
 <a id="more"></a>
-<p>ES调试环境的初始化见我的另一篇文档：<br>
-<a href="https://tallate.github.io/c395b48b.html#%E8%B0%83%E8%AF%95debug-es">https://tallate.github.io/c395b48b.html#调试debug-es</a></p>
-<h1>ES的启动</h1>
+<p>ES调试环境的初始化见我的另一篇文档：<br><a href="https://tallate.github.io/c395b48b.html#%E8%B0%83%E8%AF%95debug-es">https://tallate.github.io/c395b48b.html#%E8%B0%83%E8%AF%95debug-es</a></p>
+<h1 id="ES集群的启动"><a href="#ES集群的启动" class="headerlink" title="ES集群的启动"></a>ES集群的启动</h1><h2 id="节点的启动"><a href="#节点的启动" class="headerlink" title="节点的启动"></a>节点的启动</h2><p>启动节点前期主要是解析各种参数、检查内部环境（Lucene）等，我主要感兴趣的是初始化完毕后对各子模块的加载过程，子模块的start方法基本就是初始化内部数据、创建线程池、启动线程池等操作。</p>
 <ol>
-<li>入口<br>
-Elasticsearch.main</li>
-<li>初始化<br>
-Bootstrap.init</li>
-<li>启动<br>
-Bootstrap.start</li>
-<li>启动集群<br>
-nodeConnectionsService.start()</li>
-<li>启动网络监听<br>
-开始接收客户端的连接请求<br>
-transportService.start()</li>
-<li>启动发现<br>
-discovery.start()</li>
-<li>开始加入集群<br>
-discovery.startInitialJoin()</li>
+<li>入口<br>Elasticsearch.main</li>
+<li>初始化<br>Bootstrap.init</li>
+<li>启动<br>Bootstrap.start</li>
+<li>启动集群<br>nodeConnectionsService.start()</li>
+<li>启动网络监听<br>开始接收客户端的连接请求<br>transportService.start()</li>
+<li>启动发现<br>discovery.start()</li>
+<li>开始加入集群<br>discovery.startInitialJoin()</li>
 </ol>
-<p>启动流程大致如上所示，其中重要的几点，这里接下来再展开说说。</p>
-<h2 id="启动网络监听"><a class="header-anchor" href="#启动网络监听">¶</a>启动网络监听</h2>
-<p>ES通过Netty暴露HTTP接口，遵循Reactor的IO模型，请求解析<br>
-代码入口：<code>Netty4HttpRequestHandler</code></p>
+<p>节点启动流程大致如上所示，其中重要的几点，这里接下来再展开说说。</p>
+<h2 id="选举主节点"><a href="#选举主节点" class="headerlink" title="选举主节点"></a>选举主节点</h2><p>ES选主算法是基于<strong>Bully</strong>算法实现的，Bully算法简单地说就是：</p>
 <ol>
-<li>HTTP搜索<br>
-<code>RestSearchAction#prepareRequest</code></li>
-<li>执行搜索<br>
-<code>TransportSearchAction#doExecute</code></li>
+<li>每个节点都有一个ID；</li>
+<li>每次选出集群内现存最大的ID作为新的Master节点。</li>
 </ol>
-<h1>搜索</h1>
-
+<p>Bully算法存在的问题：</p>
+<ul>
+<li>在ID最大的节点不稳定的场景下会有问题。<br>主要是ID最大的节点挂了又重启，会触发集群重复选择该节点为Master。<br>ES通过推迟选举来解决这个问题，只要当前主节点不挂掉就不重新选主，但是容易产生脑裂（双主），脑裂问题在ES中是通过“法定得票人数过半”来解决的。</li>
+</ul>
+<p>ES选主的实际算法实现叫做<strong>ZenDiscovery</strong>，其流程如下：</p>
+<ol>
+<li></li>
+</ol>
+<h1 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h1><h1 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h1><h1 id="GET流程"><a href="#GET流程" class="headerlink" title="GET流程"></a>GET流程</h1><h1 id="Search流程"><a href="#Search流程" class="headerlink" title="Search流程"></a>Search流程</h1>
       
     </div>
     
@@ -609,7 +603,7 @@ discovery.startInitialJoin()</li>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES的启动</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#启动网络监听"><span class="nav-number">1.1.</span> <span class="nav-text">¶启动网络监听</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">搜索</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ES集群的启动"><span class="nav-number">1.</span> <span class="nav-text">ES集群的启动</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">1.1.</span> <span class="nav-text">节点的启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选举主节点"><span class="nav-number">1.2.</span> <span class="nav-text">选举主节点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#数据模型"><span class="nav-number">2.</span> <span class="nav-text">数据模型</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#写入流程"><span class="nav-number">3.</span> <span class="nav-text">写入流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#GET流程"><span class="nav-number">4.</span> <span class="nav-text">GET流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Search流程"><span class="nav-number">5.</span> <span class="nav-text">Search流程</span></a></li></ol></div>
             
 
           </div>

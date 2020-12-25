@@ -266,7 +266,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/caf2d9ed.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -285,7 +285,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/caf2d9ed.html" itemprop="url">网络协议之 HTTP 总结</a></h1>
+                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
         
 
         <div class="post-meta">
@@ -351,7 +351,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.7k 字
+                  3.6k 字
                 </span>
               
 
@@ -389,93 +389,14 @@
 
       
         
-          
-            <a id="more"></a>
-<h2 id="http"><a class="header-anchor" href="#http">¶</a>HTTP</h2>
-<h3 id="http-请求消息格式"><a class="header-anchor" href="#http-请求消息格式">¶</a>HTTP 请求消息格式</h3>
-<h4 id="请求行"><a class="header-anchor" href="#请求行">¶</a>请求行</h4>
-<h4 id="请求头"><a class="header-anchor" href="#请求头">¶</a>请求头</h4>
-<h3 id="http-响应消息格式"><a class="header-anchor" href="#http-响应消息格式">¶</a>HTTP 响应消息格式</h3>
-<h4 id="响应头-response-header"><a class="header-anchor" href="#响应头-response-header">¶</a>响应头（response header）</h4>
-<ul>
-<li>
-<p>状态码<br>
-状态代码有三位数字组成，第一个数字定义了响应的类别，共分五种类别:<br>
-1xx：指示信息–表示请求已接收，继续处理。<br>
-2xx：成功–表示请求已被成功接收、理解、接受。<br>
-3xx：重定向–要完成请求必须进行更进一步的操作。<br>
-4xx：客户端错误–请求有语法错误或请求无法实现。<br>
-5xx：服务器端错误–服务器未能实现合法的请求。</p>
-  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">200 OK                        //客户端请求成功</span><br><span class="line">400 Bad Request               //客户端请求有语法错误，不能被服务器所理解</span><br><span class="line">401 Unauthorized              //请求未经授权，这个状态代码必须和WWW-Authenticate报头域一起使用 </span><br><span class="line">403 Forbidden                 //服务器收到请求，但是拒绝提供服务</span><br><span class="line">404 Not Found                 //请求资源不存在，eg：输入了错误的URL</span><br><span class="line">500 Internal Server Error     //服务器发生不可预期的错误</span><br><span class="line">503 Server Unavailable        //服务器当前不能处理客户端的请求，一段时间后可能恢复正常</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>Content-length<br>
-在响应体(response-body)中表示 body 的长度，根据这个值就可以知道 body 的长度，客户端在接收 body 时，就可以根据这个长度来接收数据，而如果没有 Content-length，则客户端会一直接收数据，直到服务端主动断开连接，才表示 body 接收完了；如果是 HTTP1.1，响应头中可以用 Transfer-encoding 字段指定为 chunked 传输，则表示 body 是流式输出，body 会被分成多个块，每块的开始处会标识出当前块的长度，body 不需要通过长度来指定。</p>
-</li>
-<li>
-<p>Keep-Alive（持久连接）<br>
-HTTP/1.0 使用非持久连接，HTTP/1.1 默认使用持久连接，每个连接建立后可以持续用于传送多个对象。<br>
-适合设置 keepalive 连接的场景：客户端的一次请求需要访问同一 Server 多次，比如一个网页包含多个图片，需要访问图片服务器多次才能将这些图片下全。<br>
-持久连接的条件：<strong>HTTP1.0</strong>响应不带<strong>Content-length</strong>、<strong>HTTP1.1</strong>非 chunked 且不带<strong>Content-length</strong>，这两种情况下 body 长度是不可知的，当服务端在输出完 body 之后，可以考虑使用长连接。另外，还需要考虑客户端的请求头中的<strong>Connection</strong>字段：如果为 close，则表示客户端需要关掉长连接；如果为 Keep-Alive，那么网关（一般是 Nginx）在输出完响应体之后，会设置当前连接的 keepalive 属性，然后等待客户端的下一次请求；如果没有 Connection 这个头，则根据协议，如果是 HTTP1.0，则默认为 close，如果为 HTTP1.1，则默认为 Keep-Alive。<br>
-但是持久连接也不可能会一直等下去，如果客户端一直不发送数据，岂不是一直占用这个连接？所以一般网关会设置一个最大等待时间，这个值是通过<strong>keepalive_timeout</strong>属性来配置的，如果值为 0，则表示关闭 keepalive，此时不管 HTTP 版本、Connection 如何设置，都强制为 close。<br>
-如果最后决定打开 keepalive，那么在响应头里也会包含有 Connection 域，如果值为 Close，则网关在响应完数据后，会主动关掉连接。<br>
-总而言之：如果有办法知道服务器传来的长度，都是客户端首先断开，否则一直接收数据，直到服务端断开。<br>
-<strong>http1.0</strong><br>
-带 content-length，body 长度可知，客户端在接收 body 时，就可以依据这个长度来接受数据。接受完毕后，就表示这个请求完毕了。客户端主动调用 close 进入四次挥手。<br>
-不带 content-length，body 长度不可知，客户端一直接受数据，直到服务端主动断开。<br>
-<strong>http1.1</strong><br>
-带 content-length，body 长度可知，客户端主动断开。<br>
-带 Transfer-encoding: chunked，body 会被分成多个块，每块的开始会标识出当前块的长度，body 就不需要通过 content-length 来指定了。但依然可以知道 body 的长度 客户端主动断开。<br>
-不带 Transfer-encoding：chunked，且不带 content-length，客户端接收数据，直到服务端主动断开连接。</p>
-</li>
-</ul>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>为了减少网络请求次数，一般可以引入缓存机制，HTTP 服务器通过两种实体头（Entity-Header）来实现缓存的过期：Expires 和 Cache-Control 的 max-age 子项。<br>
-Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还是重新发请求到服务器取数据。只是 Cache-Control 比 Expires 可以控制的多一些，而且 Cache-Control 会重写 Expires 的规则。<br>
-相关 Header 如下所示：</p>
-<ul>
-<li>Cache-Control<br>
-常用的值有：<br>
-（1）max-age（单位为 s）指定设置缓存最大的有效时间，定义的是时间长短。当浏览器向服务器发送请求后，在 max-age 这段时间里浏览器就不会再向服务器发送请求了。 （2）s-maxage（单位为 s）同 max-age，只用于共享缓存（比如 CDN 缓存），也就是说 max-age 用于普通缓存，而 s-maxage 用于代理缓存。如果存在 s-maxage，则会覆盖掉 max-age 和 Expires header。 （3）public 指定响应会被缓存，并且在多用户间共享。如果没有指定 public 还是 private，则默认为 public。 （4）private 响应只作为私有的缓存，不能在用户间共享。如果要求 HTTP 认证，响应会自动设置为 private。 （5）no-cache 指定不缓存响应，表明资源不进行缓存，比如，设置了 no-cache 之后并不代表浏览器不缓存，而是在缓存前要向服务器确认资源是否被更改。因此有的时候只设置 no-cache 防止缓存还是不够保险，还可以加上 private 指令，将过期时间设为过去的时间。 （6）no-store 表示绝对禁止缓存。一看就知道，如果用了这个命令，当然就是不会进行缓存啦！每次请求资源都要从服务器重新获取。 （7）must-revalidate 指定如果页面是过期的，则去服务器进行获取。这个指令并不常用，就不做过多的讨论了。</li>
-<li>Expires<br>
-缓存过期时间，用来指定资源到期的时间，是服务器端的具体时间点。也就是说，Expires=max-age + 请求时间，需要和 Last-modified 结合使用。但在上面我们提到过 cache-control 的优先级更高。Expires 是 Web 服务器响应消息头字段，在响应 HTTP 请求时告诉浏览器在过期时间前浏览器可以直接从浏览器缓存取数据，而无需再次请求。</li>
-<li>Last-modified<br>
-服务器端文件的最后修改时间，需要和 cache-control 共同使用，是检查服务器端资源是否更新的一种方式。当浏览器再次进行请求时，会向服务器传送 If-Modified-Since 报头，询问 Last-Modified 时间点之后资源是否被修改过。如果没有修改，则返回码为 304，使用缓存；如果修改过，则再次去服务器请求资源，返回码和首次请求相同为 200，资源为服务器最新资源。</li>
-<li>Etag<br>
-根据实体内容生成一段 hash 字符串，标识资源的状态，由服务端产生。浏览器会将这串字符串传回服务器，验证资源是否已经修改。<br>
-为什么要使用 Etag 呢?Etag 主要为了解决 Last-Modified 无法解决的一些问题。<br>
-一些文件也许会周期性的更改，但是它的内容并不改变（仅仅改变的修改时间），这个时候我们并不希望客户端认为这个文件被修改了，而重新 Get。<br>
-某些文件修改非常频繁，比如在秒以下的时间内进行修改（比方说 1s 内修改了 N 次），If-Modified-Since 能检查到的粒度是 s 级的，这种修改无法判断（或者说 UNIX 记录 MTIME 只能精确到秒）。<br>
-某些服务器不能精确的得到文件的最后修改时间。<br>
-缓存过程如下图所示。<br>
-<img src="https://tallate.top/imgs/%E7%BD%91%E7%BB%9C/HTTP%E7%BC%93%E5%AD%98.jpg" alt="HTTP缓存" title="HTTP缓存"></li>
-</ul>
-<h2 id="http-1-1"><a class="header-anchor" href="#http-1-1">¶</a>HTTP/1.1</h2>
-<h3 id="新增方法"><a class="header-anchor" href="#新增方法">¶</a>新增方法</h3>
-<p>新增的 HTTP 方法有 PUT、PATCH、HEAD、OPTIONS、DELETE</p>
-<h3 id="主机名标识"><a class="header-anchor" href="#主机名标识">¶</a>主机名标识</h3>
-<p>在 HTTP/1.0 中 Host 头信息不是必须项，但 HTTP/1.1 中要求必须要有 Host 头信息。</p>
-<h3 id="持久性连接"><a class="header-anchor" href="#持久性连接">¶</a>持久性连接</h3>
-<p>正如前面所说，在 HTTP/1.0 中每个连接只有一个请求，且在这个请求完成后该连接就会被关闭，从而会导致严重的性能下降及延迟问题。HTTP/1.1 引入了对持久性连接的支持，例如：默认情况下连接不会被关闭，在多个连续的请求下它会保存连接的打开状态。想要关闭这些连接，需要将 Connection: close 加入到请求的头信息中。客户端通常会在最后一次请求中发送这个头信息用来安全的关闭连接。</p>
-<h3 id="管道机制"><a class="header-anchor" href="#管道机制">¶</a>管道机制</h3>
-<p>HTTP/1.1 也引入了对管道机制的支持，客户端可以向服务器发送多个请求，而无需等待来自同一连接上的服务器响应，并且当收到请求时服务器必须以相同的顺序来响应。但你可能会问客户端是怎么知道第一个响应下载完成和下一个响应内容开始的？要解决这个问题，必须要有 Content-Length 头信息，客户端可以用它来确定响应结束，然后开始等待下一个响应。</p>
-<h2 id="http-2"><a class="header-anchor" href="#http-2">¶</a>HTTP/2</h2>
-<p>HTTP/2 是专为低延迟传输的内容而设计，它与 HTTP/1.1 之间的差异如下所示：</p>
-<h3 id="二进制协议"><a class="header-anchor" href="#二进制协议">¶</a>二进制协议</h3>
-<p>HTTP/2 倾向于使用二进制协议来减少 HTTP/1.x 中的延迟。二进制协议更容易解析，但可读性相对较差。HTTP/2 中的数据块是帧和流。<br>
-帧和流：HTTP 消息是由一个或多个帧组成的。有一个叫做 HEADERS 的帧存放元数据，真正的数据是放在 DATA 帧中的，帧类型定义在 the HTTP/2 specs（HTTP/2 规范），如 HEADERS、DATA、RST_STREAM、SETTINGS、PRIORITY 等。每个 HTTP/2 请求和响应都被赋予一个唯一的流 ID 且放入了帧中。帧就是一块二进制数据。一系列帧的集合就称为流。每个帧都有一个流 id，用于标识它属于哪一个流，每一个帧都有相同的头。同时，除了流标识是唯一的，值得一提的是，客户端发起的任何请求都使用奇数和服务器的响应是偶数的流 id。除了 HEADERS 和 DATA， 另外一个值得说一说帧类型是 RST_STREAM，它是一个特殊的帧类型，用于中止流，如客户端发送这儿帧来告诉服务器我不再需要这个流了。在 HTTP/1.1 中只有一种方式来实现服务器停止发送响应给客户端，那就是关闭连接引起延迟增加，因为后续的请求就需要打开一个新的连接。 在 HTTP/2 中，客户端可以使用 RST_FRAME 来停止接收指定的流而不关闭连接且还可以在此连接中接收其它流。</p>
-<h3 id="多路复用"><a class="header-anchor" href="#多路复用">¶</a>多路复用</h3>
-<p>由于 HTTP/2 现在是一个二进制协议，且是使用帧和流来实现请求和响应，一旦 TCP 连接打开了，所有的流都通过这一连接来进行异步的发送而不需要打开额外的连接。反过来，服务器的响应也是异步的方式，如响应是无序的、客户端使用流 id 来标识属于流的包。这就解决了存在于 HTTP/1.x 中 head-of-line 阻塞问题，如客户端将不必耗时等待请求，而其他请求将被处理。如下图所示。<br>
-<img src="https://tallate.top/imgs/%E7%BD%91%E7%BB%9C/HTTP2.0%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.jpg" alt="HTTP2.0多路复用" title="HTTP2.0多路复用"></p>
-<h3 id="hpack-头部压缩"><a class="header-anchor" href="#hpack-头部压缩">¶</a>HPACK 头部压缩</h3>
-<p>它是一个单独的用于明确优化发送 Header RFC 的一部分。它的本质是，当我们同一个客户端不断的访问服务器时，在 header 中发送很多冗余的数据，有时 cookie 就增大 header，且消耗带宽和增加了延迟。为了解决这个问题， HTTP/2 引入了头部压缩。与请求和响应不同，header 不是使用 gzip 或 compress 等压缩格式，它有不同的机制，它使用了霍夫曼编码和在客户端和服务器维护的头部表来消除重复的 headers（如 User Agent)，在后续的请求中就只使用头部表中引用。它与 HTTP/1.1 中的一样，不过增加了伪 header，如 :method、:scheme、:host 和:path。</p>
-<h3 id="服务器推送"><a class="header-anchor" href="#服务器推送">¶</a>服务器推送</h3>
-<p>在服务器端，Server Push 是 HTTTP/2 的另外一个重要功能，我们知道，客户端是通过请求来获取资源的，它可以通过推送资源给客户端而不需客户端主动请求。例如，浏览器载入了一个页面，浏览器解析页面时发现了需要从服务器端载入的内容，接着它就发送一个请求来获取这些内容。Server Push 允许服务器推送数据来减少客户端请求。它是如何实现的呢，服务器在一个新的流中发送一个特殊的帧 PUSH_PROMISE，来通知客户端：“嘿，我要把这个资源发给你!你就不要请求了。”</p>
-<h3 id="请求优先级"><a class="header-anchor" href="#请求优先级">¶</a>请求优先级</h3>
-<p>客户端可以在一个打开的流中在流的 HEADERS 帧中放入优先级信息。在任何时间，客户端都可以发送一个 PRIORITY 的帧来改变流的优先级。如果没有优先级信息，服务器就会异步的处理请求，比如无序处理。如果流被赋予了优先级，它就会基于这个优先级来处理，由服务器决定需要多少资源来处理该请求。<br>
-安全。大家对 HTTP/2 是否强制使用安全连接（通过 TLS）进行了充分的讨论。最后的决定是不强制使用。然而，大多数厂商表示，他们将只支持基于 TLS 的 HTTP/2。所以，尽管 HTTP/2 规范不需要加密，但它已经成为默认的强制执行的。在这种情况下，基于 TLS 实现的 HTTP/2 需要的 TLS 版本最低要求是 1.2。 因此必须有最低限度的密钥长度、临时密钥等。</p>
-
-          
+          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。<br></p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -647,27 +568,15 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
         
           
             <a id="more"></a>
-<h2 id="网关-zuul"><a class="header-anchor" href="#网关-zuul">¶</a>网关 - Zuul</h2>
-<h3 id="filter"><a class="header-anchor" href="#filter">¶</a>Filter</h3>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Zuul%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Zuul组件结构" title="Zuul组件结构"><br>
-Zuul 基于 Netty 开发，使用 filters 包含了核心业务逻辑，Filter 是使用 Groovy 写的，主要是为了提供动态编译加载的能力，filters 主要包含了三类：</p>
+<h2 id="网关-Zuul"><a href="#网关-Zuul" class="headerlink" title="网关 - Zuul"></a>网关 - Zuul</h2><h3 id="Filter"><a href="#Filter" class="headerlink" title="Filter"></a>Filter</h3><p><img src="https://tallate.top/imgs/微服务/Zuul组件结构.png" alt="Zuul组件结构" title="Zuul组件结构"><br>Zuul 基于 Netty 开发，使用 filters 包含了核心业务逻辑，Filter 是使用 Groovy 写的，主要是为了提供动态编译加载的能力，filters 主要包含了三类：</p>
 <ul>
 <li>Inbound Filters execute before routing to the origin and can be used for things like authentication, dynamic routing, rate limiting, DDoS protection, metrics and decorating the request.</li>
 <li>Endpoint Filters can be used to return static responses, otherwise the built-in <code>ProxyEndpoint</code> filter will route the request to the origin.</li>
 <li>Outbound Filters execute after getting the response from the origin and can be used for metrics, decorating the response to the user or adding custom headers.</li>
-<li>Async<br>
-Filter 可以被同步执行或异步执行。<br>
-如果 Filter 没有做太重的工作，可以通过继承<code>HttpInboundSyncFilter</code>或<code>HttpOutboundSyncFilter</code>来实现一种同步 Filter，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>Routes.groovy</code>；<br>
-反之，如果需要从其他服务、缓存获取数据，或做一些复杂的计算工作，则最好继承<code>HttpInboundFilter</code>或<code>HttpOutboundFilter</code>，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>SampleServiceFilter.groovy</code>。</li>
+<li>Async<br>Filter 可以被同步执行或异步执行。<br>如果 Filter 没有做太重的工作，可以通过继承<code>HttpInboundSyncFilter</code>或<code>HttpOutboundSyncFilter</code>来实现一种同步 Filter，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>Routes.groovy</code>；<br>反之，如果需要从其他服务、缓存获取数据，或做一些复杂的计算工作，则最好继承<code>HttpInboundFilter</code>或<code>HttpOutboundFilter</code>，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>SampleServiceFilter.groovy</code>。</li>
 </ul>
-<h4 id="filter属性"><a class="header-anchor" href="#filter属性">¶</a>Filter属性</h4>
-<p>Type: most often defines the stage during the routing flow when the Filter will be applied (although it can be any custom string)<br>
-Async: define if the filter is sync or async, generally meaning do you need to make an external call or just doing work on-box<br>
-Execution Order: applied within the Type, defines the order of execution across multiple Filters<br>
-Criteria: the conditions required in order for the Filter to be executed<br>
-Action: the action to be executed if the Criteria is met</p>
-<h4 id="其他的一些例子"><a class="header-anchor" href="#其他的一些例子">¶</a>其他的一些例子</h4>
-<p>这些例子是<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">zuul-sample</a>中的代码。</p>
+<h4 id="Filter属性"><a href="#Filter属性" class="headerlink" title="Filter属性"></a>Filter属性</h4><p>Type: most often defines the stage during the routing flow when the Filter will be applied (although it can be any custom string)<br>Async: define if the filter is sync or async, generally meaning do you need to make an external call or just doing work on-box<br>Execution Order: applied within the Type, defines the order of execution across multiple Filters<br>Criteria: the conditions required in order for the Filter to be executed<br>Action: the action to be executed if the Criteria is met</p>
+<h4 id="其他的一些例子"><a href="#其他的一些例子" class="headerlink" title="其他的一些例子"></a>其他的一些例子</h4><p>这些例子是<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">zuul-sample</a>中的代码。</p>
 <ul>
 <li>DebugRequest - look for a query param to add extra debug logging for a request</li>
 <li>Healthcheck - simple static endpoint filter that returns 200, if everything is bootstrapped correctly</li>
@@ -675,251 +584,42 @@ Action: the action to be executed if the Criteria is met</p>
 <li>GZipResponseFilter - can be enabled to gzip outbound responses</li>
 <li>SurgicalDebugFilter - can be enabled to route specific requests to different hosts for debugging</li>
 </ul>
-<h3 id="缓存请求体"><a class="header-anchor" href="#缓存请求体">¶</a>缓存请求体</h3>
-<p>默认情况下 Zuul 不会缓存请求体，因为 Filter 一般用到请求头就够了，但是如果需要在 inbound 中用到请求头或在 outbound 中用到响应头，则需要明确指定 Zuul 缓存，可以重写 Filter 的<code>needsBodyBuffered()</code>：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">boolean needsBodyBuffered(HttpResponseMessage input) &#123;</span><br><span class="line">    return true</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="网络协议"><a class="header-anchor" href="#网络协议">¶</a>网络协议</h3>
-<p>Zuul 支持修改暴露服务时使用的协议，使用方法见 sample 项目中的<code>SampleServerStartup</code>。</p>
-<h3 id="其他功能"><a class="header-anchor" href="#其他功能">¶</a>其他功能</h3>
-<p><a href="https://github.com/Netflix/zuul/wiki/Core-Features" target="_blank" rel="noopener">Core Features</a></p>
-<h3 id="push-messaging"><a class="header-anchor" href="#push-messaging">¶</a>Push Messaging</h3>
-<p>Push Messaging 机制可以支持从 Server 端推送消息到 Client 端，支持两种协议：<code>WebSockets</code> 和 <code>Server Sent Events (SSE)</code>。<br>
-<a href="https://github.com/Netflix/zuul/wiki/Push-Messaging" target="_blank" rel="noopener">Push Messaging</a><br>
-TODO</p>
-<h2 id="负载均衡-ribbon"><a class="header-anchor" href="#负载均衡-ribbon">¶</a>负载均衡 - Ribbon</h2>
-<h3 id="使用"><a class="header-anchor" href="#使用">¶</a>使用</h3>
-<p>原生 API 如何使用见：<a href="https://github.com/Netflix/ribbon/wiki/Getting-Started" target="_blank" rel="noopener">Netflix / ribbon - Getting Started</a><br>
-如果是搭配 Spring Boot，可以参考 Spring Could 文档。</p>
-<h3 id="组件结构及实现"><a class="header-anchor" href="#组件结构及实现">¶</a>组件结构及实现</h3>
-<h4 id="rule"><a class="header-anchor" href="#rule">¶</a>Rule</h4>
-<p>a logic component to determine which server to return from a list</p>
+<h3 id="缓存请求体"><a href="#缓存请求体" class="headerlink" title="缓存请求体"></a>缓存请求体</h3><p>默认情况下 Zuul 不会缓存请求体，因为 Filter 一般用到请求头就够了，但是如果需要在 inbound 中用到请求头或在 outbound 中用到响应头，则需要明确指定 Zuul 缓存，可以重写 Filter 的<code>needsBodyBuffered()</code>：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">boolean needsBodyBuffered(HttpResponseMessage input) &#123;</span><br><span class="line">    return true</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="网络协议"><a href="#网络协议" class="headerlink" title="网络协议"></a>网络协议</h3><p>Zuul 支持修改暴露服务时使用的协议，使用方法见 sample 项目中的<code>SampleServerStartup</code>。</p>
+<h3 id="其他功能"><a href="#其他功能" class="headerlink" title="其他功能"></a>其他功能</h3><p><a href="https://github.com/Netflix/zuul/wiki/Core-Features" target="_blank" rel="noopener">Core Features</a></p>
+<h3 id="Push-Messaging"><a href="#Push-Messaging" class="headerlink" title="Push Messaging"></a>Push Messaging</h3><p>Push Messaging 机制可以支持从 Server 端推送消息到 Client 端，支持两种协议：<code>WebSockets</code> 和 <code>Server Sent Events (SSE)</code>。<br><a href="https://github.com/Netflix/zuul/wiki/Push-Messaging" target="_blank" rel="noopener">Push Messaging</a><br>TODO</p>
+<h2 id="负载均衡-Ribbon"><a href="#负载均衡-Ribbon" class="headerlink" title="负载均衡 - Ribbon"></a>负载均衡 - Ribbon</h2><h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><p>原生 API 如何使用见：<a href="https://github.com/Netflix/ribbon/wiki/Getting-Started" target="_blank" rel="noopener">Netflix / ribbon - Getting Started</a><br>如果是搭配 Spring Boot，可以参考 Spring Could 文档。</p>
+<h3 id="组件结构及实现"><a href="#组件结构及实现" class="headerlink" title="组件结构及实现"></a>组件结构及实现</h3><h4 id="Rule"><a href="#Rule" class="headerlink" title="Rule"></a>Rule</h4><p>a logic component to determine which server to return from a list</p>
 <ul>
-<li>RoundRobinRule<br>
-简单的轮询策略</li>
-<li>AvailabilityFilteringRule<br>
-这个 Rule 会跳过那些疑似“电路跳闸”或并发连接数已经很高的服务器。<br>
-比如客户端的最后 3 次连接失败，客户端会认为该服务实例已经出现了类似“电路跳闸”的问题而导致无法提供服务，于是在接下来的 30 秒内均保持这种状态，如果之后还是连接失败，这个等待时间会指数增长（1min、2min、4min…）。</li>
-<li>WeightedResponseTimeRule<br>
-每个 Server 会根据其平均响应时间计算出一个权重，响应时间越长、比重越小，该 Rule 选择 Server 时会根据该权重来计算概率。</li>
+<li>RoundRobinRule<br>简单的轮询策略</li>
+<li>AvailabilityFilteringRule<br>这个 Rule 会跳过那些疑似“电路跳闸”或并发连接数已经很高的服务器。<br>比如客户端的最后 3 次连接失败，客户端会认为该服务实例已经出现了类似“电路跳闸”的问题而导致无法提供服务，于是在接下来的 30 秒内均保持这种状态，如果之后还是连接失败，这个等待时间会指数增长（1min、2min、4min…）。</li>
+<li>WeightedResponseTimeRule<br>每个 Server 会根据其平均响应时间计算出一个权重，响应时间越长、比重越小，该 Rule 选择 Server 时会根据该权重来计算概率。</li>
 </ul>
-<h4 id="ping"><a class="header-anchor" href="#ping">¶</a>Ping</h4>
-<p>a component running in background to ensure liveness of servers</p>
-<h4 id="serverlist"><a class="header-anchor" href="#serverlist">¶</a>ServerList</h4>
-<p>this can be static or dynamic. If it is dynamic (as used by <code>DynamicServerListLoadBalancer</code>), a background thread will refresh and filter the list at certain interval</p>
+<h4 id="Ping"><a href="#Ping" class="headerlink" title="Ping"></a>Ping</h4><p>a component running in background to ensure liveness of servers</p>
+<h4 id="ServerList"><a href="#ServerList" class="headerlink" title="ServerList"></a>ServerList</h4><p>this can be static or dynamic. If it is dynamic (as used by <code>DynamicServerListLoadBalancer</code>), a background thread will refresh and filter the list at certain interval</p>
 <ul>
-<li>静态的 Server 列表<br>
-可以在程序里写一个静态列表，将该列表设置到<code>BaseLoadBalancer.setServerList()</code>中。</li>
-<li>ConfigurationBasedServerList<br>
-默认的 ServerList 实现，可以通过 <code>Archaius ConfigurationManager</code>来设置 Server 列表。</li>
-<li>DiscoveryEnabledNIWSServerList<br>
-可以通过 Eureka Client 获取服务器列表，服务器集群必须通过 VipAddress 来定义：  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br></pre></td></tr></table></figure>
+<li>静态的 Server 列表<br>可以在程序里写一个静态列表，将该列表设置到<code>BaseLoadBalancer.setServerList()</code>中。</li>
+<li>ConfigurationBasedServerList<br>默认的 ServerList 实现，可以通过 <code>Archaius ConfigurationManager</code>来设置 Server 列表。</li>
+<li>DiscoveryEnabledNIWSServerList<br>可以通过 Eureka Client 获取服务器列表，服务器集群必须通过 VipAddress 来定义：  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br></pre></td></tr></table></figure>
 </li>
 </ul>
-<h4 id="serverlistfilter"><a class="header-anchor" href="#serverlistfilter">¶</a>ServerListFilter</h4>
-<p>ServerListFilter 是<code>DynamicServerListLoadBalancer</code>的组件，用于过滤从<code>ServerList</code>返回的服务器列表，现在有两种实现：</p>
+<h4 id="ServerListFilter"><a href="#ServerListFilter" class="headerlink" title="ServerListFilter"></a>ServerListFilter</h4><p>ServerListFilter 是<code>DynamicServerListLoadBalancer</code>的组件，用于过滤从<code>ServerList</code>返回的服务器列表，现在有两种实现：</p>
 <ul>
-<li>
-<p>ZoneAffinityServerListFilter<br>
-过滤掉不在同一个 zone 内的服务器，除非 zone 内没有可用的服务器，这个 Filter 可以通过设置如下属性来启用（假设客户端名为 myclient、客户端的属性空间为 ribbon）：</p>
+<li><p>ZoneAffinityServerListFilter<br>过滤掉不在同一个 zone 内的服务器，除非 zone 内没有可用的服务器，这个 Filter 可以通过设置如下属性来启用（假设客户端名为 myclient、客户端的属性空间为 ribbon）：</p>
   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">myclient.ribbon.EnableZoneAffinity=true</span><br></pre></td></tr></table></figure>
 </li>
-<li>
-<p>ServerListSubsetFilter<br>
-可以保证客户端只能看到<code>ServerList</code>返回的全体服务器的一个固定子集，如果有服务器可用性较弱，则可以定期用新服务器替换老服务器。可以通过设置以下属性启用该Filter：</p>
+<li><p>ServerListSubsetFilter<br>可以保证客户端只能看到<code>ServerList</code>返回的全体服务器的一个固定子集，如果有服务器可用性较弱，则可以定期用新服务器替换老服务器。可以通过设置以下属性启用该Filter：</p>
   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br><span class="line">myClient.ribbon.NIWSServerListFilterClassName=com.netflix.loadbalancer.ServerListSubsetFilter</span><br><span class="line"># only show client 5 servers. default is 20.</span><br><span class="line">myClient.ribbon.ServerListSubsetFilter.size=5</span><br></pre></td></tr></table></figure>
 </li>
 </ul>
-<h3 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h3>
-<p>com.netflix.loadbalancer.DynamicServerListLoadBalancer#updateListOfServers<br>
-com.netflix.loadbalancer.ServerList#getUpdatedListOfServers<br>
-com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList#obtainServersViaDiscovery<br>
-TODO</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="常见实现"><a class="header-anchor" href="#常见实现">¶</a>常见实现</h3>
-<ol>
+<h3 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h3><p>com.netflix.loadbalancer.DynamicServerListLoadBalancer#updateListOfServers<br>com.netflix.loadbalancer.ServerList#getUpdatedListOfServers<br>com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList#obtainServersViaDiscovery<br>TODO</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><h3 id="常见实现"><a href="#常见实现" class="headerlink" title="常见实现"></a>常见实现</h3><ol>
 <li><a href="https://github.com/Netflix/zuul/blob/master/zuul-sample/src/main/java/com/netflix/zuul/sample/SampleServerStartup.java" target="_blank" rel="noopener">Netflix/zuul</a></li>
 <li><a href="https://github.com/Netflix/ribbon" target="_blank" rel="noopener">Netflix/ribbon</a></li>
 <li><a href="https://github.com/Netflix/Turbine" target="_blank" rel="noopener">Netflix / Turbine</a></li>
 </ol>
 
           
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  13 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
         
       
     </div>
@@ -1090,26 +790,21 @@ TODO</p>
       
         
           
-            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
-<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
-现在：Eureka 在中间层提供一种负载均衡的可能。</p>
-<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
-<ul>
+            <h2 id="Eureka-的目标"><a href="#Eureka-的目标" class="headerlink" title="Eureka 的目标"></a>Eureka 的目标</h2><p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>现在：Eureka 在中间层提供一种负载均衡的可能。</p>
+<h2 id="Eureka-VS-ZooKeeper"><a href="#Eureka-VS-ZooKeeper" class="headerlink" title="Eureka VS ZooKeeper"></a>Eureka VS ZooKeeper</h2><ul>
 <li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
 <li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
 <li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
 </ul>
-<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
+<h2 id="组成部分"><a href="#组成部分" class="headerlink" title="组成部分"></a>组成部分</h2><p><img src="https://tallate.top/imgs/微服务/Eureka组件结构.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
 <ul>
 <li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
 <li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
-<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
+<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）</strong>来刷新<strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
 <li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
 <li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
 </ul>
-<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
+<h2 id="服务状态机"><a href="#服务状态机" class="headerlink" title="服务状态机"></a>服务状态机</h2><p><img src="https://tallate.top/imgs/微服务/Eureka实例状态机.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
 <ul>
 <li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
 <li>UP：可以正常进行通信；</li>
@@ -1117,87 +812,229 @@ TODO</p>
 <li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
 <li>UNKNOWN：WTF？</li>
 </ul>
-<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
-<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
-<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
-<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
-<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
-<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
-<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
-<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
-<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
+<h2 id="Client-与-Server-间的交互"><a href="#Client-与-Server-间的交互" class="headerlink" title="Client 与 Server 间的交互"></a>Client 与 Server 间的交互</h2><h3 id="Register"><a href="#Register" class="headerlink" title="Register"></a>Register</h3><p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
+<h3 id="Unregister"><a href="#Unregister" class="headerlink" title="Unregister"></a>Unregister</h3><p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于”unclean termination”而导致心跳丢失超过 3 次。</p>
+<h3 id="Renew"><a href="#Renew" class="headerlink" title="Renew"></a>Renew</h3><p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
+<h3 id="Fetch-Registry"><a href="#Fetch-Registry" class="headerlink" title="Fetch Registry"></a>Fetch Registry</h3><p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
 <p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
-<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
-<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
-<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
-DiscoveryManager.getInstance().shutdownComponent()</p>
-<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
-<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
-<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
-<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
-<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
-<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
-<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
-<p>Eureka Client 的高可用设计：</p>
+<h3 id="Cancel"><a href="#Cancel" class="headerlink" title="Cancel"></a>Cancel</h3><p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
+<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>     DiscoveryManager.getInstance().shutdownComponent()</p>
+<h3 id="Time-Lag"><a href="#Time-Lag" class="headerlink" title="Time Lag"></a>Time Lag</h3><p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
+<h3 id="Communication-mechanism"><a href="#Communication-mechanism" class="headerlink" title="Communication mechanism"></a>Communication mechanism</h3><p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
+<h3 id="通信协议"><a href="#通信协议" class="headerlink" title="通信协议"></a>通信协议</h3><p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
+<h2 id="高可用"><a href="#高可用" class="headerlink" title="高可用"></a>高可用</h2><p>Eureka Client 的高可用设计：</p>
 <ul>
 <li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
 <li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
 </ul>
 <p>Eureka Server 的高可用设计：</p>
 <ul>
-<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
-Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
-获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
-<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
-在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
-<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
-<ol>
+<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
+<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
+<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：<ol>
 <li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
 <li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
 </ol>
 </li>
-<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
-当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
+<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
 </ul>
-<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
-<p>比如在测试环境中出现：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
+<h2 id="异常情况"><a href="#异常情况" class="headerlink" title="异常情况"></a>异常情况</h2><p>比如在测试环境中出现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure></p>
 <p>解决办法：</p>
 <ul>
-<li>在生产上可以开自注册，部署两个 server</li>
-<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
+<li>在生产上可以开自注册，部署两个 server </li>
+<li>在本机器上测试的时候，可以把比值调低，比如 0.49 </li>
 <li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
 </ul>
-<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
-<p>配置：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
-Eureka Server 开放的 REST 接口提供动态配置功能：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
-<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
-<p>静态设置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
-<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
-动态设置：<br>
-需要提供一个自定义的</p>
-<p>获取：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
-<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
-<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
-<p>EurekaClient</p>
-<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
-<p>ExampleEurekaGovernatedService</p>
-<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
-<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
-EurekaServerConfig extends DefaultEurekaServerConfig<br>
-CloudInstanceConfig extends PropertiesInstanceConfig<br>
-MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
-<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
+<h2 id="Eureka-配置"><a href="#Eureka-配置" class="headerlink" title="Eureka 配置"></a>Eureka 配置</h2><p>配置：<br><a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>Eureka Server 开放的 REST 接口提供动态配置功能：<br><a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
+<h3 id="添加自定义元数据"><a href="#添加自定义元数据" class="headerlink" title="添加自定义元数据"></a>添加自定义元数据</h3><p>静态设置：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure></p>
+<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>动态设置：<br>需要提供一个自定义的</p>
+<p>获取：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure></p>
+<h2 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h2><h3 id="原生客户端的执行过程"><a href="#原生客户端的执行过程" class="headerlink" title="原生客户端的执行过程"></a>原生客户端的执行过程</h3><p>EurekaClient</p>
+<h3 id="通过-DI（依赖注入）使用-EurekaClient"><a href="#通过-DI（依赖注入）使用-EurekaClient" class="headerlink" title="通过 DI（依赖注入）使用 EurekaClient"></a>通过 DI（依赖注入）使用 EurekaClient</h3><p>ExampleEurekaGovernatedService</p>
+<h3 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h3><p>DefaultEurekaClientConfig extends EurekaClientConfig<br>EurekaServerConfig extends DefaultEurekaServerConfig<br>CloudInstanceConfig extends PropertiesInstanceConfig<br>MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
+<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map<string, string=""> getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</string,></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
 <li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
 </ol>
 
           
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b791cedc.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/b791cedc.html" itemprop="url">微服务核心技术总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
+                2019-07-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/微服务/" itemprop="url" rel="index">
+                    <span itemprop="name">微服务</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.8k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  15 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>虚拟化技术将一台服务器虚拟出多个虚拟机来提供服务。<br>虚拟化技术包括计算虚拟化（服务器虚拟化）、存储虚拟化、网络虚拟化等。<br>在实际讲解虚拟化之前，我们需要先解释一下隔离技术，在隔离的基础上我们才能任意粒度、自由地分配资源。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/b791cedc.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -1546,150 +1383,102 @@ MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
         
           
             <a id="more"></a>
-<h2 id="kubectl-的安装"><a class="header-anchor" href="#kubectl-的安装">¶</a>kubectl 的安装</h2>
-<p><a href="https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl-on-macos" target="_blank" rel="noopener">Install and Set Up kubectl</a></p>
-<h2 id="kubernetes-含义"><a class="header-anchor" href="#kubernetes-含义">¶</a>kubernetes 含义</h2>
-<h3 id="kubernetes-master"><a class="header-anchor" href="#kubernetes-master">¶</a>Kubernetes Master</h3>
-<p>Kubernetes Master 主要负责管理集群，它会协调集群内的所有活动，包括：scheduling applications, maintaining applications’ desired state, scaling applications, and rolling out new updates。<br>
-Master 实际上是三个进程的集合，它们运行在集群的一个 Master Node 上，这三个进程包括：</p>
+<h2 id="kubectl-的安装"><a href="#kubectl-的安装" class="headerlink" title="kubectl 的安装"></a>kubectl 的安装</h2><p><a href="https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl-on-macos" target="_blank" rel="noopener">Install and Set Up kubectl</a></p>
+<h2 id="kubernetes-含义"><a href="#kubernetes-含义" class="headerlink" title="kubernetes 含义"></a>kubernetes 含义</h2><h3 id="Kubernetes-Master"><a href="#Kubernetes-Master" class="headerlink" title="Kubernetes Master"></a>Kubernetes Master</h3><p>Kubernetes Master 主要负责管理集群，它会协调集群内的所有活动，包括：scheduling applications, maintaining applications’ desired state, scaling applications, and rolling out new updates。<br>Master 实际上是三个进程的集合，它们运行在集群的一个 Master Node 上，这三个进程包括：</p>
 <ul>
 <li><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/" target="_blank" rel="noopener">kube-apiserver</a>：提供<a href="https://kubernetes.io/docs/concepts/overview/kubernetes-api/" target="_blank" rel="noopener">REST-API</a>来操作 Kubernetes Objects，包括 pods、services、replicationcontrollers 等，并可用于控制集群状态。</li>
 <li><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/" target="_blank" rel="noopener">kube-controller-manager</a>：通过 apiserver 监听集群状态并做状态转移操作。</li>
 <li><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/" target="_blank" rel="noopener">kube-scheduler</a>：scheduler 可以根据集群的拓扑结构、性能、容量等动态分配资源。</li>
 </ul>
-<h3 id="node"><a class="header-anchor" href="#node">¶</a>Node</h3>
-<p>Node 是一台虚拟机或物理电脑，在集群中作为 Worker。Master 管理 Cluster，而 Node 则管理应用。<br>
-每个 Node 都有一个 Kubelet，是管理 Node 的媒介，且负责与 Kubernetes Master 进行交互。<br>
-每个 Node 还需要有工具来处理容器操作，比如 Docker 或 rkt。<br>
-一个生产环境的 cluster 必须由至少 3 个 Node 组成。</p>
-<h4 id="kubelet"><a class="header-anchor" href="#kubelet">¶</a><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/" target="_blank" rel="noopener">kubelet</a></h4>
-<p>节点代理，负责和 Kubernetes Master 交互：</p>
+<h3 id="Node"><a href="#Node" class="headerlink" title="Node"></a>Node</h3><p>Node 是一台虚拟机或物理电脑，在集群中作为 Worker。Master 管理 Cluster，而 Node 则管理应用。<br>每个 Node 都有一个 Kubelet，是管理 Node 的媒介，且负责与 Kubernetes Master 进行交互。<br>每个 Node 还需要有工具来处理容器操作，比如 Docker 或 rkt。<br>一个生产环境的 cluster 必须由至少 3 个 Node 组成。</p>
+<h4 id="kubelet"><a href="#kubelet" class="headerlink" title="kubelet"></a><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/" target="_blank" rel="noopener">kubelet</a></h4><p>节点代理，负责和 Kubernetes Master 交互：</p>
 <ul>
 <li>向 apiserver 注册节点</li>
 <li>其他云计算指定逻辑。</li>
 </ul>
-<h4 id="kube-proxy"><a class="header-anchor" href="#kube-proxy">¶</a><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/" target="_blank" rel="noopener">kube-proxy</a></h4>
-<p>运行于每个 Node 上的一个网络代理，可以执行简单的 TCP、UDP、SCTP 流转发或提供多后端进程的负载均衡。<br>
-相当于在主机和 Cluster 之间创建了一个连接，让我们能直接访问 API。</p>
-<h3 id="pod"><a class="header-anchor" href="#pod">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/" target="_blank" rel="noopener">Pod</a></h3>
-<p>一个或多个应用容器集合的抽象，并且包含一些共享资源，包括：</p>
+<h4 id="kube-proxy"><a href="#kube-proxy" class="headerlink" title="kube-proxy"></a><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/" target="_blank" rel="noopener">kube-proxy</a></h4><p>运行于每个 Node 上的一个网络代理，可以执行简单的 TCP、UDP、SCTP 流转发或提供多后端进程的负载均衡。<br>相当于在主机和 Cluster 之间创建了一个连接，让我们能直接访问 API。</p>
+<h3 id="Pod"><a href="#Pod" class="headerlink" title="Pod"></a><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/" target="_blank" rel="noopener">Pod</a></h3><p>一个或多个应用容器集合的抽象，并且包含一些共享资源，包括：</p>
 <ul>
 <li>共享存储，如 Volumes；</li>
 <li>网络连接，每个 Pod 具有 Cluster 中唯一的一个 IP 地址；</li>
 <li>运行每个容器所必须的信息，比如容器镜像的版本、端口等。</li>
 </ul>
-<p>Pod 建模了一种“logical host”，可以同时运行多种不同的容器。<br>
-当 Pod 所处的 Node 挂了，<code>ReplicaSet</code>会动态地创建新 Pod 来使得 Cluster 回到原来的状态。</p>
-<h3 id="service"><a class="header-anchor" href="#service">¶</a><a href="https://kubernetes.io/docs/concepts/services-networking/service/" target="_blank" rel="noopener">Service</a></h3>
-<p>Service 定义了 Pod 的逻辑集合及其访问规则，虽然每个 Pod 都有一个唯一的 IP 地址（Cluster 范围内），但是如果没有 Service 的话这些 IP 也是没法暴露到 Cluster 外的，可以通过指定 ServiceSpec 中的<code>type</code>来指定暴露服务的方式：</p>
+<p>Pod 建模了一种“logical host”，可以同时运行多种不同的容器。<br>当 Pod 所处的 Node 挂了，<code>ReplicaSet</code>会动态地创建新 Pod 来使得 Cluster 回到原来的状态。</p>
+<h3 id="Service"><a href="#Service" class="headerlink" title="Service"></a><a href="https://kubernetes.io/docs/concepts/services-networking/service/" target="_blank" rel="noopener">Service</a></h3><p>Service 定义了 Pod 的逻辑集合及其访问规则，虽然每个 Pod 都有一个唯一的 IP 地址（Cluster 范围内），但是如果没有 Service 的话这些 IP 也是没法暴露到 Cluster 外的，可以通过指定 ServiceSpec 中的<code>type</code>来指定暴露服务的方式：</p>
 <ul>
 <li>ClusterIP (default) - Exposes the Service on an internal IP in the cluster. This type makes the Service only reachable from within the cluster.</li>
 <li>NodePort - Exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a Service accessible from outside the cluster using <code>&lt;NodeIP&gt;:&lt;NodePort&gt;</code>. Superset of ClusterIP.</li>
 <li>LoadBalancer - Creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service. Superset of NodePort.</li>
 <li>ExternalName - Exposes the Service using an arbitrary name (specified by <code>externalName</code> in the spec) by returning a CNAME record with the name. No proxy is used. This type requires v1.7 or higher of <code>kube-dns</code>.</li>
 </ul>
-<h3 id="volumes"><a class="header-anchor" href="#volumes">¶</a><a href="https://kubernetes.io/docs/concepts/storage/volumes/" target="_blank" rel="noopener">Volumes</a></h3>
-<h3 id="namespaces"><a class="header-anchor" href="#namespaces">¶</a><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/" target="_blank" rel="noopener">Namespaces</a></h3>
-<h3 id="deployments"><a class="header-anchor" href="#deployments">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">Deployments</a></h3>
-<p>负责创建和更新应用实例，创建 Deployment 后，Master 会持续监听并在各 Node 中调度应用实例，一旦有实例挂掉或被删掉，Deployment controller 就会用 Cluster 中另一 Node 上的实例取代之。</p>
+<h3 id="Volumes"><a href="#Volumes" class="headerlink" title="Volumes"></a><a href="https://kubernetes.io/docs/concepts/storage/volumes/" target="_blank" rel="noopener">Volumes</a></h3><h3 id="Namespaces"><a href="#Namespaces" class="headerlink" title="Namespaces"></a><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/" target="_blank" rel="noopener">Namespaces</a></h3><h3 id="Deployments"><a href="#Deployments" class="headerlink" title="Deployments"></a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">Deployments</a></h3><p>负责创建和更新应用实例，创建 Deployment 后，Master 会持续监听并在各 Node 中调度应用实例，一旦有实例挂掉或被删掉，Deployment controller 就会用 Cluster 中另一 Node 上的实例取代之。</p>
 <ul>
 <li>searched for a suitable node where an instance of the application could be run (we have only 1 available node)</li>
 <li>scheduled the application to run on that Node</li>
 <li>configured the cluster to reschedule the instance on a new Node when needed</li>
 </ul>
-<h3 id="daemonset"><a class="header-anchor" href="#daemonset">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/" target="_blank" rel="noopener">DaemonSet</a></h3>
-<h3 id="statefulsets"><a class="header-anchor" href="#statefulsets">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/" target="_blank" rel="noopener">StatefulSets</a></h3>
-<h3 id="replicaset"><a class="header-anchor" href="#replicaset">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/" target="_blank" rel="noopener">ReplicaSet</a></h3>
-<h3 id="jobs"><a class="header-anchor" href="#jobs">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/" target="_blank" rel="noopener">Jobs</a></h3>
-<h2 id="kubernetes-使用"><a class="header-anchor" href="#kubernetes-使用">¶</a>kubernetes 使用</h2>
-<p>可以采用<code>kubectl</code>命令来和 Cluster 交互，<code>kubectl</code>最常用的操作只有如下 4 种：</p>
+<h3 id="DaemonSet"><a href="#DaemonSet" class="headerlink" title="DaemonSet"></a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/" target="_blank" rel="noopener">DaemonSet</a></h3><h3 id="StatefulSets"><a href="#StatefulSets" class="headerlink" title="StatefulSets"></a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/" target="_blank" rel="noopener">StatefulSets</a></h3><h3 id="ReplicaSet"><a href="#ReplicaSet" class="headerlink" title="ReplicaSet"></a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/" target="_blank" rel="noopener">ReplicaSet</a></h3><h3 id="Jobs"><a href="#Jobs" class="headerlink" title="Jobs"></a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/" target="_blank" rel="noopener">Jobs</a></h3><h2 id="kubernetes-使用"><a href="#kubernetes-使用" class="headerlink" title="kubernetes 使用"></a>kubernetes 使用</h2><p>可以采用<code>kubectl</code>命令来和 Cluster 交互，<code>kubectl</code>最常用的操作只有如下 4 种：</p>
 <ul>
 <li>kubectl get - list resources</li>
 <li>kubectl describe - show detailed information about a resource</li>
 <li>kubectl logs - print the logs from a container in a pod</li>
 <li>kubectl exec - execute a command on a container in a pod</li>
 </ul>
-<h3 id="创建cluster"><a class="header-anchor" href="#创建cluster">¶</a>创建Cluster</h3>
-<p>例子中使用<code>minikube</code>创建 Cluster，然后使用<code>kubectl</code>来和创建的 Cluster 交互：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">minikube version</span><br><span class="line"># 启动一个Cluster</span><br><span class="line">minikube start</span><br><span class="line"># 查看客户端（kubectl的版本）和服务端（Kubernetes的版本）的版本</span><br><span class="line">kubectl version</span><br><span class="line"># Cluster的详细信息</span><br><span class="line">kubectl cluster-info</span><br><span class="line"># 获取Cluster内的Node列表</span><br><span class="line">kubectl get nodes</span><br></pre></td></tr></table></figure>
+<h3 id="创建Cluster"><a href="#创建Cluster" class="headerlink" title="创建Cluster"></a>创建Cluster</h3><p>例子中使用<code>minikube</code>创建 Cluster，然后使用<code>kubectl</code>来和创建的 Cluster 交互：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">minikube version</span><br><span class="line"># 启动一个Cluster</span><br><span class="line">minikube start</span><br><span class="line"># 查看客户端（kubectl的版本）和服务端（Kubernetes的版本）的版本</span><br><span class="line">kubectl version</span><br><span class="line"># Cluster的详细信息</span><br><span class="line">kubectl cluster-info</span><br><span class="line"># 获取Cluster内的Node列表</span><br><span class="line">kubectl get nodes</span><br></pre></td></tr></table></figure></p>
 <ol>
-<li>创建部署单元（Deployment）</li>
+<li>创建部署单元（Deployment）<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 创建Deploymnet</span><br><span class="line">kubectl create deployment kubernetes-bootcamp --image=gcr.io/google-samples/kubernetes-bootcamp:v1</span><br><span class="line"># 查看Deployment</span><br><span class="line">kubectl get deployments</span><br><span class="line"></span><br><span class="line"># 查看Pod</span><br><span class="line">kubectl get pods</span><br><span class="line"># 查看Pod内Container的属性，比如使用的是什么镜像</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 创建Deploymnet</span><br><span class="line">kubectl create deployment kubernetes-bootcamp --image=gcr.io/google-samples/kubernetes-bootcamp:v1</span><br><span class="line"># 查看Deployment</span><br><span class="line">kubectl get deployments</span><br><span class="line"></span><br><span class="line"># 查看Pod</span><br><span class="line">kubectl get pods</span><br><span class="line"># 查看Pod内Container的属性，比如使用的是什么镜像</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
-<h3 id="访问"><a class="header-anchor" href="#访问">¶</a>访问</h3>
-<ol>
-<li>使用 proxy 访问 Service 和 Pod</li>
-</ol>
+<h3 id="访问"><a href="#访问" class="headerlink" title="访问"></a>访问</h3><ol>
+<li><p>使用 proxy 访问 Service 和 Pod</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 创建proxy实例</span><br><span class="line">kubectl proxy</span><br><span class="line"># 创建proxy后可以在另一个终端调用REST API来查看Cluster信息</span><br><span class="line">curl http://localhost:8001/version</span><br><span class="line"># 查看Pod的名字</span><br><span class="line">export POD_NAME=$(kubectl get pods -o go-template --template &apos;&#123;&#123;range .items&#125;&#125;&#123;&#123;.metadata.name&#125;&#125;&#123;&#123;&quot;\n&quot;&#125;&#125;&#123;&#123;end&#125;&#125;&apos;)</span><br><span class="line">echo Name of the Pod: $POD_NAME</span><br><span class="line"># 可以通过proxy直接访问Pod</span><br><span class="line">curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/</span><br></pre></td></tr></table></figure>
-<ol>
-<li>查看日志</li>
-</ol>
+</li>
+<li><p>查看日志</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 所有应用发送给STDOUT的信息都会成为Pod容器的日志</span><br><span class="line">kubectl logs $POD_NAME</span><br></pre></td></tr></table></figure>
-<ol>
-<li>使用 exec 命令访问 Pod</li>
-</ol>
+</li>
+<li><p>使用 exec 命令访问 Pod</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 查看Pod内的环境变量</span><br><span class="line">kubectl exec $POD_NAME env</span><br><span class="line"># 在Pod中一个容器内启动一个bash会话，相当于登入了该容器</span><br><span class="line">kubectl exec -ti $POD_NAME bash</span><br></pre></td></tr></table></figure>
-<h3 id="service-v2"><a class="header-anchor" href="#service-v2">¶</a>Service</h3>
-<ol>
-<li>创建 Service</li>
+</li>
 </ol>
+<h3 id="Service-1"><a href="#Service-1" class="headerlink" title="Service"></a>Service</h3><ol>
+<li><p>创建 Service</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 查看Service</span><br><span class="line">kubectl get services</span><br><span class="line"># 创建一个新的Service并暴露端口（type=NodePort可以用于占用一个Node上的端口来暴露服务）</span><br><span class="line">kubectl expose deployment/kubernetes-bootcamp --type=&quot;NodePort&quot; --port 8080</span><br><span class="line"># 查看Service信息</span><br><span class="line">kubectl describe services/kubernetes-bootcamp</span><br></pre></td></tr></table></figure>
-<ol>
-<li>Deployment 与 Service</li>
-</ol>
+</li>
+<li><p>Deployment 与 Service</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 8080其实是集群内的一个逻辑端口，可以通过以下命令获取Node上暴露的端口</span><br><span class="line">export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template=&apos;&#123;&#123;(index .spec.ports 0).nodePort&#125;&#125;&apos;)</span><br><span class="line"># 然后我们可以通过curl访问Node上的端口来确认Service已经被暴露到了Cluster外</span><br><span class="line">echo NODE_PORT=$NODE_PORT</span><br><span class="line"></span><br><span class="line"># Deployment会自动为Pod创建一个label，可以通过如下命令来查看</span><br><span class="line">kubectl describe deployment</span><br><span class="line"># 通过label查看Pod列表和Service列表</span><br><span class="line">kubectl get pods -l run=kubernetes-bootcamp</span><br><span class="line">kubectl get services -l run=kubernetes-bootcamp</span><br></pre></td></tr></table></figure>
-<ol>
-<li>Service 中的 Pod</li>
-</ol>
+</li>
+<li><p>Service 中的 Pod</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 先获取Pod的名字</span><br><span class="line">export POD_NAME=$(kubectl get pods -o go-template --template &apos;&#123;&#123;range .items&#125;&#125;&#123;&#123;.metadata.name&#125;&#125;&#123;&#123;&quot;\n&quot;&#125;&#125;&#123;&#123;end&#125;&#125;&apos;)</span><br><span class="line">echo Name of the Pod: $POD_NAME</span><br><span class="line"># 通过label命令可以设置一个新的label</span><br><span class="line">kubectl label pod $POD_NAME app=v1</span><br><span class="line"># 之后可以使用describe 命令来查看这些label，也可以使用label来查询Pod</span><br><span class="line">kubectl describe pods $POD_NAME</span><br><span class="line">kubectl get pods -l app=v1</span><br></pre></td></tr></table></figure>
-<ol>
-<li>删除 Service</li>
-</ol>
+</li>
+<li><p>删除 Service</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 删除一个Service</span><br><span class="line">kubectl delete service -l run=kubernetes-bootcamp</span><br><span class="line"># 查看服务列表，该服务已经被删除</span><br><span class="line">kubectl get services</span><br><span class="line"># curl端口确认不再暴露服务</span><br><span class="line">curl $(minikube ip):$NODE_PORT</span><br><span class="line"># 我们可以在Pod中运行curl来确定应用仍运行于Pod中</span><br><span class="line">kubectl exec -ti $POD_NAME curl localhost:8080</span><br><span class="line"># 如果需要终止应用，则需要同时删除Deployment</span><br></pre></td></tr></table></figure>
-<h3 id="app-扩展"><a class="header-anchor" href="#app-扩展">¶</a>app 扩展</h3>
-<p><img src="https://tallate.top/imgs/Kubernetes/scaling.svg" alt="scaling" title="scaling"><br>
-上图来自<a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/scale/scale-intro/" target="_blank" rel="noopener">官网教程</a>，Scaling 即修改 Deployment 中的 Pod 数。</p>
-<ol>
-<li>扩展 ReplicaSet（Scale Up）</li>
+</li>
 </ol>
+<h3 id="app-扩展"><a href="#app-扩展" class="headerlink" title="app 扩展"></a>app 扩展</h3><p><img src="https://tallate.top/imgs/Kubernetes/scaling.svg" alt="scaling" title="scaling"><br>上图来自<a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/scale/scale-intro/" target="_blank" rel="noopener">官网教程</a>，Scaling 即修改 Deployment 中的 Pod 数。</p>
+<ol>
+<li><p>扩展 ReplicaSet（Scale Up）</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># 先看下部署了几个Pod</span><br><span class="line">kubectl get deployments</span><br><span class="line"># 查看Deployment创建的ReplicaSet，ReplicaSet名的格式为[DEPLOYMENT-NAME]-[RANDOM-STRING]</span><br><span class="line">kubectl get rs</span><br><span class="line"># 将Deployment扩展为4个复制</span><br><span class="line">kubectl scale deployments/kubernetes-bootcamp --replicas=4</span><br><span class="line"># 查看Deployment及其中的Pod</span><br><span class="line">kubectl get deployments</span><br><span class="line">kubectl get pods -o wide</span><br><span class="line"># 查看Deployment的时间日志</span><br><span class="line">kubectl describe deployments/kubernetes-bootcamp</span><br></pre></td></tr></table></figure>
-<ol>
-<li>Load Balancing</li>
-</ol>
+</li>
+<li><p>Load Balancing</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 使用一个NODE_PORT环境变量来保存Node暴露的端口</span><br><span class="line">export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template=&apos;&#123;&#123;(index .spec.ports 0).nodePort&#125;&#125;&apos;)</span><br><span class="line">echo NODE_PORT=$NODE_PORT</span><br><span class="line"># curl访问多次，会发现请求被负载均衡到了不同的Pod上</span><br><span class="line">curl $(minikube ip):$NODE_PORT</span><br></pre></td></tr></table></figure>
-<ol>
-<li>缩小（Scale Down）</li>
-</ol>
+</li>
+<li><p>缩小（Scale Down）</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 再运行一次scale命令来缩小ReplicaSet</span><br><span class="line">kubectl scale deployments/kubernetes-bootcamp --replicas=2</span><br><span class="line"># 查看伸缩结果</span><br><span class="line">kubectl get deployments</span><br><span class="line">kubectl get pods -o wide</span><br></pre></td></tr></table></figure>
-<h3 id="滚动更新-rolling-update"><a class="header-anchor" href="#滚动更新-rolling-update">¶</a>滚动更新（Rolling Update）</h3>
-<ol>
-<li>更新应用版本</li>
+</li>
 </ol>
+<h3 id="滚动更新（Rolling-Update）"><a href="#滚动更新（Rolling-Update）" class="headerlink" title="滚动更新（Rolling Update）"></a>滚动更新（Rolling Update）</h3><ol>
+<li><p>更新应用版本</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 先看看Cluster里有啥</span><br><span class="line">kubectl get deployments</span><br><span class="line">kubectl get pods</span><br><span class="line"># 查看应用当前使用的镜像版本</span><br><span class="line">kubectl describe pods</span><br><span class="line"># 使用set image命令设置应用的镜像版本</span><br><span class="line">kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=jocatalin/kubernetes-bootcamp:v2</span><br><span class="line"># 可以通过Pod查看应用的更新过程</span><br><span class="line">kubectl get pods</span><br></pre></td></tr></table></figure>
-<ol>
-<li>验证更新</li>
-</ol>
+</li>
+<li><p>验证更新</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 确认应用正在运行中</span><br><span class="line">kubectl describe services/kubernetes-bootcamp</span><br><span class="line"># 用一个NODE_PORT环境变量保存Node暴露的端口，然后用curl确认暴露的服务可以使用</span><br><span class="line">export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template=&apos;&#123;&#123;(index .spec.ports 0).nodePort&#125;&#125;&apos;)</span><br><span class="line">echo NODE_PORT=$NODE_PORT</span><br><span class="line">curl $(minikube ip):$NODE_PORT</span><br><span class="line"># 更新同样可以使用rollout status命令来确认</span><br><span class="line">kubectl rollout status deployments/kubernetes-bootcamp</span><br><span class="line"># 查看应用当前使用的镜像的版本</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
-<ol>
-<li>回滚（Rollback）</li>
-</ol>
+</li>
+<li><p>回滚（Rollback）</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 设置镜像进行更新，但是这个镜像的v10版本是不存在的，因此会引起更新失败</span><br><span class="line">kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=gcr.io/google-samples/kubernetes-bootcamp:v10</span><br><span class="line"># 查看Deployment的当前状态，会发现某些Pod运行不正常</span><br><span class="line">kubectl get deployments</span><br><span class="line"># 查看Pod状态，describe能提供更多信息</span><br><span class="line">kubectl get pods</span><br><span class="line">kubectl describe pods</span><br><span class="line"># 发现问题，可以使用rollout undo命令来回滚，rollout命令会复原deployment到上一已知状态。实际上所有更新操作都是版本化的，并且每次更新都可以回滚到之前的任意版本</span><br><span class="line">kubectl rollout undo deployments/kubernetes-bootcamp</span><br><span class="line"># 接下来再查看Pod的状态可以发现所有的Pod都已经恢复运行了</span><br><span class="line">kubectl get pods</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://kubernetes.io/docs/tutorials/" target="_blank" rel="noopener">Tutorials</a><br>
-<a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/" target="_blank" rel="noopener">Learn Kubernetes Basics</a><br>
-<a href="https://kubernetes.io/docs/tutorials/configuration/configure-redis-using-configmap/" target="_blank" rel="noopener">Configuring Redis using a ConfigMap</a><br>
-使用 k8s 搭建 Redis 集群<br>
-<a href="https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/" target="_blank" rel="noopener">Exposing an External IP Address to Access an Application in a Cluster</a><br>
-如何使用 k8s 搭建一个无状态服务<br>
-<a href="https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/" target="_blank" rel="noopener">StatefulSet Basics</a><br>
-如何使用 k8s 搭建一个有状态服务<br>
-<a href="https://kubernetes.io/docs/tutorials/clusters/apparmor/" target="_blank" rel="noopener">AppArmor</a><br>
-<a href="https://kubernetes.io/docs/tutorials/services/source-ip/" target="_blank" rel="noopener">Using Source IP</a><br>
-<a href="linux.com/tutorials/set-cicd-pipeline-kubernetes-part-1-overview/">CICD</a><br>
-<a href="https://www.linux.com/tutorials/set-cicd-pipeline-jenkins-pod-kubernetes-part-2/" target="_blank" rel="noopener">https://www.linux.com/tutorials/set-cicd-pipeline-jenkins-pod-kubernetes-part-2/</a><br>
-<a href="https://www.linux.com/tutorials/run-and-scale-distributed-crossword-puzzle-app-cicd-kubernetes-part-3/" target="_blank" rel="noopener">https://www.linux.com/tutorials/run-and-scale-distributed-crossword-puzzle-app-cicd-kubernetes-part-3/</a><br>
-<a href="https://www.linux.com/tutorials/set-cicd-distributed-crossword-puzzle-app-kubernetes-part-4/" target="_blank" rel="noopener">https://www.linux.com/tutorials/set-cicd-distributed-crossword-puzzle-app-kubernetes-part-4/</a></li>
+</li>
+</ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
+<li><a href="https://kubernetes.io/docs/tutorials/" target="_blank" rel="noopener">Tutorials</a><br><a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/" target="_blank" rel="noopener">Learn Kubernetes Basics</a><br><a href="https://kubernetes.io/docs/tutorials/configuration/configure-redis-using-configmap/" target="_blank" rel="noopener">Configuring Redis using a ConfigMap</a><br>使用 k8s 搭建 Redis 集群<br><a href="https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/" target="_blank" rel="noopener">Exposing an External IP Address to Access an Application in a Cluster</a><br>如何使用 k8s 搭建一个无状态服务<br><a href="https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/" target="_blank" rel="noopener">StatefulSet Basics</a><br>如何使用 k8s 搭建一个有状态服务<br><a href="https://kubernetes.io/docs/tutorials/clusters/apparmor/" target="_blank" rel="noopener">AppArmor</a><br><a href="https://kubernetes.io/docs/tutorials/services/source-ip/" target="_blank" rel="noopener">Using Source IP</a><br><a href="linux.com/tutorials/set-cicd-pipeline-kubernetes-part-1-overview/">CICD</a><br><a href="https://www.linux.com/tutorials/set-cicd-pipeline-jenkins-pod-kubernetes-part-2/" target="_blank" rel="noopener">https://www.linux.com/tutorials/set-cicd-pipeline-jenkins-pod-kubernetes-part-2/</a><br><a href="https://www.linux.com/tutorials/run-and-scale-distributed-crossword-puzzle-app-cicd-kubernetes-part-3/" target="_blank" rel="noopener">https://www.linux.com/tutorials/run-and-scale-distributed-crossword-puzzle-app-cicd-kubernetes-part-3/</a><br><a href="https://www.linux.com/tutorials/set-cicd-distributed-crossword-puzzle-app-kubernetes-part-4/" target="_blank" rel="noopener">https://www.linux.com/tutorials/set-cicd-distributed-crossword-puzzle-app-kubernetes-part-4/</a></li>
 </ol>
 
           
@@ -1824,7 +1613,7 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3k 字
+                  2.9k 字
                 </span>
               
 
@@ -2218,9 +2007,7 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
         
           
             <a id="more"></a>
-<h2 id="为什么要使用-nginx"><a class="header-anchor" href="#为什么要使用-nginx">¶</a>为什么要使用 Nginx</h2>
-<h3 id="nginx-优点"><a class="header-anchor" href="#nginx-优点">¶</a>Nginx 优点</h3>
-<ol>
+<h2 id="为什么要使用-Nginx"><a href="#为什么要使用-Nginx" class="headerlink" title="为什么要使用 Nginx"></a>为什么要使用 Nginx</h2><h3 id="Nginx-优点"><a href="#Nginx-优点" class="headerlink" title="Nginx 优点"></a>Nginx 优点</h3><ol>
 <li>轻量级，采用 C 进行编写，同样的 web 服务，会占用更少的内存及资源</li>
 <li>抗并发，nginx 以 epoll and kqueue 作为开发模型，处理请求是异步非阻塞的，负载能力比 apache 高很多，而 apache 则是阻塞型的。在高并发下 nginx 能保持低资源低消耗高性能 ，而 apache 在 PHP 处理慢或者前端压力很大的情况下，很容易出现进程数飙升，从而拒绝服务的现象。</li>
 <li>nginx 处理静态文件好，静态处理性能比 apache 高三倍以上</li>
@@ -2229,182 +2016,97 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
 <li>nginx 作为负载均衡服务器，支持 7 层负载均衡</li>
 <li>nginx 本身就是一个反向代理服务器，而且可以作为非常优秀的邮件代理服务器</li>
 <li>启动特别容易, 并且几乎可以做到 7*24 不间断运行，即使运行数个月也不需要重新启动，还能够不间断服务的情况下进行软件版本的升级</li>
-<li>社区活跃，各种高性能模块出品迅速</li>
-</ol>
-<h3 id="nginx-优点-说出原因"><a class="header-anchor" href="#nginx-优点-说出原因">¶</a>Nginx 优点（说出原因）</h3>
-<ol>
+<li>社区活跃，各种高性能模块出品迅速<h3 id="Nginx-优点（说出原因）"><a href="#Nginx-优点（说出原因）" class="headerlink" title="Nginx 优点（说出原因）"></a>Nginx 优点（说出原因）</h3></li>
 <li>Nginx 在核心代码都使用了与操作系统无关的代码实现，在与操作系统相关的系统调用上则分别针对各个操作系统都有独立实现，这最终造就了 Nginx 的可移植性。</li>
 <li>非阻塞、高并发连接：处理 2-3 万并发连接数，官方监测能支持 5 万并发</li>
-<li>内存消耗小：开启 10 个 nginx 才占 150M 内存，Nginx 采取了分阶段资源分配技术<br>
-nginx 处理静态文件好,耗费内存少</li>
-<li>内置的健康检查功能：如果有一个服务器宕机，会做一个健康检查，再发送的请求就不会发送到宕机的服务器了。重新将请求提交到其他的节点上。<br>
-节省宽带：支持 GZIP 压缩，可以添加浏览器本地缓存<br>
-稳定性高：宕机的概率非常小</li>
-<li>master/worker 结构：一个 master 进程，生成一个或者多个 worker 进程<br>
-接收用户请求是异步的：浏览器将请求发送到 nginx 服务器，它先将用户请求全部接收下来，再一次性发送给后端 web 服务器，极大减轻了 web 服务器的压力<br>
-一边接收 web 服务器的返回数据，一边发送给浏览器客户端<br>
-网络依赖性比较低，只要 ping 通就可以负载均衡<br>
-可以有多台 nginx 服务器</li>
-<li>事件驱动：通信机制采用 epoll 模型</li>
-</ol>
-<h3 id="apache-优点"><a class="header-anchor" href="#apache-优点">¶</a>Apache 优点</h3>
-<ol>
+<li>内存消耗小：开启 10 个 nginx 才占 150M 内存，Nginx 采取了分阶段资源分配技术<br>nginx 处理静态文件好,耗费内存少</li>
+<li>内置的健康检查功能：如果有一个服务器宕机，会做一个健康检查，再发送的请求就不会发送到宕机的服务器了。重新将请求提交到其他的节点上。<br>节省宽带：支持 GZIP 压缩，可以添加浏览器本地缓存<br>稳定性高：宕机的概率非常小</li>
+<li>master/worker 结构：一个 master 进程，生成一个或者多个 worker 进程<br>接收用户请求是异步的：浏览器将请求发送到 nginx 服务器，它先将用户请求全部接收下来，再一次性发送给后端 web 服务器，极大减轻了 web 服务器的压力<br>一边接收 web 服务器的返回数据，一边发送给浏览器客户端<br>网络依赖性比较低，只要 ping 通就可以负载均衡<br>可以有多台 nginx 服务器</li>
+<li>事件驱动：通信机制采用 epoll 模型<h3 id="Apache-优点"><a href="#Apache-优点" class="headerlink" title="Apache 优点"></a>Apache 优点</h3></li>
 <li>apache 的 rewrite 比 nginx 强大，在 rewrite 频繁的情况下，用 apache</li>
 <li>apache 发展到现在，模块超多，基本想到的都可以找到</li>
 <li>apache 更为成熟，少 bug ，nginx 的 bug 相对较多</li>
 <li>apache 超稳定</li>
 <li>apache 对 PHP 支持比较简单，nginx 需要配合其他后端用</li>
 <li>apache 在处理动态请求有优势，nginx 在这方面是鸡肋，一般动态请求要 apache 去做，nginx 适合静态和反向。</li>
-<li>apache 仍然是目前的主流，拥有丰富的特性，成熟的技术和开发社区</li>
+<li>apache 仍然是目前的主流，拥有丰富的特性，成熟的技术和开发社区<h3 id="Nginx-和-Apache-区别总结"><a href="#Nginx-和-Apache-区别总结" class="headerlink" title="Nginx 和 Apache 区别总结"></a>Nginx 和 Apache 区别总结</h3>两者最核心的区别在于 apache 是同步多进程模型，一个连接对应一个进程，而 nginx 是异步的，多个连接（万级别）可以对应一个进程<br>一般来说，需要性能的 web 服务，用 nginx 。如果不需要性能只求稳定，更考虑 apache ，后者的各种功能模块实现得比前者，例如 ssl 的模块就比前者好，可配置项多。epoll(freebsd 上是 kqueue ) 网络 IO 模型是 nginx 处理性能高的根本理由，但并不是所有的情况下都是 epoll 大获全胜的，如果本身提供静态服务的就只有寥寥几个文件，apache 的 select 模型或许比 epoll 更高性能。当然，这只是根据网络 IO 模型的原理作的一个假设，真正的应用还是需要实测了再说的。<br>更为通用的方案是，前端 nginx 抗并发，后端 apache 集群，配合起来会更好。</li>
 </ol>
-<h3 id="nginx-和-apache-区别总结"><a class="header-anchor" href="#nginx-和-apache-区别总结">¶</a>Nginx 和 Apache 区别总结</h3>
-<p>两者最核心的区别在于 apache 是同步多进程模型，一个连接对应一个进程，而 nginx 是异步的，多个连接（万级别）可以对应一个进程<br>
-一般来说，需要性能的 web 服务，用 nginx 。如果不需要性能只求稳定，更考虑 apache ，后者的各种功能模块实现得比前者，例如 ssl 的模块就比前者好，可配置项多。epoll(freebsd 上是 kqueue ) 网络 IO 模型是 nginx 处理性能高的根本理由，但并不是所有的情况下都是 epoll 大获全胜的，如果本身提供静态服务的就只有寥寥几个文件，apache 的 select 模型或许比 epoll 更高性能。当然，这只是根据网络 IO 模型的原理作的一个假设，真正的应用还是需要实测了再说的。<br>
-更为通用的方案是，前端 nginx 抗并发，后端 apache 集群，配合起来会更好。</p>
-<h2 id="使用-nginx"><a class="header-anchor" href="#使用-nginx">¶</a>使用 Nginx</h2>
-<h3 id="手动安装-nginx"><a class="header-anchor" href="#手动安装-nginx">¶</a>手动安装 Nginx</h3>
-<ol>
-<li>配置<br>
-创建目录<code>/var/temp/nginx</code><br>
-这个目录保存临时文件，在安装配置中指定：</li>
-</ol>
+<h2 id="使用-Nginx"><a href="#使用-Nginx" class="headerlink" title="使用 Nginx"></a>使用 Nginx</h2><h3 id="手动安装-Nginx"><a href="#手动安装-Nginx" class="headerlink" title="手动安装 Nginx"></a>手动安装 Nginx</h3><ol>
+<li><p>配置<br>创建目录<code>/var/temp/nginx</code><br>这个目录保存临时文件，在安装配置中指定：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">./configure \</span><br><span class="line">--prefix=/usr/local/nginx \</span><br><span class="line">--pid-path=/var/run/nginx/nginx.pid \</span><br><span class="line">--lock-path=/var/lock/nginx.lock \</span><br><span class="line">--error-log-path=/var/log/nginx/error.log \</span><br><span class="line">--http-log-path=/var/log/nginx/access.log \</span><br><span class="line">--with-http_gzip_static_module \</span><br><span class="line">--http-client-body-temp-path=/var/temp/nginx/client \</span><br><span class="line">--http-proxy-temp-path=/var/temp/nginx/proxy \</span><br><span class="line">--http-fastcgi-temp-path=/var/temp/nginx/fastcgi \</span><br><span class="line">--http-uwsgi-temp-path=/var/temp/nginx/uwsgi \</span><br><span class="line">--http-scgi-temp-path=/var/temp/nginx/scgi</span><br></pre></td></tr></table></figure>
-<ol>
-<li>安装</li>
-</ol>
+</li>
+<li><p>安装</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">make</span><br><span class="line">make  install</span><br></pre></td></tr></table></figure>
-<ol>
-<li>配置环境变量<br>
-在<code>/etc/profile</code>中编辑，这样就可以直接使用 nginx 命令启动了</li>
-</ol>
+</li>
+<li><p>配置环境变量<br>在<code>/etc/profile</code>中编辑，这样就可以直接使用 nginx 命令启动了</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export PATH=$PATH:/usr/local/nginx/sbin</span><br></pre></td></tr></table></figure>
-<ol>
-<li>启动</li>
-</ol>
+</li>
+<li><p>启动</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">nginx</span><br><span class="line"># 指定配置文件</span><br><span class="line">nginx -c /usr/local/nginx/conf/nginx.conf</span><br></pre></td></tr></table></figure>
-<p>如果不指定-c，nginx 在启动时默认加载 conf/nginx.conf 文件，此文件的地址也可以在编译安装 nginx 时指定./configure 的参数（–conf-path= 指向配置文件（nginx.conf））</p>
-<ol>
-<li>停止</li>
+</li>
 </ol>
+<p>如果不指定-c，nginx 在启动时默认加载 conf/nginx.conf 文件，此文件的地址也可以在编译安装 nginx 时指定./configure 的参数（—conf-path= 指向配置文件（nginx.conf））</p>
+<ol>
+<li><p>停止</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">nginx -s stop # 相当于先查出nginx进程id再kill</span><br><span class="line">nginx -s quit # 建议使用，这种方法是等nginx进程的任务处理完毕后再停止</span><br></pre></td></tr></table></figure>
-<ol>
-<li>重启</li>
-</ol>
+</li>
+<li><p>重启</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">nginx -s quit</span><br><span class="line">nginx</span><br></pre></td></tr></table></figure>
-<p>要想在修改配置文件 nginx.conf 后生效：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nginx -s reload</span><br></pre></td></tr></table></figure>
-<h3 id="开机自启"><a class="header-anchor" href="#开机自启">¶</a>开机自启</h3>
-<ol>
-<li>创建<code>/etc/init.d/nginx</code></li>
+</li>
 </ol>
+<p>要想在修改配置文件 nginx.conf 后生效：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nginx -s reload</span><br></pre></td></tr></table></figure></p>
+<h3 id="开机自启"><a href="#开机自启" class="headerlink" title="开机自启"></a>开机自启</h3><ol>
+<li><p>创建<code>/etc/init.d/nginx</code></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"># nginx Startup script for the Nginx HTTP Server</span><br><span class="line"># it is v.0.0.2 version.</span><br><span class="line"># chkconfig: - 85 15</span><br><span class="line"># description: Nginx is a high-performance web and proxy server.</span><br><span class="line">#              It has a lot of features, but it&apos;s not for everyone.</span><br><span class="line"># processname: nginx</span><br><span class="line"># pidfile: /var/run/nginx.pid</span><br><span class="line"># config: /usr/local/nginx/conf/nginx.conf</span><br><span class="line">nginxd=/usr/local/nginx/sbin/nginx</span><br><span class="line">nginx_config=/usr/local/nginx/conf/nginx.conf</span><br><span class="line">nginx_pid=/var/run/nginx.pid</span><br><span class="line">RETVAL=0</span><br><span class="line">prog=&quot;nginx&quot;</span><br><span class="line"># Source function library.</span><br><span class="line">. /etc/rc.d/init.d/functions</span><br><span class="line"># Source networking configuration.</span><br><span class="line">. /etc/sysconfig/network</span><br><span class="line"># Check that networking is up.</span><br><span class="line">[ $&#123;NETWORKING&#125; = &quot;no&quot; ] &amp;&amp; exit 0</span><br><span class="line">[ -x $nginxd ] || exit 0</span><br><span class="line"># Start nginx daemons functions.</span><br><span class="line">start() &#123;</span><br><span class="line">if [ -e $nginx_pid ];then</span><br><span class="line">   echo &quot;nginx already running....&quot;</span><br><span class="line">   exit 1</span><br><span class="line">fi</span><br><span class="line">   echo -n $&quot;Starting $prog: &quot;</span><br><span class="line">   daemon $nginxd -c $&#123;nginx_config&#125;</span><br><span class="line">   RETVAL=$?</span><br><span class="line">   echo</span><br><span class="line">   [ $RETVAL = 0 ] &amp;&amp; touch /var/lock/subsys/nginx</span><br><span class="line">   return $RETVAL</span><br><span class="line">&#125;</span><br><span class="line"># Stop nginx daemons functions.</span><br><span class="line">stop() &#123;</span><br><span class="line">        echo -n $&quot;Stopping $prog: &quot;</span><br><span class="line">        killproc $nginxd</span><br><span class="line">        RETVAL=$?</span><br><span class="line">        echo</span><br><span class="line">        [ $RETVAL = 0 ] &amp;&amp; rm -f /var/lock/subsys/nginx /var/run/nginx.pid</span><br><span class="line">&#125;</span><br><span class="line"># reload nginx service functions.</span><br><span class="line">reload() &#123;</span><br><span class="line">    echo -n $&quot;Reloading $prog: &quot;</span><br><span class="line">    #kill -HUP `cat $&#123;nginx_pid&#125;`</span><br><span class="line">    killproc $nginxd -HUP</span><br><span class="line">    RETVAL=$?</span><br><span class="line">    echo</span><br><span class="line">&#125;</span><br><span class="line"># See how we were called.</span><br><span class="line">case &quot;$1&quot; in</span><br><span class="line">start)</span><br><span class="line">        start</span><br><span class="line">        ;;</span><br><span class="line">stop)</span><br><span class="line">        stop</span><br><span class="line">        ;;</span><br><span class="line">reload)</span><br><span class="line">        reload</span><br><span class="line">        ;;</span><br><span class="line">restart)</span><br><span class="line">        stop</span><br><span class="line">        start</span><br><span class="line">        ;;</span><br><span class="line">status)</span><br><span class="line">        status $prog</span><br><span class="line">        RETVAL=$?</span><br><span class="line">        ;;</span><br><span class="line">*)</span><br><span class="line">        echo $&quot;Usage: $prog &#123;start|stop|restart|reload|status|help&#125;&quot;</span><br><span class="line">        exit 1</span><br><span class="line">esac</span><br><span class="line">exit $RETVAL</span><br></pre></td></tr></table></figure>
-<ol>
-<li>设置文件访问权限</li>
-</ol>
+</li>
+<li><p>设置文件访问权限</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chmod a+x /etc/init.d/nginx</span><br></pre></td></tr></table></figure>
-<ol>
-<li>设置开机加载<br>
-在<code>/etc/rc.local</code>中加入一行</li>
-</ol>
+</li>
+<li><p>设置开机加载<br>在<code>/etc/rc.local</code>中加入一行</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/etc/init.d/nginx start</span><br></pre></td></tr></table></figure>
-<h3 id="通过-docker-运行-nginx"><a class="header-anchor" href="#通过-docker-运行-nginx">¶</a>通过 Docker 运行 Nginx</h3>
-<p>手动进行 Nginx 配置十分繁琐，可以使用 Docker 来简化部署流程：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 80:80 nginx</span><br></pre></td></tr></table></figure>
-<h2 id="优化-linux-最大连接数"><a class="header-anchor" href="#优化-linux-最大连接数">¶</a>优化 Linux 最大连接数</h2>
-<h3 id="查看-linux-连接数"><a class="header-anchor" href="#查看-linux-连接数">¶</a>查看 Linux 连接数</h3>
-<p>默认配置下，Linux 只支持有限的连接数。<br>
-Linux 的线程其实是一个进程，所以 java 的也是，具体来说，叫做“light weight process(LWP)”—轻量级进程。<br>
-LWP 与其它进程共享所有（或大部分）逻辑地址空间和系统资源，一个进程可以创建多个 LWP，这样它们共享大部分资源；LWP 有它自己的进程标识符，并和其他进程有着父子关系；。LWP 由内核管理并像普通进程一样被调度<br>
-使用以下命令可以看到某个用户使用了多少进程资源</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps -eLf | grep xjjbot(uid)  | wc -l</span><br></pre></td></tr></table></figure>
-<p>使用下面命令可以查看具体每个进程开启了多少线程</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps -o nlwp,pid,lwp,args -u xjjbot(uid)  | sort -n</span><br></pre></td></tr></table></figure>
-<p>根据 linux 一切都是文件的规则，首先想到的，是修改 ulimit 的参数，然而也不是，因为它已经足够大了。交叉回想一下 elasticsearch，在安装的时候，需要配置一个叫做 nproc 的东西，问题大概就出在这，是进程资源不够用啦。<br>
-相关的配置文件：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/etc/security/limits.conf</span><br></pre></td></tr></table></figure>
-<p>在不同的内核版本上，也有一些小差异。比如：/etc/security/limits.d/*<br>
-下的文件，会在某些时候覆盖 limits.conf 的配置。所以配置不生效的情况下，记得检查一下。<br>
-鉴于以上原因，可以将 limits.d 中的配置全部注释掉，统一在 limits.conf 中配置。<br>
-以下是原始配置</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">*          soft    nproc     4096</span><br><span class="line">root       soft    nproc     unlimited</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="通过-Docker-运行-Nginx"><a href="#通过-Docker-运行-Nginx" class="headerlink" title="通过 Docker 运行 Nginx"></a>通过 Docker 运行 Nginx</h3><p>手动进行 Nginx 配置十分繁琐，可以使用 Docker 来简化部署流程：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 80:80 nginx</span><br></pre></td></tr></table></figure></p>
+<h2 id="优化-Linux-最大连接数"><a href="#优化-Linux-最大连接数" class="headerlink" title="优化 Linux 最大连接数"></a>优化 Linux 最大连接数</h2><h3 id="查看-Linux-连接数"><a href="#查看-Linux-连接数" class="headerlink" title="查看 Linux 连接数"></a>查看 Linux 连接数</h3><p>默认配置下，Linux 只支持有限的连接数。<br>Linux 的线程其实是一个进程，所以 java 的也是，具体来说，叫做“light weight process(LWP)”—轻量级进程。<br>LWP 与其它进程共享所有（或大部分）逻辑地址空间和系统资源，一个进程可以创建多个 LWP，这样它们共享大部分资源；LWP 有它自己的进程标识符，并和其他进程有着父子关系；。LWP 由内核管理并像普通进程一样被调度<br>使用以下命令可以看到某个用户使用了多少进程资源<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps -eLf | grep xjjbot(uid)  | wc -l</span><br></pre></td></tr></table></figure></p>
+<p>使用下面命令可以查看具体每个进程开启了多少线程<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps -o nlwp,pid,lwp,args -u xjjbot(uid)  | sort -n</span><br></pre></td></tr></table></figure></p>
+<p>根据 linux 一切都是文件的规则，首先想到的，是修改 ulimit 的参数，然而也不是，因为它已经足够大了。交叉回想一下 elasticsearch，在安装的时候，需要配置一个叫做 nproc 的东西，问题大概就出在这，是进程资源不够用啦。<br>相关的配置文件：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/etc/security/limits.conf</span><br></pre></td></tr></table></figure></p>
+<p>在不同的内核版本上，也有一些小差异。比如：/etc/security/limits.d/*<br>下的文件，会在某些时候覆盖 limits.conf 的配置。所以配置不生效的情况下，记得检查一下。<br>鉴于以上原因，可以将 limits.d 中的配置全部注释掉，统一在 limits.conf 中配置。<br>以下是原始配置<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">*          soft    nproc     4096</span><br><span class="line">root       soft    nproc     unlimited</span><br></pre></td></tr></table></figure></p>
 <p>将 4096 改为大点的数字，或者直接改成 unlimited 就可以了。</p>
 <p>单机支持 100 万连接是可行的，但带宽问题会成为显著的瓶颈。启用压缩的二进制协议会节省部分带宽，但开发难度增加。</p>
-<h3 id="操作系统优化"><a class="header-anchor" href="#操作系统优化">¶</a>操作系统优化</h3>
-<p>更改进程最大文件句柄数</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ulimit -n 1048576</span><br></pre></td></tr></table></figure>
-<p>复制代码修改单个进程可分配的最大文件数</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 2097152 &gt; /proc/sys/fs/nr_open</span><br></pre></td></tr></table></figure>
-<p>复制代码修改/etc/security/limits.conf 文件</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">*   soft nofile  1048576</span><br><span class="line">*   hard nofile 1048576</span><br><span class="line">*   soft nproc unlimited</span><br><span class="line">root soft nproc unlimited</span><br></pre></td></tr></table></figure>
+<h3 id="操作系统优化"><a href="#操作系统优化" class="headerlink" title="操作系统优化"></a>操作系统优化</h3><p>更改进程最大文件句柄数<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ulimit -n 1048576</span><br></pre></td></tr></table></figure></p>
+<p>复制代码修改单个进程可分配的最大文件数<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 2097152 &gt; /proc/sys/fs/nr_open</span><br></pre></td></tr></table></figure></p>
+<p>复制代码修改/etc/security/limits.conf 文件<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">*   soft nofile  1048576</span><br><span class="line">*   hard nofile 1048576</span><br><span class="line">*   soft nproc unlimited</span><br><span class="line">root soft nproc unlimited</span><br></pre></td></tr></table></figure></p>
 <p>复制代码记得清理掉/etc/security/limits.d/*下的配置</p>
-<h3 id="网络优化"><a class="header-anchor" href="#网络优化">¶</a>网络优化</h3>
-<p>打开/etc/sysctl.conf，添加配置然后执行，使用 sysctl 生效</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">#单个进程可分配的最大文件数</span><br><span class="line">fs.nr_open=2097152</span><br><span class="line"></span><br><span class="line">#系统最大文件句柄数</span><br><span class="line">fs.file-max = 1048576</span><br><span class="line"></span><br><span class="line">#backlog 设置</span><br><span class="line">net.core.somaxconn=32768</span><br><span class="line">net.ipv4.tcp_max_syn_backlog=16384</span><br><span class="line">net.core.netdev_max_backlog=16384</span><br><span class="line"></span><br><span class="line">#可用知名端口范围配置</span><br><span class="line">net.ipv4.ip_local_port_range=&apos;1000 65535&apos;</span><br><span class="line"></span><br><span class="line">#TCP Socket 读写 Buffer 设置</span><br><span class="line">net.core.rmem_default=262144</span><br><span class="line">net.core.wmem_default=262144</span><br><span class="line">net.core.rmem_max=16777216</span><br><span class="line">net.core.wmem_max=16777216</span><br><span class="line">net.core.optmem_max=16777216</span><br><span class="line">net.ipv4.tcp_rmem=&apos;1024 4096 16777216&apos;</span><br><span class="line">net.ipv4.tcp_wmem=&apos;1024 4096 16777216&apos;</span><br><span class="line"></span><br><span class="line">#TCP 连接追踪设置</span><br><span class="line">net.nf_conntrack_max=1000000</span><br><span class="line">net.netfilter.nf_conntrack_max=1000000</span><br><span class="line">net.netfilter.nf_conntrack_tcp_timeout_time_wait=30</span><br><span class="line"></span><br><span class="line">#TIME-WAIT Socket 最大数量、回收与重用设置</span><br><span class="line">net.ipv4.tcp_max_tw_buckets=1048576</span><br><span class="line"></span><br><span class="line"># FIN-WAIT-2 Socket 超时设置</span><br><span class="line">net.ipv4.tcp_fin_timeout = 15</span><br></pre></td></tr></table></figure>
-<h2 id="接入层演进"><a class="header-anchor" href="#接入层演进">¶</a>接入层演进</h2>
-<p>通过研究接入层的发展历程，我们可以一窥 Nginx 在互联网架构中的地位。</p>
-<h3 id="接入层结构"><a class="header-anchor" href="#接入层结构">¶</a>接入层结构</h3>
-<p><img src="https://tallate.top/imgs/Nginx%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/%E6%8E%A5%E5%85%A5%E5%B1%82%E7%BB%93%E6%9E%84.png" alt="接入层结构" title="接入层结构"><br>
-可以看到，每一个下游都有多个上游调用，只需要做到，<strong>每一个上游都均匀访问每一个下游</strong>，就能实现整体的均匀分摊。</p>
+<h3 id="网络优化"><a href="#网络优化" class="headerlink" title="网络优化"></a>网络优化</h3><p>打开/etc/sysctl.conf，添加配置然后执行，使用 sysctl 生效<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">#单个进程可分配的最大文件数</span><br><span class="line">fs.nr_open=2097152</span><br><span class="line"></span><br><span class="line">#系统最大文件句柄数</span><br><span class="line">fs.file-max = 1048576</span><br><span class="line"></span><br><span class="line">#backlog 设置</span><br><span class="line">net.core.somaxconn=32768</span><br><span class="line">net.ipv4.tcp_max_syn_backlog=16384</span><br><span class="line">net.core.netdev_max_backlog=16384</span><br><span class="line"></span><br><span class="line">#可用知名端口范围配置</span><br><span class="line">net.ipv4.ip_local_port_range=&apos;1000 65535&apos;</span><br><span class="line"></span><br><span class="line">#TCP Socket 读写 Buffer 设置</span><br><span class="line">net.core.rmem_default=262144</span><br><span class="line">net.core.wmem_default=262144</span><br><span class="line">net.core.rmem_max=16777216</span><br><span class="line">net.core.wmem_max=16777216</span><br><span class="line">net.core.optmem_max=16777216</span><br><span class="line">net.ipv4.tcp_rmem=&apos;1024 4096 16777216&apos;</span><br><span class="line">net.ipv4.tcp_wmem=&apos;1024 4096 16777216&apos;</span><br><span class="line"></span><br><span class="line">#TCP 连接追踪设置</span><br><span class="line">net.nf_conntrack_max=1000000</span><br><span class="line">net.netfilter.nf_conntrack_max=1000000</span><br><span class="line">net.netfilter.nf_conntrack_tcp_timeout_time_wait=30</span><br><span class="line"></span><br><span class="line">#TIME-WAIT Socket 最大数量、回收与重用设置</span><br><span class="line">net.ipv4.tcp_max_tw_buckets=1048576</span><br><span class="line"></span><br><span class="line"># FIN-WAIT-2 Socket 超时设置</span><br><span class="line">net.ipv4.tcp_fin_timeout = 15</span><br></pre></td></tr></table></figure></p>
+<h2 id="接入层演进"><a href="#接入层演进" class="headerlink" title="接入层演进"></a>接入层演进</h2><p>通过研究接入层的发展历程，我们可以一窥 Nginx 在互联网架构中的地位。</p>
+<h3 id="接入层结构"><a href="#接入层结构" class="headerlink" title="接入层结构"></a>接入层结构</h3><p><img src="https://tallate.top/imgs/Nginx原理总结/接入层结构.png" alt="接入层结构" title="接入层结构"><br>可以看到，每一个下游都有多个上游调用，只需要做到，<strong>每一个上游都均匀访问每一个下游</strong>，就能实现整体的均匀分摊。</p>
 <ol>
-<li>客户端层-&gt;反向代理层<br>
-DNS 轮询<br>
-DNS-server 对于一个域名配置了多个解析 ip，每次 DNS 解析请求来访问 DNS-server，会轮询返回这些 ip，保证每个 ip 的解析概率是相同的。这些 ip 就是 nginx 的外网 ip，以做到每台 nginx 的请求分配也是均衡的。</li>
-<li>反向代理层-&gt;站点层<br>
-反向代理层到站点层的负载均衡，是通过“nginx”实现的。<br>
-修改 nginx.conf，可以实现多种均衡策略：<br>
-2.1 请求轮询：和 DNS 轮询类似，请求依次路由到各个 web-server；<br>
-2.2 最少连接路由：哪个 web-server 的连接少，路由到哪个 web-server；<br>
-2.3 ip 哈希：按照访问用户的 ip 哈希值来路由 web-server，只要用户的 ip 分布是均匀的，请求理论上也是均匀的，ip 哈希均衡方法可以做到，同一个用户的请求固定落到同一台 web-server 上，此策略适合有状态服务，例如 session；</li>
-</ol>
-<blockquote>
+<li>客户端层-&gt;反向代理层<br>DNS 轮询<br>DNS-server 对于一个域名配置了多个解析 ip，每次 DNS 解析请求来访问 DNS-server，会轮询返回这些 ip，保证每个 ip 的解析概率是相同的。这些 ip 就是 nginx 的外网 ip，以做到每台 nginx 的请求分配也是均衡的。</li>
+<li>反向代理层-&gt;站点层<br>反向代理层到站点层的负载均衡，是通过“nginx”实现的。<br>修改 nginx.conf，可以实现多种均衡策略：<br>2.1 请求轮询：和 DNS 轮询类似，请求依次路由到各个 web-server；<br>2.2 最少连接路由：哪个 web-server 的连接少，路由到哪个 web-server；<br>2.3 ip 哈希：按照访问用户的 ip 哈希值来路由 web-server，只要用户的 ip 分布是均匀的，请求理论上也是均匀的，ip 哈希均衡方法可以做到，同一个用户的请求固定落到同一台 web-server 上，此策略适合有状态服务，例如 session；<blockquote>
 <p>session 不推荐放到站点层，后期扩展会有问题，更好的方案是放到数据层。</p>
 </blockquote>
-<ol start="3">
-<li>站点层-&gt;服务层<br>
-站点层到服务层的负载均衡，是通过“服务连接池”实现的。<br>
-上游连接池会建立与下游服务多个连接，每次请求会“随机”选取连接来访问下游服务。除了负载均衡，服务连接池还能够实现故障转移、超时处理、限流限速、ID 串行化等诸多功能。</li>
-<li>服务层-&gt;数据层<br>
-在数据量很大的情况下，由于数据层（db/cache）涉及数据的水平切分，所以数据层的负载均衡更为复杂一些，它分为“数据的均衡”，与“请求的均衡”。<br>
-<strong>数据的均衡</strong>是指：水平切分后的每个服务（db/cache），数据量是均匀的。<br>
-<strong>请求的均衡</strong>是指：水平切分后的每个服务（db/cache），请求量是均匀的。</li>
-</ol>
-<h3 id="接入层演进-v2"><a class="header-anchor" href="#接入层演进-v2">¶</a>接入层演进</h3>
-<ol>
-<li>单机架构<br>
-客户端用 DNS 解析出来的 IP 就是 web 服务器的地址。<br>
-缺点：
-<ul>
+</li>
+<li>站点层-&gt;服务层<br>站点层到服务层的负载均衡，是通过“服务连接池”实现的。<br>上游连接池会建立与下游服务多个连接，每次请求会“随机”选取连接来访问下游服务。除了负载均衡，服务连接池还能够实现故障转移、超时处理、限流限速、ID 串行化等诸多功能。</li>
+<li>服务层-&gt;数据层<br>在数据量很大的情况下，由于数据层（db/cache）涉及数据的水平切分，所以数据层的负载均衡更为复杂一些，它分为“数据的均衡”，与“请求的均衡”。<br><strong>数据的均衡</strong>是指：水平切分后的每个服务（db/cache），数据量是均匀的。<br><strong>请求的均衡</strong>是指：水平切分后的每个服务（db/cache），请求量是均匀的。<h3 id="接入层演进-1"><a href="#接入层演进-1" class="headerlink" title="接入层演进"></a>接入层演进</h3></li>
+<li>单机架构<br>客户端用 DNS 解析出来的 IP 就是 web 服务器的地址。<br>缺点：<ul>
 <li>单点；</li>
 <li>扩展性差。</li>
 </ul>
 </li>
-<li>DNS 轮询<br>
-在 DNS 服务器上多配几个 IP，由域名服务器的解析策略实现负载均衡。<br>
-缺点：
-<ul>
+<li>DNS 轮询<br>在 DNS 服务器上多配几个 IP，由域名服务器的解析策略实现负载均衡。<br>缺点：<ul>
 <li>非高可用，因为一个 web 服务器挂掉后 DNS 服务器仍然会将请求解析到该服务器对应的 IP 上；</li>
 <li>扩容非实时，DNS 服务器有一个配置生效的延时时间；</li>
 <li>暴露太多外网 IP。</li>
 </ul>
 </li>
-<li>反向代理 Nginx<br>
-DNS 解析到 Nginx 的 IP，然后由 Nginx 将请求负载均衡到 web 服务器。<br>
-缺点：基本解决了上一个架构存在的问题，且可以利用 Nginx 的探活机制实现 web 服务器的高可用，但是此时 Nginx 也会成为一个单点。</li>
-<li>keepalived<br>
-两台 Nginx 组成集群，分别部署上 keepalived，设置成相同的虚 IP，保证 Nginx 的高可用。当一台 Nginx 挂了，keepalived 能够探测到并将流量迁移到另一台 Nginx 上，整个过程对调用方透明。<br>
-缺点：
-<ul>
+<li>反向代理 Nginx<br>DNS 解析到 Nginx 的 IP，然后由 Nginx 将请求负载均衡到 web 服务器。<br>缺点：基本解决了上一个架构存在的问题，且可以利用 Nginx 的探活机制实现 web 服务器的高可用，但是此时 Nginx 也会成为一个单点。</li>
+<li>keepalived<br>两台 Nginx 组成集群，分别部署上 keepalived，设置成相同的虚 IP，保证 Nginx 的高可用。当一台 Nginx 挂了，keepalived 能够探测到并将流量迁移到另一台 Nginx 上，整个过程对调用方透明。<br>缺点：<ul>
 <li>资源利用率低；</li>
 <li>扩容不方便，如果吞吐量超过 Nginx 性能上线，要加机器配置起来比较麻烦。</li>
 </ul>
 </li>
-<li>lvs/f5<br>
-DNS 解析出来的 IP 是 lvs 的地址。由 lvs 反向代理 Nginx 服务器，lvs 的机器上部署 keepalived+VIP 实现高可用；<br>
-f5 的性能比 lvs 更高，但是成本也会更高。</li>
-<li>DNS 轮询<br>
-水平扩展才是解决性能问题的根本方案，能够通过加机器扩充性能的方案才具备最好的扩展性。<br>
-<img src="https://tallate.top/imgs/Nginx%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/%E5%8F%AF%E6%89%A9%E5%B1%95%E9%AB%98%E5%8F%AF%E7%94%A8%E6%8E%A5%E5%85%A5%E5%B1%82%E6%9E%B6%E6%9E%84.png" alt="可扩展高可用接入层架构" title="可扩展高可用接入层架构">
-<ul>
+<li>lvs/f5<br>DNS 解析出来的 IP 是 lvs 的地址。由 lvs 反向代理 Nginx 服务器，lvs 的机器上部署 keepalived+VIP 实现高可用；<br>f5 的性能比 lvs 更高，但是成本也会更高。</li>
+<li>DNS 轮询<br>水平扩展才是解决性能问题的根本方案，能够通过加机器扩充性能的方案才具备最好的扩展性。<br><img src="https://tallate.top/imgs/Nginx原理总结/可扩展高可用接入层架构.png" alt="可扩展高可用接入层架构" title="可扩展高可用接入层架构"><ul>
 <li>通过 DNS 轮询来线性扩展入口 lvs 层的性能；</li>
 <li>通过 keepalived 保证高可用；</li>
 <li>通过 lvs 来扩展多个 Nginx；</li>
@@ -2412,23 +2114,9 @@ f5 的性能比 lvs 更高，但是成本也会更高。</li>
 </ul>
 </li>
 </ol>
-<h2 id="nginx-原理-进程"><a class="header-anchor" href="#nginx-原理-进程">¶</a>Nginx 原理 - 进程</h2>
-<h3 id="nginx-代码的模块化结构"><a class="header-anchor" href="#nginx-代码的模块化结构">¶</a>Nginx 代码的模块化结构</h3>
-<p>Nginx 的代码是由一个核心和一系列的模块组成的。<br>
-<strong>核心</strong>主要用于提供 WebServer 的基本功能，以及 Web 和 Mail 反向代理的功能；还用于启用网络协议，创建必要的运行时环境以及确保不同的模块之间平滑地进行交互。<br>
-不过，大多跟协议相关的功能和应用特有的功能都是由 nginx 的模块实现的。<br>
-换句话说， <strong>每一个功能或操作都由一个模块来实现</strong>。<br>
-这些功能模块大致可以分为事件模块、阶段性处理器、输出过滤器、变量处理器、协议、upstream 和负载均衡几个类别，这些共同组成了 nginx 的 http 功能。<br>
-<strong>事件模块</strong>主要用于提供 OS 独立的(不同操作系统的事件机制有所不同)事件通知机制如 kqueue 或 epoll 等。<br>
-<strong>协议模块</strong>则负责实现 nginx 通过 http、tls/ssl、smtp、pop3 以及 imap 与对应的客户端建立会话。<br>
-在 Nginx 内部，进程间的通信是通过模块的 <strong>pipeline</strong> 或 <strong>chain</strong> 实现的。<br>
-换句话说，每一个功能或操作都由一个模块来实现。例如：压缩、通过 FastCGI 或 uwsgi 协议与 upstream 服务器通信、以及与 memcached 建立会话等。</p>
-<h3 id="进程结构"><a class="header-anchor" href="#进程结构">¶</a>进程结构</h3>
-<p>一个 Nginx 服务器实例由一个 master 进程和多个 worker 进程组成。<br>
-<img src="https://tallate.top/imgs/Nginx%E5%8E%9F%E7%90%86%E6%80%BB%E7%BB%93/%E8%BF%9B%E7%A8%8B%E7%BB%93%E6%9E%84.png" alt="进程结构"><br>
-<strong>master</strong>进程主要用来管理 worker 进程，还有一些对整个服务器的初始化和日志记录等工作。<br>
-<strong>管理 worker 的过程</strong>：接收来自外界的信号，向各 worker 进程发送 <strong>信号</strong> ，监控 worker 进程的运行状态，当 worker 进程退出后(异常情况下)，会自动重新启动（fork）新的 worker 进程。</p>
-<p><strong>master 主要功能</strong>：</p>
+<h2 id="Nginx-原理-进程"><a href="#Nginx-原理-进程" class="headerlink" title="Nginx 原理 - 进程"></a>Nginx 原理 - 进程</h2><h3 id="Nginx-代码的模块化结构"><a href="#Nginx-代码的模块化结构" class="headerlink" title="Nginx 代码的模块化结构"></a>Nginx 代码的模块化结构</h3><p>Nginx 的代码是由一个核心和一系列的模块组成的。<br><strong>核心</strong>主要用于提供 WebServer 的基本功能，以及 Web 和 Mail 反向代理的功能；还用于启用网络协议，创建必要的运行时环境以及确保不同的模块之间平滑地进行交互。<br>不过，大多跟协议相关的功能和应用特有的功能都是由 nginx 的模块实现的。<br>换句话说， <strong>每一个功能或操作都由一个模块来实现</strong>。<br>这些功能模块大致可以分为事件模块、阶段性处理器、输出过滤器、变量处理器、协议、upstream 和负载均衡几个类别，这些共同组成了 nginx 的 http 功能。<br><strong>事件模块</strong>主要用于提供 OS 独立的(不同操作系统的事件机制有所不同)事件通知机制如 kqueue 或 epoll 等。<br><strong>协议模块</strong>则负责实现 nginx 通过 http、tls/ssl、smtp、pop3 以及 imap 与对应的客户端建立会话。<br>在 Nginx 内部，进程间的通信是通过模块的 <strong>pipeline</strong> 或 <strong>chain</strong> 实现的。<br>换句话说，每一个功能或操作都由一个模块来实现。例如：压缩、通过 FastCGI 或 uwsgi 协议与 upstream 服务器通信、以及与 memcached 建立会话等。</p>
+<h3 id="进程结构"><a href="#进程结构" class="headerlink" title="进程结构"></a>进程结构</h3><p>一个 Nginx 服务器实例由一个 master 进程和多个 worker 进程组成。<br><img src="https://tallate.top/imgs/Nginx原理总结/进程结构.png" alt="进程结构"><br><strong>master</strong>进程主要用来管理 worker 进程，还有一些对整个服务器的初始化和日志记录等工作。<br><strong>管理 worker 的过程</strong>：接收来自外界的信号，向各 worker 进程发送 <strong>信号</strong> ，监控 worker 进程的运行状态，当 worker 进程退出后(异常情况下)，会自动重新启动（fork）新的 worker 进程。  </p>
+<p><strong>master 主要功能</strong>：  </p>
 <ul>
 <li>读取并验证配置信息；</li>
 <li>创建、绑定及关闭套接字；</li>
@@ -2445,11 +2133,8 @@ f5 的性能比 lvs 更高，但是成本也会更高。</li>
 <li>提供反向代理及过滤功能；</li>
 <li>nginx 任何能完成的其它任务</li>
 </ul>
-<h3 id="nginx-的启动"><a class="header-anchor" href="#nginx-的启动">¶</a>Nginx 的启动</h3>
-<p>nginx 启动后，在 unix 系统中会以 daemon 的方式在后台运行，后台进程包含一个 master 进程和多个 worker 进程（你可以理解为工人和管理员）。</p>
-<h3 id="nginx-处理连接过程"><a class="header-anchor" href="#nginx-处理连接过程">¶</a>Nginx 处理连接过程</h3>
-<p>nginx 不会为每个连接派生进程或线程，而是由 worker 进程通过监听共享套接字接受新请求，并且使用高效的 <strong>循环</strong> 来处理数千个连接。<br>
-Nginx 不使用仲裁器或分发器来分发连接，这个工作由操作系统内核机制完成。 <strong>监听套接字</strong> 在启动时就完成初始化，worker 进程通过这些套接字接受、读取请求和输出响应。</p>
+<h3 id="Nginx-的启动"><a href="#Nginx-的启动" class="headerlink" title="Nginx 的启动"></a>Nginx 的启动</h3><p>nginx 启动后，在 unix 系统中会以 daemon 的方式在后台运行，后台进程包含一个 master 进程和多个 worker 进程（你可以理解为工人和管理员）。 </p>
+<h3 id="Nginx-处理连接过程"><a href="#Nginx-处理连接过程" class="headerlink" title="Nginx 处理连接过程"></a>Nginx 处理连接过程</h3><p>nginx 不会为每个连接派生进程或线程，而是由 worker 进程通过监听共享套接字接受新请求，并且使用高效的 <strong>循环</strong> 来处理数千个连接。<br>Nginx 不使用仲裁器或分发器来分发连接，这个工作由操作系统内核机制完成。 <strong>监听套接字</strong> 在启动时就完成初始化，worker 进程通过这些套接字接受、读取请求和输出响应。  </p>
 <p>一次请求过程大概执行过程为：</p>
 <ol>
 <li>nginx 在启动时，会解析配置文件，得到需要监听的端口与 ip 地址，然后在 nginx 的 master 进程里面先初始化好这个监控的 socket，再进行 listen（listenfd）；</li>
@@ -2459,48 +2144,22 @@ Nginx 不使用仲裁器或分发器来分发连接，这个工作由操作系�
 <li>当一个 worker 进程在 accept 这个连接之后，然后创建 nginx 对连接的封装，即 ngx_connection_t 结构体，就开始读取请求、解析请求、处理请求（ <strong>异步非阻塞</strong> ），主要是根据事件调用相应的事件处理模块，如 http 模块与客户端进行数据的交换</li>
 <li>产生数据后，再返回给客户端，最后才断开连接，或者由客户端主动关闭连接。</li>
 </ol>
-<h3 id="进程间通信"><a class="header-anchor" href="#进程间通信">¶</a>进程间通信</h3>
-<p>在 Nginx 内部，进程间的通信是通过模块的 <strong>pipeline</strong> 或 <strong>chain</strong> 实现的，其原理是<strong>信号机制</strong>，master 对 worker 进程采用信号进行控制。</p>
-<h3 id="事件驱动"><a class="header-anchor" href="#事件驱动">¶</a>事件驱动</h3>
-<p>所谓<strong>事件驱动</strong>架构，简单来说，就是由一些事件发生源来产生事件，由一个或多个事件收集器（epolld 等）来收集、分发事件，然后许多事件处理器会注册自己感兴趣的事件，同时会“消费”这些事件。nginx 不会使用进程或线程作为事件消费者，只能是某个模块，当前进程调用模块。<br>
-传统 web 服务器（如 Apache）的所谓事件局限在 TCP 连接建立、关闭上，其他读写都不再是事件驱动，这时会退化成按序执行每个操作的批处理模式，这样每个请求在连接建立后都将始终占用系统资源，直到连接关闭才会释放资源。大大浪费了内存、cpu 等资源。并且把一个进程或线程作为事件消费者。 传统 Web 服务器每个事件消费者独占一个进程资源，相对来说，Nginx 只是被事件分发者进程短期调用而已。<br>
-nginx 采用多 worker 的方式来处理请求，每个 worker 里面只有一个主线程，那能够处理的并发数很有限，多少个 worker 就能处理多少个并发，那么何来的高并发呢？<br>
-其实，Nginx 是采用了<strong>异步非阻塞</strong>的 IO 模型来处理请求的（epoll），异步的概念是和同步相对的，也就是不同事件之间不是同时发生的。非阻塞的概念是和阻塞对应的，阻塞是事件按顺序执行，每一事件都要等待上一事件的完成，而非阻塞是如果事件没有准备好，这个事件可以直接返回，过一段时间再进行处理询问，这期间可以做其他事情。<br>
-请求的<strong>多阶段异步处理</strong>只能基于事件驱动框架实现，就是把一个请求的处理过程按照事件的触发方式分为多个阶段，每个阶段都可以有事件收集、分发器（epoll 等）来触发。比如一个 http 请求可以分为七个阶段。<br>
-每种事件都有一个事件队列，按触发的先后顺序处理。</p>
-<h3 id="惊群现象"><a class="header-anchor" href="#惊群现象">¶</a>惊群现象</h3>
-<p>惊群是多个子进程在同一时刻监听同一个端口引起的；<br>
-Nginx 解决方法：同一个时刻只能有唯一一个 worker 子进程监听 web 端口，此时新连接事件只能唤醒唯一正在监听端口的 worker 子进程。这可以通过锁或互斥量实现。</p>
-<h3 id="为什么不使用多线程"><a class="header-anchor" href="#为什么不使用多线程">¶</a>为什么不使用多线程</h3>
-<ul>
-<li>Apache: 创建多个进程或线程，而每个进程或线程都会为其分配 cpu 和内存（线程要比进程小的多，所以 worker 支持比 perfork 高的并发），并发过大会榨干服务器资源。</li>
+<h3 id="进程间通信"><a href="#进程间通信" class="headerlink" title="进程间通信"></a>进程间通信</h3><p>在 Nginx 内部，进程间的通信是通过模块的 <strong>pipeline</strong> 或 <strong>chain</strong> 实现的，其原理是<strong>信号机制</strong>，master 对 worker 进程采用信号进行控制。</p>
+<h3 id="事件驱动"><a href="#事件驱动" class="headerlink" title="事件驱动"></a>事件驱动</h3><p>所谓<strong>事件驱动</strong>架构，简单来说，就是由一些事件发生源来产生事件，由一个或多个事件收集器（epolld 等）来收集、分发事件，然后许多事件处理器会注册自己感兴趣的事件，同时会“消费”这些事件。nginx 不会使用进程或线程作为事件消费者，只能是某个模块，当前进程调用模块。<br>传统 web 服务器（如 Apache）的所谓事件局限在 TCP 连接建立、关闭上，其他读写都不再是事件驱动，这时会退化成按序执行每个操作的批处理模式，这样每个请求在连接建立后都将始终占用系统资源，直到连接关闭才会释放资源。大大浪费了内存、cpu 等资源。并且把一个进程或线程作为事件消费者。 传统 Web 服务器每个事件消费者独占一个进程资源，相对来说，Nginx 只是被事件分发者进程短期调用而已。<br>nginx 采用多 worker 的方式来处理请求，每个 worker 里面只有一个主线程，那能够处理的并发数很有限，多少个 worker 就能处理多少个并发，那么何来的高并发呢？<br>其实，Nginx 是采用了<strong>异步非阻塞</strong>的 IO 模型来处理请求的（epoll），异步的概念是和同步相对的，也就是不同事件之间不是同时发生的。非阻塞的概念是和阻塞对应的，阻塞是事件按顺序执行，每一事件都要等待上一事件的完成，而非阻塞是如果事件没有准备好，这个事件可以直接返回，过一段时间再进行处理询问，这期间可以做其他事情。<br>请求的<strong>多阶段异步处理</strong>只能基于事件驱动框架实现，就是把一个请求的处理过程按照事件的触发方式分为多个阶段，每个阶段都可以有事件收集、分发器（epoll 等）来触发。比如一个 http 请求可以分为七个阶段。<br>每种事件都有一个事件队列，按触发的先后顺序处理。</p>
+<h3 id="惊群现象"><a href="#惊群现象" class="headerlink" title="惊群现象"></a>惊群现象</h3><p>惊群是多个子进程在同一时刻监听同一个端口引起的；<br>Nginx 解决方法：同一个时刻只能有唯一一个 worker 子进程监听 web 端口，此时新连接事件只能唤醒唯一正在监听端口的 worker 子进程。这可以通过锁或互斥量实现。</p>
+<h3 id="为什么不使用多线程"><a href="#为什么不使用多线程" class="headerlink" title="为什么不使用多线程"></a>为什么不使用多线程</h3><ul>
+<li>Apache: 创建多个进程或线程，而每个进程或线程都会为其分配 cpu 和内存（线程要比进程小的多，所以 worker 支持比 perfork 高的并发），并发过大会榨干服务器资源。 </li>
 <li>Nginx: 采用单线程来异步非阻塞处理请求（管理员可以配置 Nginx 主进程的工作进程的数量）(epoll)，不会为每个请求分配 cpu 和内存资源，节省了大量资源，同时也减少了大量的 CPU 的上下文切换。所以才使得 Nginx 支持更高的并发。</li>
 </ul>
-<h2 id="模块"><a class="header-anchor" href="#模块">¶</a>模块</h2>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
+<h2 id="模块"><a href="#模块" class="headerlink" title="模块"></a>模块</h2><h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
 <li><a href="https://www.shiyanlou.com/courses/95" target="_blank" rel="noopener">Linux Web 运维（Nginx）实战</a></li>
 <li><a href="http://tengine.taobao.org/book/index.html" target="_blank" rel="noopener">Nginx 开发从入门到精通</a></li>
-<li><a href="http://nginx.org/en/docs/" target="_blank" rel="noopener">nginx documentation</a></li>
-</ol>
-<h3 id="nginx-原理"><a class="header-anchor" href="#nginx-原理">¶</a>Nginx 原理</h3>
-<ol>
+<li><a href="http://nginx.org/en/docs/" target="_blank" rel="noopener">nginx documentation</a><h3 id="Nginx-原理"><a href="#Nginx-原理" class="headerlink" title="Nginx 原理"></a>Nginx 原理</h3></li>
 <li><a href="https://segmentfault.com/q/1010000003901360?_ea=416091" target="_blank" rel="noopener">Nginx 内部有使用多线程吗？</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/63179839" target="_blank" rel="noopener">如果这篇文章说不清 epoll 的本质，那就过来掐死我吧！ （1）</a></li>
-</ol>
-<h3 id="模块-v2"><a class="header-anchor" href="#模块-v2">¶</a>模块</h3>
-<ol>
-<li>log<br>
-<a href="http://nginx.org/en/docs/http/ngx_http_log_module.html" target="_blank" rel="noopener">Module ngx_http_log_module</a><br>
-<a href="http://nginx.org/en/docs/stream/ngx_stream_log_module.html#log_format" target="_blank" rel="noopener">Module ngx_stream_log_module</a><br>
-<a href="http://blog.chinaunix.net/uid-29179844-id-4433640.html" target="_blank" rel="noopener">nginx 日志格式及自定义日志配置</a></li>
-<li>proxy<br>
-<a href="http://nginx.org/en/docs/http/ngx_http_proxy_module.html" target="_blank" rel="noopener">Module ngx_http_proxy_module</a></li>
-<li>TCP / UDP<br>
-<a href="http://nginx.org/en/docs/stream/stream_processing.html" target="_blank" rel="noopener">How nginx processes a TCP/UDP session</a></li>
-</ol>
-<h3 id="tengine"><a class="header-anchor" href="#tengine">¶</a>Tengine</h3>
-<ol>
+<li><a href="https://zhuanlan.zhihu.com/p/63179839" target="_blank" rel="noopener">如果这篇文章说不清 epoll 的本质，那就过来掐死我吧！ （1）</a><h3 id="模块-1"><a href="#模块-1" class="headerlink" title="模块"></a>模块</h3></li>
+<li>log<br><a href="http://nginx.org/en/docs/http/ngx_http_log_module.html" target="_blank" rel="noopener">Module ngx_http_log_module</a><br><a href="http://nginx.org/en/docs/stream/ngx_stream_log_module.html#log_format" target="_blank" rel="noopener">Module ngx_stream_log_module</a><br><a href="http://blog.chinaunix.net/uid-29179844-id-4433640.html" target="_blank" rel="noopener">nginx 日志格式及自定义日志配置</a></li>
+<li>proxy<br><a href="http://nginx.org/en/docs/http/ngx_http_proxy_module.html" target="_blank" rel="noopener">Module ngx_http_proxy_module</a></li>
+<li>TCP / UDP<br><a href="http://nginx.org/en/docs/stream/stream_processing.html" target="_blank" rel="noopener">How nginx processes a TCP/UDP session</a><h3 id="Tengine"><a href="#Tengine" class="headerlink" title="Tengine"></a>Tengine</h3></li>
 <li><a href="http://tengine.taobao.org/documentation.html" target="_blank" rel="noopener">Documentation</a></li>
 </ol>
 
@@ -2674,8 +2333,7 @@ Nginx 解决方法：同一个时刻只能有唯一一个 worker 子进程监听
 
       
         
-          <p>这一篇是对在公司内缓存代码应用 Redis-Lua 的一个总结，经过 benchmark 测试，这种方式效率更高，且理论上有更低的可能性。<br>
-顺便，一开始先描述一下Redis中的事务的原理，因为Redis-Lua本身是事务的一个替代品，这二者一般放在一起讨论。</p>
+          <p>这一篇是对在公司内缓存代码应用 Redis-Lua 的一个总结，经过 benchmark 测试，这种方式效率更高，且理论上有更低的可能性。<br>顺便，一开始先描述一下Redis中的事务的原理，因为Redis-Lua本身是事务的一个替代品，这二者一般放在一起讨论。</p>
           <!--noindex-->
           <div class="post-button text-center">
             <a class="btn" href="/d9054d7.html#more" rel="contents">

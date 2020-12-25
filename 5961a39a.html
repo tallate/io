@@ -79,18 +79,18 @@
 
 
 
-<meta name="description" content="事务 ¶柔性事务 2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。 ¶TCC 模式 3.0 后借助 Seata 提供 TCC 模式的分布式事务。 源码 ¶启动  数据源元数据信息和表元数据信息的收集 表分库分表策略和算法的配置信息收集  ShardingDataSourceFactory#createDataSource 创建数据源">
+<meta name="description" content="事务柔性事务2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。 TCC 模式3.0 后借助 Seata 提供 TCC 模式的分布式事务。 源码启动 数据源元数据信息和表元数据信息的收集 表分库分表策略和算法的配置信息收集  ShardingDataSourceFactory#createDataSource 创建数据源 Sharding">
 <meta name="keywords" content="ShardingJDBC">
 <meta property="og:type" content="article">
 <meta property="og:title" content="ShardingJDBC 原理总结">
 <meta property="og:url" content="https://tallate.github.io/5961a39a.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="事务 ¶柔性事务 2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。 ¶TCC 模式 3.0 后借助 Seata 提供 TCC 模式的分布式事务。 源码 ¶启动  数据源元数据信息和表元数据信息的收集 表分库分表策略和算法的配置信息收集  ShardingDataSourceFactory#createDataSource 创建数据源">
+<meta property="og:description" content="事务柔性事务2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。 TCC 模式3.0 后借助 Seata 提供 TCC 模式的分布式事务。 源码启动 数据源元数据信息和表元数据信息的收集 表分库分表策略和算法的配置信息收集  ShardingDataSourceFactory#createDataSource 创建数据源 Sharding">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:updated_time" content="2020-09-28T13:12:42.901Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ShardingJDBC 原理总结">
-<meta name="twitter:description" content="事务 ¶柔性事务 2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。 ¶TCC 模式 3.0 后借助 Seata 提供 TCC 模式的分布式事务。 源码 ¶启动  数据源元数据信息和表元数据信息的收集 表分库分表策略和算法的配置信息收集  ShardingDataSourceFactory#createDataSource 创建数据源">
+<meta name="twitter:description" content="事务柔性事务2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。 TCC 模式3.0 后借助 Seata 提供 TCC 模式的分布式事务。 源码启动 数据源元数据信息和表元数据信息的收集 表分库分表策略和算法的配置信息收集  ShardingDataSourceFactory#createDataSource 创建数据源 Sharding">
 
 
 
@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  760 字
+                  759 字
                 </span>
               
 
@@ -396,78 +396,22 @@
 
       
         <a id="more"></a>
-<h1>事务</h1>
-<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
-<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
-<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
-<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
-<h1>源码</h1>
-<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
-<ol>
+<h1 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h1><h2 id="柔性事务"><a href="#柔性事务" class="headerlink" title="柔性事务"></a>柔性事务</h2><p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
+<h2 id="TCC-模式"><a href="#TCC-模式" class="headerlink" title="TCC 模式"></a>TCC 模式</h2><p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
+<h1 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h1><h2 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h2><ol>
 <li>数据源元数据信息和表元数据信息的收集</li>
 <li>表分库分表策略和算法的配置信息收集</li>
 </ol>
-<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
--&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
-<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
-<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
-org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
--&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
--&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
--&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
--&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
-<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; ShardingPreparedStatement#shard<br>
--&gt; BaseShardingEngine#shard<br>
--&gt; PreparedQueryShardingEngine#route<br>
--&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
--&gt; ParsingSQLRouter#parse<br>
--&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
--&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
--&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
--&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
--&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
--&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
--&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
--&gt; ParsingSQLRouter#route<br>
--&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
--&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
--&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
--&gt; BaseShardingEngine#rewriteAndConvert<br>
--&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
-<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
--&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
--&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
--&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
--&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
--&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
--&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
--&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
--&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
--&gt; AbstractStatementExecutor#executeCallback<br>
--&gt; SQLExecuteTemplate#executeGroup<br>
--&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
--&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
-<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
--&gt; AbstractStatementExecutor#getResultSets<br>
--&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
--&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
-<h1>参考</h1>
-<ol>
+<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>-&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
+<h2 id="ShardingJDBC-如何嵌入-MyBatis"><a href="#ShardingJDBC-如何嵌入-MyBatis" class="headerlink" title="ShardingJDBC 如何嵌入 MyBatis"></a>ShardingJDBC 如何嵌入 MyBatis</h2><p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>-&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>-&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>-&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>-&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
+<h2 id="路由及改写引擎"><a href="#路由及改写引擎" class="headerlink" title="路由及改写引擎"></a>路由及改写引擎</h2><p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>-&gt; ShardingPreparedStatement#shard<br>-&gt; BaseShardingEngine#shard<br>    -&gt; PreparedQueryShardingEngine#route<br>    -&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>        -&gt; ParsingSQLRouter#parse<br>            -&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>            -&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>            -&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>                -&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>                -&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>                -&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>                -&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>        -&gt; ParsingSQLRouter#route<br>            -&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>            -&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>        -&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>    -&gt; BaseShardingEngine#rewriteAndConvert<br>        -&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
+<h2 id="执行引擎"><a href="#执行引擎" class="headerlink" title="执行引擎"></a>执行引擎</h2><p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>-&gt; …<br>-&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>-&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>    -&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>    -&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>        -&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>        -&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>    -&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>    -&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>-&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>    -&gt; AbstractStatementExecutor#executeCallback<br>    -&gt; SQLExecuteTemplate#executeGroup<br>    -&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>    -&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
+<h2 id="归并引擎"><a href="#归并引擎" class="headerlink" title="归并引擎"></a>归并引擎</h2><p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>-&gt; …<br>-&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>    -&gt; AbstractStatementExecutor#getResultSets<br>    -&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>        -&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ol>
 <li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
 <li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
 <li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
-<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
-</ol>
-<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
-<ol>
+<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a><h2 id="语法分析"><a href="#语法分析" class="headerlink" title="语法分析"></a>语法分析</h2></li>
 <li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
 </ol>
 
@@ -500,8 +444,8 @@ org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/807599f6.html" rel="next" title="JVM 与编译器">
-                <i class="fa fa-chevron-left"></i> JVM 与编译器
+              <a href="/ad5b98b9.html" rel="next" title="JVM 的结构">
+                <i class="fa fa-chevron-left"></i> JVM 的结构
               </a>
             
           </div>
@@ -651,7 +595,7 @@ org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#柔性事务"><span class="nav-number">1.1.</span> <span class="nav-text">¶柔性事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tcc-模式"><span class="nav-number">1.2.</span> <span class="nav-text">¶TCC 模式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">源码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#启动"><span class="nav-number">2.1.</span> <span class="nav-text">¶启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#shardingjdbc-如何嵌入-mybatis"><span class="nav-number">2.2.</span> <span class="nav-text">¶ShardingJDBC 如何嵌入 MyBatis</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由及改写引擎"><span class="nav-number">2.3.</span> <span class="nav-text">¶路由及改写引擎</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#执行引擎"><span class="nav-number">2.4.</span> <span class="nav-text">¶执行引擎</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#归并引擎"><span class="nav-number">2.5.</span> <span class="nav-text">¶归并引擎</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#语法分析"><span class="nav-number">3.1.</span> <span class="nav-text">¶语法分析</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#事务"><span class="nav-number">1.</span> <span class="nav-text">事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#柔性事务"><span class="nav-number">1.1.</span> <span class="nav-text">柔性事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCC-模式"><span class="nav-number">1.2.</span> <span class="nav-text">TCC 模式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#源码"><span class="nav-number">2.</span> <span class="nav-text">源码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#启动"><span class="nav-number">2.1.</span> <span class="nav-text">启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ShardingJDBC-如何嵌入-MyBatis"><span class="nav-number">2.2.</span> <span class="nav-text">ShardingJDBC 如何嵌入 MyBatis</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由及改写引擎"><span class="nav-number">2.3.</span> <span class="nav-text">路由及改写引擎</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#执行引擎"><span class="nav-number">2.4.</span> <span class="nav-text">执行引擎</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#归并引擎"><span class="nav-number">2.5.</span> <span class="nav-text">归并引擎</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#语法分析"><span class="nav-number">3.1.</span> <span class="nav-text">语法分析</span></a></li></ol></li></ol></div>
             
 
           </div>

@@ -87,12 +87,12 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="和朋友交流的一些开放性设计问题的记录，因为是开放性问题，所以肯定是没有唯一答案的，这里只是记录我们讨论时认为比较好的回答。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="https://tallate.top/imgs/%E6%9E%B6%E6%9E%84/%E6%9C%8B%E5%8F%8B%E5%9C%88.png">
+<meta property="og:image" content="https://tallate.top/imgs/架构/朋友圈.png">
 <meta property="og:updated_time" content="2020-12-19T11:58:32.456Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="架构设计">
 <meta name="twitter:description" content="和朋友交流的一些开放性设计问题的记录，因为是开放性问题，所以肯定是没有唯一答案的，这里只是记录我们讨论时认为比较好的回答。">
-<meta name="twitter:image" content="https://tallate.top/imgs/%E6%9E%B6%E6%9E%84/%E6%9C%8B%E5%8F%8B%E5%9C%88.png">
+<meta name="twitter:image" content="https://tallate.top/imgs/架构/朋友圈.png">
 
 
 
@@ -399,73 +399,38 @@
       
         <p>和朋友交流的一些开放性设计问题的记录，因为是开放性问题，所以肯定是没有唯一答案的，这里只是记录我们讨论时认为比较好的回答。</p>
 <a id="more"></a>
-<h1>架构设计的思路</h1>
-<h2 id="分析思路"><a class="header-anchor" href="#分析思路">¶</a>分析思路</h2>
-<ol>
-<li>场景<br>
-需要设计哪些功能？<br>
-设计到什么程度？并发用户数、读频率、写频率、QPS</li>
-<li>服务<br>
-系统拆分</li>
-<li>存储<br>
-数据结构、怎么存储</li>
-<li>升级<br>
-可能遇到的问题及如何解决</li>
+<h1 id="架构设计的思路"><a href="#架构设计的思路" class="headerlink" title="架构设计的思路"></a>架构设计的思路</h1><h2 id="分析思路"><a href="#分析思路" class="headerlink" title="分析思路"></a>分析思路</h2><ol>
+<li>场景<br>需要设计哪些功能？<br>设计到什么程度？并发用户数、读频率、写频率、QPS</li>
+<li>服务<br>系统拆分</li>
+<li>存储<br>数据结构、怎么存储</li>
+<li>升级<br>可能遇到的问题及如何解决</li>
 </ol>
-<h1>朋友圈</h1>
-<p>用户在朋友圈里发言其实有点像发出话题（Topic），别人可以在这个话题下评论、回复评论，但是和普通的帖子系统的区别是，朋友圈中的话题、评论都只能供朋友之间查看。</p>
-<h2 id="要求"><a class="header-anchor" href="#要求">¶</a>要求</h2>
-<ol>
+<h1 id="朋友圈"><a href="#朋友圈" class="headerlink" title="朋友圈"></a>朋友圈</h1><p>用户在朋友圈里发言其实有点像发出话题（Topic），别人可以在这个话题下评论、回复评论，但是和普通的帖子系统的区别是，朋友圈中的话题、评论都只能供朋友之间查看。</p>
+<h2 id="要求"><a href="#要求" class="headerlink" title="要求"></a>要求</h2><ol>
 <li>用户关系</li>
 <li>评论的层级关系</li>
-<li>查询<br>
-如果判断一个用户能看到哪些话题、及其下的评论？<br>
-如果朋友关系发生了变更（增加、删除）怎么做？</li>
-<li>推送<br>
-有朋友发出了新话题或评论，这时需要告知用户，上一条“查询”要求根据用户查话题和评论，而“推送”相当于反查：根据话题和评论查应该接收推送的用户。</li>
+<li>查询<br>如果判断一个用户能看到哪些话题、及其下的评论？<br>如果朋友关系发生了变更（增加、删除）怎么做？</li>
+<li>推送<br>有朋友发出了新话题或评论，这时需要告知用户，上一条“查询”要求根据用户查话题和评论，而“推送”相当于反查：根据话题和评论查应该接收推送的用户。<h2 id="表结构设计"><a href="#表结构设计" class="headerlink" title="表结构设计"></a>表结构设计</h2><img src="https://tallate.top/imgs/架构/朋友圈.png" alt="朋友圈" title="朋友圈"><br>我们看下上面的表结构如何解决问题：</li>
+<li>用户关系<br>用户关系使用一张用户关系表来维护，但要注意的是用户关系是双向的，你是我的朋友、我也是你的朋友，因此创建朋友关系时要同时插入A-&gt;B和B-&gt;A两条记录，这么存还有一个好处是<strong>可以根据userId1进行分表</strong>，当要查询某个人的朋友时只需要过滤表中第一个userId字段即可。</li>
+<li>评论的层级关系<br>评论表中有一个parentId字段，表示一个评论与另一个评论存在父子关系。</li>
+<li>查询<br>查询主要是查某个用户在对应话题下属于他朋友的评论。<br>首先查用户的朋友，查一次用户关系表即可，因为用户关系表根据userId1分表，因此效率不会太差。<br>然后根据朋友userId查评论表，也是一次查询即可得到结果。</li>
+<li>推送<br>与查询功能同理。</li>
 </ol>
-<h2 id="表结构设计"><a class="header-anchor" href="#表结构设计">¶</a>表结构设计</h2>
-<p><img src="https://tallate.top/imgs/%E6%9E%B6%E6%9E%84/%E6%9C%8B%E5%8F%8B%E5%9C%88.png" alt="朋友圈" title="朋友圈"><br>
-我们看下上面的表结构如何解决问题：</p>
-<ol>
-<li>用户关系<br>
-用户关系使用一张用户关系表来维护，但要注意的是用户关系是双向的，你是我的朋友、我也是你的朋友，因此创建朋友关系时要同时插入A-&gt;B和B-&gt;A两条记录，这么存还有一个好处是<strong>可以根据userId1进行分表</strong>，当要查询某个人的朋友时只需要过滤表中第一个userId字段即可。</li>
-<li>评论的层级关系<br>
-评论表中有一个parentId字段，表示一个评论与另一个评论存在父子关系。</li>
-<li>查询<br>
-查询主要是查某个用户在对应话题下属于他朋友的评论。<br>
-首先查用户的朋友，查一次用户关系表即可，因为用户关系表根据userId1分表，因此效率不会太差。<br>
-然后根据朋友userId查评论表，也是一次查询即可得到结果。</li>
-<li>推送<br>
-与查询功能同理。</li>
-</ol>
-<h2 id="可以使用redis实现吗？"><a class="header-anchor" href="#可以使用redis实现吗？">¶</a>可以使用Redis实现吗？</h2>
-<p>和朋友讨论了快1个小时，最后结论是用Redis实现并不合适，至少上边提到的这些需求并不适合使用Redis实现。而且，MySQL效率也并不低，并且就算达到性能上限也可以通过分表来进行优化。</p>
-<h1>协同文档</h1>
-<h2 id="文档存储"><a class="header-anchor" href="#文档存储">¶</a>文档存储</h2>
-<h2 id="实时通信"><a class="header-anchor" href="#实时通信">¶</a>实时通信</h2>
-<p>利用long pull（长连接） 或 WebSocket<br>
-服务端利用Netty提供服务，并设计自定义协议。</p>
-<h2 id="编辑冲突解决"><a class="header-anchor" href="#编辑冲突解决">¶</a>编辑冲突解决</h2>
-<p>编辑锁</p>
+<h2 id="可以使用Redis实现吗？"><a href="#可以使用Redis实现吗？" class="headerlink" title="可以使用Redis实现吗？"></a>可以使用Redis实现吗？</h2><p>和朋友讨论了快1个小时，最后结论是用Redis实现并不合适，至少上边提到的这些需求并不适合使用Redis实现。而且，MySQL效率也并不低，并且就算达到性能上限也可以通过分表来进行优化。</p>
+<h1 id="协同文档"><a href="#协同文档" class="headerlink" title="协同文档"></a>协同文档</h1><h2 id="文档存储"><a href="#文档存储" class="headerlink" title="文档存储"></a>文档存储</h2><h2 id="实时通信"><a href="#实时通信" class="headerlink" title="实时通信"></a>实时通信</h2><p>利用long pull（长连接） 或 WebSocket<br>服务端利用Netty提供服务，并设计自定义协议。</p>
+<h2 id="编辑冲突解决"><a href="#编辑冲突解决" class="headerlink" title="编辑冲突解决"></a>编辑冲突解决</h2><p>编辑锁</p>
 <p>GNU diff-patch</p>
 <p>Myer’s diff-patch</p>
 <p>Operational Transformation</p>
 <p>分布式 Operational Transformation</p>
-<h2 id="缩略图"><a class="header-anchor" href="#缩略图">¶</a>缩略图</h2>
-<h2 id="文字翻译"><a class="header-anchor" href="#文字翻译">¶</a>文字翻译</h2>
-<h1>at</h1>
-<p>微信中就提供了at功能。</p>
+<h2 id="缩略图"><a href="#缩略图" class="headerlink" title="缩略图"></a>缩略图</h2><h2 id="文字翻译"><a href="#文字翻译" class="headerlink" title="文字翻译"></a>文字翻译</h2><h1 id="at"><a href="#at" class="headerlink" title="at"></a>at</h1><p>微信中就提供了at功能。</p>
 <ol>
 <li>发出的消息有@时会在@后面带上目标人物的标识、所处的群；</li>
-<li>在服务端存储@结构时，记录&lt;from, to, group&gt;到@表；</li>
+<li>在服务端存储@结构时，记录<from, to,="" group="">到@表；</from,></li>
 <li>客户端长轮询的时候，根据to和group查询@表并返回；</li>
 <li>客户端查看完毕后，将已读的@记录传到服务端，记录已读。</li>
 </ol>
-<h1>知识库</h1>
-<p>以我理解，知识库就是一个WIKI系统，它有不同的命名空间和层次化的目录，每个节点都对应一篇文档。<br>
-类似产品如Confluence。<br>
-存储上可以使用一张表来记录文档的结构，表字段包括：&lt;dirId, dirName, parentDirId, parentDirName, docUrl&gt;；</p>
+<h1 id="知识库"><a href="#知识库" class="headerlink" title="知识库"></a>知识库</h1><p>以我理解，知识库就是一个WIKI系统，它有不同的命名空间和层次化的目录，每个节点都对应一篇文档。<br>类似产品如Confluence。<br>存储上可以使用一张表来记录文档的结构，表字段包括：<dirid, dirname,="" parentdirid,="" parentdirname,="" docurl="">；</dirid,></p>
 <ul>
 <li>查询下级目录时，根据当前目录节点的dirId查询parentDirId字段上的索引，将子目录都带出来；</li>
 <li>创建一个目录时，除了往数据库里插入一条目录记录外，还需要在文件系统里创建一个文档，然后记录该文档的docUrl到表里；</li>
@@ -653,7 +618,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">架构设计的思路</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分析思路"><span class="nav-number">1.1.</span> <span class="nav-text">¶分析思路</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">朋友圈</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#要求"><span class="nav-number">2.1.</span> <span class="nav-text">¶要求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#表结构设计"><span class="nav-number">2.2.</span> <span class="nav-text">¶表结构设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可以使用redis实现吗？"><span class="nav-number">2.3.</span> <span class="nav-text">¶可以使用Redis实现吗？</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">协同文档</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档存储"><span class="nav-number">3.1.</span> <span class="nav-text">¶文档存储</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实时通信"><span class="nav-number">3.2.</span> <span class="nav-text">¶实时通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#编辑冲突解决"><span class="nav-number">3.3.</span> <span class="nav-text">¶编辑冲突解决</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缩略图"><span class="nav-number">3.4.</span> <span class="nav-text">¶缩略图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文字翻译"><span class="nav-number">3.5.</span> <span class="nav-text">¶文字翻译</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">at</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">知识库</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#架构设计的思路"><span class="nav-number">1.</span> <span class="nav-text">架构设计的思路</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分析思路"><span class="nav-number">1.1.</span> <span class="nav-text">分析思路</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#朋友圈"><span class="nav-number">2.</span> <span class="nav-text">朋友圈</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#要求"><span class="nav-number">2.1.</span> <span class="nav-text">要求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#表结构设计"><span class="nav-number">2.2.</span> <span class="nav-text">表结构设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可以使用Redis实现吗？"><span class="nav-number">2.3.</span> <span class="nav-text">可以使用Redis实现吗？</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#协同文档"><span class="nav-number">3.</span> <span class="nav-text">协同文档</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档存储"><span class="nav-number">3.1.</span> <span class="nav-text">文档存储</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实时通信"><span class="nav-number">3.2.</span> <span class="nav-text">实时通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#编辑冲突解决"><span class="nav-number">3.3.</span> <span class="nav-text">编辑冲突解决</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缩略图"><span class="nav-number">3.4.</span> <span class="nav-text">缩略图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文字翻译"><span class="nav-number">3.5.</span> <span class="nav-text">文字翻译</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#at"><span class="nav-number">4.</span> <span class="nav-text">at</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#知识库"><span class="nav-number">5.</span> <span class="nav-text">知识库</span></a></li></ol></div>
             
 
           </div>
