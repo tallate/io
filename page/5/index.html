@@ -600,7 +600,7 @@ ERR Client sent AUTH, but no password is set<br>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -619,7 +619,7 @@ ERR Client sent AUTH, but no password is set<br>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
+                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
         
 
         <div class="post-meta">
@@ -685,7 +685,7 @@ ERR Client sent AUTH, but no password is set<br>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  760 字
+                  1.5k 字
                 </span>
               
 
@@ -701,7 +701,7 @@ ERR Client sent AUTH, but no password is set<br>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  3 分钟
+                  5 分钟
                 </span>
               
             </div>
@@ -725,79 +725,118 @@ ERR Client sent AUTH, but no password is set<br>
         
           
             <a id="more"></a>
-<h1>事务</h1>
-<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
-<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
-<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
-<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
-<h1>源码</h1>
-<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
+<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
+<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
+<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
 <ol>
-<li>数据源元数据信息和表元数据信息的收集</li>
-<li>表分库分表策略和算法的配置信息收集</li>
+<li>超时降级<br>
+配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
+<li>失败次数降级<br>
+失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
+<li>故障降级<br>
+如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
+和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
+<li>限流降级<br>
+单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
 </ol>
-<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
--&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
-<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
-<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
-org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
--&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
--&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
--&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
--&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
-<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; ShardingPreparedStatement#shard<br>
--&gt; BaseShardingEngine#shard<br>
--&gt; PreparedQueryShardingEngine#route<br>
--&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
--&gt; ParsingSQLRouter#parse<br>
--&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
--&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
--&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
--&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
--&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
--&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
--&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
--&gt; ParsingSQLRouter#route<br>
--&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
--&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
--&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
--&gt; BaseShardingEngine#rewriteAndConvert<br>
--&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
-<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
--&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
--&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
--&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
--&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
--&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
--&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
--&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
--&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
--&gt; AbstractStatementExecutor#executeCallback<br>
--&gt; SQLExecuteTemplate#executeGroup<br>
--&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
--&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
-<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
-<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
--&gt; …<br>
--&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
--&gt; AbstractStatementExecutor#getResultSets<br>
--&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
--&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
-<h1>参考</h1>
+<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
+<p>降级后，在代码层面，可以进行的处理策略如下：</p>
 <ol>
-<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
-<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
-<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
-<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
+<li>抛异常</li>
+<li>返回 NULL</li>
+<li>调用 Mock 数据</li>
+<li>调用 Fallback 处理逻辑</li>
 </ol>
-<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
+<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
+<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
+<ul>
+<li>toObservable()<br>
+最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
+<li>observe()<br>
+调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
+<li>queue()<br>
+调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
+<li>execute()<br>
+调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
+</ul>
+<p>HystrixCommand.execute<br>
+-&gt; HystrixCommand.queue<br>
+-&gt; AbstractCommand.toObservable</p>
+<p>AbstractCommand.observe<br>
+-&gt; AbstractCommand.toObservable</p>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
+开启配置：<br>
+HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
+HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
+-&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
+<p>实施信号量隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
+<p>实施线程隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; AbstractCommand.executeCommandAndObserve<br>
+-&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
+-&gt; AbstractCommand.getUserExecutionObservable<br>
+-&gt; HystrixCommand.getExecutionObservable</p>
+<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
+<p>Hystrix的限流限制的是并发量，其实和隔离特性的实现方式一样，可以通过调整信号量或线程池大小来实现限流。</p>
+<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
+<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
+当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
+Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
+<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
 <ol>
-<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
+<li>熔断关闭状态（Closed）<br>
+服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
+<li>熔断开启状态（Open）<br>
+在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
+<li>半熔断状态（Half-Open）<br>
+在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
+</ol>
+<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
+<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
+<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
+<ol>
+<li>run()方法抛出非 HystrixBadRequestException 异常<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
+HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
+<li>run()方法调用超时<br>
+对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
+-&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
+-&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
+可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
+<li>熔断器开启拦截调用<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution</li>
+<li>线程池/队列/信号量是否跑满<br>
+在《隔离》那一节中已经说明了代码的位置。</li>
+<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
+HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
+</ol>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
+结果缓存这个功能我觉得应该由幂等框架来做。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
+<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
+<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
+<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
+<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
+<li><a href="https://github.com/Netflix/Hystrix" target="_blank" rel="noopener">Netflix / Hystrix</a></li>
 </ol>
 
           
@@ -1359,292 +1398,6 @@ feign.hystrix.enabled=true</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.5k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  5 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
-<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
-<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
-<ol>
-<li>超时降级<br>
-配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
-<li>失败次数降级<br>
-失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
-<li>故障降级<br>
-如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
-和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
-<li>限流降级<br>
-单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
-</ol>
-<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
-<p>降级后，在代码层面，可以进行的处理策略如下：</p>
-<ol>
-<li>抛异常</li>
-<li>返回 NULL</li>
-<li>调用 Mock 数据</li>
-<li>调用 Fallback 处理逻辑</li>
-</ol>
-<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
-<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
-<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
-<ul>
-<li>toObservable()<br>
-最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
-<li>observe()<br>
-调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
-<li>queue()<br>
-调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
-<li>execute()<br>
-调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
-</ul>
-<p>HystrixCommand.execute<br>
--&gt; HystrixCommand.queue<br>
--&gt; AbstractCommand.toObservable</p>
-<p>AbstractCommand.observe<br>
--&gt; AbstractCommand.toObservable</p>
-<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
-<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
-开启配置：<br>
-HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
-HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
--&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
-<p>实施信号量隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
-<p>实施线程隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; AbstractCommand.executeCommandAndObserve<br>
--&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
--&gt; AbstractCommand.getUserExecutionObservable<br>
--&gt; HystrixCommand.getExecutionObservable</p>
-<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
-<p>Hystrix的限流限制的是并发量，其实和隔离特性的实现方式一样，可以通过调整信号量或线程池大小来实现限流。</p>
-<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
-<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
-当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
-Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
-<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
-<ol>
-<li>熔断关闭状态（Closed）<br>
-服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
-<li>熔断开启状态（Open）<br>
-在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
-<li>半熔断状态（Half-Open）<br>
-在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
-</ol>
-<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
-<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
-<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
-<ol>
-<li>run()方法抛出非 HystrixBadRequestException 异常<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
-HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
-<li>run()方法调用超时<br>
-对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
--&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
--&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
-可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
-<li>熔断器开启拦截调用<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution</li>
-<li>线程池/队列/信号量是否跑满<br>
-在《隔离》那一节中已经说明了代码的位置。</li>
-<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
-HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
-</ol>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
-结果缓存这个功能我觉得应该由幂等框架来做。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
-<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
-<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
-<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
-<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
-<li><a href="https://github.com/Netflix/Hystrix" target="_blank" rel="noopener">Netflix / Hystrix</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2030,6 +1783,462 @@ Actuator 模块提供了一些组件用于检查应用或中间件的健康状�
 <h3 id="源码分析"><a class="header-anchor" href="#源码分析">¶</a>源码分析</h3>
 <ol>
 <li><a href="https://github.com/fangjian0423/springboot-analysis" target="_blank" rel="noopener">fangjian0423/springboot-analysis</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5961a39a.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/5961a39a.html" itemprop="url">ShardingJDBC 原理总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  760 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  3 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>事务</h1>
+<h2 id="柔性事务"><a class="header-anchor" href="#柔性事务">¶</a>柔性事务</h2>
+<p>2.0 后提供柔性事务支持，执行事务前先发消息给一个 EventBus，失败后由 EventBus 负责重试。</p>
+<h2 id="tcc-模式"><a class="header-anchor" href="#tcc-模式">¶</a>TCC 模式</h2>
+<p>3.0 后借助 Seata 提供 TCC 模式的分布式事务。</p>
+<h1>源码</h1>
+<h2 id="启动"><a class="header-anchor" href="#启动">¶</a>启动</h2>
+<ol>
+<li>数据源元数据信息和表元数据信息的收集</li>
+<li>表分库分表策略和算法的配置信息收集</li>
+</ol>
+<p>ShardingDataSourceFactory#createDataSource 创建数据源 ShardingDataSource 实例<br>
+-&gt; ShardingDataSource#ShardingDataSource 创建 ShardingContext，其持有<strong>ShardingRule</strong>、<strong>ShardingMetaData</strong>两个属性，根据一个表以及这个表的列可以从 ShardingRule 中获取这个表的分库分表策略和算法，ShardingMetaData 则维护了数据源和表的元数据信息</p>
+<h2 id="shardingjdbc-如何嵌入-mybatis"><a class="header-anchor" href="#shardingjdbc-如何嵌入-mybatis">¶</a>ShardingJDBC 如何嵌入 MyBatis</h2>
+<p>ShardingJDBC 接入 MyBatis 的原理是 DataSource 的替换，调用链如下：<br>
+org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
+-&gt; SimpleExecutor#getConnection 从 transaction 获取连接<br>
+-&gt; SpringManagedTransaction#getConnection 可以看到成员变量 dataSource 是 ShardingDataSource<br>
+-&gt; ShardingDataSource#getConnection 得到 ShardingConnection<br>
+-&gt; ShardingConnection#prepareStatment 得到 ShardingPreparedStatement</p>
+<h2 id="路由及改写引擎"><a class="header-anchor" href="#路由及改写引擎">¶</a>路由及改写引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; ShardingPreparedStatement#shard<br>
+-&gt; BaseShardingEngine#shard<br>
+-&gt; PreparedQueryShardingEngine#route<br>
+-&gt; PreparedStatementRoutingEngine#route ParsingSQLRouter 使用<strong>四个引擎</strong>对 sql 进行解析和重写<br>
+-&gt; ParsingSQLRouter#parse<br>
+-&gt; SQLParsingEngine#parse 使用<strong>SQLParsingEngine</strong>解析 sql，返回 SQLStatement 作为解析的结果<br>
+-&gt; SQLParserFactory#newInstance 获取 SQLParser 实例，如果是在 MySQL 中执行一个 DML 语句会匹配到 AntlrParsingEngine（Antlr 是一个开源语法分析器）<br>
+-&gt; AntlrParsingEngine.parse 分析 SQL，返回 SQLStatement<br>
+-&gt; <strong>SQLParserEngine</strong>#parse 解析 SQL 语法，生成 AST（抽象语法树）<br>
+-&gt; <strong>SQLSegmentsExtractorEngine</strong>#extract<br>
+-&gt; <strong>SQLStatementFillerEngine</strong>#fill<br>
+-&gt; <strong>SQLStatementOptimizerEngine</strong>#optimize<br>
+-&gt; ParsingSQLRouter#route<br>
+-&gt; OptimizeEngine#optimize 使用<strong>OptimizeEngine</strong>对 SQLStatement 进行优化，返回 ShardingConditions 对象<br>
+-&gt; RoutingEngine#route 使用<strong>RoutingEngine</strong>根据库表分片配置以及 ShardingConditions 找到目标库表，返回 RoutingResult 对象<br>
+-&gt; ShardingMasterSlaveRouter#route(SQLRouteResult sqlRouteResult)<br>
+-&gt; BaseShardingEngine#rewriteAndConvert<br>
+-&gt; SQLRewriteEngine#rewrite 使用<strong>SQLRewriteEngine</strong>根据路由结果重写 sql</p>
+<h2 id="执行引擎"><a class="header-anchor" href="#执行引擎">¶</a>执行引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; …<br>
+-&gt; ShardingPreparedStatement#initPreparedStatementExecutor<br>
+-&gt; PreparedStatementExecutor#init 把 SQLRouteResult 中的 RouteUnit 对象转换为 ShardingExecuteGroup<statementexecuteunit>对象集合并从数据源获取连接和 PreparedStatement<br>
+-&gt; PreparedStatementExecutor#obtainExecuteGroups 根据路由的结果 SQLRouteResult 中的 RouteUnit 集合创建 StatementExecuteUnit 集合对象<br>
+-&gt; AbstractConnectionAdapter#getConnections 获取数据源连接<br>
+-&gt; getDataSourceMap().get(dataSourceName) 根据逻辑数据源名称获取真实数据源 DataSource<br>
+-&gt; AbstractConnectionAdapter#createConnections 从数据源获取连接 Connection<br>
+-&gt; getExecuteGroups().addAll() 将 StatementExecuteUnit 集合保存在 AbstractStatementExecutor 的属性 executeGroups 中<br>
+-&gt; AbstractStatementExecutor#cacheStatements 从连接获取 Statement 并缓存<br>
+-&gt; PreparedStatementExecutor#executeQuery、executeUpdate、execute<br>
+-&gt; AbstractStatementExecutor#executeCallback<br>
+-&gt; SQLExecuteTemplate#executeGroup<br>
+-&gt; ShardingExecuteEngine#groupExecute 使用<strong>ShardingExecuteEngine</strong>执行，执行 ShardingExecuteGroup<br>
+-&gt; ShardingExecuteEngine#parallelExecute 异步执行，如果 inputGroups 集合不止一个，则第一个同步执行、其他的异步执行</statementexecuteunit></p>
+<h2 id="归并引擎"><a class="header-anchor" href="#归并引擎">¶</a>归并引擎</h2>
+<p>ShardingPreparedStatement#executeQuery、executeUpdate、execute<br>
+-&gt; …<br>
+-&gt; ShardingPreparedStatement#getResultSet(MergeEngine mergeEngine)<br>
+-&gt; AbstractStatementExecutor#getResultSets<br>
+-&gt; ShardingPreparedStatement#getCurrentResultSet 合并结果，返回 ShardingResultSet<br>
+-&gt; MergeEngine#merge 使用<strong>MergeEngine</strong>对结果进行合并，executeQuery()返回的是一个 List<queryresult>集合，此时需要对 QueryResult 集合进行合并，MergeEngine 接口有两个实现类 DQLMergeEngine 和 DALMergeEngine，这两个实现类分别负责数据查询 sql 的合并和数据库管理 sql 的合并</queryresult></p>
+<h1>参考</h1>
+<ol>
+<li><a href="https://yq.aliyun.com/articles/658786" target="_blank" rel="noopener">张亮：Sharding-Sphere 成长记</a></li>
+<li><a href="https://github.com/sharding-sphere/ShardingSphereDemo" target="_blank" rel="noopener">sharding-sphere/ShardingSphereDemo</a></li>
+<li><a href="https://shardingsphere.apache.org/document/current/en/overview/" target="_blank" rel="noopener">Document</a></li>
+<li><a href="https://www.jianshu.com/p/4cb5b2b68f8e" target="_blank" rel="noopener">Sharding-JDBC 源码解析</a></li>
+</ol>
+<h2 id="语法分析"><a class="header-anchor" href="#语法分析">¶</a>语法分析</h2>
+<ol>
+<li><a href="https://zhuanlan.zhihu.com/p/25028169" target="_blank" rel="noopener">antlr 解析语法树的使用</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  765 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  2 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
+<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
+<img src="https://tallate.top/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
+<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
+<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
+Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
+<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
+<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
+此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
+<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
+<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
+<ul>
+<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
+<li>检查变量使用前是否已声明；</li>
+<li>推导泛型方法的类型参数；</li>
+<li>检查类型匹配性；</li>
+<li>进行常量折叠；</li>
+<li>检查所有语句都可到达；</li>
+<li>检查所有 checked exception 都被捕获或抛出；</li>
+<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
+<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
+<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
+<li>等…</li>
+</ul>
+<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
+<ul>
+<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
+<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
+<li>最后从符号表生成 class 文件。</li>
+</ul>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
 </ol>
 
           
@@ -2986,215 +3195,6 @@ ReferenceHandler.run() 死循环处理 JVM 提交的 reference，如果是 Clear
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/807599f6.html" itemprop="url">JVM 与编译器</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
-                2019-10-05
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  765 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  2 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="java-代码编译机制"><a class="header-anchor" href="#java-代码编译机制">¶</a>Java 代码编译机制</h2>
-<p>JVM 规范中定义了 class 文件的格式，但并未定义 Java 源码如何被编译为 class 文件，各厂商在实现 JDK 时通常会将符合 Java 语言规范的源码编译为 class 文件的编译器，例如在 Sun JDK 中就是 javac，javac 将 Java 源码编译为 class 文件的步骤如下图所示：<br>
-<img src="https://tallate.top/imgs/JVM/Java%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E6%9C%BA%E5%88%B6.png" alt="Java代码编译机制" title="Java代码编译机制"></p>
-<h2 id="分析和输入到符号表-parse-and-enter"><a class="header-anchor" href="#分析和输入到符号表-parse-and-enter">¶</a>分析和输入到符号表（Parse and Enter）</h2>
-<p>Parse 过程所做的为此法和语法分析。此法分析（com.sun.tools.javac.parser.Scanner）要完成的是将代码字符串转变为 token 序列（例如 Token.EQ(name:=)）；语法分析（com.sun.tools.javac.parser.Parser）要完成的是根据语法由 token 序列生成抽象语法树。<br>
-Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，通常包括确定类的超类型和接口、根据需要添加默认构造器、将类中出现的符号输入类自身的符号表中等。</p>
-<h2 id="注解处理-annotation-processing"><a class="header-anchor" href="#注解处理-annotation-processing">¶</a>注解处理（Annotation Processing）</h2>
-<p>该步骤主要用于处理用户自定义的 annotation，可能带来的好处是基于 annotation 来生成附加的代码或进行一些特殊的检查，从而节省一些共用的代码的编写，例如当采用 Lombok 时，可编写如下代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line">    private @Getter String username;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>编译时引入 Lombok 对 User.java 进行编译后，再通过 javap 查看 class 文件可看到自动生成了 public String getUsername()方法。<br>
-此功能基于 JSR 269，在 Sun JDK 6 中提供了支持，在 Annotation Processing 进行后，再次进入 Parse and Enter 步骤。</p>
-<h2 id="语义分析和生成-class-文件-analyse-and-generate"><a class="header-anchor" href="#语义分析和生成-class-文件-analyse-and-generate">¶</a>语义分析和生成 class 文件（Analyse and Generate）</h2>
-<p>Analyse 步骤基于抽象语法树进行一系列的语义分析，包括：</p>
-<ul>
-<li>将语法树中的名字、表达式等元素与变量、方法、类型等联系到一起；</li>
-<li>检查变量使用前是否已声明；</li>
-<li>推导泛型方法的类型参数；</li>
-<li>检查类型匹配性；</li>
-<li>进行常量折叠；</li>
-<li>检查所有语句都可到达；</li>
-<li>检查所有 checked exception 都被捕获或抛出；</li>
-<li>检查变量的确定性赋值（例如有返回值的方法必须确定有返回值）；</li>
-<li>检查变量的确定性不重复赋值（例如声明为 final 的变量等）；</li>
-<li>解除语法糖（消除 if(false) { … }形式的无用代码；将泛型 Java 转为普通 Java；将含有语法糖的语法树改为含有简单语言结构的语法树，例如 foreach 循环、自动装箱/拆箱等）；</li>
-<li>等…</li>
-</ul>
-<p>在完成了语义分析后，开始生成 class 文件（com.sun.tools.javac.jvm.Gen），生成的步骤为：</p>
-<ul>
-<li>首先将实例成员初始化器收集到构造器中，将静态成员初始化器收集为<clinit>()；</clinit></li>
-<li>接着将抽象语法树生成字节码，采用的方法为后序遍历语法树，并进行最后的少量代码转换（例如 String 相加转变为 StringBuilder 操作）；</li>
-<li>最后从符号表生成 class 文件。</li>
-</ul>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e39c963b.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -4000,7 +4000,7 @@ Tomcat 实现了两种隔离技术：用于线程隔离的线程池和用于代�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">69</span>
+                  <span class="site-state-item-count">70</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

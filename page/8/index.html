@@ -285,307 +285,6 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/283c6d00.html" itemprop="url">Linux 基本概念</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T11:34:43+08:00">
-                2019-09-14
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.4k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  8 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h1>并发（Concurrency）</h1>
-<p>线程、进程，线程安全，进程同步，可见性，一致性，锁，信号量，并发，并行</p>
-<h2 id="线程和进程"><a class="header-anchor" href="#线程和进程">¶</a>线程和进程</h2>
-<p>从操作系统概念上说，<strong>线程</strong>是最小的可执行单位，也就是系统调度的最小单位。<strong>进程</strong>是资源分配的最小单位。线程是依赖进程存在的，共享进程内的资源，如内存，cpu，io 等。在操作系统的发展过程中，为了提高系统的稳定性、吞吐量和安全性，操作系统内核和用户态做了隔离，例如 Linux 有内核线程，用户线程，内核进程，用户进程，从根本上 Linux 是没有线程的，线程对 Linux 系统来说是个特殊的进程。那么用户线程和内核线程是一一对应呢？从宏观上看是一一对应的，在用户态的每一个线程，都会在内核有对应的执行线程，但是由于资源的限制，用户态的线程和内核线程是多对一的关系。用户进程和内核进程也类似。具体怎样对应的，这里就不探讨了。<br>
-为了提高操作系统的实时性，操作系统是以时间片轮转来实现任务调度的。理论上时间片内是不可以被中断的，可认为是 cpu 最小的单位执行时间。现代操作系统为了提高用户体验，线程都是抢占式的，而中断一般在时间片用完的时候发生。线程、进程和 CPU 都是多对一的关系，所以存在进程线程切换的问题。<br>
-线程内部还是有自己内存空间的，所以有个概念叫线程内存模型。线程内部有自己私有的本地内存，故线程和线程之间的本地内存存在可见性问题。例如全局变量 A 在线程 1 修改后，线程 2 并不一定能拿到 A 的修改值，因为线程 1 会把全局变量 A 拷贝到本地内存，修改后并不会马上同步。在编译的时候，编译器为了优化，（例如利用超线程技术）可能会重排指令的执行顺序，这就会存在一致性了。</p>
-<h2 id="线程安全"><a class="header-anchor" href="#线程安全">¶</a>线程安全</h2>
-<p>在线程安全里面经常要讨论的两个问题就是：可见性和一致性。锁是什么东西呢？锁就是一道内存屏障，保证可见性和一致性的一种策略，由操作系统甚至更底层的硬件提供。加锁是消耗资源的，特别是在多核 CPU 上，现在多核 CPU 一般有 3 级缓存，一级缓存通常是单核独占的，而线程的本地内存很可能就保存在 cpu 的缓存里面，然而加锁就意味着保证可见性和一致性，需要中断同步数据，保证别人拿到的是最新修改值。由于用途不同，锁被设计成各种各样的，如互斥锁，读写锁，自旋锁，同步块，数据库的事务等，如果只要保证可见性的，可以不使用锁，在 java 里面可以使用 volatile 修饰全局变量。虽然在 c／c＋＋，都有同样的修饰符，但是是不是一样的意思呢，请参考其他文章。</p>
-<h2 id="死锁-deadlock"><a class="header-anchor" href="#死锁-deadlock">¶</a>死锁（deadlock）</h2>
-<h3 id="定义"><a class="header-anchor" href="#定义">¶</a>定义</h3>
-<p>多个进程竞争资源造成的互相等待情况。</p>
-<h3 id="资源"><a class="header-anchor" href="#资源">¶</a>资源</h3>
-<p>可重用性资源：可供重复使用多次的资源<br>
-不可抢占性资源：一旦系统把某资源分配给该进程后，就不能将它强行收回，只能在进程使用完后自动释放<br>
-可消耗资源:又叫临时性资源，它是在进程运行期间，由进程动态的创建和消耗的</p>
-<h3 id="死锁产生的原因"><a class="header-anchor" href="#死锁产生的原因">¶</a>死锁产生的原因</h3>
-<ol>
-<li>系统资源的竞争<br>
-系统资源的竞争导致系统资源不足，以及资源分配不当，导致死锁。<br>
-主要是竞争可重用不可抢占式的资源和可消耗的资源。</li>
-<li>进程运行推进顺序不合适<br>
-进程在运行过程中，请求和释放资源的顺序不当，会导致死锁。</li>
-</ol>
-<h3 id="死锁产生的条件"><a class="header-anchor" href="#死锁产生的条件">¶</a>死锁产生的条件</h3>
-<p><strong>互斥条件</strong> 一个资源每次只能被一个进程使用，即在一段时间内某资源仅为一个进程所占有。此时若有其他进程请求该资源，则请求进程只能等待。<br>
-<strong>请求与保持条件</strong> 进程已经保持了至少一个资源，但又提出了新的资源请求，而该资源 已被其他进程占有，此时请求进程被阻塞，但对自己已获得的资源保持不放。<br>
-<strong>不可剥夺条件</strong> 进程所获得的资源在未使用完毕之前，不能被其他进程强行夺走，即只能 由获得该资源的进程自己来释放（只能是主动释放)。<br>
-<strong>循环等待条件</strong> 若干进程间形成首尾相接循环等待资源的关系<br>
-<strong>这四个条件是死锁的必要条件，只要系统发生死锁，这些条件必然成立，而只要上述条件之一不满足，就不会发生死锁。</strong><br>
-形象地说，就是有两个酒鬼，一个有开瓶器，一个有酒，这两种资源都只能被一个人占有（互斥），且用完之前不能被另一个人抢去（不可剥夺），他们互相等对方手上的资源（循环等待），但又不肯放开自己手上的资源（请求与保持），因此陷入了死锁。</p>
-<h3 id="死锁避免"><a class="header-anchor" href="#死锁避免">¶</a>死锁避免</h3>
-<p>系统对进程发出每一个系统能够满足的资源申请进行动态检查,并根据检查结果决定是否分配资源,如果分配后系统可能发生死锁,则不予分配,否则予以分配。<br>
-书上给出了两种死锁避免策略</p>
-<ol>
-<li>进程启动拒绝<br>
-若对每个资源，能满足现有所有进程再加上新进程的需求，则可以启动这个进程，否则拒绝</li>
-<li>资源分配拒绝（银行家算法）</li>
-</ol>
-<h3 id="死锁预防"><a class="header-anchor" href="#死锁预防">¶</a>死锁预防</h3>
-<p>死锁预防是设法至少破坏产生死锁的四个必要条件之一，严格的防止死锁的出现。</p>
-<ol>
-<li>互斥<br>
-不可能禁止，比如文件只允许互斥的写访问</li>
-<li>占有且等待<br>
-可以要求进程一次性请求所有需要的资源，并且阻塞这个进程直到所有请求都同时满足，这样就不会再请求新资源了。</li>
-<li>不可抢占</li>
-<li>循环等待</li>
-</ol>
-<h1>持久化（Persistent）</h1>
-<h2 id="linux-io-模型"><a class="header-anchor" href="#linux-io-模型">¶</a>Linux IO 模型</h2>
-<p><img src="https://tallate.top/imgs/Linux/Linux%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84.png" alt="X" title="Linux整体结构"><br>
-应用程序调用内核 IO 函数的过程如下图所示：<br>
-<img src="https://tallate.top/imgs/Linux/IO%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.png" alt="X" title="IO系统调用过程"><br>
-处于 OS 的安全性等的考虑，进程无法直接操作 I/O 设备，必须通过系统调用来请求内核完成 I/O 动作，而内核会为每个 I/O 设备维护一个 Buffer。</p>
-<ol>
-<li>用户进程发起请求；</li>
-<li>内核接收到请求后，从 I/O 设备中获取数据到 Buffer 中；</li>
-<li>将 Buffer 中的数据拷贝到用户进程的地址空间，该用户进程获取到数据后响应给客户端。</li>
-</ol>
-<p>在整个请求过程中，数据输入至 Buffer 需要时间，从 Buffer 复制数据到进程也需要时间，这个等待时间是限制 I/O 效率的罪魁祸首，根据等待方式的不同，I/O 动作可以分为以下五种模式：</p>
-<ul>
-<li>阻塞 I/O（Blocking I/O）</li>
-<li>非阻塞 I/O（Non-Blocking I/O）</li>
-<li>I/O 复用（I/O Multiplexing）</li>
-<li>信号驱动的 I/O（Signal Driven I/O）</li>
-<li>异步 I/O（Asynchronous I/O）</li>
-</ul>
-<h2 id="存储器管理"><a class="header-anchor" href="#存储器管理">¶</a>存储器管理</h2>
-<h2 id="文件系统"><a class="header-anchor" href="#文件系统">¶</a>文件系统</h2>
-<h2 id="io-pipe"><a class="header-anchor" href="#io-pipe">¶</a>IO（pipe）</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line">#include &lt;syscall.h&gt;</span><br><span class="line"></span><br><span class="line">int testPipe()&#123;</span><br><span class="line">    int fd[2];</span><br><span class="line"></span><br><span class="line">    int *read_fd = &amp;fd[0];</span><br><span class="line">    int *write_fd = &amp;fd[1];</span><br><span class="line"></span><br><span class="line">    if(pipe(fd) == -1)&#123;</span><br><span class="line">        printf(&quot;pipe create failed\n&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    int pid = fork();</span><br><span class="line">    if(pid == -1)&#123;</span><br><span class="line">        printf(&quot;fork failed&quot;);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line">    else if(pid == 0)&#123;</span><br><span class="line">        int count;</span><br><span class="line">        char string[] = &quot;hahaha&quot;;</span><br><span class="line">        close(*read_fd);</span><br><span class="line">        count = write(*write_fd, string, sizeof(string));</span><br><span class="line">        printf(&quot;写了%d个字符\n&quot;, count);</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        int count;</span><br><span class="line">        char buffer[100];</span><br><span class="line">        close(*write_fd);</span><br><span class="line">        count = read(*read_fd, buffer, sizeof(buffer));</span><br><span class="line">        printf(&quot;父进程接受到%d字节的数据:%s&quot;, count, buffer);</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="虚拟内存"><a class="header-anchor" href="#虚拟内存">¶</a>虚拟内存</h2>
-<h3 id="swap"><a class="header-anchor" href="#swap">¶</a>swap</h3>
-<h1>虚拟化（Virtualization）</h1>
-<h2 id="驱动管理"><a class="header-anchor" href="#驱动管理">¶</a>驱动管理</h2>
-<h1>参考</h1>
-<h2 id="linux-应用"><a class="header-anchor" href="#linux-应用">¶</a>Linux 应用</h2>
-<ol>
-<li>虚拟内存<br>
-<a href="https://www.linux.com/news/all-about-linux-swap-space" target="_blank" rel="noopener">All about Linux swap space</a><br>
-<a href="https://wiki.archlinux.org/index.php/swap" target="_blank" rel="noopener">Swap</a><br>
-<a href="https://haydenjames.io/linux-performance-almost-always-add-swap-space/" target="_blank" rel="noopener">Linux Performance: Why You Should Almost Always Add Swap Space</a></li>
-<li>演进<br>
-<a href="https://www.ibm.com/developerworks/cn/linux/l-kernel-advances/index.html" target="_blank" rel="noopener">Linux 内核的发展 介绍 2.6.28 和 2.6.29 版本中的新特性</a><br>
-<a href="https://linux.cn/article-6179-1.html" target="_blank" rel="noopener">对 Linux 内核的发展方向的展望 - Linux 4.2</a></li>
-<li>运维<br>
-<a href="https://juejin.im/entry/5c9780335188252d941493d3" target="_blank" rel="noopener">老司机告诉你：正规的运维工作是什么的?</a></li>
-<li>并发<br>
-<a href="https://blog.csdn.net/u011677209/article/details/78082722" target="_blank" rel="noopener">Linux 原子操作 atomic_cmpxchg()/Atomic_read()/Atomic_set()/Atomic_add()/Atomic_sub()</a></li>
-<li>隔离<br>
-<a href="https://www.v2ex.com/member/jerry017cn/topics" target="_blank" rel="noopener">cgroup - jerry017cn</a></li>
-</ol>
-<h2 id="操作系统"><a class="header-anchor" href="#操作系统">¶</a>操作系统</h2>
-<ol>
-<li>分时和实时操作系统<br>
-<a href="https://www.osrtos.com/" target="_blank" rel="noopener">List of open source real-time operating systems</a></li>
-<li>操作系统概念<br>
-<a href="https://www.cnblogs.com/leesf456/p/5375198.html" target="_blank" rel="noopener">【操作系统】操作系统综述（一）</a></li>
-<li><a href="http://pages.cs.wisc.edu/~remzi/OSTEP/#book-chapters" target="_blank" rel="noopener">Operating Systems: Three Easy Pieces</a></li>
-</ol>
-<h3 id="concurrency"><a class="header-anchor" href="#concurrency">¶</a>Concurrency</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/5413517.html" target="_blank" rel="noopener">【操作系统】进程管理（二）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/5605193.html" target="_blank" rel="noopener">【操作系统】处理机调度与死锁（三）</a></li>
-</ol>
-<h3 id="persistent"><a class="header-anchor" href="#persistent">¶</a>Persistent</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/5616041.html" target="_blank" rel="noopener">【操作系统】存储器管理（四）</a></li>
-<li><a href="http://www.cnblogs.com/leesf456/p/5626339.html" target="_blank" rel="noopener">【操作系统】文件管理（六）</a></li>
-</ol>
-<h3 id="virtualization"><a class="header-anchor" href="#virtualization">¶</a>Virtualization</h3>
-<ol>
-<li><a href="http://www.cnblogs.com/leesf456/p/5622859.html" target="_blank" rel="noopener">【操作系统】设备管理（五）</a></li>
-</ol>
-<h2 id="linux-内核"><a class="header-anchor" href="#linux-内核">¶</a>Linux 内核</h2>
-<ol>
-<li>哈工大操作系统<br>
-<a href="https://mooc.study.163.com/course/1000002004?_trace_c_p_k2_=6a6064778bf54c5f98396d86c4146823#/info" target="_blank" rel="noopener">操作系统之基础</a><br>
-<a href="https://www.shiyanlou.com/courses/115" target="_blank" rel="noopener">操作系统原理与实践</a></li>
-<li>NJU<br>
-<a href="https://nju-ics.gitbooks.io/ics2016-programming-assignment/content/1.1.html" target="_blank" rel="noopener">在开始愉快的 PA 之旅之前</a><br>
-<a href="https://github.com/NJU-ProjectN/LiteNES" target="_blank" rel="noopener">NJU-ProjectN</a></li>
-<li><a href="http://www.linfo.org/index.html" target="_blank" rel="noopener">The Linux Information Project</a></li>
-<li><a href="https://www.kernel.org/" target="_blank" rel="noopener">The Linux Kernel Archives</a></li>
-<li><a href="https://tinylab.gitbooks.io/linux-doc/content/zh-cn/" target="_blank" rel="noopener">Linux 内核文档（中文版）</a></li>
-<li><a href="http://www.superfrink.net/athenaeum/OS-FAQ/os-faq.html" target="_blank" rel="noopener">Write Your Own Operating System</a></li>
-<li><a href="https://pdos.csail.mit.edu/6.828/" target="_blank" rel="noopener">6.828: Operating System Engineering</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/283c6d00.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
                 <a class="post-title-link" href="/283c6d00.html" itemprop="url">Linux 与文件系统</a></h1>
         
 
@@ -705,6 +404,183 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fdisk -l # 查看硬盘分区信息</span><br></pre></td></tr></table></figure>
 
           
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fca77f63.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/fca77f63.html" itemprop="url">Linux 与 IO</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-14T11:34:43+08:00">
+                2019-09-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  19 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>总结Linux中的5种IO模型，其中最常用的是IO多路复用，特别是epoll是各种网络框架的底层IO框架。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/fca77f63.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -1271,6 +1147,476 @@ JDK1.8 之后改为通过实现一种基于 CAS 的乐观锁来保证并发安�
             </a>
           </div>
           <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b13b8cb6.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/b13b8cb6.html" itemprop="url">Docker 与常用中间件</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
+                2019-09-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Docker/" itemprop="url" rel="index">
+                    <span itemprop="name">Docker</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  98 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  1 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="zookeeper"><a class="header-anchor" href="#zookeeper">¶</a>ZooKeeper</h3>
+<ol>
+<li><a href="https://stackoverflow.com/questions/30940981/zookeeper-error-cannot-open-channel-to-x-at-election-address" target="_blank" rel="noopener">Zookeeper error: Cannot open channel to X at election address</a></li>
+</ol>
+<h3 id="elasticsearch"><a class="header-anchor" href="#elasticsearch">¶</a>Elasticsearch</h3>
+<ol>
+<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html" target="_blank" rel="noopener">Install Elasticsearch with Docker</a></li>
+<li><a href="http://blog.csdn.net/sbsujjbcy/article/details/52335325" target="_blank" rel="noopener">记一次 Docker 下安装 Logstash+Elasticsearch+Kibana 经历</a></li>
+<li><a href="https://stackoverflow.com/questions/40341346/kibana-on-docker-cannot-connect-to-elasticsearch" target="_blank" rel="noopener">Kibana on Docker cannot connect to Elasticsearch</a></li>
+<li><a href="https://www.cnblogs.com/aubin/p/8012840.html" target="_blank" rel="noopener">Elasticsearch 集群部署</a></li>
+</ol>
+<h3 id="docker-mysql"><a class="header-anchor" href="#docker-mysql">¶</a>Docker MySQL</h3>
+<ol>
+<li><a href="https://hub.docker.com/_/mysql/" target="_blank" rel="noopener">Docker MySQL</a></li>
+</ol>
+<h3 id="docker-mysql-双机热备实现"><a class="header-anchor" href="#docker-mysql-双机热备实现">¶</a>Docker MySQL 双机热备实现</h3>
+<ol>
+<li><a href="https://github.com/Junnplus/blog/issues/1" target="_blank" rel="noopener">Mysql Master/Slave Replication With Docker</a></li>
+<li><a href="http://blog.csdn.net/huaweitman/article/details/50853075" target="_blank" rel="noopener">Mysql 双机热备实现</a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/linux-installation-docker.html" target="_blank" rel="noopener">2.5.6 Deploying MySQL on Linux with Docker</a></li>
+<li><a href="https://blog.csdn.net/boling_cavalry/article/details/71055159" target="_blank" rel="noopener">让 docker 中的 mysql 启动时自动执行 sql</a></li>
+<li><a href="https://www.2cto.com/database/201503/386265.html" target="_blank" rel="noopener">MySQL 主从复制资料汇总</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/89826705.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/89826705.html" itemprop="url">Docker 入门</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
+                2019-09-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Docker/" itemprop="url" rel="index">
+                    <span itemprop="name">Docker</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  10 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="docker-是什么"><a class="header-anchor" href="#docker-是什么">¶</a>Docker 是什么</h2>
+<ul>
+<li>Docker 是开源应用容器引擎，轻量级容器技术。</li>
+<li>基于 Go 语言，并遵循 Apache2.0 协议开源。</li>
+<li>Docker 可以让开发者打包他们的应用、依赖包及配置文件打包到一个轻量级、可移植的容器中，然后发布到任何流行的 Linux 系统上，也可以实现虚拟化。</li>
+<li>容器完全使用沙箱技术，相互之间不会有任何接口。</li>
+<li>类似于虚拟机技术（vmware、vitural），但 docker 直接运行在操作系统（Linux）上，而不是运行在虚拟机中，速度快，性能开销极低。<br>
+Docker 支持将软件编译成一个<strong>镜像</strong>，然后在镜像中对各种软件做好配置，将镜像发布出去（Docker Hub），其他使用者可以直接使用这个镜像。 运行中的这个镜像称为容器，容器启动是非常快速的。类似 windows 里面的 ghost 操 作系统，安装好后什么都有了。<br>
+docker<strong>容器</strong>可以理解为在沙盒中运行的进程。这个沙盒包含了该进程运行所必须的资源，包括文件系统、系统类库、shell 环境等等。但这个沙盒默认是不会运行任何程序的。你需要在沙盒中运行一个进程来启动某一个容器。这个进程是该容器的唯一进程，所以当该进程结束的时候，容器也会完全的停止。</li>
+</ul>
+<h3 id="常见应用场景"><a class="header-anchor" href="#常见应用场景">¶</a>常见应用场景</h3>
+<ul>
+<li>Web 应用的自动化打包和发布。</li>
+<li>自动化测试和持续集成、发布。</li>
+<li>在服务型环境中部署和调整数据库或其他的后台应用。</li>
+<li>从头编译或者扩展现有的 OpenShift 或 Cloud Foundry 平台来搭建自己的 PaaS 环境。</li>
+</ul>
+<h3 id="docker-特点"><a class="header-anchor" href="#docker-特点">¶</a>Docker 特点</h3>
+<p>Docker 是一个基于容器的应用开发、部署和运行平台，它为开发者和系统管理员们提供了一种新式的应用部署方式，具有灵活（最复杂的应用都能容器化）、轻量（容器共享一个服务器内核）、可替换的（可以在容器运行过程中更新服务器）、可移植的（本地、云上皆可）、可伸缩的（可以轻松地进行复制）、可栈化（指的是可以将多个服务部署在一起，比如用 docker-compose）的特性。<br>
+Docker is a platform for developers and sysadmins to develop, deploy, and run applications with containers. The use of Linux containers to deploy applications is called containerization. Containers are not new, but their use for easily deploying applications is.<br>
+Containerization is increasingly popular because containers are:</p>
+<ul>
+<li>Flexible: Even the most complex applications can be containerized.</li>
+<li>Lightweight: Containers leverage and share the host kernel.</li>
+<li>Interchangeable: You can deploy updates and upgrades on-the-fly.</li>
+<li>Portable: You can build locally, deploy to the cloud, and run anywhere.</li>
+<li>Scalable: You can increase and automatically distribute container replicas.</li>
+<li>Stackable: You can stack services vertically and on-the-fly.</li>
+</ul>
+<h3 id="docker-优势"><a class="header-anchor" href="#docker-优势">¶</a>Docker 优势</h3>
+<p>容器技术相比虚拟机，主要优势在于性能上，其性能优势可以说达到了一个量级的差距。根据 Boden Russell 在 OpenStack 上做的一次基准测试报告，一个 KVM 实例的平均内存消耗有 292MB，而一个 docker 实例的平均内存消耗在 49MB 左右。在 CPU overhead 和启动时间方面，docker 基本都比 KVM 有一个量级的优势。<br>
+目前，一个 AWS 上的 micro 实例，每小时的按需使用成本大约在一美分多一些。如果用 docker 来提供实例，那么每小时的按需使用成本很可能会做到 0.1 美分。这一点对于云经济至关重要。正如经济学家 William Stanley Jevons 的理论所呈现的，随着商品的价格越便宜，人们使用它们的场景和频率会越来越多。</p>
+<ol>
+<li>container 是一种部署单元，用户可以自由决定部署的范围（dev、test、production），即组织容器的方式，换句话说，容器可以简化工作流和软件的开发、部署生命周期；</li>
+<li>可以从传统的虚拟机环境平滑过渡到裸机生产环境内；<br>
+保证了线上线下环境的一致性。我们在线下的开发环境使用 Docker 构建好 weaapp 的镜像后，可以直接在线上使用一个镜像，保证了线上线下环境的一致性，再也不会有在线下开发环境中运行正常，而部署到线上各种错误了。</li>
+<li>实现了模块化，提高了复用性。<br>
+我们可以将数据库和 Tomcat 运行在不同的容器中，从某种角度来说，这也降低了模块之间的耦合性，便于拓展。比如我们要把 MySQL 替换为 oracle，只需要再构建一个 oracle 镜像并启动与 Tomcat 连接即可，非常方便。对于我们构建的镜像，在其他 app 中直接拿来用就可以了，不必重复劳动。</li>
+<li>提高整体效率；<br>
+极大的简化了 webapp 的部署流程。在不使用 Docker 时，我们部署 app 时，要先搭建好 app 运行所需环境，这个过程做过的人都知道多么枯燥繁琐，一不小心还出错。而有了 Docker，我们只需要直接构建一个我们 webapp 的镜像然后将其运行即可，无论在多少台服务器中部署，都是如此。再比如，使用 Docker 之前要搭建一个 WordPress 对于新手来说是有些困难的，而有了 Docker，只需要从 DockerHub 上 pull 一个 WordPress 镜像并启动就可以了，非常非常方便。</li>
+<li>实现了虚拟化，提高硬件利用率，有了 Docker，我们可以在一台服务器上运行很多 webapp，充分利用闲置资源。<br>
+这时候，服务器的操作系统就类似于货轮，而一个个 Docker 容器就相当于货轮上的一个个集装箱。现在大热的云服务市场，不少就用了 Docker。举个例子来说，现在我们有一台操作系统为 Ubuntu14.04 的服务器，我们构建不同版本的 ubuntu 镜像并启动，并且为不同的用户分配不同的容器。这样，用一台服务器可以虚拟出 n 个运行着不同操作系统的虚拟服务器，而对于用户来说，这些是透明的––用户则认为自己拥有一台完整的服务器。据我推测，阿里云的服务器就是这么干的。这充分利用了闲置的硬件资源。</li>
+<li>Fast
+<ul>
+<li>传统方式慢，传统情况下，应用服务器扩容缩容步骤繁多流程冗长,从服务器申请、初始化、应用部署、测试、加入退出集群、服务器下线。比如，业务遇到突发的流量高峰时,无法进行快速的扩容,当准备好的时候可能流量高峰已经过去了。</li>
+<li>传统不稳定，代码上线发布历经多个环境,在某个环境中测试时修复了 bug,代码等无法及时同步各环境中,提升了服务上线的风险。</li>
+<li>Runtime performance at near bare metal speeds (typically 97+ percent or bare metal – a few ticks shaven off for bean counters).</li>
+<li>Management operations (boot, stop, start, reboot, etc.) in seconds or milliseconds.</li>
+</ul>
+</li>
+<li>Agile
+<ul>
+<li>VM-like agility – it’s still “virtualization”.</li>
+<li>Seamlessly move between virtual and bare metal environments permitting new development workflows which reduce costs (e.g. develop on VMs and move to bare metal in the “click of a button” for production).</li>
+</ul>
+</li>
+<li>Flexible
+<ul>
+<li>Containerize a “system” (OS less the kernel).</li>
+<li>Containerize “application(s)”.</li>
+</ul>
+</li>
+<li>Lightweight
+<ul>
+<li>Just enough Operating System (JeOS); include only what you need reducing image and container bloat.</li>
+<li>Minimal per container penalty which equates to greater density and hence greater returns on existing assets – imagine packing 100s or 1000s of containers on a single host node.</li>
+</ul>
+</li>
+<li>Inexpensive
+<ul>
+<li>Open source – free – lower TCO.</li>
+<li>Supported with out-of-the-box modern Linux kernels.</li>
+</ul>
+</li>
+<li>Ecosystem
+<ul>
+<li>Growing in popularity – just checkout the google trends for docker or LXC.</li>
+<li>Vibrant community and numerous 3rd party applications (1000s of prebuilt images on docker index and 100s of open source apps on github or other public sources).</li>
+</ul>
+</li>
+<li>Cloudy
+<ul>
+<li>Various Cloud management frameworks provide support for creating and managing Linux Containers – including <strong>OpenStack</strong> my personal favorite.</li>
+</ul>
+</li>
+</ol>
+<h3 id="docker-劣势"><a class="header-anchor" href="#docker-劣势">¶</a>Docker 劣势</h3>
+<p>既然容器技术有如此大的优势，为什么基于容器的云现在还没有成为主流？我认为主要还是安全性的问题。虚拟机可以利用来自硬件的信任机制来提升安全性，这些机制在 Intel Virtualization Technology Evolution 的演示中有详细的介绍。即使如此，虚拟机仍然被视为相对不安全，比如前一段时间 Xen（半虚拟化，在硬件层和 OS 层之间的虚拟层）爆出一个漏洞，导致 AWS 不得不大量升级自己的主机。</p>
+<ol>
+<li>Docker Hub（镜像管理中心）不稳定<br>
+第一个就是很重要的 Docker Hub 的访问问题。我们知道国内访问一些海外的网站有时候会有稳定性的问题。Docker Hub 在我们的实践中就经常出现访问不了的问题。但这种访问的问题并不是持续的，而是时有时无。由于大量的成熟 Docker 映像（image）都需要从 Docker Hub 下载，很多脚本在执行到这一步时，结果很难预料。一种方案是修改缺省的 Docker Hub 地址，改为采用国内的一些镜像（mirror）。但是在没有官方认证的成熟稳定的镜像网站时，Docker 映像的更新不容易得到保证；另一种方案是自行搭建自己的 Docker Hub。但是一来这样就失去了强大的社区贡献的映像资源，二来要花费很多精力来保持更新和同步。容器技术带来的简单化，又因为映像管理而复杂化，得不偿失。</li>
+<li>运维难度大<br>
+第二个就是容器技术的资源管理和运维。因为容器技术本身更适于解决大规模应用场景，所以通常都是集群基础上的部署、运维，但是目前对这一系列任务的自动化处理尚无统一的或者标准的框架。如果要让 Docker 真正在实际环境中发挥最大的效能并且易于维护，就需要有很成熟稳定的资源编排（orchestration）、资源调度（scheduling）和部署（deployment）的支持，但是这方面暂时还没有很明显的最佳解决方案，所以大多数人都在摸索和搭建自己的解决方案。我们在微软开放技术内部也是在一些开源技术的基础之上，自行开发了容器在微软公有云 Azure 上的资源管理调度和部署运维的系统，传统上的开发运维和持续集成，持续部署的技术，比如 Chef，Puppet，Jenkins 等，都可以很容易的与容器技术一起工作。</li>
+</ol>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://github.com/docker-library/official-images" target="_blank" rel="noopener">docker-library / official-images</a></li>
+<li><a href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/" target="_blank" rel="noopener">Best practices for writing Dockerfiles</a></li>
+<li><a href="http://www.dockone.io/article/932" target="_blank" rel="noopener">十分钟带你理解 Kubernetes 核心概念</a></li>
+</ol>
+
+          
         
       
     </div>
@@ -1921,6 +2267,221 @@ FailoverClusterInvoker.doInvoke 重试几次，把失败的添加到 invoked 列
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/459b2cfd.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/459b2cfd.html" itemprop="url">Dubbo的网络通信</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
+                2019-09-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Dubbo/" itemprop="url" rel="index">
+                    <span itemprop="name">Dubbo</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<p>Dubbo 支持多种协议，如下图所示：<br>
+<img src="https://tallate.top/imgs/Dubbo/Protocol%E6%89%A9%E5%B1%95.png" alt="Protocol扩展" title="Protocol扩展"><br>
+在通信过程中，不同的服务等级一般对应着不同的服务质量，那么选择合适的协议便是一件非常重要的事情，需要根据应用的特征来选择。例如，使用 RMI 协议，一般会受到防火墙的限制，所以对于外部与内部进行通信的场景，就不要使用 RMI 协议，而是基于 HTTP 协议或者 Hessian 协议。</p>
+<h3 id="hessian-协议"><a class="header-anchor" href="#hessian-协议">¶</a>Hessian 协议</h3>
+<ul>
+<li>连接个数：多连接</li>
+<li>连接方式：短连接</li>
+<li>传输协议：HTTP</li>
+<li>传输方式：同步传输</li>
+<li>序列化：Hessian 二进制序列化</li>
+<li>适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。</li>
+<li>适用场景：页面传输，文件传输，Hessian 是 Caucho 开源的一个 RPC 框架，其通讯效率高于 WebService 和 Java 自带的序列化，Hessian 底层采用 Http 通讯，采用 Servlet 暴露服务，Dubbo 缺省内嵌 Jetty 作为服务器实现。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--定义 hessian 协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;hessian&quot; port=&quot;8080&quot; server=&quot;jetty&quot; /&gt;</span><br><span class="line">&lt;!--设置默认协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line">&lt;!--设置 service 协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.caucho&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hessian&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.0.33&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="http-协议"><a class="header-anchor" href="#http-协议">¶</a>Http 协议</h3>
+<ul>
+<li>连接个数：多连接</li>
+<li>连接方式：短连接</li>
+<li>传输协议：HTTP</li>
+<li>传输方式：同步传输</li>
+<li>序列化：表单序列化</li>
+<li>适用范围：传入传出参数数据包大小混合，提供者比消费者个数多，可用浏览器查看，可用表单或 URL 传入参数，暂不支持传文件。</li>
+<li>适用场景：需同时给应用程序和浏览器 JS 使用的服务。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--配置协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;http&quot; port=&quot;8080&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="thrift-协议"><a class="header-anchor" href="#thrift-协议">¶</a>Thrift 协议</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.thrift&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;libthrift&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;0.8.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol name=&quot;thrift&quot; port=&quot;3030&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>Dubbo 使用的 Thrift 和原生的 Thrift 协议不兼容，在原生协议的基础上添加了一些额外的头信息，比如 service name，magic number 等。</p>
+<h3 id="rest-协议"><a class="header-anchor" href="#rest-协议">¶</a>Rest 协议</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 用rest协议在8080端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;rest&quot; port=&quot;8080&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 声明需要暴露的服务接口 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.service.OrderService&quot; ref=&quot;orderService&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 和本地bean一样实现服务 --&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;com.service.OrderServiceImpl&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>在代码中需要通过注解指定访问路径：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public class OrderService &#123;    </span><br><span class="line">   void createOrder(Order order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Path(&quot;orders&quot;) // 访问Url的相对路径</span><br><span class="line">public class OrderServiceImpl implements OrderService &#123;</span><br><span class="line"></span><br><span class="line">    @POST</span><br><span class="line">    @Path(&quot;create&quot;) // 访问Url的相对路径</span><br><span class="line">    // 将传递过来的JSON数据反序列化为Order对象</span><br><span class="line">    @Consumes(&#123;MediaType.APPLICATION_JSON&#125;) </span><br><span class="line">    public void createOrder(Order order) &#123;</span><br><span class="line">        // create the order...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="长连接-or-短连接"><a class="header-anchor" href="#长连接-or-短连接">¶</a>长连接 OR 短连接</h3>
+<p>Dubbo 协议缺省每服务每提供者每消费者使用单一长连接，如果数据量较大，可以使用多个连接。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 表示该服务使用 JVM 共享长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;0&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;0&quot;&gt;</span><br><span class="line">&lt;!-- 表示该服务使用独立长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;1&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;1&quot;&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="为什么要消费者比提供者个数多"><a class="header-anchor" href="#为什么要消费者比提供者个数多">¶</a>为什么要消费者比提供者个数多</h3>
+<p>因为 dubbo 协议采用单一长连接，假设网络为千兆网卡 3，根据测试经验数据每条连接最多只能压满 7MByte（不同的环境可能不一样），理论上 1 个服务提供者需要 20 个服务消费者才能压满网卡。</p>
+<h3 id="为什么不能传大包"><a class="header-anchor" href="#为什么不能传大包">¶</a>为什么不能传大包</h3>
+<p>因 dubbo 协议采用单一长连接，如果每次请求的数据包大小为 500KByte，假设网络为千兆网卡 3，每条连接最大 7MByte(不同的环境可能不一样，供参考)，单个服务提供者的 TPS(每秒处理事务数)最大为：128MByte / 500KByte = 262。单个消费者调用单个服务提供者的 TPS(每秒处理事务数)最大为：7MByte / 500KByte = 14。如果能接受，可以考虑使用，否则网络将成为瓶颈。</p>
+<h3 id="为什么采用异步单一长连接"><a class="header-anchor" href="#为什么采用异步单一长连接">¶</a>为什么采用异步单一长连接</h3>
+<p>因为服务的现状大都是服务提供者少，通常只有几台机器，而服务的消费者多，可能整个网站都在访问该服务，比如 Morgan 的提供者只有 6 台提供者，却有上百台消费者，每天有 1.5 亿次调用，如果采用常规的 hessian 服务，服务提供者很容易就被压跨，通过单一连接，保证单一消费者不会压死提供者，长连接，减少连接握手验证等，并使用异步 IO，复用线程池，防止 C10K 问题（服务器无法服务 1w 左右的并发连接）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 配置协议端口和服务提供方最大连接数，防止服务被压垮 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot; accepts=&quot;1000&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo默认协议 --&gt;</span><br><span class="line">&lt;dubbo:provider protocol=&quot;dubbo&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo设置服务协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;dubbo&quot; /&gt;</span><br></pre></td></tr></table></figure>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/2215add6.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2360,221 +2921,6 @@ IO 线程接收请求后分发给事件处理线程执行，具体的派发逻�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/459b2cfd.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/459b2cfd.html" itemprop="url">Dubbo的网络通信</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
-                2019-09-07
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Dubbo/" itemprop="url" rel="index">
-                    <span itemprop="name">Dubbo</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.3k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  5 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<p>Dubbo 支持多种协议，如下图所示：<br>
-<img src="https://tallate.top/imgs/Dubbo/Protocol%E6%89%A9%E5%B1%95.png" alt="Protocol扩展" title="Protocol扩展"><br>
-在通信过程中，不同的服务等级一般对应着不同的服务质量，那么选择合适的协议便是一件非常重要的事情，需要根据应用的特征来选择。例如，使用 RMI 协议，一般会受到防火墙的限制，所以对于外部与内部进行通信的场景，就不要使用 RMI 协议，而是基于 HTTP 协议或者 Hessian 协议。</p>
-<h3 id="hessian-协议"><a class="header-anchor" href="#hessian-协议">¶</a>Hessian 协议</h3>
-<ul>
-<li>连接个数：多连接</li>
-<li>连接方式：短连接</li>
-<li>传输协议：HTTP</li>
-<li>传输方式：同步传输</li>
-<li>序列化：Hessian 二进制序列化</li>
-<li>适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。</li>
-<li>适用场景：页面传输，文件传输，Hessian 是 Caucho 开源的一个 RPC 框架，其通讯效率高于 WebService 和 Java 自带的序列化，Hessian 底层采用 Http 通讯，采用 Servlet 暴露服务，Dubbo 缺省内嵌 Jetty 作为服务器实现。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--定义 hessian 协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;hessian&quot; port=&quot;8080&quot; server=&quot;jetty&quot; /&gt;</span><br><span class="line">&lt;!--设置默认协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line">&lt;!--设置 service 协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.caucho&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hessian&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.0.33&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="http-协议"><a class="header-anchor" href="#http-协议">¶</a>Http 协议</h3>
-<ul>
-<li>连接个数：多连接</li>
-<li>连接方式：短连接</li>
-<li>传输协议：HTTP</li>
-<li>传输方式：同步传输</li>
-<li>序列化：表单序列化</li>
-<li>适用范围：传入传出参数数据包大小混合，提供者比消费者个数多，可用浏览器查看，可用表单或 URL 传入参数，暂不支持传文件。</li>
-<li>适用场景：需同时给应用程序和浏览器 JS 使用的服务。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--配置协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;http&quot; port=&quot;8080&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="thrift-协议"><a class="header-anchor" href="#thrift-协议">¶</a>Thrift 协议</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.thrift&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;libthrift&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;0.8.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol name=&quot;thrift&quot; port=&quot;3030&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<p>Dubbo 使用的 Thrift 和原生的 Thrift 协议不兼容，在原生协议的基础上添加了一些额外的头信息，比如 service name，magic number 等。</p>
-<h3 id="rest-协议"><a class="header-anchor" href="#rest-协议">¶</a>Rest 协议</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 用rest协议在8080端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;rest&quot; port=&quot;8080&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 声明需要暴露的服务接口 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.service.OrderService&quot; ref=&quot;orderService&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 和本地bean一样实现服务 --&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;com.service.OrderServiceImpl&quot; /&gt;</span><br></pre></td></tr></table></figure>
-<p>在代码中需要通过注解指定访问路径：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public class OrderService &#123;    </span><br><span class="line">   void createOrder(Order order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Path(&quot;orders&quot;) // 访问Url的相对路径</span><br><span class="line">public class OrderServiceImpl implements OrderService &#123;</span><br><span class="line"></span><br><span class="line">    @POST</span><br><span class="line">    @Path(&quot;create&quot;) // 访问Url的相对路径</span><br><span class="line">    // 将传递过来的JSON数据反序列化为Order对象</span><br><span class="line">    @Consumes(&#123;MediaType.APPLICATION_JSON&#125;) </span><br><span class="line">    public void createOrder(Order order) &#123;</span><br><span class="line">        // create the order...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="长连接-or-短连接"><a class="header-anchor" href="#长连接-or-短连接">¶</a>长连接 OR 短连接</h3>
-<p>Dubbo 协议缺省每服务每提供者每消费者使用单一长连接，如果数据量较大，可以使用多个连接。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 表示该服务使用 JVM 共享长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;0&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;0&quot;&gt;</span><br><span class="line">&lt;!-- 表示该服务使用独立长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;1&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;1&quot;&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="为什么要消费者比提供者个数多"><a class="header-anchor" href="#为什么要消费者比提供者个数多">¶</a>为什么要消费者比提供者个数多</h3>
-<p>因为 dubbo 协议采用单一长连接，假设网络为千兆网卡 3，根据测试经验数据每条连接最多只能压满 7MByte（不同的环境可能不一样），理论上 1 个服务提供者需要 20 个服务消费者才能压满网卡。</p>
-<h3 id="为什么不能传大包"><a class="header-anchor" href="#为什么不能传大包">¶</a>为什么不能传大包</h3>
-<p>因 dubbo 协议采用单一长连接，如果每次请求的数据包大小为 500KByte，假设网络为千兆网卡 3，每条连接最大 7MByte(不同的环境可能不一样，供参考)，单个服务提供者的 TPS(每秒处理事务数)最大为：128MByte / 500KByte = 262。单个消费者调用单个服务提供者的 TPS(每秒处理事务数)最大为：7MByte / 500KByte = 14。如果能接受，可以考虑使用，否则网络将成为瓶颈。</p>
-<h3 id="为什么采用异步单一长连接"><a class="header-anchor" href="#为什么采用异步单一长连接">¶</a>为什么采用异步单一长连接</h3>
-<p>因为服务的现状大都是服务提供者少，通常只有几台机器，而服务的消费者多，可能整个网站都在访问该服务，比如 Morgan 的提供者只有 6 台提供者，却有上百台消费者，每天有 1.5 亿次调用，如果采用常规的 hessian 服务，服务提供者很容易就被压跨，通过单一连接，保证单一消费者不会压死提供者，长连接，减少连接握手验证等，并使用异步 IO，复用线程池，防止 C10K 问题（服务器无法服务 1w 左右的并发连接）。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 配置协议端口和服务提供方最大连接数，防止服务被压垮 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot; accepts=&quot;1000&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo默认协议 --&gt;</span><br><span class="line">&lt;dubbo:provider protocol=&quot;dubbo&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo设置服务协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;dubbo&quot; /&gt;</span><br></pre></td></tr></table></figure>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/bf6c261d.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2804,476 +3150,6 @@ ExtensionLoader 会依次从<code>META-INF/dubbo/internal</code>（Dubbo 内部�
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/89826705.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/89826705.html" itemprop="url">Docker 入门</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
-                2019-09-07
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Docker/" itemprop="url" rel="index">
-                    <span itemprop="name">Docker</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.7k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  10 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="docker-是什么"><a class="header-anchor" href="#docker-是什么">¶</a>Docker 是什么</h2>
-<ul>
-<li>Docker 是开源应用容器引擎，轻量级容器技术。</li>
-<li>基于 Go 语言，并遵循 Apache2.0 协议开源。</li>
-<li>Docker 可以让开发者打包他们的应用、依赖包及配置文件打包到一个轻量级、可移植的容器中，然后发布到任何流行的 Linux 系统上，也可以实现虚拟化。</li>
-<li>容器完全使用沙箱技术，相互之间不会有任何接口。</li>
-<li>类似于虚拟机技术（vmware、vitural），但 docker 直接运行在操作系统（Linux）上，而不是运行在虚拟机中，速度快，性能开销极低。<br>
-Docker 支持将软件编译成一个<strong>镜像</strong>，然后在镜像中对各种软件做好配置，将镜像发布出去（Docker Hub），其他使用者可以直接使用这个镜像。 运行中的这个镜像称为容器，容器启动是非常快速的。类似 windows 里面的 ghost 操 作系统，安装好后什么都有了。<br>
-docker<strong>容器</strong>可以理解为在沙盒中运行的进程。这个沙盒包含了该进程运行所必须的资源，包括文件系统、系统类库、shell 环境等等。但这个沙盒默认是不会运行任何程序的。你需要在沙盒中运行一个进程来启动某一个容器。这个进程是该容器的唯一进程，所以当该进程结束的时候，容器也会完全的停止。</li>
-</ul>
-<h3 id="常见应用场景"><a class="header-anchor" href="#常见应用场景">¶</a>常见应用场景</h3>
-<ul>
-<li>Web 应用的自动化打包和发布。</li>
-<li>自动化测试和持续集成、发布。</li>
-<li>在服务型环境中部署和调整数据库或其他的后台应用。</li>
-<li>从头编译或者扩展现有的 OpenShift 或 Cloud Foundry 平台来搭建自己的 PaaS 环境。</li>
-</ul>
-<h3 id="docker-特点"><a class="header-anchor" href="#docker-特点">¶</a>Docker 特点</h3>
-<p>Docker 是一个基于容器的应用开发、部署和运行平台，它为开发者和系统管理员们提供了一种新式的应用部署方式，具有灵活（最复杂的应用都能容器化）、轻量（容器共享一个服务器内核）、可替换的（可以在容器运行过程中更新服务器）、可移植的（本地、云上皆可）、可伸缩的（可以轻松地进行复制）、可栈化（指的是可以将多个服务部署在一起，比如用 docker-compose）的特性。<br>
-Docker is a platform for developers and sysadmins to develop, deploy, and run applications with containers. The use of Linux containers to deploy applications is called containerization. Containers are not new, but their use for easily deploying applications is.<br>
-Containerization is increasingly popular because containers are:</p>
-<ul>
-<li>Flexible: Even the most complex applications can be containerized.</li>
-<li>Lightweight: Containers leverage and share the host kernel.</li>
-<li>Interchangeable: You can deploy updates and upgrades on-the-fly.</li>
-<li>Portable: You can build locally, deploy to the cloud, and run anywhere.</li>
-<li>Scalable: You can increase and automatically distribute container replicas.</li>
-<li>Stackable: You can stack services vertically and on-the-fly.</li>
-</ul>
-<h3 id="docker-优势"><a class="header-anchor" href="#docker-优势">¶</a>Docker 优势</h3>
-<p>容器技术相比虚拟机，主要优势在于性能上，其性能优势可以说达到了一个量级的差距。根据 Boden Russell 在 OpenStack 上做的一次基准测试报告，一个 KVM 实例的平均内存消耗有 292MB，而一个 docker 实例的平均内存消耗在 49MB 左右。在 CPU overhead 和启动时间方面，docker 基本都比 KVM 有一个量级的优势。<br>
-目前，一个 AWS 上的 micro 实例，每小时的按需使用成本大约在一美分多一些。如果用 docker 来提供实例，那么每小时的按需使用成本很可能会做到 0.1 美分。这一点对于云经济至关重要。正如经济学家 William Stanley Jevons 的理论所呈现的，随着商品的价格越便宜，人们使用它们的场景和频率会越来越多。</p>
-<ol>
-<li>container 是一种部署单元，用户可以自由决定部署的范围（dev、test、production），即组织容器的方式，换句话说，容器可以简化工作流和软件的开发、部署生命周期；</li>
-<li>可以从传统的虚拟机环境平滑过渡到裸机生产环境内；<br>
-保证了线上线下环境的一致性。我们在线下的开发环境使用 Docker 构建好 weaapp 的镜像后，可以直接在线上使用一个镜像，保证了线上线下环境的一致性，再也不会有在线下开发环境中运行正常，而部署到线上各种错误了。</li>
-<li>实现了模块化，提高了复用性。<br>
-我们可以将数据库和 Tomcat 运行在不同的容器中，从某种角度来说，这也降低了模块之间的耦合性，便于拓展。比如我们要把 MySQL 替换为 oracle，只需要再构建一个 oracle 镜像并启动与 Tomcat 连接即可，非常方便。对于我们构建的镜像，在其他 app 中直接拿来用就可以了，不必重复劳动。</li>
-<li>提高整体效率；<br>
-极大的简化了 webapp 的部署流程。在不使用 Docker 时，我们部署 app 时，要先搭建好 app 运行所需环境，这个过程做过的人都知道多么枯燥繁琐，一不小心还出错。而有了 Docker，我们只需要直接构建一个我们 webapp 的镜像然后将其运行即可，无论在多少台服务器中部署，都是如此。再比如，使用 Docker 之前要搭建一个 WordPress 对于新手来说是有些困难的，而有了 Docker，只需要从 DockerHub 上 pull 一个 WordPress 镜像并启动就可以了，非常非常方便。</li>
-<li>实现了虚拟化，提高硬件利用率，有了 Docker，我们可以在一台服务器上运行很多 webapp，充分利用闲置资源。<br>
-这时候，服务器的操作系统就类似于货轮，而一个个 Docker 容器就相当于货轮上的一个个集装箱。现在大热的云服务市场，不少就用了 Docker。举个例子来说，现在我们有一台操作系统为 Ubuntu14.04 的服务器，我们构建不同版本的 ubuntu 镜像并启动，并且为不同的用户分配不同的容器。这样，用一台服务器可以虚拟出 n 个运行着不同操作系统的虚拟服务器，而对于用户来说，这些是透明的––用户则认为自己拥有一台完整的服务器。据我推测，阿里云的服务器就是这么干的。这充分利用了闲置的硬件资源。</li>
-<li>Fast
-<ul>
-<li>传统方式慢，传统情况下，应用服务器扩容缩容步骤繁多流程冗长,从服务器申请、初始化、应用部署、测试、加入退出集群、服务器下线。比如，业务遇到突发的流量高峰时,无法进行快速的扩容,当准备好的时候可能流量高峰已经过去了。</li>
-<li>传统不稳定，代码上线发布历经多个环境,在某个环境中测试时修复了 bug,代码等无法及时同步各环境中,提升了服务上线的风险。</li>
-<li>Runtime performance at near bare metal speeds (typically 97+ percent or bare metal – a few ticks shaven off for bean counters).</li>
-<li>Management operations (boot, stop, start, reboot, etc.) in seconds or milliseconds.</li>
-</ul>
-</li>
-<li>Agile
-<ul>
-<li>VM-like agility – it’s still “virtualization”.</li>
-<li>Seamlessly move between virtual and bare metal environments permitting new development workflows which reduce costs (e.g. develop on VMs and move to bare metal in the “click of a button” for production).</li>
-</ul>
-</li>
-<li>Flexible
-<ul>
-<li>Containerize a “system” (OS less the kernel).</li>
-<li>Containerize “application(s)”.</li>
-</ul>
-</li>
-<li>Lightweight
-<ul>
-<li>Just enough Operating System (JeOS); include only what you need reducing image and container bloat.</li>
-<li>Minimal per container penalty which equates to greater density and hence greater returns on existing assets – imagine packing 100s or 1000s of containers on a single host node.</li>
-</ul>
-</li>
-<li>Inexpensive
-<ul>
-<li>Open source – free – lower TCO.</li>
-<li>Supported with out-of-the-box modern Linux kernels.</li>
-</ul>
-</li>
-<li>Ecosystem
-<ul>
-<li>Growing in popularity – just checkout the google trends for docker or LXC.</li>
-<li>Vibrant community and numerous 3rd party applications (1000s of prebuilt images on docker index and 100s of open source apps on github or other public sources).</li>
-</ul>
-</li>
-<li>Cloudy
-<ul>
-<li>Various Cloud management frameworks provide support for creating and managing Linux Containers – including <strong>OpenStack</strong> my personal favorite.</li>
-</ul>
-</li>
-</ol>
-<h3 id="docker-劣势"><a class="header-anchor" href="#docker-劣势">¶</a>Docker 劣势</h3>
-<p>既然容器技术有如此大的优势，为什么基于容器的云现在还没有成为主流？我认为主要还是安全性的问题。虚拟机可以利用来自硬件的信任机制来提升安全性，这些机制在 Intel Virtualization Technology Evolution 的演示中有详细的介绍。即使如此，虚拟机仍然被视为相对不安全，比如前一段时间 Xen（半虚拟化，在硬件层和 OS 层之间的虚拟层）爆出一个漏洞，导致 AWS 不得不大量升级自己的主机。</p>
-<ol>
-<li>Docker Hub（镜像管理中心）不稳定<br>
-第一个就是很重要的 Docker Hub 的访问问题。我们知道国内访问一些海外的网站有时候会有稳定性的问题。Docker Hub 在我们的实践中就经常出现访问不了的问题。但这种访问的问题并不是持续的，而是时有时无。由于大量的成熟 Docker 映像（image）都需要从 Docker Hub 下载，很多脚本在执行到这一步时，结果很难预料。一种方案是修改缺省的 Docker Hub 地址，改为采用国内的一些镜像（mirror）。但是在没有官方认证的成熟稳定的镜像网站时，Docker 映像的更新不容易得到保证；另一种方案是自行搭建自己的 Docker Hub。但是一来这样就失去了强大的社区贡献的映像资源，二来要花费很多精力来保持更新和同步。容器技术带来的简单化，又因为映像管理而复杂化，得不偿失。</li>
-<li>运维难度大<br>
-第二个就是容器技术的资源管理和运维。因为容器技术本身更适于解决大规模应用场景，所以通常都是集群基础上的部署、运维，但是目前对这一系列任务的自动化处理尚无统一的或者标准的框架。如果要让 Docker 真正在实际环境中发挥最大的效能并且易于维护，就需要有很成熟稳定的资源编排（orchestration）、资源调度（scheduling）和部署（deployment）的支持，但是这方面暂时还没有很明显的最佳解决方案，所以大多数人都在摸索和搭建自己的解决方案。我们在微软开放技术内部也是在一些开源技术的基础之上，自行开发了容器在微软公有云 Azure 上的资源管理调度和部署运维的系统，传统上的开发运维和持续集成，持续部署的技术，比如 Chef，Puppet，Jenkins 等，都可以很容易的与容器技术一起工作。</li>
-</ol>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://github.com/docker-library/official-images" target="_blank" rel="noopener">docker-library / official-images</a></li>
-<li><a href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/" target="_blank" rel="noopener">Best practices for writing Dockerfiles</a></li>
-<li><a href="http://www.dockone.io/article/932" target="_blank" rel="noopener">十分钟带你理解 Kubernetes 核心概念</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b13b8cb6.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/b13b8cb6.html" itemprop="url">Docker 与常用中间件</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
-                2019-09-07
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Docker/" itemprop="url" rel="index">
-                    <span itemprop="name">Docker</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  98 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  1 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="zookeeper"><a class="header-anchor" href="#zookeeper">¶</a>ZooKeeper</h3>
-<ol>
-<li><a href="https://stackoverflow.com/questions/30940981/zookeeper-error-cannot-open-channel-to-x-at-election-address" target="_blank" rel="noopener">Zookeeper error: Cannot open channel to X at election address</a></li>
-</ol>
-<h3 id="elasticsearch"><a class="header-anchor" href="#elasticsearch">¶</a>Elasticsearch</h3>
-<ol>
-<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html" target="_blank" rel="noopener">Install Elasticsearch with Docker</a></li>
-<li><a href="http://blog.csdn.net/sbsujjbcy/article/details/52335325" target="_blank" rel="noopener">记一次 Docker 下安装 Logstash+Elasticsearch+Kibana 经历</a></li>
-<li><a href="https://stackoverflow.com/questions/40341346/kibana-on-docker-cannot-connect-to-elasticsearch" target="_blank" rel="noopener">Kibana on Docker cannot connect to Elasticsearch</a></li>
-<li><a href="https://www.cnblogs.com/aubin/p/8012840.html" target="_blank" rel="noopener">Elasticsearch 集群部署</a></li>
-</ol>
-<h3 id="docker-mysql"><a class="header-anchor" href="#docker-mysql">¶</a>Docker MySQL</h3>
-<ol>
-<li><a href="https://hub.docker.com/_/mysql/" target="_blank" rel="noopener">Docker MySQL</a></li>
-</ol>
-<h3 id="docker-mysql-双机热备实现"><a class="header-anchor" href="#docker-mysql-双机热备实现">¶</a>Docker MySQL 双机热备实现</h3>
-<ol>
-<li><a href="https://github.com/Junnplus/blog/issues/1" target="_blank" rel="noopener">Mysql Master/Slave Replication With Docker</a></li>
-<li><a href="http://blog.csdn.net/huaweitman/article/details/50853075" target="_blank" rel="noopener">Mysql 双机热备实现</a></li>
-<li><a href="https://dev.mysql.com/doc/refman/8.0/en/linux-installation-docker.html" target="_blank" rel="noopener">2.5.6 Deploying MySQL on Linux with Docker</a></li>
-<li><a href="https://blog.csdn.net/boling_cavalry/article/details/71055159" target="_blank" rel="noopener">让 docker 中的 mysql 启动时自动执行 sql</a></li>
-<li><a href="https://www.2cto.com/database/201503/386265.html" target="_blank" rel="noopener">MySQL 主从复制资料汇总</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -3346,7 +3222,7 @@ Containerization is increasingly popular because containers are:</p>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">69</span>
+                  <span class="site-state-item-count">70</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
