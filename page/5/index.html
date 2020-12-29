@@ -600,804 +600,6 @@ ERR Client sent AUTH, but no password is set<br>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.5k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  5 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
-<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
-<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
-<ol>
-<li>超时降级<br>
-配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
-<li>失败次数降级<br>
-失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
-<li>故障降级<br>
-如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
-和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
-<li>限流降级<br>
-单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
-</ol>
-<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
-<p>降级后，在代码层面，可以进行的处理策略如下：</p>
-<ol>
-<li>抛异常</li>
-<li>返回 NULL</li>
-<li>调用 Mock 数据</li>
-<li>调用 Fallback 处理逻辑</li>
-</ol>
-<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
-<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
-<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
-<ul>
-<li>toObservable()<br>
-最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
-<li>observe()<br>
-调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
-<li>queue()<br>
-调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
-<li>execute()<br>
-调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
-</ul>
-<p>HystrixCommand.execute<br>
--&gt; HystrixCommand.queue<br>
--&gt; AbstractCommand.toObservable</p>
-<p>AbstractCommand.observe<br>
--&gt; AbstractCommand.toObservable</p>
-<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
-<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
-开启配置：<br>
-HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
-HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
--&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
-<p>实施信号量隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
-<p>实施线程隔离：<br>
-AbstractCommand.toObservable<br>
-…中略<br>
--&gt; AbstractCommand.applyHystrixSemantics<br>
--&gt; AbstractCommand.executeCommandAndObserve<br>
--&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
--&gt; AbstractCommand.getUserExecutionObservable<br>
--&gt; HystrixCommand.getExecutionObservable</p>
-<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
-<p>Hystrix的限流限制的是并发量，其实和隔离特性的实现方式一样，可以通过调整信号量或线程池大小来实现限流。</p>
-<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
-<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
-当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
-Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
-<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
-<ol>
-<li>熔断关闭状态（Closed）<br>
-服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
-<li>熔断开启状态（Open）<br>
-在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
-<li>半熔断状态（Half-Open）<br>
-在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
-</ol>
-<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
-<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
-<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
-<ol>
-<li>run()方法抛出非 HystrixBadRequestException 异常<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
-HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
-<li>run()方法调用超时<br>
-对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
-AbstractCommand.executeCommandAndObserve<br>
--&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
--&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
--&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
-可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
-<li>熔断器开启拦截调用<br>
-AbstractCommand.applyHystrixSemantics<br>
--&gt; HystrixCircuitBreaker.attemptExecution</li>
-<li>线程池/队列/信号量是否跑满<br>
-在《隔离》那一节中已经说明了代码的位置。</li>
-<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
-HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
-</ol>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
-结果缓存这个功能我觉得应该由幂等框架来做。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
-<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
-<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
-<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
-<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
-<li><a href="https://github.com/Netflix/Hystrix" target="_blank" rel="noopener">Netflix / Hystrix</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6577ef90.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/6577ef90.html" itemprop="url">SpringBoot 与常见中间件的搭建</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
-                2019-10-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.7k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  16 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="eureka"><a class="header-anchor" href="#eureka">¶</a>Eureka</h2>
-<ul>
-<li>服务发现，提供高可用的服务注册表功能，是之后 Ribbon、Zuul 等组件的基础。</li>
-</ul>
-<h3 id="创建-eureka-server"><a class="header-anchor" href="#创建-eureka-server">¶</a>创建 Eureka Server</h3>
-<ol>
-<li>创建 Spring Initializr 项目<br>
-选中 Cloud Discovery -&gt; Eureka Server 模块</li>
-<li>在 <strong>EurekaServerApplication</strong> 类上添加 <strong>@EnableEurekaServer</strong></li>
-<li>指定一个 Eureka Server<br>
-在默认情况下 erureka server 也是一个 eureka client，必须要指定一个 server，在配置文件中添加： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">    server.port=8761</span><br><span class="line">    eureka.instance.hostname=localhost</span><br><span class="line">    eureka.client.register-with-eureka=false</span><br><span class="line">    eureka.client.fetch-registry=false</span><br><span class="line">    eureka.client.service-url.default-zone=http://eureka.instance.hostname:eureka.instance.hostname:</span><br><span class="line">&#123;server.port&#125;/eureka/</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>其中通过 eureka.client.registerWithEureka=false 和 fetchRegistry=false 来表明自己是一个 Eureka Server。</p>
-<ol>
-<li>访问 Eureka Server 服务器<br>
-localhost:8761<br>
-此时还没有服务被注册进来。</li>
-</ol>
-<h3 id="创建-eureka-client"><a class="header-anchor" href="#创建-eureka-client">¶</a>创建 Eureka Client</h3>
-<ol>
-<li>类似的，创建的 Spring Initializr 项目是 <strong>Eureka Discovery</strong></li>
-<li>为 <strong>EurekaClientApplication</strong> 类上添加 <strong>@EnableEurekaClient</strong> 注解</li>
-<li>添加配置 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.default-zone=http://localhost:8761/eureka</span><br><span class="line">server.port=8762</span><br><span class="line">spring.application.name=service-name</span><br><span class="line">eureka.client.register-with-eureka=false</span><br><span class="line">eureka.client.fetch-registry=false</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>需要指明 <a href="http://spring.application.name" target="_blank" rel="noopener">spring.application.name</a>，这个很重要，这在以后的服务与服务之间相互调用一般都是根据这个 name。</p>
-<h3 id="集群化-eureka-server"><a class="header-anchor" href="#集群化-eureka-server">¶</a>集群化 Eureka Server</h3>
-<ol>
-<li>创建两个配置文件，分别代表两个实例的属性<br>
-application-peer1.properties： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8761</span><br><span class="line">eureka.instance.hostname=peer1</span><br><span class="line">eureka.client.service-url.defaultZone=http://peer2:8769/eureka/</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>application-peer2.properties：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8769</span><br><span class="line">eureka.instance.hostname=peer2</span><br><span class="line">eureka.client.service-url.defaultZone=http://peer1:8761/eureka/</span><br></pre></td></tr></table></figure></p>
-<ol>
-<li>
-<p>在/etc/hosts 文件中添加下面两条记录：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1 peer1</span><br><span class="line">127.0.0.1 peer2</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>启动<br>
-先在application.properties中指定：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.profiles.active=peer1</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>启动 peer1，然后指定：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.profiles.active=peer2</span><br></pre></td></tr></table></figure></p>
-<p>启动 peer2。<br>
-这时访问 localhost:8761 和 localhost:8769 可以看到两个节点的注册信息，他们分别是对方的复制，他们是对等的。</p>
-<h2 id="ribbon-服务消费"><a class="header-anchor" href="#ribbon-服务消费">¶</a>Ribbon - 服务消费</h2>
-<ul>
-<li>用来作为软件的负载均衡，微服务之间相互调用是通过 ribbon 作为软件负载均衡使用负载到微服务集群内的不同的实例。</li>
-</ul>
-<h3 id="配置bean"><a class="header-anchor" href="#配置bean">¶</a>配置Bean</h3>
-<p>IClientConfig ribbonClientConfig: DefaultClientConfigImpl<br>
-IRule ribbonRule: ZoneAvoidanceRule<br>
-IPing ribbonPing: NoOpPing<br>
-ServerList ribbonServerList: ConfigurationBasedServerList<br>
-ServerListFilter ribbonServerListFilter: ZonePreferenceServerListFilter<br>
-ILoadBalancer ribbonLoadBalancer: ZoneAwareLoadBalancer</p>
-<h3 id="创建服务消费者"><a class="header-anchor" href="#创建服务消费者">¶</a>创建服务消费者</h3>
-<ol>
-<li>
-<p>创建 Spring Initializr<br>
-勾选 Eureka Discovery、Ribbon</p>
-</li>
-<li>
-<p>添加配置</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.defaultZone=http://localhost:8761/eureka/</span><br><span class="line">server.port=8764</span><br><span class="line">spring.application.name=service-ribbon</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>除了为 <strong>ServiceRibbonApplication</strong> 类添加 <strong>@EnableDiscoveryClient</strong> 外，还需要注册一个 RestTemplate 的 Bean：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">* 向Spring容器注入一个RestTemplate</span><br><span class="line">* 通过@LoadBalanced表明开启负载均衡功能</span><br><span class="line">* @return</span><br><span class="line">*/</span><br><span class="line">@Bean</span><br><span class="line">@LoadBalanced</span><br><span class="line">RestTemplate restTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>创建服务类来消费service-name服务的&quot;/hi&quot;接口的服务，当该服务名有多个服务实例时会从中选择一个具体的服务实例：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class HelloService &#123;</span><br><span class="line"> @Autowired</span><br><span class="line"> RestTemplate restTemplate;</span><br><span class="line"> public String hello(String name) &#123;</span><br><span class="line">   return restTemplate.getForObject(&quot;http://service-name/hi?name=&quot; + name, String.class);</span><br><span class="line"> &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>使用一个 Controller 来调用负载均衡服务</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">  @Autowired</span><br><span class="line">  HelloService helloService;</span><br><span class="line"></span><br><span class="line">  @RequestMapping(&quot;/hi&quot;)</span><br><span class="line">  public String hi(@RequestParam String name) &#123;</span><br><span class="line">    return helloService.hello(name);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>此时访问 service-ribbon 的&quot;/hi&quot;接口就会被转发到 service-name 的对应服务上去，并且会根据负载情况来轮流调用不同实例的端口。</p>
-</li>
-</ol>
-<h2 id="feign-服务消费"><a class="header-anchor" href="#feign-服务消费">¶</a>Feign - 服务消费</h2>
-<h3 id="与-ribbon-区别"><a class="header-anchor" href="#与-ribbon-区别">¶</a>与 Ribbon 区别</h3>
-<ol>
-<li>Feign 整合了 Ribbon</li>
-<li>Feign 是基于接口的注解，Ribbon 是基于 RestTemplate 的</li>
-</ol>
-<h3 id="创建-feign-服务"><a class="header-anchor" href="#创建-feign-服务">¶</a>创建 Feign 服务</h3>
-<ol>
-<li>创建一个 Spring Initializr 项目<br>
-选中 Eureka Discovery 和 Feign</li>
-<li>为 <strong>ServiceFeignApplication</strong> 类上添加 **@EnableDiscoveryClient<br>
-** 和 <strong>@EnableFeignClients</strong> 注解开启 Eureka 服务发现和 Feign 功能</li>
-<li>定义一个 Feign 接口 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">@FeignClient(&quot;service-name&quot;)</span><br><span class="line">public interface ScheduleServiceHi &#123;</span><br><span class="line">    @RequestMapping(value = &quot;/hi&quot;, method = RequestMethod.GET)</span><br><span class="line">    String sayHiFromClientOne(@RequestParam(&quot;name&quot;) String name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>注解 <strong>@FeignClient</strong> 指定了服务名，具体的接口使用@RequestMapping指定。</p>
-<ol>
-<li>创建一个 Controller，对外暴露一个&quot;/hi&quot;接口，它调用上面定义的 Feign 客户端的 ScheduleServiceHi 来消费服务 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HiController &#123;</span><br><span class="line"></span><br><span class="line">  @Autowired</span><br><span class="line">  private ScheduleServiceHi scheduleServiceHi;</span><br><span class="line"></span><br><span class="line">  @RequestMapping(value = &quot;/hi&quot;, method = RequestMethod.GET)</span><br><span class="line">  public String sayHi(@RequestParam String name) &#123;</span><br><span class="line">    return scheduleServiceHi.sayHiFromClientOne(name);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h2 id="zuul"><a class="header-anchor" href="#zuul">¶</a>Zuul</h2>
-<h2 id="hystrix-断路器"><a class="header-anchor" href="#hystrix-断路器">¶</a>Hystrix - 断路器</h2>
-<p>Dashboard 和 Turbine：一个是单个节点的监控，后者可以从多个 Hystrix 服务器获取数据、整合到一个 Dashboard 界面上显示</p>
-<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
-<ol>
-<li>防止服务器雪崩<br>
-<strong>雪崩</strong>：如果单个服务出现问题，调用这个服务就会出现线程阻塞，此时若有大量的请求涌入，Servlet容器的线程资源会被消耗完毕，导致服务瘫痪。服务与服务之间的依赖性，故障会传播，会对整个微服务系统造成灾难性的严重后果。<br>
-断路就是及早阻止对这些不可用服务的请求。</li>
-<li>断路原理<br>
-当对特定的服务的调用的不可用达到一个阀值（Hystric 是 5 秒 20 次） 断路器将会被打开，然后？？？</li>
-</ol>
-<h3 id="为-ribbon-工程添加-hystrix-功能"><a class="header-anchor" href="#为-ribbon-工程添加-hystrix-功能">¶</a>为 Ribbon 工程添加 Hystrix 功能</h3>
-<ol>
-<li>
-<p>创建 Spring Initializr 项目<br>
-勾选 Hystrix、Eureka Discovery、Ribbon，或者在 Ribbon 项目中添加下面的依赖：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-cloud-starter-hystrix&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>为 <strong>ServiceRibbonApplication</strong> 类添加 <strong>@EnableHystrix</strong> 注解开启Hystrix</p>
-</li>
-<li>
-<p>为 Service 方法添加 <strong>@HystrixCommand</strong> 注解</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@HystrixCommand(fallbackMethod = &quot;hiError&quot;)</span><br><span class="line">public String hello(String name) &#123;</span><br><span class="line">    return restTemplate.getForObject(&quot;http://service-name/hi?name=&quot; + name, String.class);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public String hiError(String name) &#123;</span><br><span class="line">    return &quot;hi, &quot; + name + &quot;, sorry, error!&quot;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>接下来在启动所有服务后，关闭 service-name 服务（这是断路器依赖的服务）<br>
-这样就会在访问 service-ribbon 服务时被断路，并调用 hiError()方法。</p>
-</li>
-</ol>
-<h3 id="为-feign-工程添加-hystrix-功能"><a class="header-anchor" href="#为-feign-工程添加-hystrix-功能">¶</a>为 Feign 工程添加 Hystrix 功能</h3>
-<ol>
-<li>
-<p>为 Feign 客户端添加 fallback 属性，该属性值是服务接口的实现类</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">@FeignClient(value = &quot;service-name&quot;, fallback = ScheduleServiceHiHystrix.class)</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>创建接口的实现类</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@Component</span><br><span class="line">public class ScheduleServiceHiHystrix implements ScheduleServiceHi &#123;</span><br><span class="line">  @Override</span><br><span class="line">  public String sayHiFromClientOne(String name) &#123;</span><br><span class="line">    return &quot;sorry &quot; + name;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>添加下面的配置项<br>
-feign.hystrix.enabled=true</p>
-</li>
-<li>
-<p>必须还得添加下面的依赖包</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-cloud-starter-hystrix&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.netflix.hystrix&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hystrix-javanica&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.5.12&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>测试接口时，可以先开着 service-name 服务关掉再开起来，在这个过程中访问 service-feign 服务，可以看到响应的变化</p>
-</li>
-</ol>
-<h3 id="hystrix-dashboard"><a class="header-anchor" href="#hystrix-dashboard">¶</a>Hystrix Dashboard</h3>
-<ol>
-<li>
-<p>开启仪表盘很简单，先添加依赖库：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-cloud-starter-hystrix-dashboard&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>以 service-ribbon 服务为例，为 ServiceRibbonApplication 类添加 <strong>@EnableHystrixDashboard</strong> 注解</p>
-</li>
-<li>
-<p>访问http://localhost:8764/hystrix 接口，进入监控界面<br>
-<img src="https://tallate.top/imgs/SpringBoot/HystrixDashboard.png" alt="HystrixDashboard" title="HystrixDashboard"></p>
-</li>
-</ol>
-<h3 id="hystrix-turbine"><a class="header-anchor" href="#hystrix-turbine">¶</a>Hystrix Turbine</h3>
-<ol>
-<li>
-<p>创建一个 Spring Initializr 工程<br>
-勾选 Actuator、Turbine</p>
-</li>
-<li>
-<p>为启动类添加注解 <strong>@EnableTurbine</strong> ，它其实包含了@EnableDiscoveryClient，所以 Turbine 默认是作为 Eureka 集群中的一员的</p>
-</li>
-<li>
-<p>添加配置</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">spring.application.name=service-turbine</span><br><span class="line">server.port=8770</span><br><span class="line">security.basic.enabled=false</span><br><span class="line"># 指定聚合的集群，多个使用&quot;,&quot;分割，默认为default。可使用http://.../turbine.stream?cluster=&#123;clusterConfig之一&#125;访问</span><br><span class="line">turbine.aggregator.cluster-config=default</span><br><span class="line"># 监控的Hystrix服务名列表</span><br><span class="line">turbine.app-config=service-ribbon</span><br><span class="line"># 1. clusterNameExpression指定集群名称，默认表达式appName；此时：turbine.aggregator.clusterConfig需要配置想要监控的应用名称</span><br><span class="line"># 2. 当clusterNameExpression: default时，turbine.aggregator.clusterConfig可以不写，因为默认就是default</span><br><span class="line"># 3. 当clusterNameExpression: metadata[&apos;cluster&apos;]时，假设想要监控的应用配置了eureka.instance.metadata-map.cluster: ABC，则需要配置，同时turbine.aggregator.clusterConfig: ABC</span><br><span class="line">turbine.cluster-name-expression=new String(&quot;default&quot;)</span><br><span class="line">eureka.client.service-url.defaultZone=http://localhost:8761/eureka/</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>进入 Dashboard 查看监控流<br>
-比如http://localhost:8764/hystrix，输入监控流 <a href="http://localhost:8770/turbine.stream" target="_blank" rel="noopener">http://localhost:8770/turbine.stream</a><br>
-会发现监控的服务列表都呈现在了 Thread Pools 中</p>
-</li>
-</ol>
-<h2 id="sleuth-服务链路追踪"><a class="header-anchor" href="#sleuth-服务链路追踪">¶</a>Sleuth - 服务链路追踪</h2>
-<h3 id="概念"><a class="header-anchor" href="#概念">¶</a>概念</h3>
-<ol>
-<li>Zipkin：Sleuth 集成了服务追踪组件 Zipkin，而 Sleuth 通过了通过 Spring Boot 来集成 Zipkin 到微服务系统的方案。</li>
-<li><strong>Span</strong>：基本工作单元，比如发送一个 PRC 请求或 RPC 响应都是一个 Span，使用一个 64 位的 ID 表示（文档这里相当费解？？？），启动 Trace 的第一个 Span 称为 Root Span；</li>
-<li><strong>Trace</strong>：一组 Span 可以构成一个树状结构；</li>
-<li><strong>Annotation</strong>：用于标识事件，比如请求的开始、结束，有以下 Annotation 种类：
-<ul>
-<li>cs - Client Sent -客户端发起一个请求，这个 annotion 描述了这个 span 的开始</li>
-<li>sr - Server Received -服务端获得请求并准备开始处理它，如果将其 sr 减去 cs 时间戳便可得到网络延迟</li>
-<li>ss - Server Sent -注解表明请求处理的完成(当请求返回客户端)，如果 ss 减去 sr 时间戳便可得到服务端需要的处理请求时间</li>
-<li>cr - Client Received -表明 span 的结束，客户端成功接收到服务端的回复，如果 cr 减去 cs 时间戳便可得到客户端从服务端获取回复的所有所需时间</li>
-</ul>
-</li>
-</ol>
-<h3 id="服务链路追踪"><a class="header-anchor" href="#服务链路追踪">¶</a>服务链路追踪</h3>
-<ol>
-<li>创建一个 Spring Initializr 项目<br>
-一个 zipkin-server 勾选 Web、Zipkin Stream、Zipkin UI 和 Rabbit Stream，还有供跟踪的服务 zipkin-test1 和 zipkin-test2 勾选 Zipkin Client 和 Web，</li>
-<li>加入注解<br>
-在zipkin-server的Application上添加 <strong>@EnableZipkinServer</strong>。</li>
-<li>配置<br>
-在 zipkin-server 中指定服务端口号即可： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">server.port=9411</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>在 zipkin-test1（zipkin-test2 类似）中需要指定 zipkin 服务器的地址<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8988</span><br><span class="line">spring.zipkin.base-url=http://localhost:9411</span><br><span class="line">spring.application.name=service-hi</span><br></pre></td></tr></table></figure></p>
-<ol>
-<li>在两个 Service 之间使用 RestTemplate 进行互调<br>
-第一个服务： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = Logger.getLogger(ZipkinTest1Application.class);</span><br><span class="line">@Autowired</span><br><span class="line">private RestTemplate restTemplate;</span><br><span class="line">@Bean</span><br><span class="line">public RestTemplate getRestTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@RequestMapping(&quot;/hi&quot;)</span><br><span class="line">public String callMiya()&#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;calling trace service-hi  &quot;);</span><br><span class="line">    return restTemplate.getForObject(&quot;http://localhost:8989/miya&quot;, String.class);</span><br><span class="line">&#125;</span><br><span class="line">@RequestMapping(&quot;/info&quot;)</span><br><span class="line">public String info()&#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;calling trace service-hi &quot;);</span><br><span class="line">    return &quot;i&apos;m service-hi&quot;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>另一个服务：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = Logger.getLogger(ZipkinTest2Application.class);</span><br><span class="line">@Autowired</span><br><span class="line">private RestTemplate restTemplate;</span><br><span class="line">@Bean</span><br><span class="line">public RestTemplate getRestTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@RequestMapping(&quot;/miya&quot;)</span><br><span class="line">public String miya() &#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;info is being called&quot;);</span><br><span class="line">    return restTemplate.getForObject(&quot;http://localhost:8988/info&quot;, String.class);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<ol>
-<li>为 Service 注入 Sampler 用于记录 Span <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Bean</span><br><span class="line">public AlwaysSampler defaultSampler() &#123;</span><br><span class="line">    return new AlwaysSampler();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>如果不注入 Sampler，会出现之后访问服务后，在 Zipkin 界面看不到服务依赖图的情况。</p>
-<ol>
-<li>访问，并读取链路<br>
-访问服务http://localhost:8988/hi<br>
-现在访问http://localhost:9411/会出现 Zipkin 界面，可以查看服务间的相互依赖关系，和服务间调用的具体数据。</li>
-</ol>
-<h2 id="docker部署"><a class="header-anchor" href="#docker部署">¶</a>Docker部署</h2>
-<h3 id="应用-v2"><a class="header-anchor" href="#应用-v2">¶</a>应用</h3>
-<ol>
-<li>web 应用的自动化打包和发布；</li>
-<li>自动化测试和持续集成、发布；</li>
-<li>在服务型环境中部署和调整数据库或其他的后台应用；</li>
-<li>从头编译或者扩展现有的 OpenShift 或 Cloud Foundry 平台来搭建自己的 PaaS 环境。</li>
-</ol>
-<h3 id="为-spring-cloud-项目构建-docker-镜像"><a class="header-anchor" href="#为-spring-cloud-项目构建-docker-镜像">¶</a>为 Spring Cloud 项目构建 Docker 镜像</h3>
-<ol>
-<li>
-<p>添加依赖</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--Spotify的docker镜像构建插件--&gt;</span><br><span class="line">&lt;plugin&gt;</span><br><span class="line">	&lt;groupId&gt;com.spotify&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;docker-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;0.4.3&lt;/version&gt;</span><br><span class="line">	&lt;configuration&gt;</span><br><span class="line">	&lt;!--</span><br><span class="line">	imageName：镜像名</span><br><span class="line">	dockerDirectory：Dockerfile位置</span><br><span class="line">	resources：指定需要和Dockerfile放在一起构建镜像的文件，包括jar包--&gt;</span><br><span class="line">	&lt;imageName&gt;$&#123;docker.image.prefix&#125;/$&#123;project.artifactId&#125;&lt;/imageName&gt;</span><br><span class="line">	&lt;dockerDirectory&gt;src/main/docker&lt;/dockerDirectory&gt;</span><br><span class="line">	&lt;resources&gt;</span><br><span class="line">	&lt;resource&gt;</span><br><span class="line">	&lt;targetPath&gt;/&lt;/targetPath&gt;</span><br><span class="line">	&lt;directory&gt;$&#123;project.build.directory&#125;&lt;/directory&gt;</span><br><span class="line">	&lt;include&gt;$&#123;project.build.finalName&#125;.jar&lt;/include&gt;</span><br><span class="line">	&lt;/resource&gt;</span><br><span class="line">	&lt;/resources&gt;</span><br><span class="line">	&lt;/configuration&gt;</span><br><span class="line">&lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>配置<br>
-这个是注册中心的配置：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">server.port=8761</span><br><span class="line">eureka.instance.prefer-ip-address=true</span><br><span class="line">eureka.client.register-with-eureka=false</span><br><span class="line">eureka.client.fetch-registry=false</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>服务的配置比较简单（注意 defaultZone 改成了镜像名）：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/ # 使用docker启动，defaultZone的host改为镜像名</span><br><span class="line">server.port=8762</span><br><span class="line">spring.application.name=service-name</span><br></pre></td></tr></table></figure></p>
-<ol>
-<li>在 src/main/docker 下创建 Dockerfile 文件<br>
-注册中心： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">FROM frolvlad/alpine-oraclejdk8:slim # 指定image，可以是官方仓库或本地仓库</span><br><span class="line">VOLUME /tmp # 使容器中的一个目录具有持久化数据的功能</span><br><span class="line">ADD eureka-server-0.0.1-SNAPSHOT.jar app.jar # 从src目录复制文件到容器的dest</span><br><span class="line"># RUN bash -c &apos;touch /app.jar&apos; # 容器启动时执行的命令，可以多次设置但只有最后一个有效</span><br><span class="line">ENTRYPOINT [&quot;java&quot;, &quot;-Djava.security.egd=file:/dev/./urandom&quot;, &quot;-jar&quot;, &quot;/app.jar&quot;]</span><br><span class="line">EXPOSE 8761 # 暴露的端口号</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>服务类似，只是要将 ADD 操作拷贝的镜像名和 EXPOSE 暴露的端口号改一改。</p>
-<ol>
-<li>构建 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mvn clean</span><br><span class="line">mvn package docker:build</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>这样运行可能会报错：没有权限，这时候可以切换到 root 用户运行，或将当前用户加入到 docker 组中。</p>
-<ol>
-<li>运行<br>
-注册中心： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># --name指定容器名用于之后被其他容器连接，-p指定端口映射，第一个是主机端口，第二个是容器内的端口，这两个端口也可以实现为一个范围且这两个范围中的端口数必须相同，比如`-p 1234-1236:1222-1224`，还可以在端口前面指定监听的主机ip，-t指定分配一个虚拟终端，这样在该终端退出后这个服务还是在运行着的，最后的参数是docker镜像名</span><br><span class="line">docker run --name eureka-server -p 8761:8761 -t springboot/eureka-server</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>服务：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># --link连接到某个容器:端口上，它会在两个容器之间建立一个安全通道，且该容器的该端口必须是暴露的</span><br><span class="line">docker run --link eureka-server:8761 -p 8762:8762 -t springboot/eureka-client</span><br></pre></td></tr></table></figure></p>
-<h3 id="使用-docker-compose-启动镜像"><a class="header-anchor" href="#使用-docker-compose-启动镜像">¶</a>使用 Docker-Compose 启动镜像</h3>
-<p>Compose 是一个用于定义和运行多容器的 Docker 应用的工具。使用 Compose，你可以在一个配置文件（yaml 格式）中配置你应用的服务，然后使用一个命令，即可创建并启动配置中引用的所有服务。</p>
-<ol>
-<li>
-<p>按上面的步骤构建 docker 镜像</p>
-</li>
-<li>
-<p>在上面两个项目的父一级目录下创建配置文件 docker-compose.yml 配置文件</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">version: &apos;2&apos;</span><br><span class="line">services:</span><br><span class="line">    eureka-server:</span><br><span class="line">        image: springboot/eureka-server</span><br><span class="line">        restart: always</span><br><span class="line">        ports:</span><br><span class="line">            - 8761:8761</span><br><span class="line"></span><br><span class="line">    eureka-client:</span><br><span class="line">        image: springboot/eureka-client</span><br><span class="line">        restart: always</span><br><span class="line">        ports:</span><br><span class="line">            - 8762:8762</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>启动</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker-compose up</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h3 id="使用docker-compose构建并启动镜像"><a class="header-anchor" href="#使用docker-compose构建并启动镜像">¶</a>使用Docker-Compose构建并启动镜像</h3>
-<p>docker-compose 也可以用于构建镜像，这样就不用一个一个镜像构建再去运行了。</p>
-<ol>
-<li>
-<p>在 docker-compose.yml 同级目录下创建配置文件 docker-compose-dev.yml：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">version: &apos;2&apos;</span><br><span class="line">services:</span><br><span class="line">    eureka-server:</span><br><span class="line">        build: eureka-server</span><br><span class="line">        ports:</span><br><span class="line">            - 8761:8761</span><br><span class="line"></span><br><span class="line">    eureka-client:</span><br><span class="line">        build: eureka-client</span><br><span class="line">        ports:</span><br><span class="line">            - 8762:8762</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>构建并启动</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker-compose -f docker-compose.yml -f docker-compose-dev.yml up</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="eureka-v2"><a class="header-anchor" href="#eureka-v2">¶</a>Eureka</h3>
-<ol>
-<li><a href="https://www.springcloud.cc/spring-cloud-dalston.html#_service_discovery_eureka_clients" target="_blank" rel="noopener">服务发现：Eureka客户端</a></li>
-</ol>
-<h3 id="ribbon"><a class="header-anchor" href="#ribbon">¶</a>Ribbon</h3>
-<ol>
-<li>Netflix/ribbon <a href="https://github.com/Netflix/ribbon/wiki" target="_blank" rel="noopener">https://github.com/Netflix/ribbon/wiki</a></li>
-<li>客户端负载平衡器：Ribbon <a href="https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-ribbon" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-ribbon</a></li>
-</ol>
-<h3 id="feign"><a class="header-anchor" href="#feign">¶</a>Feign</h3>
-<ol>
-<li>声明性 REST 客户端：Feign <a href="https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-feign" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-feign</a></li>
-</ol>
-<h3 id="hystrix"><a class="header-anchor" href="#hystrix">¶</a>Hystrix</h3>
-<ol>
-<li>Netflix/Hystrix <a href="https://github.com/Netflix/Hystrix/wiki" target="_blank" rel="noopener">https://github.com/Netflix/Hystrix/wiki</a></li>
-<li>Circuit Breaker: Hystrix Clients <a href="https://springcloud.cc/spring-cloud-dalston.html#_circuit_breaker_hystrix_clients" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#_circuit_breaker_hystrix_clients</a></li>
-</ol>
-<h3 id="sleuth"><a class="header-anchor" href="#sleuth">¶</a>Sleuth</h3>
-<ol>
-<li>Zipkin <a href="https://zipkin.io/" target="_blank" rel="noopener">https://zipkin.io/</a></li>
-<li>Spring Cloud Sleuth <a href="https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_sleuth" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_sleuth</a></li>
-<li>Google Dapper-大规模分布式系统的基础跟踪设施 <a href="http://duanple.blog.163.com/blog/static/70971767201329113141336/" target="_blank" rel="noopener">http://duanple.blog.163.com/blog/static/70971767201329113141336/</a></li>
-<li><a href="http://research.google.com/pubs/pub36356.html" target="_blank" rel="noopener">http://research.google.com/pubs/pub36356.html</a></li>
-<li><a href="http://bigbully.github.io/Dapper-translation/" target="_blank" rel="noopener">http://bigbully.github.io/Dapper-translation/</a></li>
-<li><a href="http://research.google.com/pubs/pub40378.html" target="_blank" rel="noopener">http://research.google.com/pubs/pub40378.html</a></li>
-<li>Eagleeye</li>
-<li><a href="https://www.jianshu.com/p/d24ac0be831d" target="_blank" rel="noopener">Sleuth 源码分析</a></li>
-</ol>
-<h3 id="docker"><a class="header-anchor" href="#docker">¶</a>Docker</h3>
-<ol>
-<li><a href="https://yq.aliyun.com/articles/47344" target="_blank" rel="noopener">用 Docker 构建、运行、发布一个 Spring Boot 应用</a></li>
-<li><a href="https://github.com/spotify/docker-maven-plugin" target="_blank" rel="noopener">docker-maven-plugin</a></li>
-<li><a href="https://docs.docker.com/compose/" target="_blank" rel="noopener">Docker Compose</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/abe4b1f3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2079,6 +1281,804 @@ org.apache.ibatis.executor.SimpleExecutor#prepareStatement<br>
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/6577ef90.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/6577ef90.html" itemprop="url">SpringBoot 与常见中间件的搭建</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  16 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="eureka"><a class="header-anchor" href="#eureka">¶</a>Eureka</h2>
+<ul>
+<li>服务发现，提供高可用的服务注册表功能，是之后 Ribbon、Zuul 等组件的基础。</li>
+</ul>
+<h3 id="创建-eureka-server"><a class="header-anchor" href="#创建-eureka-server">¶</a>创建 Eureka Server</h3>
+<ol>
+<li>创建 Spring Initializr 项目<br>
+选中 Cloud Discovery -&gt; Eureka Server 模块</li>
+<li>在 <strong>EurekaServerApplication</strong> 类上添加 <strong>@EnableEurekaServer</strong></li>
+<li>指定一个 Eureka Server<br>
+在默认情况下 erureka server 也是一个 eureka client，必须要指定一个 server，在配置文件中添加： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">    server.port=8761</span><br><span class="line">    eureka.instance.hostname=localhost</span><br><span class="line">    eureka.client.register-with-eureka=false</span><br><span class="line">    eureka.client.fetch-registry=false</span><br><span class="line">    eureka.client.service-url.default-zone=http://eureka.instance.hostname:eureka.instance.hostname:</span><br><span class="line">&#123;server.port&#125;/eureka/</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>其中通过 eureka.client.registerWithEureka=false 和 fetchRegistry=false 来表明自己是一个 Eureka Server。</p>
+<ol>
+<li>访问 Eureka Server 服务器<br>
+localhost:8761<br>
+此时还没有服务被注册进来。</li>
+</ol>
+<h3 id="创建-eureka-client"><a class="header-anchor" href="#创建-eureka-client">¶</a>创建 Eureka Client</h3>
+<ol>
+<li>类似的，创建的 Spring Initializr 项目是 <strong>Eureka Discovery</strong></li>
+<li>为 <strong>EurekaClientApplication</strong> 类上添加 <strong>@EnableEurekaClient</strong> 注解</li>
+<li>添加配置 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.default-zone=http://localhost:8761/eureka</span><br><span class="line">server.port=8762</span><br><span class="line">spring.application.name=service-name</span><br><span class="line">eureka.client.register-with-eureka=false</span><br><span class="line">eureka.client.fetch-registry=false</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>需要指明 <a href="http://spring.application.name" target="_blank" rel="noopener">spring.application.name</a>，这个很重要，这在以后的服务与服务之间相互调用一般都是根据这个 name。</p>
+<h3 id="集群化-eureka-server"><a class="header-anchor" href="#集群化-eureka-server">¶</a>集群化 Eureka Server</h3>
+<ol>
+<li>创建两个配置文件，分别代表两个实例的属性<br>
+application-peer1.properties： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8761</span><br><span class="line">eureka.instance.hostname=peer1</span><br><span class="line">eureka.client.service-url.defaultZone=http://peer2:8769/eureka/</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>application-peer2.properties：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8769</span><br><span class="line">eureka.instance.hostname=peer2</span><br><span class="line">eureka.client.service-url.defaultZone=http://peer1:8761/eureka/</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>
+<p>在/etc/hosts 文件中添加下面两条记录：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1 peer1</span><br><span class="line">127.0.0.1 peer2</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>启动<br>
+先在application.properties中指定：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.profiles.active=peer1</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>启动 peer1，然后指定：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">spring.profiles.active=peer2</span><br></pre></td></tr></table></figure></p>
+<p>启动 peer2。<br>
+这时访问 localhost:8761 和 localhost:8769 可以看到两个节点的注册信息，他们分别是对方的复制，他们是对等的。</p>
+<h2 id="ribbon-服务消费"><a class="header-anchor" href="#ribbon-服务消费">¶</a>Ribbon - 服务消费</h2>
+<ul>
+<li>用来作为软件的负载均衡，微服务之间相互调用是通过 ribbon 作为软件负载均衡使用负载到微服务集群内的不同的实例。</li>
+</ul>
+<h3 id="配置bean"><a class="header-anchor" href="#配置bean">¶</a>配置Bean</h3>
+<p>IClientConfig ribbonClientConfig: DefaultClientConfigImpl<br>
+IRule ribbonRule: ZoneAvoidanceRule<br>
+IPing ribbonPing: NoOpPing<br>
+ServerList ribbonServerList: ConfigurationBasedServerList<br>
+ServerListFilter ribbonServerListFilter: ZonePreferenceServerListFilter<br>
+ILoadBalancer ribbonLoadBalancer: ZoneAwareLoadBalancer</p>
+<h3 id="创建服务消费者"><a class="header-anchor" href="#创建服务消费者">¶</a>创建服务消费者</h3>
+<ol>
+<li>
+<p>创建 Spring Initializr<br>
+勾选 Eureka Discovery、Ribbon</p>
+</li>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.defaultZone=http://localhost:8761/eureka/</span><br><span class="line">server.port=8764</span><br><span class="line">spring.application.name=service-ribbon</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>除了为 <strong>ServiceRibbonApplication</strong> 类添加 <strong>@EnableDiscoveryClient</strong> 外，还需要注册一个 RestTemplate 的 Bean：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">* 向Spring容器注入一个RestTemplate</span><br><span class="line">* 通过@LoadBalanced表明开启负载均衡功能</span><br><span class="line">* @return</span><br><span class="line">*/</span><br><span class="line">@Bean</span><br><span class="line">@LoadBalanced</span><br><span class="line">RestTemplate restTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建服务类来消费service-name服务的&quot;/hi&quot;接口的服务，当该服务名有多个服务实例时会从中选择一个具体的服务实例：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class HelloService &#123;</span><br><span class="line"> @Autowired</span><br><span class="line"> RestTemplate restTemplate;</span><br><span class="line"> public String hello(String name) &#123;</span><br><span class="line">   return restTemplate.getForObject(&quot;http://service-name/hi?name=&quot; + name, String.class);</span><br><span class="line"> &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>使用一个 Controller 来调用负载均衡服务</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HelloController &#123;</span><br><span class="line"></span><br><span class="line">  @Autowired</span><br><span class="line">  HelloService helloService;</span><br><span class="line"></span><br><span class="line">  @RequestMapping(&quot;/hi&quot;)</span><br><span class="line">  public String hi(@RequestParam String name) &#123;</span><br><span class="line">    return helloService.hello(name);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>此时访问 service-ribbon 的&quot;/hi&quot;接口就会被转发到 service-name 的对应服务上去，并且会根据负载情况来轮流调用不同实例的端口。</p>
+</li>
+</ol>
+<h2 id="feign-服务消费"><a class="header-anchor" href="#feign-服务消费">¶</a>Feign - 服务消费</h2>
+<h3 id="与-ribbon-区别"><a class="header-anchor" href="#与-ribbon-区别">¶</a>与 Ribbon 区别</h3>
+<ol>
+<li>Feign 整合了 Ribbon</li>
+<li>Feign 是基于接口的注解，Ribbon 是基于 RestTemplate 的</li>
+</ol>
+<h3 id="创建-feign-服务"><a class="header-anchor" href="#创建-feign-服务">¶</a>创建 Feign 服务</h3>
+<ol>
+<li>创建一个 Spring Initializr 项目<br>
+选中 Eureka Discovery 和 Feign</li>
+<li>为 <strong>ServiceFeignApplication</strong> 类上添加 **@EnableDiscoveryClient<br>
+** 和 <strong>@EnableFeignClients</strong> 注解开启 Eureka 服务发现和 Feign 功能</li>
+<li>定义一个 Feign 接口 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">@FeignClient(&quot;service-name&quot;)</span><br><span class="line">public interface ScheduleServiceHi &#123;</span><br><span class="line">    @RequestMapping(value = &quot;/hi&quot;, method = RequestMethod.GET)</span><br><span class="line">    String sayHiFromClientOne(@RequestParam(&quot;name&quot;) String name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>注解 <strong>@FeignClient</strong> 指定了服务名，具体的接口使用@RequestMapping指定。</p>
+<ol>
+<li>创建一个 Controller，对外暴露一个&quot;/hi&quot;接口，它调用上面定义的 Feign 客户端的 ScheduleServiceHi 来消费服务 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@RestController</span><br><span class="line">public class HiController &#123;</span><br><span class="line"></span><br><span class="line">  @Autowired</span><br><span class="line">  private ScheduleServiceHi scheduleServiceHi;</span><br><span class="line"></span><br><span class="line">  @RequestMapping(value = &quot;/hi&quot;, method = RequestMethod.GET)</span><br><span class="line">  public String sayHi(@RequestParam String name) &#123;</span><br><span class="line">    return scheduleServiceHi.sayHiFromClientOne(name);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="zuul"><a class="header-anchor" href="#zuul">¶</a>Zuul</h2>
+<h2 id="hystrix-断路器"><a class="header-anchor" href="#hystrix-断路器">¶</a>Hystrix - 断路器</h2>
+<p>Dashboard 和 Turbine：一个是单个节点的监控，后者可以从多个 Hystrix 服务器获取数据、整合到一个 Dashboard 界面上显示</p>
+<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
+<ol>
+<li>防止服务器雪崩<br>
+<strong>雪崩</strong>：如果单个服务出现问题，调用这个服务就会出现线程阻塞，此时若有大量的请求涌入，Servlet容器的线程资源会被消耗完毕，导致服务瘫痪。服务与服务之间的依赖性，故障会传播，会对整个微服务系统造成灾难性的严重后果。<br>
+断路就是及早阻止对这些不可用服务的请求。</li>
+<li>断路原理<br>
+当对特定的服务的调用的不可用达到一个阀值（Hystric 是 5 秒 20 次） 断路器将会被打开，然后？？？</li>
+</ol>
+<h3 id="为-ribbon-工程添加-hystrix-功能"><a class="header-anchor" href="#为-ribbon-工程添加-hystrix-功能">¶</a>为 Ribbon 工程添加 Hystrix 功能</h3>
+<ol>
+<li>
+<p>创建 Spring Initializr 项目<br>
+勾选 Hystrix、Eureka Discovery、Ribbon，或者在 Ribbon 项目中添加下面的依赖：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">  &lt;artifactId&gt;spring-cloud-starter-hystrix&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>为 <strong>ServiceRibbonApplication</strong> 类添加 <strong>@EnableHystrix</strong> 注解开启Hystrix</p>
+</li>
+<li>
+<p>为 Service 方法添加 <strong>@HystrixCommand</strong> 注解</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@HystrixCommand(fallbackMethod = &quot;hiError&quot;)</span><br><span class="line">public String hello(String name) &#123;</span><br><span class="line">    return restTemplate.getForObject(&quot;http://service-name/hi?name=&quot; + name, String.class);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public String hiError(String name) &#123;</span><br><span class="line">    return &quot;hi, &quot; + name + &quot;, sorry, error!&quot;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>接下来在启动所有服务后，关闭 service-name 服务（这是断路器依赖的服务）<br>
+这样就会在访问 service-ribbon 服务时被断路，并调用 hiError()方法。</p>
+</li>
+</ol>
+<h3 id="为-feign-工程添加-hystrix-功能"><a class="header-anchor" href="#为-feign-工程添加-hystrix-功能">¶</a>为 Feign 工程添加 Hystrix 功能</h3>
+<ol>
+<li>
+<p>为 Feign 客户端添加 fallback 属性，该属性值是服务接口的实现类</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">@FeignClient(value = &quot;service-name&quot;, fallback = ScheduleServiceHiHystrix.class)</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>创建接口的实现类</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@Component</span><br><span class="line">public class ScheduleServiceHiHystrix implements ScheduleServiceHi &#123;</span><br><span class="line">  @Override</span><br><span class="line">  public String sayHiFromClientOne(String name) &#123;</span><br><span class="line">    return &quot;sorry &quot; + name;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>添加下面的配置项<br>
+feign.hystrix.enabled=true</p>
+</li>
+<li>
+<p>必须还得添加下面的依赖包</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-cloud-starter-hystrix&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.netflix.hystrix&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hystrix-javanica&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.5.12&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>测试接口时，可以先开着 service-name 服务关掉再开起来，在这个过程中访问 service-feign 服务，可以看到响应的变化</p>
+</li>
+</ol>
+<h3 id="hystrix-dashboard"><a class="header-anchor" href="#hystrix-dashboard">¶</a>Hystrix Dashboard</h3>
+<ol>
+<li>
+<p>开启仪表盘很简单，先添加依赖库：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-cloud-starter-hystrix-dashboard&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>以 service-ribbon 服务为例，为 ServiceRibbonApplication 类添加 <strong>@EnableHystrixDashboard</strong> 注解</p>
+</li>
+<li>
+<p>访问http://localhost:8764/hystrix 接口，进入监控界面<br>
+<img src="https://tallate.top/imgs/SpringBoot/HystrixDashboard.png" alt="HystrixDashboard" title="HystrixDashboard"></p>
+</li>
+</ol>
+<h3 id="hystrix-turbine"><a class="header-anchor" href="#hystrix-turbine">¶</a>Hystrix Turbine</h3>
+<ol>
+<li>
+<p>创建一个 Spring Initializr 工程<br>
+勾选 Actuator、Turbine</p>
+</li>
+<li>
+<p>为启动类添加注解 <strong>@EnableTurbine</strong> ，它其实包含了@EnableDiscoveryClient，所以 Turbine 默认是作为 Eureka 集群中的一员的</p>
+</li>
+<li>
+<p>添加配置</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">spring.application.name=service-turbine</span><br><span class="line">server.port=8770</span><br><span class="line">security.basic.enabled=false</span><br><span class="line"># 指定聚合的集群，多个使用&quot;,&quot;分割，默认为default。可使用http://.../turbine.stream?cluster=&#123;clusterConfig之一&#125;访问</span><br><span class="line">turbine.aggregator.cluster-config=default</span><br><span class="line"># 监控的Hystrix服务名列表</span><br><span class="line">turbine.app-config=service-ribbon</span><br><span class="line"># 1. clusterNameExpression指定集群名称，默认表达式appName；此时：turbine.aggregator.clusterConfig需要配置想要监控的应用名称</span><br><span class="line"># 2. 当clusterNameExpression: default时，turbine.aggregator.clusterConfig可以不写，因为默认就是default</span><br><span class="line"># 3. 当clusterNameExpression: metadata[&apos;cluster&apos;]时，假设想要监控的应用配置了eureka.instance.metadata-map.cluster: ABC，则需要配置，同时turbine.aggregator.clusterConfig: ABC</span><br><span class="line">turbine.cluster-name-expression=new String(&quot;default&quot;)</span><br><span class="line">eureka.client.service-url.defaultZone=http://localhost:8761/eureka/</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>进入 Dashboard 查看监控流<br>
+比如http://localhost:8764/hystrix，输入监控流 <a href="http://localhost:8770/turbine.stream" target="_blank" rel="noopener">http://localhost:8770/turbine.stream</a><br>
+会发现监控的服务列表都呈现在了 Thread Pools 中</p>
+</li>
+</ol>
+<h2 id="sleuth-服务链路追踪"><a class="header-anchor" href="#sleuth-服务链路追踪">¶</a>Sleuth - 服务链路追踪</h2>
+<h3 id="概念"><a class="header-anchor" href="#概念">¶</a>概念</h3>
+<ol>
+<li>Zipkin：Sleuth 集成了服务追踪组件 Zipkin，而 Sleuth 通过了通过 Spring Boot 来集成 Zipkin 到微服务系统的方案。</li>
+<li><strong>Span</strong>：基本工作单元，比如发送一个 PRC 请求或 RPC 响应都是一个 Span，使用一个 64 位的 ID 表示（文档这里相当费解？？？），启动 Trace 的第一个 Span 称为 Root Span；</li>
+<li><strong>Trace</strong>：一组 Span 可以构成一个树状结构；</li>
+<li><strong>Annotation</strong>：用于标识事件，比如请求的开始、结束，有以下 Annotation 种类：
+<ul>
+<li>cs - Client Sent -客户端发起一个请求，这个 annotion 描述了这个 span 的开始</li>
+<li>sr - Server Received -服务端获得请求并准备开始处理它，如果将其 sr 减去 cs 时间戳便可得到网络延迟</li>
+<li>ss - Server Sent -注解表明请求处理的完成(当请求返回客户端)，如果 ss 减去 sr 时间戳便可得到服务端需要的处理请求时间</li>
+<li>cr - Client Received -表明 span 的结束，客户端成功接收到服务端的回复，如果 cr 减去 cs 时间戳便可得到客户端从服务端获取回复的所有所需时间</li>
+</ul>
+</li>
+</ol>
+<h3 id="服务链路追踪"><a class="header-anchor" href="#服务链路追踪">¶</a>服务链路追踪</h3>
+<ol>
+<li>创建一个 Spring Initializr 项目<br>
+一个 zipkin-server 勾选 Web、Zipkin Stream、Zipkin UI 和 Rabbit Stream，还有供跟踪的服务 zipkin-test1 和 zipkin-test2 勾选 Zipkin Client 和 Web，</li>
+<li>加入注解<br>
+在zipkin-server的Application上添加 <strong>@EnableZipkinServer</strong>。</li>
+<li>配置<br>
+在 zipkin-server 中指定服务端口号即可： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">server.port=9411</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>在 zipkin-test1（zipkin-test2 类似）中需要指定 zipkin 服务器的地址<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">server.port=8988</span><br><span class="line">spring.zipkin.base-url=http://localhost:9411</span><br><span class="line">spring.application.name=service-hi</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>在两个 Service 之间使用 RestTemplate 进行互调<br>
+第一个服务： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = Logger.getLogger(ZipkinTest1Application.class);</span><br><span class="line">@Autowired</span><br><span class="line">private RestTemplate restTemplate;</span><br><span class="line">@Bean</span><br><span class="line">public RestTemplate getRestTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@RequestMapping(&quot;/hi&quot;)</span><br><span class="line">public String callMiya()&#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;calling trace service-hi  &quot;);</span><br><span class="line">    return restTemplate.getForObject(&quot;http://localhost:8989/miya&quot;, String.class);</span><br><span class="line">&#125;</span><br><span class="line">@RequestMapping(&quot;/info&quot;)</span><br><span class="line">public String info()&#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;calling trace service-hi &quot;);</span><br><span class="line">    return &quot;i&apos;m service-hi&quot;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>另一个服务：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">private static final Logger LOG = Logger.getLogger(ZipkinTest2Application.class);</span><br><span class="line">@Autowired</span><br><span class="line">private RestTemplate restTemplate;</span><br><span class="line">@Bean</span><br><span class="line">public RestTemplate getRestTemplate() &#123;</span><br><span class="line">    return new RestTemplate();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@RequestMapping(&quot;/miya&quot;)</span><br><span class="line">public String miya() &#123;</span><br><span class="line">    LOG.log(Level.INFO, &quot;info is being called&quot;);</span><br><span class="line">    return restTemplate.getForObject(&quot;http://localhost:8988/info&quot;, String.class);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>为 Service 注入 Sampler 用于记录 Span <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Bean</span><br><span class="line">public AlwaysSampler defaultSampler() &#123;</span><br><span class="line">    return new AlwaysSampler();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>如果不注入 Sampler，会出现之后访问服务后，在 Zipkin 界面看不到服务依赖图的情况。</p>
+<ol>
+<li>访问，并读取链路<br>
+访问服务http://localhost:8988/hi<br>
+现在访问http://localhost:9411/会出现 Zipkin 界面，可以查看服务间的相互依赖关系，和服务间调用的具体数据。</li>
+</ol>
+<h2 id="docker部署"><a class="header-anchor" href="#docker部署">¶</a>Docker部署</h2>
+<h3 id="应用-v2"><a class="header-anchor" href="#应用-v2">¶</a>应用</h3>
+<ol>
+<li>web 应用的自动化打包和发布；</li>
+<li>自动化测试和持续集成、发布；</li>
+<li>在服务型环境中部署和调整数据库或其他的后台应用；</li>
+<li>从头编译或者扩展现有的 OpenShift 或 Cloud Foundry 平台来搭建自己的 PaaS 环境。</li>
+</ol>
+<h3 id="为-spring-cloud-项目构建-docker-镜像"><a class="header-anchor" href="#为-spring-cloud-项目构建-docker-镜像">¶</a>为 Spring Cloud 项目构建 Docker 镜像</h3>
+<ol>
+<li>
+<p>添加依赖</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--Spotify的docker镜像构建插件--&gt;</span><br><span class="line">&lt;plugin&gt;</span><br><span class="line">	&lt;groupId&gt;com.spotify&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;docker-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;0.4.3&lt;/version&gt;</span><br><span class="line">	&lt;configuration&gt;</span><br><span class="line">	&lt;!--</span><br><span class="line">	imageName：镜像名</span><br><span class="line">	dockerDirectory：Dockerfile位置</span><br><span class="line">	resources：指定需要和Dockerfile放在一起构建镜像的文件，包括jar包--&gt;</span><br><span class="line">	&lt;imageName&gt;$&#123;docker.image.prefix&#125;/$&#123;project.artifactId&#125;&lt;/imageName&gt;</span><br><span class="line">	&lt;dockerDirectory&gt;src/main/docker&lt;/dockerDirectory&gt;</span><br><span class="line">	&lt;resources&gt;</span><br><span class="line">	&lt;resource&gt;</span><br><span class="line">	&lt;targetPath&gt;/&lt;/targetPath&gt;</span><br><span class="line">	&lt;directory&gt;$&#123;project.build.directory&#125;&lt;/directory&gt;</span><br><span class="line">	&lt;include&gt;$&#123;project.build.finalName&#125;.jar&lt;/include&gt;</span><br><span class="line">	&lt;/resource&gt;</span><br><span class="line">	&lt;/resources&gt;</span><br><span class="line">	&lt;/configuration&gt;</span><br><span class="line">&lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>配置<br>
+这个是注册中心的配置：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">server.port=8761</span><br><span class="line">eureka.instance.prefer-ip-address=true</span><br><span class="line">eureka.client.register-with-eureka=false</span><br><span class="line">eureka.client.fetch-registry=false</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>服务的配置比较简单（注意 defaultZone 改成了镜像名）：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/ # 使用docker启动，defaultZone的host改为镜像名</span><br><span class="line">server.port=8762</span><br><span class="line">spring.application.name=service-name</span><br></pre></td></tr></table></figure></p>
+<ol>
+<li>在 src/main/docker 下创建 Dockerfile 文件<br>
+注册中心： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">FROM frolvlad/alpine-oraclejdk8:slim # 指定image，可以是官方仓库或本地仓库</span><br><span class="line">VOLUME /tmp # 使容器中的一个目录具有持久化数据的功能</span><br><span class="line">ADD eureka-server-0.0.1-SNAPSHOT.jar app.jar # 从src目录复制文件到容器的dest</span><br><span class="line"># RUN bash -c &apos;touch /app.jar&apos; # 容器启动时执行的命令，可以多次设置但只有最后一个有效</span><br><span class="line">ENTRYPOINT [&quot;java&quot;, &quot;-Djava.security.egd=file:/dev/./urandom&quot;, &quot;-jar&quot;, &quot;/app.jar&quot;]</span><br><span class="line">EXPOSE 8761 # 暴露的端口号</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>服务类似，只是要将 ADD 操作拷贝的镜像名和 EXPOSE 暴露的端口号改一改。</p>
+<ol>
+<li>构建 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mvn clean</span><br><span class="line">mvn package docker:build</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>这样运行可能会报错：没有权限，这时候可以切换到 root 用户运行，或将当前用户加入到 docker 组中。</p>
+<ol>
+<li>运行<br>
+注册中心： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># --name指定容器名用于之后被其他容器连接，-p指定端口映射，第一个是主机端口，第二个是容器内的端口，这两个端口也可以实现为一个范围且这两个范围中的端口数必须相同，比如`-p 1234-1236:1222-1224`，还可以在端口前面指定监听的主机ip，-t指定分配一个虚拟终端，这样在该终端退出后这个服务还是在运行着的，最后的参数是docker镜像名</span><br><span class="line">docker run --name eureka-server -p 8761:8761 -t springboot/eureka-server</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>服务：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># --link连接到某个容器:端口上，它会在两个容器之间建立一个安全通道，且该容器的该端口必须是暴露的</span><br><span class="line">docker run --link eureka-server:8761 -p 8762:8762 -t springboot/eureka-client</span><br></pre></td></tr></table></figure></p>
+<h3 id="使用-docker-compose-启动镜像"><a class="header-anchor" href="#使用-docker-compose-启动镜像">¶</a>使用 Docker-Compose 启动镜像</h3>
+<p>Compose 是一个用于定义和运行多容器的 Docker 应用的工具。使用 Compose，你可以在一个配置文件（yaml 格式）中配置你应用的服务，然后使用一个命令，即可创建并启动配置中引用的所有服务。</p>
+<ol>
+<li>
+<p>按上面的步骤构建 docker 镜像</p>
+</li>
+<li>
+<p>在上面两个项目的父一级目录下创建配置文件 docker-compose.yml 配置文件</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">version: &apos;2&apos;</span><br><span class="line">services:</span><br><span class="line">    eureka-server:</span><br><span class="line">        image: springboot/eureka-server</span><br><span class="line">        restart: always</span><br><span class="line">        ports:</span><br><span class="line">            - 8761:8761</span><br><span class="line"></span><br><span class="line">    eureka-client:</span><br><span class="line">        image: springboot/eureka-client</span><br><span class="line">        restart: always</span><br><span class="line">        ports:</span><br><span class="line">            - 8762:8762</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>启动</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker-compose up</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="使用docker-compose构建并启动镜像"><a class="header-anchor" href="#使用docker-compose构建并启动镜像">¶</a>使用Docker-Compose构建并启动镜像</h3>
+<p>docker-compose 也可以用于构建镜像，这样就不用一个一个镜像构建再去运行了。</p>
+<ol>
+<li>
+<p>在 docker-compose.yml 同级目录下创建配置文件 docker-compose-dev.yml：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">version: &apos;2&apos;</span><br><span class="line">services:</span><br><span class="line">    eureka-server:</span><br><span class="line">        build: eureka-server</span><br><span class="line">        ports:</span><br><span class="line">            - 8761:8761</span><br><span class="line"></span><br><span class="line">    eureka-client:</span><br><span class="line">        build: eureka-client</span><br><span class="line">        ports:</span><br><span class="line">            - 8762:8762</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>构建并启动</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker-compose -f docker-compose.yml -f docker-compose-dev.yml up</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="eureka-v2"><a class="header-anchor" href="#eureka-v2">¶</a>Eureka</h3>
+<ol>
+<li><a href="https://www.springcloud.cc/spring-cloud-dalston.html#_service_discovery_eureka_clients" target="_blank" rel="noopener">服务发现：Eureka客户端</a></li>
+</ol>
+<h3 id="ribbon"><a class="header-anchor" href="#ribbon">¶</a>Ribbon</h3>
+<ol>
+<li>Netflix/ribbon <a href="https://github.com/Netflix/ribbon/wiki" target="_blank" rel="noopener">https://github.com/Netflix/ribbon/wiki</a></li>
+<li>客户端负载平衡器：Ribbon <a href="https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-ribbon" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-ribbon</a></li>
+</ol>
+<h3 id="feign"><a class="header-anchor" href="#feign">¶</a>Feign</h3>
+<ol>
+<li>声明性 REST 客户端：Feign <a href="https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-feign" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#spring-cloud-feign</a></li>
+</ol>
+<h3 id="hystrix"><a class="header-anchor" href="#hystrix">¶</a>Hystrix</h3>
+<ol>
+<li>Netflix/Hystrix <a href="https://github.com/Netflix/Hystrix/wiki" target="_blank" rel="noopener">https://github.com/Netflix/Hystrix/wiki</a></li>
+<li>Circuit Breaker: Hystrix Clients <a href="https://springcloud.cc/spring-cloud-dalston.html#_circuit_breaker_hystrix_clients" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#_circuit_breaker_hystrix_clients</a></li>
+</ol>
+<h3 id="sleuth"><a class="header-anchor" href="#sleuth">¶</a>Sleuth</h3>
+<ol>
+<li>Zipkin <a href="https://zipkin.io/" target="_blank" rel="noopener">https://zipkin.io/</a></li>
+<li>Spring Cloud Sleuth <a href="https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_sleuth" target="_blank" rel="noopener">https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_sleuth</a></li>
+<li>Google Dapper-大规模分布式系统的基础跟踪设施 <a href="http://duanple.blog.163.com/blog/static/70971767201329113141336/" target="_blank" rel="noopener">http://duanple.blog.163.com/blog/static/70971767201329113141336/</a></li>
+<li><a href="http://research.google.com/pubs/pub36356.html" target="_blank" rel="noopener">http://research.google.com/pubs/pub36356.html</a></li>
+<li><a href="http://bigbully.github.io/Dapper-translation/" target="_blank" rel="noopener">http://bigbully.github.io/Dapper-translation/</a></li>
+<li><a href="http://research.google.com/pubs/pub40378.html" target="_blank" rel="noopener">http://research.google.com/pubs/pub40378.html</a></li>
+<li>Eagleeye</li>
+<li><a href="https://www.jianshu.com/p/d24ac0be831d" target="_blank" rel="noopener">Sleuth 源码分析</a></li>
+</ol>
+<h3 id="docker"><a class="header-anchor" href="#docker">¶</a>Docker</h3>
+<ol>
+<li><a href="https://yq.aliyun.com/articles/47344" target="_blank" rel="noopener">用 Docker 构建、运行、发布一个 Spring Boot 应用</a></li>
+<li><a href="https://github.com/spotify/docker-maven-plugin" target="_blank" rel="noopener">docker-maven-plugin</a></li>
+<li><a href="https://docs.docker.com/compose/" target="_blank" rel="noopener">Docker Compose</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1d8a54ea.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/1d8a54ea.html" itemprop="url">Hystrix 原理分析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-19T12:21:48+08:00">
+                2019-10-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="降级有几种方案"><a class="header-anchor" href="#降级有几种方案">¶</a>降级有几种方案</h2>
+<h3 id="降级分类"><a class="header-anchor" href="#降级分类">¶</a>降级分类</h3>
+<p>降级主要分手动降级和自动降级，手动降级其实就是在代码里加上一些开关把功能直接关闭，自动降级可以分为以下几种：</p>
+<ol>
+<li>超时降级<br>
+配置好超时时间和超时重试次数和机制，并使用异步机制探测恢复情况。</li>
+<li>失败次数降级<br>
+失败次数达到阈值自动降级，同样要使用异步机制探测回复情况。</li>
+<li>故障降级<br>
+如要调用的远程服务挂掉了（网络故障、DNS 故障、HTTP 服务返回错误的状态码和 RPC 服务抛出异常），则可以直接降级。<br>
+和上面那种失败次数降级原理类似，只是需要区分错误类型。</li>
+<li>限流降级<br>
+单位时间内调用次数超过阈值，可以使用暂时屏蔽的方式来进行短暂的屏蔽。</li>
+</ol>
+<h3 id="降级处理方案"><a class="header-anchor" href="#降级处理方案">¶</a>降级处理方案</h3>
+<p>降级后，在代码层面，可以进行的处理策略如下：</p>
+<ol>
+<li>抛异常</li>
+<li>返回 NULL</li>
+<li>调用 Mock 数据</li>
+<li>调用 Fallback 处理逻辑</li>
+</ol>
+<h2 id="hystrix-原理"><a class="header-anchor" href="#hystrix-原理">¶</a>Hystrix 原理</h2>
+<p><img src="https://tallate.top/imgs/Hystrix/Hystrix%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png" alt="Hystrix工作流程" title="Hystrix工作流程"></p>
+<h3 id="4-种调用方法"><a class="header-anchor" href="#4-种调用方法">¶</a>4 种调用方法</h3>
+<ul>
+<li>toObservable()<br>
+最基础的 API，直接返回 Observable，未作订阅，需要由用户来发起订阅；</li>
+<li>observe()<br>
+调用 #toObservable() 方法，并向 Observable 注册 rx.subjects.ReplaySubject 发起订阅，这会立刻触发 run()方法的执行。</li>
+<li>queue()<br>
+调用 #toObservable() 方法的基础上，调用：Observable#toBlocking() 和 BlockingObservable#toFuture() 返回 Future 对象，实现了异步调用</li>
+<li>execute()<br>
+调用 #queue() 方法的基础上，调用 Future#get() 方法，同步返回 #run() 的执行结果。</li>
+</ul>
+<p>HystrixCommand.execute<br>
+-&gt; HystrixCommand.queue<br>
+-&gt; AbstractCommand.toObservable</p>
+<p>AbstractCommand.observe<br>
+-&gt; AbstractCommand.toObservable</p>
+<h3 id="隔离"><a class="header-anchor" href="#隔离">¶</a>隔离</h3>
+<p>限制调用分布式服务的资源使用，某一个调用的服务出现问题不会影响其他服务调用，包括<strong>线程池隔离</strong>和<strong>信号量隔离</strong>。<br>
+开启配置：<br>
+HystrixCommand(…, Setter.andCommandPropertiesDefaults(<br>
+HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)), …)<br>
+-&gt; withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE) 配置隔离策略，线程池同理</p>
+<p>实施信号量隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; TryableSemaphore.tryAcquire 如果没开启信号量模式，这个方法永远返回 true</p>
+<p>实施线程隔离：<br>
+AbstractCommand.toObservable<br>
+…中略<br>
+-&gt; AbstractCommand.applyHystrixSemantics<br>
+-&gt; AbstractCommand.executeCommandAndObserve<br>
+-&gt; AbstractCommand.executeCommandWithSpecifiedIsolation 创建一个新线程来执行<br>
+-&gt; AbstractCommand.getUserExecutionObservable<br>
+-&gt; HystrixCommand.getExecutionObservable</p>
+<h3 id="限流"><a class="header-anchor" href="#限流">¶</a>限流</h3>
+<p>Hystrix的限流限制的是并发量，其实和隔离特性的实现方式一样，可以通过调整信号量或线程池大小来实现限流。</p>
+<h3 id="熔断"><a class="header-anchor" href="#熔断">¶</a>熔断</h3>
+<p>熔断是一种异常处理机制，如果接口的失败率达到了阈值就触发降级，<br>
+当失败率达到阈值自动触发降级(如因网络故障/超时造成的失败率高)，之后熔断器会尝试进行恢复。<br>
+Hystrix 会为降级的接口维持一个熔断状态，状态扭转如下图所示：<br>
+<img src="https://tallate.top/imgs/Hystrix/%E7%86%94%E6%96%AD%E7%8A%B6%E6%80%81%E6%89%AD%E8%BD%AC.png" alt="熔断状态扭转" title="熔断状态扭转"></p>
+<ol>
+<li>熔断关闭状态（Closed）<br>
+服务没有故障时，熔断器所处的状态，对调用方的调用不做任何限制。</li>
+<li>熔断开启状态（Open）<br>
+在固定时间窗口内（Hystrix 默认是 10 秒），接口调用出错比率达到一个阈值（Hystrix 默认为 50%），会进入熔断开启状态。进入熔断状态后，后续对该服务接口的调用不再经过网络，直接执行本地的 fallback 方法。</li>
+<li>半熔断状态（Half-Open）<br>
+在进入熔断开启状态一段时间之后（Hystrix 默认是 5 秒），熔断器会进入半熔断状态。所谓半熔断就是尝试恢复服务调用，允许有限的流量调用该服务，并监控调用成功率。如果成功率达到预期，则说明服务已恢复，进入熔断关闭状态；如果成功率仍旧很低，则重新进入熔断关闭状态。</li>
+</ol>
+<p>Hystrix 使用 HystrixCircuitBreaker 这个类来维持状态：<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution 是否已开启熔断（OPEN），如果超过时间窗口则切换到半熔断状态（HALF_OPEN）<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; HystrixCircuitBreaker.markSuccess / markNonSuccess</p>
+<h3 id="降级-fallback"><a class="header-anchor" href="#降级-fallback">¶</a>降级（Fallback）</h3>
+<p>降级是一种状态，当一个接口被降级后，再对这个接口进行调用会直接走降级逻辑。可以触发降级的条件一般是调用超时（比如网络故障、超时）或资源不足（线程或信号量）。但是代码中会更复杂一些，具体地说，触发降级的条件包括：</p>
+<ol>
+<li>run()方法抛出非 HystrixBadRequestException 异常<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; handleFallback 是一个回调接口匿名实现类的对象，会在出现异常时被调用<br>
+HystrixBadRequestException 表示一类可以被忽略的异常，在 AbstractHystrixCommand 和 GenericObservableCommand 可以抛出，可以在 HystrixCommand 注解上的 ignoreExceptions 中声明这些可以被忽略的异常。</li>
+<li>run()方法调用超时<br>
+对超时的异常检测和上边的一样，但是抛出的位置不一样。<br>
+AbstractCommand.executeCommandAndObserve<br>
+-&gt; Observable.lift 添加超时操作 HystrixObservableTimeoutOperator<br>
+-&gt; HystrixTimer.addTimerListener 添加一个 TimerListener 用于判断执行时间是否达到阈值，若超过则抛出 HystrixTimeoutException<br>
+-&gt; ScheduledThreadPoolExecutor.scheduleAtFixedRate 定时触发滴答（tick）<br>
+可以看到超时检测最终还是通过 Scheduled 线程池来实现的。</li>
+<li>熔断器开启拦截调用<br>
+AbstractCommand.applyHystrixSemantics<br>
+-&gt; HystrixCircuitBreaker.attemptExecution</li>
+<li>线程池/队列/信号量是否跑满<br>
+在《隔离》那一节中已经说明了代码的位置。</li>
+<li>没有实现 getFallback 的 Command 将直接抛出异常，fallback 降级逻辑调用成功直接返回，降级逻辑调用失败抛出异常<br>
+HystrixCommand.getFallback 直接抛出了一个 UnsupportedOperationException 异常。</li>
+</ol>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>提供了请求缓存、请求合并实现。支持实时监控、报警、控制（修改配置）<br>
+结果缓存这个功能我觉得应该由幂等框架来做。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://blog.csdn.net/bjweimengshu/article/details/79441695" target="_blank" rel="noopener">漫画：什么是服务熔断？</a></li>
+<li><a href="https://www.jianshu.com/p/b9af028efebb" target="_blank" rel="noopener">Hystrix 使用入门手册（中文）</a></li>
+<li><a href="https://blog.csdn.net/qq_23181091/article/details/80785453" target="_blank" rel="noopener">从源码看 hystrix 的工作原理</a></li>
+<li><a href="https://blog.csdn.net/lldouble/article/details/80743930" target="_blank" rel="noopener">hystrix 适用场景</a></li>
+<li><a href="https://github.com/star2478/java-hystrix" target="_blank" rel="noopener">Github - star2478/java-hystrix</a></li>
+<li><a href="https://github.com/Netflix/Hystrix" target="_blank" rel="noopener">Netflix / Hystrix</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/807599f6.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2239,6 +2239,694 @@ Enter（com.sun.tools.javac.comp.Enter）过程为将符号输入到符号表，
 <h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
 <ol>
 <li><a href="https://www.ibm.com/developerworks/cn/java/j-lo-just-in-time/" target="_blank" rel="noopener">深入浅出 JIT 编译器</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e39c963b.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e39c963b.html" itemprop="url">JVM 源码分析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.9k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  7 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="搭建源码调试环境"><a class="header-anchor" href="#搭建源码调试环境">¶</a>搭建源码调试环境</h2>
+<p>源码下载地址：<a href="https://github.com/unofficial-openjdk/openjdk" target="_blank" rel="noopener">unofficial-openjdk/openjdk</a></p>
+<ol>
+<li><a href="https://segmentfault.com/a/1190000008346240" target="_blank" rel="noopener">OpenJDK9 Hotspot Ubuntu 编译和调试</a><br>
+mac 环境下搭建：<a href="https://www.jianshu.com/p/ee7e9176632c" target="_blank" rel="noopener">mac 下编译 openjdk1.9 及集成 clion 动态调试</a></li>
+</ol>
+<h3 id="遇到的问题"><a class="header-anchor" href="#遇到的问题">¶</a>遇到的问题</h3>
+<ol>
+<li>g++和 gcc 版本不匹配</li>
+<li>一些 Warning 被当作错误报错了<br>
+大部分 Warning 不会影响最终结果，可以关掉：<a href="https://blog.csdn.net/desiyonan/article/details/80802066" target="_blank" rel="noopener">https://blog.csdn.net/desiyonan/article/details/80802066</a></li>
+</ol>
+<h3 id="阅读"><a class="header-anchor" href="#阅读">¶</a>阅读</h3>
+<ol>
+<li><a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">如何找 JDK 中 native 代码的位置？</a></li>
+<li><a href="http://rednaxelafx.iteye.com/blog/1549577" target="_blank" rel="noopener">OpenJDK 源码阅读导航</a></li>
+</ol>
+<h3 id="编译-openjdk"><a class="header-anchor" href="#编译-openjdk">¶</a>编译 openjdk</h3>
+<ol>
+<li>下载<br>
+代码的下载见 building 文档，使用一个 Mercurial 工具进行源码控制。</li>
+<li>准备工具<br>
+找到这种开放源码的软件，第一步当然是查看 README 了，openjdk 的 README 中告知了 building 文档的位置，相当详细。<br>
+硬件要求<br>
+操作系统要求<br>
+编译器要求，需要 gcc 和 clang，他们的区别见<a href="https://www.zhihu.com/question/20235742" target="_blank" rel="noopener">Clang 比 GCC 好在哪里？</a><br>
+JDK 要求，虽然挺矛盾的，但是一部分模块是用 JDK 写的，所以 Java 编译器也是需要的，一般编译 JDK8 时需要的 JDK 版本是 7 就够了，但是 openjdk 需要 8 才行（不知道为什么），这个 jdk 可以直接使用 apt-get 安装。<br>
+外部库要求，<br>
+其他工具，make、bash、autoconf</li>
+<li>configure<br>
+准备所有配置文件</li>
+<li>make<br>
+编译源码，默认下只会编译一些必要的部分，如果编译成功可以在 openjdk/build 文件夹下找到目标文件，我的成品所在目录是<code>${openjdk}/build/linux-x86_64-normal-server-release/jdk/bin</code>。</li>
+<li>run test<br>
+openjdk 使用了一个叫 jtreg 的测试框架，文档有<a href="http://openjdk.java.net/jtreg/build.html" target="_blank" rel="noopener">这里</a>还有<a href="https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/content/en/intermediate-steps/how_to_use_jtreg_-_java_regression_test_harness.html" target="_blank" rel="noopener">这里</a>，我设置了一个愚蠢的环境变量 JAVA18HOME 然后尝试着去<code>make -C make</code>编译它，但是还是提示缺少什么<code>org.testing</code>，可能还有什么依赖库没装，这个框架可能是给 oracle 的内部员工或者外星人用的吧？</li>
+</ol>
+<h3 id="定位-object-的-native-方法"><a class="header-anchor" href="#定位-object-的-native-方法">¶</a>定位 Object 的 native 方法</h3>
+<ol>
+<li>
+<p>搜索“Object”打开 jdk 下的 Object.c 文件<br>
+看到下面这个方法数组：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static JNINativeMethod methods[] = &#123;</span><br><span class="line">    &#123;&quot;hashCode&quot;,    &quot;()I&quot;,                    (void *)&amp;JVM_IHashCode&#125;,</span><br><span class="line">    &#123;&quot;wait&quot;,        &quot;(J)V&quot;,                   (void *)&amp;JVM_MonitorWait&#125;,</span><br><span class="line">    &#123;&quot;notify&quot;,      &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotify&#125;,</span><br><span class="line">    &#123;&quot;notifyAll&quot;,   &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotifyAll&#125;,</span><br><span class="line">    &#123;&quot;clone&quot;,       &quot;()Ljava/lang/Object;&quot;,   (void *)&amp;JVM_Clone&#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>然后搜索“JVM_MonitorWait”打开 hotspot 下的 jvm.cpp 文件<br>
+里面有下面这条语句：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">JVM_ENTRY(void, JVM_MonitorWait(JNIEnv* env, jobject handle, jlong ms))</span><br><span class="line">  JVMWrapper(&quot;JVM_MonitorWait&quot;);</span><br><span class="line">  Handle obj(THREAD, JNIHandles::resolve_non_null(handle));</span><br><span class="line">  JavaThreadInObjectWaitState jtiows(thread, ms != 0);</span><br><span class="line">  if (JvmtiExport::should_post_monitor_wait()) &#123;</span><br><span class="line">    JvmtiExport::post_monitor_wait((JavaThread *)THREAD, (oop)obj(), ms);</span><br><span class="line"></span><br><span class="line">    // The current thread already owns the monitor and it has not yet</span><br><span class="line">    // been added to the wait queue so the current thread cannot be</span><br><span class="line">    // made the successor. This means that the JVMTI_EVENT_MONITOR_WAIT</span><br><span class="line">    // event handler cannot accidentally consume an unpark() meant for</span><br><span class="line">    // the ParkEvent associated with this ObjectMonitor.</span><br><span class="line">  &#125;</span><br><span class="line">  ObjectSynchronizer::wait(obj, ms, CHECK);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>我们暂时不知道这几个宏到底什么意思，不过核心大概是最后的那个<code>ObjectSynchronizer::wait</code>吧，这个类定义在 C++文件 synchronizer.cpp 中。</p>
+<ol>
+<li>综上所述<br>
+可以看到如果一个类定义了 native 方法，那么基本可以在 jdk 目录下找到该类的定义（<strong>类所在包结构和其在 openjdk 中的定义的路径有什么关联？？？</strong>），至于其实现，从<a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">知乎</a>上可以找到一段说明，我不知道对错：</li>
+</ol>
+<blockquote>
+<p>如果间接调用了 hotspot 的实现（jvm 会以动态库的形式被加载，prims 文件夹里定义了 hotspot 与其他模块的接口及其实现），那么从 hotspot/src/share/vm/prims/jvm.cpp 中可以找到 JVM_Xxx 函数的实现。</p>
+</blockquote>
+<h3 id="为-object-类添加-native-方法-nop"><a class="header-anchor" href="#为-object-类添加-native-方法-nop">¶</a>为 Object 类添加 native 方法 nop()</h3>
+<p>根据<a href="http://www.infoq.com/cn/articles/Introduction-to-HotSpot" target="_blank" rel="noopener">这里</a>的说法，openjdk 有两种方式来定义 native 函数，一种是按一种特别的方式命名函数，这样加载后就可以和 Java 中的 native 方法对上，另一种是使用 registerNatives()的方式，观察 Object.c 文件可以发现，这种方法先定义了一个 JNINativeMethod 类型的静态数组来做 Java 方法和本地函数的对应，然后使用 JNI 方法注册了一个叫 Java_java_lang_Object_registerNatives 的本地方法来实施这种映射。<br>
+当使用第一种方式在 Object.c 中定义一个特殊命名的 nop()函数时，编译不通过，报错显示<code>Incompatible definition of java.lang.Object</code>，我定义的 nop 函数：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_java_lang_Object_nop(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>然后下面是我使用第二种方式定义 nop()函数的过程（虽然也不行）：</p>
+<ol>
+<li>修改 Object.c<br>
+methods 数组中添加一行： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;nop&quot;, &quot;()V&quot;, (void*)&amp;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>这种定义方法参照了<a href="http://blog.csdn.net/bigapple88/article/details/6756204" target="_blank" rel="noopener">这里</a></p>
+<ol>
+<li>修改 Object.java<br>
+其所在目录为<code>${openjdk}/jdk/src/java.base/share/classes/java/lang/Object.java</code>，为其添加一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">*</span><br><span class="line">*/</span><br><span class="line">@HotSpotIntrinsicCandidate</span><br><span class="line">public native void nop();</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>为什么要加注释？为什么不能加 final？</p>
+<ol>
+<li>重编译 make<br>
+虽然只是添加了一个方法，但是几乎所有包下的都要重新编译了，所以编译过程会稍微有点长。</li>
+<li>测试<br>
+使用<code>javap</code>命令反编译可以看到 Object 类中确实已经有了一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javap $&#123;openjdk&#125;/build/linux-x86_64-normal-server-release/jdk/modules/java.base/java/lang/Object.class</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p><strong>但是实际编译时却报错了，错误大概是Object类不兼容？？？</strong></p>
+<ol>
+<li>native 方法的实现机制<br>
+参见 JNI 原理。</li>
+</ol>
+<h2 id="jni"><a class="header-anchor" href="#jni">¶</a>JNI</h2>
+<h3 id="生成-h头文件"><a class="header-anchor" href="#生成-h头文件">¶</a>生成.h头文件</h3>
+<p>使用 javah 命令，在项目的 src 目录下运行，其中-d 指定目标目录，-jni 是默认选项，生成 jni 头文件，可以加-classpath 指定 class 路径，但必须是绝对路径</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javah -d ../jni -jni com.tallate.HelloJNI</span><br></pre></td></tr></table></figure>
+<p>接下来编译.c 文件，-c 可以生成目标文件（未链接），-I 可以指定#include 查找的目录，不然 jni 有些头文件找不到</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot;  HelloJNI.c</span><br></pre></td></tr></table></figure>
+<p><a href="http://xn--4gqva8gy93g2zbv2i9m2c6jv.so" target="_blank" rel="noopener">接下来编译成一个.so</a> 链接库</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc HelloJNI.c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot; -fPIC -shared -o libhello.so</span><br></pre></td></tr></table></figure>
+<p>接下来可以在Java中加载</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 在linux下动态库必须有前缀lib</span><br><span class="line">System.loadLibrary(&quot;hello&quot;);</span><br></pre></td></tr></table></figure>
+<h3 id="调用-native-方法的流程"><a class="header-anchor" href="#调用-native-方法的流程">¶</a>调用 native 方法的流程</h3>
+<ol>
+<li>native 方法编译后多一个 ACC_NATIVE 标志</li>
+<li>loadLibrary 方法调用 JVM 的 load 本地方法</li>
+<li>load 方法最终调用系统调用 dlopen 加载动态链接库</li>
+<li>调用本地方法时，实际上调用了 JVM 中加载的函数，栈帧压入本地方法栈中（HotSpot 中本地方法栈=虚拟机栈）</li>
+</ol>
+<h3 id="修改-object-类-为其添加一个-native-方法-nop"><a class="header-anchor" href="#修改-object-类-为其添加一个-native-方法-nop">¶</a>修改 Object 类，为其添加一个 native 方法 nop()</h3>
+<h2 id="锁-内置锁"><a class="header-anchor" href="#锁-内置锁">¶</a>锁（内置锁）</h2>
+<ol>
+<li>锁的存储结构？</li>
+<li>获取锁的时机？</li>
+<li>释放锁的时机？</li>
+</ol>
+<h2 id="线程"><a class="header-anchor" href="#线程">¶</a>线程</h2>
+<p>和 JDK 的线程操作相关的类有 Object 和 Thread，Object 中包括 wait、notify 和 notifyAll，Thread 中包括 yield、sleep、exit、interrupt、join、start，run 的主要任务是执行用户定义的逻辑，还有一些方法已经被 Deprecated，不必再提</p>
+<h3 id="源码中和线程操作相关的一些数据结构"><a class="header-anchor" href="#源码中和线程操作相关的一些数据结构">¶</a>源码中和线程操作相关的一些数据结构</h3>
+<ol>
+<li>
+<p>ObjectMonitor<br>
+对象监视器，定义和声明在 objectMonitor.*中，主要包含</p>
+</li>
+<li>
+<p>ObjectWaiter</p>
+</li>
+<li>
+<p>ObjectSynchronizer</p>
+</li>
+</ol>
+<h3 id="wait"><a class="header-anchor" href="#wait">¶</a>wait</h3>
+<p>wait 是 native 方法，实现在 synchronizer.cpp 中，ObjectSynchronizer::wait：</p>
+<ol>
+<li>
+<p>通过<code>ObjectSynchronizer::inflate</code>方法找到 object 中的<code>ObjectMonitor monitor</code></p>
+</li>
+<li>
+<p>调用 monitor.wait<br>
+wait 方法比较复杂，但是核心过程只有 3 步：</p>
+<ul>
+<li>ObjectMonitor::AddWaiter(…)将新建立的 ObjectWaiter 对象插入_WaitSet 队列的末尾</li>
+<li>ObjectMonitor::exit(…)释放锁</li>
+<li>Self-&gt;_ParkEvent-&gt;park等待</li>
+</ul>
+</li>
+</ol>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="jni-v2"><a class="header-anchor" href="#jni-v2">¶</a>JNI</h3>
+<ol>
+<li><a href="http://blog.csdn.net/huachao1001/article/category/2862631" target="_blank" rel="noopener">介绍</a></li>
+<li><a href="http://blog.csdn.net/ngvjai/article/details/8520840" target="_blank" rel="noopener">生成.so 方法</a></li>
+<li><a href="http://blog.csdn.net/larrylgq/article/details/7515362" target="_blank" rel="noopener">修改 java.library.path 方法</a></li>
+<li><a href="http://blog.csdn.net/hackooo/article/details/48395765/" target="_blank" rel="noopener">Java JNI 实现原理初探</a></li>
+<li><a href="http://blog.chinaunix.net/uid-22028680-id-3178229.html" target="_blank" rel="noopener">Java Native Interface (JNI) 工作原理</a></li>
+<li><a href="http://www.cnblogs.com/Anker/p/3746802.html" target="_blank" rel="noopener">dlopen</a></li>
+</ol>
+<h3 id="线程-v2"><a class="header-anchor" href="#线程-v2">¶</a>线程</h3>
+<ol>
+<li><a href="https://www.zhihu.com/question/23328075" target="_blank" rel="noopener">java sleep 和 wait 的区别的疑惑?</a></li>
+<li><a href="http://blog.csdn.net/raintungli/article/details/6532784" target="_blank" rel="noopener">java 中的 wait 和 notify 实现的源码分析</a></li>
+<li><a href="http://blog.csdn.net/raintungli/article/details/6553337" target="_blank" rel="noopener">JVM Thread stop 的源码分析</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/ad5b98b9.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/ad5b98b9.html" itemprop="url">JVM 的结构</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
+                2019-10-05
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5.5k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  19 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<p><img src="https://tallate.top/imgs/JVM/JVM%E7%BB%93%E6%9E%84.png" alt="JVM结构" title="JVM结构"><br>
+JVM 特指用于运行由 Java 虚拟机规范规定的字节码的运行时系统，它具有以下特征：</p>
+<ul>
+<li>平台无关性<br>
+JVM 本身是平台相关的，只是对不同平台都有实现，所以我们编译成的字节码才可以在各个平台上执行，因此称 Java 平台无关指的是字节码是平台无关的。</li>
+<li>高度抽象<br>
+JVM 提供了编译器、类加载、动态内存管理、线程等一套工具，作为虚拟机，程序经编译后运行在 JVM 上时，几乎完全不必担心平台的兼容性。<br>
+本地方法接口只是作为一个扩展功能提供，并不是必须的，实际上除了对性能严格要求的场合，本地方法一般不会被使用。</li>
+</ul>
+<blockquote>
+<p>编译器严格来说和虚拟机并无太大关联，JVM 可以供 Groovy、Kotlin、Scala 等一系列语言作为运行时环境，</p>
+</blockquote>
+<p>下图表示 JVM 的系统结构，包括与 Class 文件打交道的类装载系统、进行运行时数据管理的系统、进行方法执行的系统、本地方法接口（JNI）和本地方法库这些部分。</p>
+<h3 id="类装载子系统"><a class="header-anchor" href="#类装载子系统">¶</a>类装载子系统</h3>
+<p>类装载子系统负责查找并装载类型，类装载器主要包含两种：<strong>启动类装载器（Java 虚拟机实现的一部分）<strong>和</strong>用户自定义类装载器（Java 程序的一部分）</strong>。</p>
+<p>启动类装载器 – Java 虚拟机必须有一个启动类装载器，用于装载受信任的类，如 Java API 的 class 文件。<br>
+用户自定义类装载器 – 继承自 ClassLoader 类，ClassLoader 的如下四个方法，是通往 Java 虚拟机的通道。</p>
+<ul>
+<li>protected final Class defineClass(String name, byte data[], int offset, int length); // data 为二进制的 Java Class 文件数据，表示一个新的可用类型，之后把这个类型导入到方法区中</li>
+<li>protected final Class defineClass(String name, byte data[], int offset, int length, ProtectionDomain protectionDomain);</li>
+<li>protected final Class findSystemClass(String name); // 参数为全限定名，通过类装载器进行装载</li>
+<li>protected final void resolveClass(Class c); // 参数为 Class 实例，完成连接初始化操作</li>
+</ul>
+<p>类装载子系统负责<strong>定位和导入二进制 class 文件，并且保证导入类的正确性，为类变量分配并初始化内存，以及帮助解析符号引用</strong>。类装载器必须严格按照如下顺序进行类的装载。</p>
+<ol>
+<li>装载 – 查找并装载类型的二进制数据</li>
+<li>连接 – 执行验证，准备，以及解析（可选），连接分为如下三个步骤<br>
+验证 – 确保被导入类型的正确性<br>
+准备 – 为类变量（static）分配内存，并将其初始化为默认值<br>
+解析 – 把类型中的符号引用转换为直接引用</li>
+<li>初始化 – 把类变量初始化为正确初始值</li>
+</ol>
+<h2 id="内存管理系统"><a class="header-anchor" href="#内存管理系统">¶</a>内存管理系统</h2>
+<h3 id="方法区"><a class="header-anchor" href="#方法区">¶</a>方法区</h3>
+<p>方法区是线程共享的内存区域，用于存储已被虚拟机加载的类信息、常量、静态变量、即时编译器编译后的代码等数据，当方法区无法满足内存分配需求时，将抛出 OutOfMemoryError。<br>
+类信息包括：</p>
+<ol>
+<li>类型全限定名。</li>
+<li>类型的直接超类的全限定名（除非这个类型是 java.lang.Object，它没有超类）。</li>
+<li>类型是类类型还是接口类型。</li>
+<li>类型的访问修饰符（public、abstract、final 的某个子集）。</li>
+<li>任何直接超接口的全限定名的有序列表。</li>
+<li>类型的常量池。</li>
+<li>字段信息。</li>
+<li>方法信息。</li>
+<li>除了常量以外的所有类（静态）变量。</li>
+<li>一个到类 ClassLoader 的引用。</li>
+<li>一个到 Class 类的引用。</li>
+</ol>
+<p>着重介绍<strong>常量池</strong>，虚拟机必须要为每个被装载的类型维护一个常量池。常量池就是该类型所用常量的一个有序集合，包括直接常量和对其他类型、字段和方法的符号引用。它在 Java 程序的<strong>动态连接</strong>（运行时解析字节码中使用到的符号引用）中起着核心作用。<br>
+除了以上结构外，JVM 的实现者还可以添加一些其他的数据结构，如方法表：对每个加载的非抽象类的类信息中都添加一个方法表，方法表是一组对类实例方法的直接引用——包括从父类继承的方法，JVM 可以通过方法表快速找到实例方法。</p>
+<blockquote>
+<p>C++中 virtual 函数是通过虚函数表实现的，Java 中所有方法都是 virtual 的，因此也就不需要再标注虚拟了，正像 Java 虽然宣称没有指针，但是 Java 里其实全是指针。Java 中类似的检查机制不少，这体现了 Java 的一种设计思想：始终将安全放在效率之上。</p>
+</blockquote>
+<h3 id="元空间"><a class="header-anchor" href="#元空间">¶</a>元空间</h3>
+<p>JDK1.8 的一大改动是方法区变成了元空间，其实就是放开了类空间的大小，容量取决于是 32 位或是 64 位操作系统的可用虚拟内存大小，32 位系统本地最多有 4G 虚拟内存空间，物理内存取决于操作系统的配置。新参数<code>MaxMetaspaceSize</code>用于限制本地内存分配给类元数据的大小，如果没有指定这个参数，元空间会在运行时根据需要动态调整，大小随意。对于没用的类及类加载器的垃圾回收将在元数据使用达到 MaxMetaspaceSize 参数的设定值时进行。</p>
+<h3 id="堆"><a class="header-anchor" href="#堆">¶</a>堆</h3>
+<p>一个虚拟机实例只对应一个堆空间，堆是<strong>线程共享</strong>的，当然还有可能会划分出多个线程私有的分配缓冲区（<strong>TLAB</strong>）。堆空间是存放对象实例的地方，几乎所有对象实例都在这里分配。堆也是<strong>垃圾收集器</strong>管理的主要区域，因此也被称为“GC 堆”。<br>
+堆可以处于物理上不连续的内存空间中，只要逻辑上连续即可，就像磁盘空间一样。<br>
+当堆中没有足够的内存进行对象实例分配时，并且堆也无法扩展时，会抛出 OutOfMemoryError 异常。<br>
+对 OOM 的排查通常是先通过内存映像分析工具对 Dump 出来的堆转储快照进行分析，重点是确认内存中的对象是否是必要的，也就是要先分清楚到底是出现了<strong>内存泄漏</strong>还是<strong>内存溢出</strong>。</p>
+<ul>
+<li>如果是内存泄漏，可进一步通过工具查看泄露对象到 GC Roots 的引用链。于是就能找到泄露对象的类型信息及 GC Roots 引用链的信息，就可以比较准确地定位出泄露代码的位置。</li>
+<li>如果不存在泄露，就是内存中的对象确实都还必须存活着，那就应当检查虚拟机的堆参数（-Xmx 与 -Xms），与机器物理内存对比看是否还可以调大，从代码上检查是否存在某些对象生命周期过长、持有状态时间过长的情况，尝试减少程序运行期的内存消耗。</li>
+</ul>
+<h3 id="程序计数器"><a class="header-anchor" href="#程序计数器">¶</a>程序计数器</h3>
+<p>每个线程拥有自己的程序计数器，线程之间的程序计数器互不影响，在任何一个确定的时刻，一个处理器（对于多核处理器来说是一个内核）都只会执行一条线程中的指令。<br>
+PC 寄存器的内容总是下一条将被执行指令的&quot;地址&quot;，这里的&quot;地址&quot;可以是一个本地指针，也可以是在方法字节码中相对于该方法起始指令的偏移量。</p>
+<ul>
+<li>如果该线程正在执行一个本地方法，则程序计数器内容为 undefined。</li>
+<li>此区域在 Java 虚拟机规范中没有规定任何 OutOfMemoryError 情况的区域。</li>
+</ul>
+<h3 id="虚拟机栈"><a class="header-anchor" href="#虚拟机栈">¶</a>虚拟机栈</h3>
+<p>我们一般会把 Java 内存区分为堆内存和栈内存，而所指的“栈”就是这里的虚拟机栈，或者说是虚拟机栈中局部变量表部分。<br>
+Java 栈也是线程私有的，虚拟机只会对栈进行两种操作，以帧为单位的<strong>入栈</strong>和<strong>出栈</strong>。每个方法在执行时都会创建一个<strong>栈帧</strong>，并入栈，成为当前帧，每一个方法从调用直至执行完成的过程，就对应着一个栈帧在虚拟机栈中从入栈到出栈的过程。栈帧由三部分组成：局部变量区、操作数栈、帧数据区。<br>
+<strong>局部变量区</strong>被组织为一个以字长为单位、从 0 开始计数的数组。字节码指令通过从 0 开始的索引来使用其中的数据。类型为 int、float、reference 和 returnAddress 的值在数组中只占据一项，而类型为 byte、short 和 char 的值存入时都会转化为 int 类型，也占一项，而 long、double 则连续占据两项。<br>
+<strong>操作数栈</strong>也常被称为操作栈，它是一个后入先出栈。当一个方法刚刚执行的时候，这个方法的操作数栈是空的，在方法执行的过程中，会有各种字节码指令向操作数栈中写入和提取值，也就是入栈与出栈操作。在使用操作数栈时需要注意实例方法和类方法：<br>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Example &#123;</span><br><span class="line">    // 类方法</span><br><span class="line">    public static int classMethod(int i, long l, float f, double d, Object o, byte b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    // 实例方法</span><br><span class="line">    public int instanceMethod(char c, double d, short s, boolean b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>类方法和实例方法栈帧结构有所不同，从图中可以看到它们之间的区别：</p>
+<ul>
+<li>类方法帧里没有隐含的 this 引用，而实例方法帧中会隐含一个 this 引用；</li>
+</ul>
+<p>并且注意：</p>
+<ul>
+<li>byte,char,short,boolean 类型存入局部变量区的时候都会被转化成 int 类型值，当被存回堆或者方法区时，才会转化回原来的类型；</li>
+<li>returnAddress 类型数据是指向字节码的指针（方法区的字节码指令），它只存在于字节码层面，与编程语言无关，我们在 Java 语言中是不会直接与 returnAddress 类型数据打交道的。</li>
+</ul>
+<blockquote>
+<p>每个线程所持有的程序计数器（pc）实际上就是 returnAddress 类型的数据，当线程执行 native 方法时，pc 中的值为 undefied。</p>
+</blockquote>
+<ul>
+<li>操作数栈被组织成一个以字长为单位的数组，它是通过标准的栈操作——即入栈和出栈来进行访问，而不是通过索引访问。入栈和出栈也会存在类型的转化；</li>
+<li>当一个方法执行完毕之后，要返回之前调用它的地方，因此在栈帧中必须保存一个方法返回地址。方法退出的过程实际上等同于把当前栈帧出栈，因此退出时可能执行的操作有：恢复上层方法的局部变量表和操作数栈，把返回值(如果有的话)压入调用都栈帧的操作数栈中，调用 PC 计数器的值以指向方法调用指令后面的一条指令等。</li>
+<li>每个栈帧都包含一个指向运行时常量池中该栈帧所属方法的引用，持有这个引用是为了支持方法调用过程中的动态连接。在 Class 文件的常量池中存有大量的符号引用，字节码中的方法调用指令就以常量池中指向方法的符号引用为参数。这些符号引用一部分会在类加载阶段或第一次使用的时候转化为直接引用，这种转化称为静态解析。另外一部分将在每一次的运行期期间转化为直接引用，这部分称为动态连接。</li>
+</ul>
+<p><strong>栈数据区</strong>存放一些用于支持常量池解析、正常方法返回以及异常派发机制的信息。即将常量池的符号引用转化为直接地址引用、恢复发起调用的方法的帧进行正常返回，发生异常时转交异常表进行处理。</p>
+<ul>
+<li>虚拟机规范允许具体的虚拟机实现增加一些规范里没有描述的信息到栈帧中，例如与高度相关的信息，这部分信息完全取决于具体的虚拟机实现。在实际开发中，一般会把动态连接，方法返回地址与其它附加信息全部归为一类，称为<strong>栈帧信息</strong>。</li>
+</ul>
+<p>在 Java 虚拟机规范中，规定了两种异常状况：如果线程请求的栈深度大于虚拟机所允许的深度，将抛出 StackOverflowError 异常；如果虚拟机栈可以动态扩展，当扩展时无法申请到足够的内存，就会抛出 OutOfMemoryError 异常。</p>
+<p>系统分配给每个进程的内存是有限制的，除去 Java 堆、方法区、程序计数器，如果虚拟机进程本身耗费的内存不计算在内，剩下内存就由虚拟机栈和本地方法栈“瓜分”了。每个线程分配到的栈容量越大，可以建立的线程数量自然就越少，建立线程时就越容易把剩下的内存耗尽，出现<strong>虚拟机栈溢出</strong>的情况。</p>
+<ul>
+<li>如果线程请求的栈深度大于虚拟机所允许的最大深度，将抛出 StackOverflowError 异常，出现 StackOverflowError 异常时有错误栈可以阅读，栈深度在大多数情况下达到 1000~2000 完全没有问题，对于正常的方法调用（包括递归），这个深度在一半情况下完全够用。</li>
+<li>如果虚拟机在扩展栈（建立更多的线程）时无法申请到足够的内存空间，则抛出 OutOfMemoryError 异常，在不能减少线程数或者更换 64 位虚拟机的情况下，就只能通过减少最大堆和减少栈容量来换取更多的线程。</li>
+</ul>
+<p>一般可以认为 Java 中的一切变量都是引用，实际的对象存储在堆中，但是基础类型比较特殊，它们可以直接使用操作符进行算数运算，不过基础类型也带来了一些问题，比如装箱拆箱过程中可能产生空指针异常。Java 中引入基础类型的动机应该是性能与空间利用率，毕竟使用引用时还得通过<strong>指针碰撞</strong>或<strong>空闲列表</strong>方法（根据垃圾收集器不同而不同）来找到实际对象，而且基础类型本身占用的空间不多，如果用引用势必占用的空间会加倍。<br>
+基础类型并不是都分配在栈上，具体有以下几种情况：</p>
+<ol>
+<li>在方法中声明的变量，即该变量是局部变量，每当程序调用方法时，系统都会为该方法建立一个方法栈，其所在方法中声明的变量就放在方法栈中，当方法结束系统会释放方法栈，其对应在该方法中声明的变量随着栈的销毁而结束，这就局部变量只能在方法中有效的原因<br>
+在方法中声明的变量可以是基本类型的变量，也可以是引用类型的变量。
+<ul>
+<li>当声明是基本类型的变量的时，其变量名及值（变量名及值是两个概念）是放在方法栈中</li>
+<li>当声明的是引用变量时，所声明的变量（该变量实际上是在方法中存储的是内存地址值）是放在方法的栈中，该变量所指向的对象是放在堆类存中的。</li>
+</ul>
+</li>
+<li>在类中声明的变量是成员变量，也叫全局变量，放在堆中的（因为全局变量不会随着某个方法执行结束而销毁）。<br>
+同样在类中声明的变量即可是基本类型的变量 也可是引用类型的变量
+<ul>
+<li>当声明的是基本类型的变量其变量名及值是放在堆中的</li>
+<li>引用类型时，其声明的变量仍然会存储一个内存地址值，该内存地址值指向所引用的对象。引用变量名和对应的对象仍然存储在相应的堆中</li>
+</ul>
+</li>
+</ol>
+<h3 id="堆外内存"><a class="header-anchor" href="#堆外内存">¶</a>堆外内存</h3>
+<h4 id="一个例子"><a class="header-anchor" href="#一个例子">¶</a>一个例子</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 分配一块1024字节的堆外内存</span><br><span class="line">ByteBuffer buffer = ByteBuffer.allocateDirect(1024);</span><br><span class="line">System.out.println(buffer.capacity());</span><br><span class="line">buffer.putInt(0, 2018);</span><br><span class="line">System.out.println(buffer.getInt(0));</span><br></pre></td></tr></table></figure>
+<h4 id="为什么要使用堆外内存"><a class="header-anchor" href="#为什么要使用堆外内存">¶</a>为什么要使用堆外内存</h4>
+<p>主要是因为堆外内存在 IO 操作方面的优势，举一个例子：在通信中，将存在于堆内存中的数据 flush 到远程时，需要首先将堆内存中的数据拷贝到堆外内存中，然后再写入 Socket 中；如果直接将数据存到堆外内存中就可以避免上述拷贝操作，提升性能。类似的例子还有读写文件。<br>
+但是需要注意的是，直接访问堆外内存并不会比访问 Java 堆更快：<a href="https://mp.weixin.qq.com/s/njCKlx8mBh6kSP2lC9mT4g" target="_blank" rel="noopener">哪个更快：Java 堆还是本地内存</a>。堆外内存更适合用于操作大块的数据（&gt;2G）、可以直接使用操作系统提供的本地 IO 进行操作。</p>
+<h4 id="可用的堆外内存额度"><a class="header-anchor" href="#可用的堆外内存额度">¶</a>可用的堆外内存额度</h4>
+<ol>
+<li>可以通过设定 <code>-XX:MaxDirectMemorySize</code> 来显式指定最大的堆外内存。</li>
+<li>设定 <code>-Dsun.nio.MaxDirectMemorySize</code> 来显式指定：如果该属性为-1，则取<code>directMemory = Runtime.getRuntime().maxMemory()</code>，即 JVM 运行时的最大内存；否则，如果指定这个属性等于-1，则默认为 64M。<br>
+如果是 JDK8，具体代码见<code>VM.saveAndRemoveProperties()</code>，如果是 JDK8 之前，则代码见<code>VM.maxDirectMemory()</code>。<br>
+另外，<code>Runtime.getRuntime().maxMemory()</code>是一个 native 方法，HotSpot 中对应的 C++代码如下所示：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jlong JNICALL</span><br><span class="line">Java_java_lang_Runtime_maxMemory(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">    return JVM_MaxMemory();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">JVM_ENTRY_NO_ENV(jlong, JVM_MaxMemory(void))</span><br><span class="line">  JVMWrapper(&quot;JVM_MaxMemory&quot;);</span><br><span class="line">  size_t n = Universe::heap()-&gt;max_capacity();</span><br><span class="line">  return convert_size_t_to_jlong(n);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
+<p>其中 max_capacity() 实际返回的是 –Xmx 设置值减去一个 survivor space 的预留区大小，与堆内大小存很接近。</p>
+<h4 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h4>
+<ol>
+<li>分配<br>
+ByteBuffer.allocateDirect<br>
+DirectByteBuffer(int)<br>
+-&gt; Bits.reserveMemory 在系统中保存总分配内存（按页分配）的大小和实际内存的大小<br>
+-&gt; Bits.tryReserveMemory 判断系统内存（堆外内存）是否足够，Bits 有一个全局 totalCapacity 变量记录当前已经使用的堆外内存量<br>
+-&gt; JavaLangRefAccess.tryHandlePendingReference 非阻塞，将已经被 JVM 垃圾回收的 DirectBuffer 对象的堆外内存释放。<br>
+-&gt; System.gc 触发一次 FullGC，<code>System.gc</code>并不能保证 FullGC 被马上执行，如果设置了<code>-XX:+DisableExplicitGC</code>则这种显式的 GC 会被禁用<br>
+-&gt; Bits.tryReserveMemory 为了等待 FullGC 释放足够的空间，之后还会重试最多 9 次 tryReserveMemory，每次重试会 sleep 1, 2, 4, 8, 16, 32, 64, 128, 256ms，也就是说最多可以等 0.5s<br>
+-&gt; throw new OutOfMemoryError 分配空间失败，抛出 OOM 异常<br>
+-&gt; Unsafe.allocateMemory native 方法，通过 JNI 调用 C++函数分配堆外内存，并返回内存基地址<br>
+-&gt; Unsafe.setMemory(base, size, (byte) 0) 将分配的内存清零<br>
+-&gt; Cleaner.create 创建一个 Cleaner 用于释放堆空间</li>
+<li>释放<br>
+Cleaner.create Cleaner 内部维护了一个 static 的 Cleaner 对象的链表，create 调用创建了一个 Cleaner 对象并将其加入到该链表中<br>
+-&gt; new Cleaner(DirectByteBuffer, new Deallocator(base, size, cap))</li>
+</ol>
+<p>Cleaner 实现 GC 回收堆外内存的原理是<code>PhantomReference（虚引用）</code>，虚引用必须和引用队列（ReferenceQueue）一起使用，一般用于实现追踪垃圾收集器的回收动作。虚引用不会影响 JVM 是否要 GC 这个对象的判断，当 GC 某个对象时，如果有此对象上还有虚引用，会将虚引用对象插入 <code>ReferenceQueue</code> 队列。<br>
+对于 Cleaner 对象，当 GC 时发现它除了虚引用外已不可达（持有它的 DirectByteBuffer 对象在 GC 中被回收了，此时，只有 Cleaner 对象唯一保存了堆外内存的数据），就会把它放进 Reference 类的 <code>pending</code> 静态变量里。<br>
+PhantomReference 的父类是 Reference，Reference 类内部的 static 块会启动 ReferenceHandler 线程，线程优先级很高，这个线程是用来处理 JVM 在 GC 过程中交接过来的 reference（<code>pending</code>）。<br>
+下面是该线程的大致执行流程：<br>
+ReferenceHandler.run() 死循环处理 JVM 提交的 reference，如果是 Clearner 则调用其 clean 方法<br>
+-&gt; Cleaner.clean<br>
+-&gt; Cleaner.remove(Cleaner) 首先将 Cleaner 从链表中移除，以便 Cleaner 自身可被 GC 回收掉<br>
+-&gt; DirectByteBuffer.Deallocator.run()<br>
+-&gt; Unsafe.freeMemory 释放分配的堆外内存<br>
+-&gt; Bits.unreserveMemory 更新 Bits.totalCapacity</p>
+<h4 id="手动释放堆外内存"><a class="header-anchor" href="#手动释放堆外内存">¶</a>手动释放堆外内存</h4>
+<p>如前面所述，可以通过编码调用 DirectByteBuffer 的 cleaner 的 clean 方法来释放堆外内存。但需要注意：cleaner 是 private 访问权限，所以，需使用反射来实现。</p>
+<h4 id="mappedbytebuffer"><a class="header-anchor" href="#mappedbytebuffer">¶</a>MappedByteBuffer</h4>
+<p>MappedByteBuffer 是用来访问大文件的，其实是利用操作系统的 mapedfile 的机制，把一个大文件映射到物理内存，然后用户进程像访问内存一样访问文件，背后操作系统会把磁盘文件映射到内存中来，这是操作系统预估你想存取哪块提前为你准备好的。</p>
+<h3 id="本地方法栈"><a class="header-anchor" href="#本地方法栈">¶</a>本地方法栈</h3>
+<p>访问本地方式时使用到的栈，为本地方法服务，与虚拟机栈一样，本地方法区域也会抛出 StackOverflowError 和 OutOfMemoryError 异常。</p>
+<h2 id="方法执行引擎"><a class="header-anchor" href="#方法执行引擎">¶</a>方法执行引擎</h2>
+<p>用户所编写的程序如何表现正确的行为需要执行引擎的支持，执行引擎执行字节码指令，完成程序的功能。</p>
+<h2 id="本地方法接口-jni"><a class="header-anchor" href="#本地方法接口-jni">¶</a>本地方法接口（JNI）</h2>
+<p>本地方法接口称为 JNI，是为可移植性准备的。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li>《Hotspot 实战》</li>
+<li><a href="https://blog.csdn.net/column/details/14851.html" target="_blank" rel="noopener">GC 性能优化</a></li>
+<li><a href="https://blog.csdn.net/lirenzuo/column/info/17179" target="_blank" rel="noopener">JVM 菜鸟进阶高手之路</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jvms/se8/html/index.html" target="_blank" rel="noopener">The Java® Virtual Machine Specification</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jls/se8/html/index.html" target="_blank" rel="noopener">The Java® Language Specification</a></li>
+<li><a href="https://www.jianshu.com/p/7f6832d61880" target="_blank" rel="noopener">Java 和操作系统交互细节</a></li>
 </ol>
 
           
@@ -2788,694 +3476,6 @@ JVM 进行 GC 时，需要对相应堆分区的已用内存进行遍历；假如
 方法调用栈深度超出了虚拟机的允许范围。</li>
 <li>栈引起的OOM<br>
 虚拟机在扩展栈时无法申请到足够空间。</li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/ad5b98b9.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/ad5b98b9.html" itemprop="url">JVM 的结构</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
-                2019-10-05
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  5.5k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  19 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<p><img src="https://tallate.top/imgs/JVM/JVM%E7%BB%93%E6%9E%84.png" alt="JVM结构" title="JVM结构"><br>
-JVM 特指用于运行由 Java 虚拟机规范规定的字节码的运行时系统，它具有以下特征：</p>
-<ul>
-<li>平台无关性<br>
-JVM 本身是平台相关的，只是对不同平台都有实现，所以我们编译成的字节码才可以在各个平台上执行，因此称 Java 平台无关指的是字节码是平台无关的。</li>
-<li>高度抽象<br>
-JVM 提供了编译器、类加载、动态内存管理、线程等一套工具，作为虚拟机，程序经编译后运行在 JVM 上时，几乎完全不必担心平台的兼容性。<br>
-本地方法接口只是作为一个扩展功能提供，并不是必须的，实际上除了对性能严格要求的场合，本地方法一般不会被使用。</li>
-</ul>
-<blockquote>
-<p>编译器严格来说和虚拟机并无太大关联，JVM 可以供 Groovy、Kotlin、Scala 等一系列语言作为运行时环境，</p>
-</blockquote>
-<p>下图表示 JVM 的系统结构，包括与 Class 文件打交道的类装载系统、进行运行时数据管理的系统、进行方法执行的系统、本地方法接口（JNI）和本地方法库这些部分。</p>
-<h3 id="类装载子系统"><a class="header-anchor" href="#类装载子系统">¶</a>类装载子系统</h3>
-<p>类装载子系统负责查找并装载类型，类装载器主要包含两种：<strong>启动类装载器（Java 虚拟机实现的一部分）<strong>和</strong>用户自定义类装载器（Java 程序的一部分）</strong>。</p>
-<p>启动类装载器 – Java 虚拟机必须有一个启动类装载器，用于装载受信任的类，如 Java API 的 class 文件。<br>
-用户自定义类装载器 – 继承自 ClassLoader 类，ClassLoader 的如下四个方法，是通往 Java 虚拟机的通道。</p>
-<ul>
-<li>protected final Class defineClass(String name, byte data[], int offset, int length); // data 为二进制的 Java Class 文件数据，表示一个新的可用类型，之后把这个类型导入到方法区中</li>
-<li>protected final Class defineClass(String name, byte data[], int offset, int length, ProtectionDomain protectionDomain);</li>
-<li>protected final Class findSystemClass(String name); // 参数为全限定名，通过类装载器进行装载</li>
-<li>protected final void resolveClass(Class c); // 参数为 Class 实例，完成连接初始化操作</li>
-</ul>
-<p>类装载子系统负责<strong>定位和导入二进制 class 文件，并且保证导入类的正确性，为类变量分配并初始化内存，以及帮助解析符号引用</strong>。类装载器必须严格按照如下顺序进行类的装载。</p>
-<ol>
-<li>装载 – 查找并装载类型的二进制数据</li>
-<li>连接 – 执行验证，准备，以及解析（可选），连接分为如下三个步骤<br>
-验证 – 确保被导入类型的正确性<br>
-准备 – 为类变量（static）分配内存，并将其初始化为默认值<br>
-解析 – 把类型中的符号引用转换为直接引用</li>
-<li>初始化 – 把类变量初始化为正确初始值</li>
-</ol>
-<h2 id="内存管理系统"><a class="header-anchor" href="#内存管理系统">¶</a>内存管理系统</h2>
-<h3 id="方法区"><a class="header-anchor" href="#方法区">¶</a>方法区</h3>
-<p>方法区是线程共享的内存区域，用于存储已被虚拟机加载的类信息、常量、静态变量、即时编译器编译后的代码等数据，当方法区无法满足内存分配需求时，将抛出 OutOfMemoryError。<br>
-类信息包括：</p>
-<ol>
-<li>类型全限定名。</li>
-<li>类型的直接超类的全限定名（除非这个类型是 java.lang.Object，它没有超类）。</li>
-<li>类型是类类型还是接口类型。</li>
-<li>类型的访问修饰符（public、abstract、final 的某个子集）。</li>
-<li>任何直接超接口的全限定名的有序列表。</li>
-<li>类型的常量池。</li>
-<li>字段信息。</li>
-<li>方法信息。</li>
-<li>除了常量以外的所有类（静态）变量。</li>
-<li>一个到类 ClassLoader 的引用。</li>
-<li>一个到 Class 类的引用。</li>
-</ol>
-<p>着重介绍<strong>常量池</strong>，虚拟机必须要为每个被装载的类型维护一个常量池。常量池就是该类型所用常量的一个有序集合，包括直接常量和对其他类型、字段和方法的符号引用。它在 Java 程序的<strong>动态连接</strong>（运行时解析字节码中使用到的符号引用）中起着核心作用。<br>
-除了以上结构外，JVM 的实现者还可以添加一些其他的数据结构，如方法表：对每个加载的非抽象类的类信息中都添加一个方法表，方法表是一组对类实例方法的直接引用——包括从父类继承的方法，JVM 可以通过方法表快速找到实例方法。</p>
-<blockquote>
-<p>C++中 virtual 函数是通过虚函数表实现的，Java 中所有方法都是 virtual 的，因此也就不需要再标注虚拟了，正像 Java 虽然宣称没有指针，但是 Java 里其实全是指针。Java 中类似的检查机制不少，这体现了 Java 的一种设计思想：始终将安全放在效率之上。</p>
-</blockquote>
-<h3 id="元空间"><a class="header-anchor" href="#元空间">¶</a>元空间</h3>
-<p>JDK1.8 的一大改动是方法区变成了元空间，其实就是放开了类空间的大小，容量取决于是 32 位或是 64 位操作系统的可用虚拟内存大小，32 位系统本地最多有 4G 虚拟内存空间，物理内存取决于操作系统的配置。新参数<code>MaxMetaspaceSize</code>用于限制本地内存分配给类元数据的大小，如果没有指定这个参数，元空间会在运行时根据需要动态调整，大小随意。对于没用的类及类加载器的垃圾回收将在元数据使用达到 MaxMetaspaceSize 参数的设定值时进行。</p>
-<h3 id="堆"><a class="header-anchor" href="#堆">¶</a>堆</h3>
-<p>一个虚拟机实例只对应一个堆空间，堆是<strong>线程共享</strong>的，当然还有可能会划分出多个线程私有的分配缓冲区（<strong>TLAB</strong>）。堆空间是存放对象实例的地方，几乎所有对象实例都在这里分配。堆也是<strong>垃圾收集器</strong>管理的主要区域，因此也被称为“GC 堆”。<br>
-堆可以处于物理上不连续的内存空间中，只要逻辑上连续即可，就像磁盘空间一样。<br>
-当堆中没有足够的内存进行对象实例分配时，并且堆也无法扩展时，会抛出 OutOfMemoryError 异常。<br>
-对 OOM 的排查通常是先通过内存映像分析工具对 Dump 出来的堆转储快照进行分析，重点是确认内存中的对象是否是必要的，也就是要先分清楚到底是出现了<strong>内存泄漏</strong>还是<strong>内存溢出</strong>。</p>
-<ul>
-<li>如果是内存泄漏，可进一步通过工具查看泄露对象到 GC Roots 的引用链。于是就能找到泄露对象的类型信息及 GC Roots 引用链的信息，就可以比较准确地定位出泄露代码的位置。</li>
-<li>如果不存在泄露，就是内存中的对象确实都还必须存活着，那就应当检查虚拟机的堆参数（-Xmx 与 -Xms），与机器物理内存对比看是否还可以调大，从代码上检查是否存在某些对象生命周期过长、持有状态时间过长的情况，尝试减少程序运行期的内存消耗。</li>
-</ul>
-<h3 id="程序计数器"><a class="header-anchor" href="#程序计数器">¶</a>程序计数器</h3>
-<p>每个线程拥有自己的程序计数器，线程之间的程序计数器互不影响，在任何一个确定的时刻，一个处理器（对于多核处理器来说是一个内核）都只会执行一条线程中的指令。<br>
-PC 寄存器的内容总是下一条将被执行指令的&quot;地址&quot;，这里的&quot;地址&quot;可以是一个本地指针，也可以是在方法字节码中相对于该方法起始指令的偏移量。</p>
-<ul>
-<li>如果该线程正在执行一个本地方法，则程序计数器内容为 undefined。</li>
-<li>此区域在 Java 虚拟机规范中没有规定任何 OutOfMemoryError 情况的区域。</li>
-</ul>
-<h3 id="虚拟机栈"><a class="header-anchor" href="#虚拟机栈">¶</a>虚拟机栈</h3>
-<p>我们一般会把 Java 内存区分为堆内存和栈内存，而所指的“栈”就是这里的虚拟机栈，或者说是虚拟机栈中局部变量表部分。<br>
-Java 栈也是线程私有的，虚拟机只会对栈进行两种操作，以帧为单位的<strong>入栈</strong>和<strong>出栈</strong>。每个方法在执行时都会创建一个<strong>栈帧</strong>，并入栈，成为当前帧，每一个方法从调用直至执行完成的过程，就对应着一个栈帧在虚拟机栈中从入栈到出栈的过程。栈帧由三部分组成：局部变量区、操作数栈、帧数据区。<br>
-<strong>局部变量区</strong>被组织为一个以字长为单位、从 0 开始计数的数组。字节码指令通过从 0 开始的索引来使用其中的数据。类型为 int、float、reference 和 returnAddress 的值在数组中只占据一项，而类型为 byte、short 和 char 的值存入时都会转化为 int 类型，也占一项，而 long、double 则连续占据两项。<br>
-<strong>操作数栈</strong>也常被称为操作栈，它是一个后入先出栈。当一个方法刚刚执行的时候，这个方法的操作数栈是空的，在方法执行的过程中，会有各种字节码指令向操作数栈中写入和提取值，也就是入栈与出栈操作。在使用操作数栈时需要注意实例方法和类方法：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Example &#123;</span><br><span class="line">    // 类方法</span><br><span class="line">    public static int classMethod(int i, long l, float f, double d, Object o, byte b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    // 实例方法</span><br><span class="line">    public int instanceMethod(char c, double d, short s, boolean b) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>类方法和实例方法栈帧结构有所不同，从图中可以看到它们之间的区别：</p>
-<ul>
-<li>类方法帧里没有隐含的 this 引用，而实例方法帧中会隐含一个 this 引用；</li>
-</ul>
-<p>并且注意：</p>
-<ul>
-<li>byte,char,short,boolean 类型存入局部变量区的时候都会被转化成 int 类型值，当被存回堆或者方法区时，才会转化回原来的类型；</li>
-<li>returnAddress 类型数据是指向字节码的指针（方法区的字节码指令），它只存在于字节码层面，与编程语言无关，我们在 Java 语言中是不会直接与 returnAddress 类型数据打交道的。</li>
-</ul>
-<blockquote>
-<p>每个线程所持有的程序计数器（pc）实际上就是 returnAddress 类型的数据，当线程执行 native 方法时，pc 中的值为 undefied。</p>
-</blockquote>
-<ul>
-<li>操作数栈被组织成一个以字长为单位的数组，它是通过标准的栈操作——即入栈和出栈来进行访问，而不是通过索引访问。入栈和出栈也会存在类型的转化；</li>
-<li>当一个方法执行完毕之后，要返回之前调用它的地方，因此在栈帧中必须保存一个方法返回地址。方法退出的过程实际上等同于把当前栈帧出栈，因此退出时可能执行的操作有：恢复上层方法的局部变量表和操作数栈，把返回值(如果有的话)压入调用都栈帧的操作数栈中，调用 PC 计数器的值以指向方法调用指令后面的一条指令等。</li>
-<li>每个栈帧都包含一个指向运行时常量池中该栈帧所属方法的引用，持有这个引用是为了支持方法调用过程中的动态连接。在 Class 文件的常量池中存有大量的符号引用，字节码中的方法调用指令就以常量池中指向方法的符号引用为参数。这些符号引用一部分会在类加载阶段或第一次使用的时候转化为直接引用，这种转化称为静态解析。另外一部分将在每一次的运行期期间转化为直接引用，这部分称为动态连接。</li>
-</ul>
-<p><strong>栈数据区</strong>存放一些用于支持常量池解析、正常方法返回以及异常派发机制的信息。即将常量池的符号引用转化为直接地址引用、恢复发起调用的方法的帧进行正常返回，发生异常时转交异常表进行处理。</p>
-<ul>
-<li>虚拟机规范允许具体的虚拟机实现增加一些规范里没有描述的信息到栈帧中，例如与高度相关的信息，这部分信息完全取决于具体的虚拟机实现。在实际开发中，一般会把动态连接，方法返回地址与其它附加信息全部归为一类，称为<strong>栈帧信息</strong>。</li>
-</ul>
-<p>在 Java 虚拟机规范中，规定了两种异常状况：如果线程请求的栈深度大于虚拟机所允许的深度，将抛出 StackOverflowError 异常；如果虚拟机栈可以动态扩展，当扩展时无法申请到足够的内存，就会抛出 OutOfMemoryError 异常。</p>
-<p>系统分配给每个进程的内存是有限制的，除去 Java 堆、方法区、程序计数器，如果虚拟机进程本身耗费的内存不计算在内，剩下内存就由虚拟机栈和本地方法栈“瓜分”了。每个线程分配到的栈容量越大，可以建立的线程数量自然就越少，建立线程时就越容易把剩下的内存耗尽，出现<strong>虚拟机栈溢出</strong>的情况。</p>
-<ul>
-<li>如果线程请求的栈深度大于虚拟机所允许的最大深度，将抛出 StackOverflowError 异常，出现 StackOverflowError 异常时有错误栈可以阅读，栈深度在大多数情况下达到 1000~2000 完全没有问题，对于正常的方法调用（包括递归），这个深度在一半情况下完全够用。</li>
-<li>如果虚拟机在扩展栈（建立更多的线程）时无法申请到足够的内存空间，则抛出 OutOfMemoryError 异常，在不能减少线程数或者更换 64 位虚拟机的情况下，就只能通过减少最大堆和减少栈容量来换取更多的线程。</li>
-</ul>
-<p>一般可以认为 Java 中的一切变量都是引用，实际的对象存储在堆中，但是基础类型比较特殊，它们可以直接使用操作符进行算数运算，不过基础类型也带来了一些问题，比如装箱拆箱过程中可能产生空指针异常。Java 中引入基础类型的动机应该是性能与空间利用率，毕竟使用引用时还得通过<strong>指针碰撞</strong>或<strong>空闲列表</strong>方法（根据垃圾收集器不同而不同）来找到实际对象，而且基础类型本身占用的空间不多，如果用引用势必占用的空间会加倍。<br>
-基础类型并不是都分配在栈上，具体有以下几种情况：</p>
-<ol>
-<li>在方法中声明的变量，即该变量是局部变量，每当程序调用方法时，系统都会为该方法建立一个方法栈，其所在方法中声明的变量就放在方法栈中，当方法结束系统会释放方法栈，其对应在该方法中声明的变量随着栈的销毁而结束，这就局部变量只能在方法中有效的原因<br>
-在方法中声明的变量可以是基本类型的变量，也可以是引用类型的变量。
-<ul>
-<li>当声明是基本类型的变量的时，其变量名及值（变量名及值是两个概念）是放在方法栈中</li>
-<li>当声明的是引用变量时，所声明的变量（该变量实际上是在方法中存储的是内存地址值）是放在方法的栈中，该变量所指向的对象是放在堆类存中的。</li>
-</ul>
-</li>
-<li>在类中声明的变量是成员变量，也叫全局变量，放在堆中的（因为全局变量不会随着某个方法执行结束而销毁）。<br>
-同样在类中声明的变量即可是基本类型的变量 也可是引用类型的变量
-<ul>
-<li>当声明的是基本类型的变量其变量名及值是放在堆中的</li>
-<li>引用类型时，其声明的变量仍然会存储一个内存地址值，该内存地址值指向所引用的对象。引用变量名和对应的对象仍然存储在相应的堆中</li>
-</ul>
-</li>
-</ol>
-<h3 id="堆外内存"><a class="header-anchor" href="#堆外内存">¶</a>堆外内存</h3>
-<h4 id="一个例子"><a class="header-anchor" href="#一个例子">¶</a>一个例子</h4>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 分配一块1024字节的堆外内存</span><br><span class="line">ByteBuffer buffer = ByteBuffer.allocateDirect(1024);</span><br><span class="line">System.out.println(buffer.capacity());</span><br><span class="line">buffer.putInt(0, 2018);</span><br><span class="line">System.out.println(buffer.getInt(0));</span><br></pre></td></tr></table></figure>
-<h4 id="为什么要使用堆外内存"><a class="header-anchor" href="#为什么要使用堆外内存">¶</a>为什么要使用堆外内存</h4>
-<p>主要是因为堆外内存在 IO 操作方面的优势，举一个例子：在通信中，将存在于堆内存中的数据 flush 到远程时，需要首先将堆内存中的数据拷贝到堆外内存中，然后再写入 Socket 中；如果直接将数据存到堆外内存中就可以避免上述拷贝操作，提升性能。类似的例子还有读写文件。<br>
-但是需要注意的是，直接访问堆外内存并不会比访问 Java 堆更快：<a href="https://mp.weixin.qq.com/s/njCKlx8mBh6kSP2lC9mT4g" target="_blank" rel="noopener">哪个更快：Java 堆还是本地内存</a>。堆外内存更适合用于操作大块的数据（&gt;2G）、可以直接使用操作系统提供的本地 IO 进行操作。</p>
-<h4 id="可用的堆外内存额度"><a class="header-anchor" href="#可用的堆外内存额度">¶</a>可用的堆外内存额度</h4>
-<ol>
-<li>可以通过设定 <code>-XX:MaxDirectMemorySize</code> 来显式指定最大的堆外内存。</li>
-<li>设定 <code>-Dsun.nio.MaxDirectMemorySize</code> 来显式指定：如果该属性为-1，则取<code>directMemory = Runtime.getRuntime().maxMemory()</code>，即 JVM 运行时的最大内存；否则，如果指定这个属性等于-1，则默认为 64M。<br>
-如果是 JDK8，具体代码见<code>VM.saveAndRemoveProperties()</code>，如果是 JDK8 之前，则代码见<code>VM.maxDirectMemory()</code>。<br>
-另外，<code>Runtime.getRuntime().maxMemory()</code>是一个 native 方法，HotSpot 中对应的 C++代码如下所示：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jlong JNICALL</span><br><span class="line">Java_java_lang_Runtime_maxMemory(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">    return JVM_MaxMemory();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">JVM_ENTRY_NO_ENV(jlong, JVM_MaxMemory(void))</span><br><span class="line">  JVMWrapper(&quot;JVM_MaxMemory&quot;);</span><br><span class="line">  size_t n = Universe::heap()-&gt;max_capacity();</span><br><span class="line">  return convert_size_t_to_jlong(n);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
-<p>其中 max_capacity() 实际返回的是 –Xmx 设置值减去一个 survivor space 的预留区大小，与堆内大小存很接近。</p>
-<h4 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h4>
-<ol>
-<li>分配<br>
-ByteBuffer.allocateDirect<br>
-DirectByteBuffer(int)<br>
--&gt; Bits.reserveMemory 在系统中保存总分配内存（按页分配）的大小和实际内存的大小<br>
--&gt; Bits.tryReserveMemory 判断系统内存（堆外内存）是否足够，Bits 有一个全局 totalCapacity 变量记录当前已经使用的堆外内存量<br>
--&gt; JavaLangRefAccess.tryHandlePendingReference 非阻塞，将已经被 JVM 垃圾回收的 DirectBuffer 对象的堆外内存释放。<br>
--&gt; System.gc 触发一次 FullGC，<code>System.gc</code>并不能保证 FullGC 被马上执行，如果设置了<code>-XX:+DisableExplicitGC</code>则这种显式的 GC 会被禁用<br>
--&gt; Bits.tryReserveMemory 为了等待 FullGC 释放足够的空间，之后还会重试最多 9 次 tryReserveMemory，每次重试会 sleep 1, 2, 4, 8, 16, 32, 64, 128, 256ms，也就是说最多可以等 0.5s<br>
--&gt; throw new OutOfMemoryError 分配空间失败，抛出 OOM 异常<br>
--&gt; Unsafe.allocateMemory native 方法，通过 JNI 调用 C++函数分配堆外内存，并返回内存基地址<br>
--&gt; Unsafe.setMemory(base, size, (byte) 0) 将分配的内存清零<br>
--&gt; Cleaner.create 创建一个 Cleaner 用于释放堆空间</li>
-<li>释放<br>
-Cleaner.create Cleaner 内部维护了一个 static 的 Cleaner 对象的链表，create 调用创建了一个 Cleaner 对象并将其加入到该链表中<br>
--&gt; new Cleaner(DirectByteBuffer, new Deallocator(base, size, cap))</li>
-</ol>
-<p>Cleaner 实现 GC 回收堆外内存的原理是<code>PhantomReference（虚引用）</code>，虚引用必须和引用队列（ReferenceQueue）一起使用，一般用于实现追踪垃圾收集器的回收动作。虚引用不会影响 JVM 是否要 GC 这个对象的判断，当 GC 某个对象时，如果有此对象上还有虚引用，会将虚引用对象插入 <code>ReferenceQueue</code> 队列。<br>
-对于 Cleaner 对象，当 GC 时发现它除了虚引用外已不可达（持有它的 DirectByteBuffer 对象在 GC 中被回收了，此时，只有 Cleaner 对象唯一保存了堆外内存的数据），就会把它放进 Reference 类的 <code>pending</code> 静态变量里。<br>
-PhantomReference 的父类是 Reference，Reference 类内部的 static 块会启动 ReferenceHandler 线程，线程优先级很高，这个线程是用来处理 JVM 在 GC 过程中交接过来的 reference（<code>pending</code>）。<br>
-下面是该线程的大致执行流程：<br>
-ReferenceHandler.run() 死循环处理 JVM 提交的 reference，如果是 Clearner 则调用其 clean 方法<br>
--&gt; Cleaner.clean<br>
--&gt; Cleaner.remove(Cleaner) 首先将 Cleaner 从链表中移除，以便 Cleaner 自身可被 GC 回收掉<br>
--&gt; DirectByteBuffer.Deallocator.run()<br>
--&gt; Unsafe.freeMemory 释放分配的堆外内存<br>
--&gt; Bits.unreserveMemory 更新 Bits.totalCapacity</p>
-<h4 id="手动释放堆外内存"><a class="header-anchor" href="#手动释放堆外内存">¶</a>手动释放堆外内存</h4>
-<p>如前面所述，可以通过编码调用 DirectByteBuffer 的 cleaner 的 clean 方法来释放堆外内存。但需要注意：cleaner 是 private 访问权限，所以，需使用反射来实现。</p>
-<h4 id="mappedbytebuffer"><a class="header-anchor" href="#mappedbytebuffer">¶</a>MappedByteBuffer</h4>
-<p>MappedByteBuffer 是用来访问大文件的，其实是利用操作系统的 mapedfile 的机制，把一个大文件映射到物理内存，然后用户进程像访问内存一样访问文件，背后操作系统会把磁盘文件映射到内存中来，这是操作系统预估你想存取哪块提前为你准备好的。</p>
-<h3 id="本地方法栈"><a class="header-anchor" href="#本地方法栈">¶</a>本地方法栈</h3>
-<p>访问本地方式时使用到的栈，为本地方法服务，与虚拟机栈一样，本地方法区域也会抛出 StackOverflowError 和 OutOfMemoryError 异常。</p>
-<h2 id="方法执行引擎"><a class="header-anchor" href="#方法执行引擎">¶</a>方法执行引擎</h2>
-<p>用户所编写的程序如何表现正确的行为需要执行引擎的支持，执行引擎执行字节码指令，完成程序的功能。</p>
-<h2 id="本地方法接口-jni"><a class="header-anchor" href="#本地方法接口-jni">¶</a>本地方法接口（JNI）</h2>
-<p>本地方法接口称为 JNI，是为可移植性准备的。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li>《Hotspot 实战》</li>
-<li><a href="https://blog.csdn.net/column/details/14851.html" target="_blank" rel="noopener">GC 性能优化</a></li>
-<li><a href="https://blog.csdn.net/lirenzuo/column/info/17179" target="_blank" rel="noopener">JVM 菜鸟进阶高手之路</a></li>
-<li><a href="https://docs.oracle.com/javase/specs/jvms/se8/html/index.html" target="_blank" rel="noopener">The Java® Virtual Machine Specification</a></li>
-<li><a href="https://docs.oracle.com/javase/specs/jls/se8/html/index.html" target="_blank" rel="noopener">The Java® Language Specification</a></li>
-<li><a href="https://www.jianshu.com/p/7f6832d61880" target="_blank" rel="noopener">Java 和操作系统交互细节</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e39c963b.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e39c963b.html" itemprop="url">JVM 源码分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-10-05T20:56:12+08:00">
-                2019-10-05
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.9k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  7 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="搭建源码调试环境"><a class="header-anchor" href="#搭建源码调试环境">¶</a>搭建源码调试环境</h2>
-<p>源码下载地址：<a href="https://github.com/unofficial-openjdk/openjdk" target="_blank" rel="noopener">unofficial-openjdk/openjdk</a></p>
-<ol>
-<li><a href="https://segmentfault.com/a/1190000008346240" target="_blank" rel="noopener">OpenJDK9 Hotspot Ubuntu 编译和调试</a><br>
-mac 环境下搭建：<a href="https://www.jianshu.com/p/ee7e9176632c" target="_blank" rel="noopener">mac 下编译 openjdk1.9 及集成 clion 动态调试</a></li>
-</ol>
-<h3 id="遇到的问题"><a class="header-anchor" href="#遇到的问题">¶</a>遇到的问题</h3>
-<ol>
-<li>g++和 gcc 版本不匹配</li>
-<li>一些 Warning 被当作错误报错了<br>
-大部分 Warning 不会影响最终结果，可以关掉：<a href="https://blog.csdn.net/desiyonan/article/details/80802066" target="_blank" rel="noopener">https://blog.csdn.net/desiyonan/article/details/80802066</a></li>
-</ol>
-<h3 id="阅读"><a class="header-anchor" href="#阅读">¶</a>阅读</h3>
-<ol>
-<li><a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">如何找 JDK 中 native 代码的位置？</a></li>
-<li><a href="http://rednaxelafx.iteye.com/blog/1549577" target="_blank" rel="noopener">OpenJDK 源码阅读导航</a></li>
-</ol>
-<h3 id="编译-openjdk"><a class="header-anchor" href="#编译-openjdk">¶</a>编译 openjdk</h3>
-<ol>
-<li>下载<br>
-代码的下载见 building 文档，使用一个 Mercurial 工具进行源码控制。</li>
-<li>准备工具<br>
-找到这种开放源码的软件，第一步当然是查看 README 了，openjdk 的 README 中告知了 building 文档的位置，相当详细。<br>
-硬件要求<br>
-操作系统要求<br>
-编译器要求，需要 gcc 和 clang，他们的区别见<a href="https://www.zhihu.com/question/20235742" target="_blank" rel="noopener">Clang 比 GCC 好在哪里？</a><br>
-JDK 要求，虽然挺矛盾的，但是一部分模块是用 JDK 写的，所以 Java 编译器也是需要的，一般编译 JDK8 时需要的 JDK 版本是 7 就够了，但是 openjdk 需要 8 才行（不知道为什么），这个 jdk 可以直接使用 apt-get 安装。<br>
-外部库要求，<br>
-其他工具，make、bash、autoconf</li>
-<li>configure<br>
-准备所有配置文件</li>
-<li>make<br>
-编译源码，默认下只会编译一些必要的部分，如果编译成功可以在 openjdk/build 文件夹下找到目标文件，我的成品所在目录是<code>${openjdk}/build/linux-x86_64-normal-server-release/jdk/bin</code>。</li>
-<li>run test<br>
-openjdk 使用了一个叫 jtreg 的测试框架，文档有<a href="http://openjdk.java.net/jtreg/build.html" target="_blank" rel="noopener">这里</a>还有<a href="https://adoptopenjdk.gitbooks.io/adoptopenjdk-getting-started-kit/content/en/intermediate-steps/how_to_use_jtreg_-_java_regression_test_harness.html" target="_blank" rel="noopener">这里</a>，我设置了一个愚蠢的环境变量 JAVA18HOME 然后尝试着去<code>make -C make</code>编译它，但是还是提示缺少什么<code>org.testing</code>，可能还有什么依赖库没装，这个框架可能是给 oracle 的内部员工或者外星人用的吧？</li>
-</ol>
-<h3 id="定位-object-的-native-方法"><a class="header-anchor" href="#定位-object-的-native-方法">¶</a>定位 Object 的 native 方法</h3>
-<ol>
-<li>
-<p>搜索“Object”打开 jdk 下的 Object.c 文件<br>
-看到下面这个方法数组：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static JNINativeMethod methods[] = &#123;</span><br><span class="line">    &#123;&quot;hashCode&quot;,    &quot;()I&quot;,                    (void *)&amp;JVM_IHashCode&#125;,</span><br><span class="line">    &#123;&quot;wait&quot;,        &quot;(J)V&quot;,                   (void *)&amp;JVM_MonitorWait&#125;,</span><br><span class="line">    &#123;&quot;notify&quot;,      &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotify&#125;,</span><br><span class="line">    &#123;&quot;notifyAll&quot;,   &quot;()V&quot;,                    (void *)&amp;JVM_MonitorNotifyAll&#125;,</span><br><span class="line">    &#123;&quot;clone&quot;,       &quot;()Ljava/lang/Object;&quot;,   (void *)&amp;JVM_Clone&#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>然后搜索“JVM_MonitorWait”打开 hotspot 下的 jvm.cpp 文件<br>
-里面有下面这条语句：</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">JVM_ENTRY(void, JVM_MonitorWait(JNIEnv* env, jobject handle, jlong ms))</span><br><span class="line">  JVMWrapper(&quot;JVM_MonitorWait&quot;);</span><br><span class="line">  Handle obj(THREAD, JNIHandles::resolve_non_null(handle));</span><br><span class="line">  JavaThreadInObjectWaitState jtiows(thread, ms != 0);</span><br><span class="line">  if (JvmtiExport::should_post_monitor_wait()) &#123;</span><br><span class="line">    JvmtiExport::post_monitor_wait((JavaThread *)THREAD, (oop)obj(), ms);</span><br><span class="line"></span><br><span class="line">    // The current thread already owns the monitor and it has not yet</span><br><span class="line">    // been added to the wait queue so the current thread cannot be</span><br><span class="line">    // made the successor. This means that the JVMTI_EVENT_MONITOR_WAIT</span><br><span class="line">    // event handler cannot accidentally consume an unpark() meant for</span><br><span class="line">    // the ParkEvent associated with this ObjectMonitor.</span><br><span class="line">  &#125;</span><br><span class="line">  ObjectSynchronizer::wait(obj, ms, CHECK);</span><br><span class="line">JVM_END</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>我们暂时不知道这几个宏到底什么意思，不过核心大概是最后的那个<code>ObjectSynchronizer::wait</code>吧，这个类定义在 C++文件 synchronizer.cpp 中。</p>
-<ol>
-<li>综上所述<br>
-可以看到如果一个类定义了 native 方法，那么基本可以在 jdk 目录下找到该类的定义（<strong>类所在包结构和其在 openjdk 中的定义的路径有什么关联？？？</strong>），至于其实现，从<a href="https://www.zhihu.com/question/54621747" target="_blank" rel="noopener">知乎</a>上可以找到一段说明，我不知道对错：</li>
-</ol>
-<blockquote>
-<p>如果间接调用了 hotspot 的实现（jvm 会以动态库的形式被加载，prims 文件夹里定义了 hotspot 与其他模块的接口及其实现），那么从 hotspot/src/share/vm/prims/jvm.cpp 中可以找到 JVM_Xxx 函数的实现。</p>
-</blockquote>
-<h3 id="为-object-类添加-native-方法-nop"><a class="header-anchor" href="#为-object-类添加-native-方法-nop">¶</a>为 Object 类添加 native 方法 nop()</h3>
-<p>根据<a href="http://www.infoq.com/cn/articles/Introduction-to-HotSpot" target="_blank" rel="noopener">这里</a>的说法，openjdk 有两种方式来定义 native 函数，一种是按一种特别的方式命名函数，这样加载后就可以和 Java 中的 native 方法对上，另一种是使用 registerNatives()的方式，观察 Object.c 文件可以发现，这种方法先定义了一个 JNINativeMethod 类型的静态数组来做 Java 方法和本地函数的对应，然后使用 JNI 方法注册了一个叫 Java_java_lang_Object_registerNatives 的本地方法来实施这种映射。<br>
-当使用第一种方式在 Object.c 中定义一个特殊命名的 nop()函数时，编译不通过，报错显示<code>Incompatible definition of java.lang.Object</code>，我定义的 nop 函数：<br>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_java_lang_Object_nop(JNIEnv *env, jobject this)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>然后下面是我使用第二种方式定义 nop()函数的过程（虽然也不行）：</p>
-<ol>
-<li>修改 Object.c<br>
-methods 数组中添加一行： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;nop&quot;, &quot;()V&quot;, (void*)&amp;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>这种定义方法参照了<a href="http://blog.csdn.net/bigapple88/article/details/6756204" target="_blank" rel="noopener">这里</a></p>
-<ol>
-<li>修改 Object.java<br>
-其所在目录为<code>${openjdk}/jdk/src/java.base/share/classes/java/lang/Object.java</code>，为其添加一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">*</span><br><span class="line">*/</span><br><span class="line">@HotSpotIntrinsicCandidate</span><br><span class="line">public native void nop();</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>为什么要加注释？为什么不能加 final？</p>
-<ol>
-<li>重编译 make<br>
-虽然只是添加了一个方法，但是几乎所有包下的都要重新编译了，所以编译过程会稍微有点长。</li>
-<li>测试<br>
-使用<code>javap</code>命令反编译可以看到 Object 类中确实已经有了一个 nop()方法： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javap $&#123;openjdk&#125;/build/linux-x86_64-normal-server-release/jdk/modules/java.base/java/lang/Object.class</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p><strong>但是实际编译时却报错了，错误大概是Object类不兼容？？？</strong></p>
-<ol>
-<li>native 方法的实现机制<br>
-参见 JNI 原理。</li>
-</ol>
-<h2 id="jni"><a class="header-anchor" href="#jni">¶</a>JNI</h2>
-<h3 id="生成-h头文件"><a class="header-anchor" href="#生成-h头文件">¶</a>生成.h头文件</h3>
-<p>使用 javah 命令，在项目的 src 目录下运行，其中-d 指定目标目录，-jni 是默认选项，生成 jni 头文件，可以加-classpath 指定 class 路径，但必须是绝对路径</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javah -d ../jni -jni com.tallate.HelloJNI</span><br></pre></td></tr></table></figure>
-<p>接下来编译.c 文件，-c 可以生成目标文件（未链接），-I 可以指定#include 查找的目录，不然 jni 有些头文件找不到</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot;  HelloJNI.c</span><br></pre></td></tr></table></figure>
-<p><a href="http://xn--4gqva8gy93g2zbv2i9m2c6jv.so" target="_blank" rel="noopener">接下来编译成一个.so</a> 链接库</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc HelloJNI.c -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include&quot; -I &quot;/usr/lib/jvm/java-8-openjdk-amd64/include/linux&quot; -fPIC -shared -o libhello.so</span><br></pre></td></tr></table></figure>
-<p>接下来可以在Java中加载</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 在linux下动态库必须有前缀lib</span><br><span class="line">System.loadLibrary(&quot;hello&quot;);</span><br></pre></td></tr></table></figure>
-<h3 id="调用-native-方法的流程"><a class="header-anchor" href="#调用-native-方法的流程">¶</a>调用 native 方法的流程</h3>
-<ol>
-<li>native 方法编译后多一个 ACC_NATIVE 标志</li>
-<li>loadLibrary 方法调用 JVM 的 load 本地方法</li>
-<li>load 方法最终调用系统调用 dlopen 加载动态链接库</li>
-<li>调用本地方法时，实际上调用了 JVM 中加载的函数，栈帧压入本地方法栈中（HotSpot 中本地方法栈=虚拟机栈）</li>
-</ol>
-<h3 id="修改-object-类-为其添加一个-native-方法-nop"><a class="header-anchor" href="#修改-object-类-为其添加一个-native-方法-nop">¶</a>修改 Object 类，为其添加一个 native 方法 nop()</h3>
-<h2 id="锁-内置锁"><a class="header-anchor" href="#锁-内置锁">¶</a>锁（内置锁）</h2>
-<ol>
-<li>锁的存储结构？</li>
-<li>获取锁的时机？</li>
-<li>释放锁的时机？</li>
-</ol>
-<h2 id="线程"><a class="header-anchor" href="#线程">¶</a>线程</h2>
-<p>和 JDK 的线程操作相关的类有 Object 和 Thread，Object 中包括 wait、notify 和 notifyAll，Thread 中包括 yield、sleep、exit、interrupt、join、start，run 的主要任务是执行用户定义的逻辑，还有一些方法已经被 Deprecated，不必再提</p>
-<h3 id="源码中和线程操作相关的一些数据结构"><a class="header-anchor" href="#源码中和线程操作相关的一些数据结构">¶</a>源码中和线程操作相关的一些数据结构</h3>
-<ol>
-<li>
-<p>ObjectMonitor<br>
-对象监视器，定义和声明在 objectMonitor.*中，主要包含</p>
-</li>
-<li>
-<p>ObjectWaiter</p>
-</li>
-<li>
-<p>ObjectSynchronizer</p>
-</li>
-</ol>
-<h3 id="wait"><a class="header-anchor" href="#wait">¶</a>wait</h3>
-<p>wait 是 native 方法，实现在 synchronizer.cpp 中，ObjectSynchronizer::wait：</p>
-<ol>
-<li>
-<p>通过<code>ObjectSynchronizer::inflate</code>方法找到 object 中的<code>ObjectMonitor monitor</code></p>
-</li>
-<li>
-<p>调用 monitor.wait<br>
-wait 方法比较复杂，但是核心过程只有 3 步：</p>
-<ul>
-<li>ObjectMonitor::AddWaiter(…)将新建立的 ObjectWaiter 对象插入_WaitSet 队列的末尾</li>
-<li>ObjectMonitor::exit(…)释放锁</li>
-<li>Self-&gt;_ParkEvent-&gt;park等待</li>
-</ul>
-</li>
-</ol>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="jni-v2"><a class="header-anchor" href="#jni-v2">¶</a>JNI</h3>
-<ol>
-<li><a href="http://blog.csdn.net/huachao1001/article/category/2862631" target="_blank" rel="noopener">介绍</a></li>
-<li><a href="http://blog.csdn.net/ngvjai/article/details/8520840" target="_blank" rel="noopener">生成.so 方法</a></li>
-<li><a href="http://blog.csdn.net/larrylgq/article/details/7515362" target="_blank" rel="noopener">修改 java.library.path 方法</a></li>
-<li><a href="http://blog.csdn.net/hackooo/article/details/48395765/" target="_blank" rel="noopener">Java JNI 实现原理初探</a></li>
-<li><a href="http://blog.chinaunix.net/uid-22028680-id-3178229.html" target="_blank" rel="noopener">Java Native Interface (JNI) 工作原理</a></li>
-<li><a href="http://www.cnblogs.com/Anker/p/3746802.html" target="_blank" rel="noopener">dlopen</a></li>
-</ol>
-<h3 id="线程-v2"><a class="header-anchor" href="#线程-v2">¶</a>线程</h3>
-<ol>
-<li><a href="https://www.zhihu.com/question/23328075" target="_blank" rel="noopener">java sleep 和 wait 的区别的疑惑?</a></li>
-<li><a href="http://blog.csdn.net/raintungli/article/details/6532784" target="_blank" rel="noopener">java 中的 wait 和 notify 实现的源码分析</a></li>
-<li><a href="http://blog.csdn.net/raintungli/article/details/6553337" target="_blank" rel="noopener">JVM Thread stop 的源码分析</a></li>
 </ol>
 
           
