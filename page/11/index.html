@@ -445,7 +445,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/72161861.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/caf2d9ed.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -464,7 +464,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/72161861.html" itemprop="url">Eureka原理分析</a></h1>
+                <a class="post-title-link" href="/caf2d9ed.html" itemprop="url">网络协议之 HTTP 总结</a></h1>
         
 
         <div class="post-meta">
@@ -499,8 +499,8 @@
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/微服务/" itemprop="url" rel="index">
-                    <span itemprop="name">微服务</span>
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
                   </a>
                 </span>
 
@@ -530,7 +530,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.9k 字
+                  3.7k 字
                 </span>
               
 
@@ -546,7 +546,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  8 分钟
+                  13 分钟
                 </span>
               
             </div>
@@ -569,112 +569,90 @@
       
         
           
-            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
-<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
-现在：Eureka 在中间层提供一种负载均衡的可能。</p>
-<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
+            <a id="more"></a>
+<h2 id="http"><a class="header-anchor" href="#http">¶</a>HTTP</h2>
+<h3 id="http-请求消息格式"><a class="header-anchor" href="#http-请求消息格式">¶</a>HTTP 请求消息格式</h3>
+<h4 id="请求行"><a class="header-anchor" href="#请求行">¶</a>请求行</h4>
+<h4 id="请求头"><a class="header-anchor" href="#请求头">¶</a>请求头</h4>
+<h3 id="http-响应消息格式"><a class="header-anchor" href="#http-响应消息格式">¶</a>HTTP 响应消息格式</h3>
+<h4 id="响应头-response-header"><a class="header-anchor" href="#响应头-response-header">¶</a>响应头（response header）</h4>
 <ul>
-<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
-<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
-<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
-</ul>
-<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
-<ul>
-<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
-<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
-<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
-<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
-<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
-</ul>
-<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
-<ul>
-<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
-<li>UP：可以正常进行通信；</li>
-<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
-<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
-<li>UNKNOWN：WTF？</li>
-</ul>
-<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
-<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
-<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
-<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
-<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
-<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
-<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
-<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
-<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
-<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
-<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
-<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
-<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
-DiscoveryManager.getInstance().shutdownComponent()</p>
-<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
-<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
-<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
-<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
-<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
-<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
-<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
-<p>Eureka Client 的高可用设计：</p>
-<ul>
-<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
-<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
-</ul>
-<p>Eureka Server 的高可用设计：</p>
-<ul>
-<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
-Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
-获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
-<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
-在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
-<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
-<ol>
-<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
-<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
-</ol>
+<li>
+<p>状态码<br>
+状态代码有三位数字组成，第一个数字定义了响应的类别，共分五种类别:<br>
+1xx：指示信息–表示请求已接收，继续处理。<br>
+2xx：成功–表示请求已被成功接收、理解、接受。<br>
+3xx：重定向–要完成请求必须进行更进一步的操作。<br>
+4xx：客户端错误–请求有语法错误或请求无法实现。<br>
+5xx：服务器端错误–服务器未能实现合法的请求。</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">200 OK                        //客户端请求成功</span><br><span class="line">400 Bad Request               //客户端请求有语法错误，不能被服务器所理解</span><br><span class="line">401 Unauthorized              //请求未经授权，这个状态代码必须和WWW-Authenticate报头域一起使用 </span><br><span class="line">403 Forbidden                 //服务器收到请求，但是拒绝提供服务</span><br><span class="line">404 Not Found                 //请求资源不存在，eg：输入了错误的URL</span><br><span class="line">500 Internal Server Error     //服务器发生不可预期的错误</span><br><span class="line">503 Server Unavailable        //服务器当前不能处理客户端的请求，一段时间后可能恢复正常</span><br></pre></td></tr></table></figure>
 </li>
-<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
-当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
+<li>
+<p>Content-length<br>
+在响应体(response-body)中表示 body 的长度，根据这个值就可以知道 body 的长度，客户端在接收 body 时，就可以根据这个长度来接收数据，而如果没有 Content-length，则客户端会一直接收数据，直到服务端主动断开连接，才表示 body 接收完了；如果是 HTTP1.1，响应头中可以用 Transfer-encoding 字段指定为 chunked 传输，则表示 body 是流式输出，body 会被分成多个块，每块的开始处会标识出当前块的长度，body 不需要通过长度来指定。</p>
+</li>
+<li>
+<p>Keep-Alive（持久连接）<br>
+HTTP/1.0 使用非持久连接，HTTP/1.1 默认使用持久连接，每个连接建立后可以持续用于传送多个对象。<br>
+适合设置 keepalive 连接的场景：客户端的一次请求需要访问同一 Server 多次，比如一个网页包含多个图片，需要访问图片服务器多次才能将这些图片下全。<br>
+持久连接的条件：<strong>HTTP1.0</strong>响应不带<strong>Content-length</strong>、<strong>HTTP1.1</strong>非 chunked 且不带<strong>Content-length</strong>，这两种情况下 body 长度是不可知的，当服务端在输出完 body 之后，可以考虑使用长连接。另外，还需要考虑客户端的请求头中的<strong>Connection</strong>字段：如果为 close，则表示客户端需要关掉长连接；如果为 Keep-Alive，那么网关（一般是 Nginx）在输出完响应体之后，会设置当前连接的 keepalive 属性，然后等待客户端的下一次请求；如果没有 Connection 这个头，则根据协议，如果是 HTTP1.0，则默认为 close，如果为 HTTP1.1，则默认为 Keep-Alive。<br>
+但是持久连接也不可能会一直等下去，如果客户端一直不发送数据，岂不是一直占用这个连接？所以一般网关会设置一个最大等待时间，这个值是通过<strong>keepalive_timeout</strong>属性来配置的，如果值为 0，则表示关闭 keepalive，此时不管 HTTP 版本、Connection 如何设置，都强制为 close。<br>
+如果最后决定打开 keepalive，那么在响应头里也会包含有 Connection 域，如果值为 Close，则网关在响应完数据后，会主动关掉连接。<br>
+总而言之：如果有办法知道服务器传来的长度，都是客户端首先断开，否则一直接收数据，直到服务端断开。<br>
+<strong>http1.0</strong><br>
+带 content-length，body 长度可知，客户端在接收 body 时，就可以依据这个长度来接受数据。接受完毕后，就表示这个请求完毕了。客户端主动调用 close 进入四次挥手。<br>
+不带 content-length，body 长度不可知，客户端一直接受数据，直到服务端主动断开。<br>
+<strong>http1.1</strong><br>
+带 content-length，body 长度可知，客户端主动断开。<br>
+带 Transfer-encoding: chunked，body 会被分成多个块，每块的开始会标识出当前块的长度，body 就不需要通过 content-length 来指定了。但依然可以知道 body 的长度 客户端主动断开。<br>
+不带 Transfer-encoding：chunked，且不带 content-length，客户端接收数据，直到服务端主动断开连接。</p>
+</li>
 </ul>
-<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
-<p>比如在测试环境中出现：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
-<p>解决办法：</p>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<p>为了减少网络请求次数，一般可以引入缓存机制，HTTP 服务器通过两种实体头（Entity-Header）来实现缓存的过期：Expires 和 Cache-Control 的 max-age 子项。<br>
+Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还是重新发请求到服务器取数据。只是 Cache-Control 比 Expires 可以控制的多一些，而且 Cache-Control 会重写 Expires 的规则。<br>
+相关 Header 如下所示：</p>
 <ul>
-<li>在生产上可以开自注册，部署两个 server</li>
-<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
-<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
+<li>Cache-Control<br>
+常用的值有：<br>
+（1）max-age（单位为 s）指定设置缓存最大的有效时间，定义的是时间长短。当浏览器向服务器发送请求后，在 max-age 这段时间里浏览器就不会再向服务器发送请求了。 （2）s-maxage（单位为 s）同 max-age，只用于共享缓存（比如 CDN 缓存），也就是说 max-age 用于普通缓存，而 s-maxage 用于代理缓存。如果存在 s-maxage，则会覆盖掉 max-age 和 Expires header。 （3）public 指定响应会被缓存，并且在多用户间共享。如果没有指定 public 还是 private，则默认为 public。 （4）private 响应只作为私有的缓存，不能在用户间共享。如果要求 HTTP 认证，响应会自动设置为 private。 （5）no-cache 指定不缓存响应，表明资源不进行缓存，比如，设置了 no-cache 之后并不代表浏览器不缓存，而是在缓存前要向服务器确认资源是否被更改。因此有的时候只设置 no-cache 防止缓存还是不够保险，还可以加上 private 指令，将过期时间设为过去的时间。 （6）no-store 表示绝对禁止缓存。一看就知道，如果用了这个命令，当然就是不会进行缓存啦！每次请求资源都要从服务器重新获取。 （7）must-revalidate 指定如果页面是过期的，则去服务器进行获取。这个指令并不常用，就不做过多的讨论了。</li>
+<li>Expires<br>
+缓存过期时间，用来指定资源到期的时间，是服务器端的具体时间点。也就是说，Expires=max-age + 请求时间，需要和 Last-modified 结合使用。但在上面我们提到过 cache-control 的优先级更高。Expires 是 Web 服务器响应消息头字段，在响应 HTTP 请求时告诉浏览器在过期时间前浏览器可以直接从浏览器缓存取数据，而无需再次请求。</li>
+<li>Last-modified<br>
+服务器端文件的最后修改时间，需要和 cache-control 共同使用，是检查服务器端资源是否更新的一种方式。当浏览器再次进行请求时，会向服务器传送 If-Modified-Since 报头，询问 Last-Modified 时间点之后资源是否被修改过。如果没有修改，则返回码为 304，使用缓存；如果修改过，则再次去服务器请求资源，返回码和首次请求相同为 200，资源为服务器最新资源。</li>
+<li>Etag<br>
+根据实体内容生成一段 hash 字符串，标识资源的状态，由服务端产生。浏览器会将这串字符串传回服务器，验证资源是否已经修改。<br>
+为什么要使用 Etag 呢?Etag 主要为了解决 Last-Modified 无法解决的一些问题。<br>
+一些文件也许会周期性的更改，但是它的内容并不改变（仅仅改变的修改时间），这个时候我们并不希望客户端认为这个文件被修改了，而重新 Get。<br>
+某些文件修改非常频繁，比如在秒以下的时间内进行修改（比方说 1s 内修改了 N 次），If-Modified-Since 能检查到的粒度是 s 级的，这种修改无法判断（或者说 UNIX 记录 MTIME 只能精确到秒）。<br>
+某些服务器不能精确的得到文件的最后修改时间。<br>
+缓存过程如下图所示。<br>
+<img src="https://tallate.top/imgs/%E7%BD%91%E7%BB%9C/HTTP%E7%BC%93%E5%AD%98.jpg" alt="HTTP缓存" title="HTTP缓存"></li>
 </ul>
-<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
-<p>配置：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
-Eureka Server 开放的 REST 接口提供动态配置功能：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
-<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
-<p>静态设置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
-<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
-动态设置：<br>
-需要提供一个自定义的</p>
-<p>获取：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
-<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
-<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
-<p>EurekaClient</p>
-<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
-<p>ExampleEurekaGovernatedService</p>
-<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
-<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
-EurekaServerConfig extends DefaultEurekaServerConfig<br>
-CloudInstanceConfig extends PropertiesInstanceConfig<br>
-MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
-<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
-</ol>
+<h2 id="http-1-1"><a class="header-anchor" href="#http-1-1">¶</a>HTTP/1.1</h2>
+<h3 id="新增方法"><a class="header-anchor" href="#新增方法">¶</a>新增方法</h3>
+<p>新增的 HTTP 方法有 PUT、PATCH、HEAD、OPTIONS、DELETE</p>
+<h3 id="主机名标识"><a class="header-anchor" href="#主机名标识">¶</a>主机名标识</h3>
+<p>在 HTTP/1.0 中 Host 头信息不是必须项，但 HTTP/1.1 中要求必须要有 Host 头信息。</p>
+<h3 id="持久性连接"><a class="header-anchor" href="#持久性连接">¶</a>持久性连接</h3>
+<p>正如前面所说，在 HTTP/1.0 中每个连接只有一个请求，且在这个请求完成后该连接就会被关闭，从而会导致严重的性能下降及延迟问题。HTTP/1.1 引入了对持久性连接的支持，例如：默认情况下连接不会被关闭，在多个连续的请求下它会保存连接的打开状态。想要关闭这些连接，需要将 Connection: close 加入到请求的头信息中。客户端通常会在最后一次请求中发送这个头信息用来安全的关闭连接。</p>
+<h3 id="管道机制"><a class="header-anchor" href="#管道机制">¶</a>管道机制</h3>
+<p>HTTP/1.1 也引入了对管道机制的支持，客户端可以向服务器发送多个请求，而无需等待来自同一连接上的服务器响应，并且当收到请求时服务器必须以相同的顺序来响应。但你可能会问客户端是怎么知道第一个响应下载完成和下一个响应内容开始的？要解决这个问题，必须要有 Content-Length 头信息，客户端可以用它来确定响应结束，然后开始等待下一个响应。</p>
+<h2 id="http-2"><a class="header-anchor" href="#http-2">¶</a>HTTP/2</h2>
+<p>HTTP/2 是专为低延迟传输的内容而设计，它与 HTTP/1.1 之间的差异如下所示：</p>
+<h3 id="二进制协议"><a class="header-anchor" href="#二进制协议">¶</a>二进制协议</h3>
+<p>HTTP/2 倾向于使用二进制协议来减少 HTTP/1.x 中的延迟。二进制协议更容易解析，但可读性相对较差。HTTP/2 中的数据块是帧和流。<br>
+帧和流：HTTP 消息是由一个或多个帧组成的。有一个叫做 HEADERS 的帧存放元数据，真正的数据是放在 DATA 帧中的，帧类型定义在 the HTTP/2 specs（HTTP/2 规范），如 HEADERS、DATA、RST_STREAM、SETTINGS、PRIORITY 等。每个 HTTP/2 请求和响应都被赋予一个唯一的流 ID 且放入了帧中。帧就是一块二进制数据。一系列帧的集合就称为流。每个帧都有一个流 id，用于标识它属于哪一个流，每一个帧都有相同的头。同时，除了流标识是唯一的，值得一提的是，客户端发起的任何请求都使用奇数和服务器的响应是偶数的流 id。除了 HEADERS 和 DATA， 另外一个值得说一说帧类型是 RST_STREAM，它是一个特殊的帧类型，用于中止流，如客户端发送这儿帧来告诉服务器我不再需要这个流了。在 HTTP/1.1 中只有一种方式来实现服务器停止发送响应给客户端，那就是关闭连接引起延迟增加，因为后续的请求就需要打开一个新的连接。 在 HTTP/2 中，客户端可以使用 RST_FRAME 来停止接收指定的流而不关闭连接且还可以在此连接中接收其它流。</p>
+<h3 id="多路复用"><a class="header-anchor" href="#多路复用">¶</a>多路复用</h3>
+<p>由于 HTTP/2 现在是一个二进制协议，且是使用帧和流来实现请求和响应，一旦 TCP 连接打开了，所有的流都通过这一连接来进行异步的发送而不需要打开额外的连接。反过来，服务器的响应也是异步的方式，如响应是无序的、客户端使用流 id 来标识属于流的包。这就解决了存在于 HTTP/1.x 中 head-of-line 阻塞问题，如客户端将不必耗时等待请求，而其他请求将被处理。如下图所示。<br>
+<img src="https://tallate.top/imgs/%E7%BD%91%E7%BB%9C/HTTP2.0%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.jpg" alt="HTTP2.0多路复用" title="HTTP2.0多路复用"></p>
+<h3 id="hpack-头部压缩"><a class="header-anchor" href="#hpack-头部压缩">¶</a>HPACK 头部压缩</h3>
+<p>它是一个单独的用于明确优化发送 Header RFC 的一部分。它的本质是，当我们同一个客户端不断的访问服务器时，在 header 中发送很多冗余的数据，有时 cookie 就增大 header，且消耗带宽和增加了延迟。为了解决这个问题， HTTP/2 引入了头部压缩。与请求和响应不同，header 不是使用 gzip 或 compress 等压缩格式，它有不同的机制，它使用了霍夫曼编码和在客户端和服务器维护的头部表来消除重复的 headers（如 User Agent)，在后续的请求中就只使用头部表中引用。它与 HTTP/1.1 中的一样，不过增加了伪 header，如 :method、:scheme、:host 和:path。</p>
+<h3 id="服务器推送"><a class="header-anchor" href="#服务器推送">¶</a>服务器推送</h3>
+<p>在服务器端，Server Push 是 HTTTP/2 的另外一个重要功能，我们知道，客户端是通过请求来获取资源的，它可以通过推送资源给客户端而不需客户端主动请求。例如，浏览器载入了一个页面，浏览器解析页面时发现了需要从服务器端载入的内容，接着它就发送一个请求来获取这些内容。Server Push 允许服务器推送数据来减少客户端请求。它是如何实现的呢，服务器在一个新的流中发送一个特殊的帧 PUSH_PROMISE，来通知客户端：“嘿，我要把这个资源发给你!你就不要请求了。”</p>
+<h3 id="请求优先级"><a class="header-anchor" href="#请求优先级">¶</a>请求优先级</h3>
+<p>客户端可以在一个打开的流中在流的 HEADERS 帧中放入优先级信息。在任何时间，客户端都可以发送一个 PRIORITY 的帧来改变流的优先级。如果没有优先级信息，服务器就会异步的处理请求，比如无序处理。如果流被赋予了优先级，它就会基于这个优先级来处理，由服务器决定需要多少资源来处理该请求。<br>
+安全。大家对 HTTP/2 是否强制使用安全连接（通过 TLS）进行了充分的讨论。最后的决定是不强制使用。然而，大多数厂商表示，他们将只支持基于 TLS 的 HTTP/2。所以，尽管 HTTP/2 规范不需要加密，但它已经成为默认的强制执行的。在这种情况下，基于 TLS 实现的 HTTP/2 需要的 TLS 版本最低要求是 1.2。 因此必须有最低限度的密钥长度、临时密钥等。</p>
 
           
         
@@ -990,7 +968,7 @@ TODO</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/caf2d9ed.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -1009,7 +987,7 @@ TODO</p>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/caf2d9ed.html" itemprop="url">网络协议之 HTTP 总结</a></h1>
+                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
         
 
         <div class="post-meta">
@@ -1075,7 +1053,7 @@ TODO</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.7k 字
+                  3.6k 字
                 </span>
               
 
@@ -1113,93 +1091,14 @@ TODO</p>
 
       
         
-          
-            <a id="more"></a>
-<h2 id="http"><a class="header-anchor" href="#http">¶</a>HTTP</h2>
-<h3 id="http-请求消息格式"><a class="header-anchor" href="#http-请求消息格式">¶</a>HTTP 请求消息格式</h3>
-<h4 id="请求行"><a class="header-anchor" href="#请求行">¶</a>请求行</h4>
-<h4 id="请求头"><a class="header-anchor" href="#请求头">¶</a>请求头</h4>
-<h3 id="http-响应消息格式"><a class="header-anchor" href="#http-响应消息格式">¶</a>HTTP 响应消息格式</h3>
-<h4 id="响应头-response-header"><a class="header-anchor" href="#响应头-response-header">¶</a>响应头（response header）</h4>
-<ul>
-<li>
-<p>状态码<br>
-状态代码有三位数字组成，第一个数字定义了响应的类别，共分五种类别:<br>
-1xx：指示信息–表示请求已接收，继续处理。<br>
-2xx：成功–表示请求已被成功接收、理解、接受。<br>
-3xx：重定向–要完成请求必须进行更进一步的操作。<br>
-4xx：客户端错误–请求有语法错误或请求无法实现。<br>
-5xx：服务器端错误–服务器未能实现合法的请求。</p>
-  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">200 OK                        //客户端请求成功</span><br><span class="line">400 Bad Request               //客户端请求有语法错误，不能被服务器所理解</span><br><span class="line">401 Unauthorized              //请求未经授权，这个状态代码必须和WWW-Authenticate报头域一起使用 </span><br><span class="line">403 Forbidden                 //服务器收到请求，但是拒绝提供服务</span><br><span class="line">404 Not Found                 //请求资源不存在，eg：输入了错误的URL</span><br><span class="line">500 Internal Server Error     //服务器发生不可预期的错误</span><br><span class="line">503 Server Unavailable        //服务器当前不能处理客户端的请求，一段时间后可能恢复正常</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>Content-length<br>
-在响应体(response-body)中表示 body 的长度，根据这个值就可以知道 body 的长度，客户端在接收 body 时，就可以根据这个长度来接收数据，而如果没有 Content-length，则客户端会一直接收数据，直到服务端主动断开连接，才表示 body 接收完了；如果是 HTTP1.1，响应头中可以用 Transfer-encoding 字段指定为 chunked 传输，则表示 body 是流式输出，body 会被分成多个块，每块的开始处会标识出当前块的长度，body 不需要通过长度来指定。</p>
-</li>
-<li>
-<p>Keep-Alive（持久连接）<br>
-HTTP/1.0 使用非持久连接，HTTP/1.1 默认使用持久连接，每个连接建立后可以持续用于传送多个对象。<br>
-适合设置 keepalive 连接的场景：客户端的一次请求需要访问同一 Server 多次，比如一个网页包含多个图片，需要访问图片服务器多次才能将这些图片下全。<br>
-持久连接的条件：<strong>HTTP1.0</strong>响应不带<strong>Content-length</strong>、<strong>HTTP1.1</strong>非 chunked 且不带<strong>Content-length</strong>，这两种情况下 body 长度是不可知的，当服务端在输出完 body 之后，可以考虑使用长连接。另外，还需要考虑客户端的请求头中的<strong>Connection</strong>字段：如果为 close，则表示客户端需要关掉长连接；如果为 Keep-Alive，那么网关（一般是 Nginx）在输出完响应体之后，会设置当前连接的 keepalive 属性，然后等待客户端的下一次请求；如果没有 Connection 这个头，则根据协议，如果是 HTTP1.0，则默认为 close，如果为 HTTP1.1，则默认为 Keep-Alive。<br>
-但是持久连接也不可能会一直等下去，如果客户端一直不发送数据，岂不是一直占用这个连接？所以一般网关会设置一个最大等待时间，这个值是通过<strong>keepalive_timeout</strong>属性来配置的，如果值为 0，则表示关闭 keepalive，此时不管 HTTP 版本、Connection 如何设置，都强制为 close。<br>
-如果最后决定打开 keepalive，那么在响应头里也会包含有 Connection 域，如果值为 Close，则网关在响应完数据后，会主动关掉连接。<br>
-总而言之：如果有办法知道服务器传来的长度，都是客户端首先断开，否则一直接收数据，直到服务端断开。<br>
-<strong>http1.0</strong><br>
-带 content-length，body 长度可知，客户端在接收 body 时，就可以依据这个长度来接受数据。接受完毕后，就表示这个请求完毕了。客户端主动调用 close 进入四次挥手。<br>
-不带 content-length，body 长度不可知，客户端一直接受数据，直到服务端主动断开。<br>
-<strong>http1.1</strong><br>
-带 content-length，body 长度可知，客户端主动断开。<br>
-带 Transfer-encoding: chunked，body 会被分成多个块，每块的开始会标识出当前块的长度，body 就不需要通过 content-length 来指定了。但依然可以知道 body 的长度 客户端主动断开。<br>
-不带 Transfer-encoding：chunked，且不带 content-length，客户端接收数据，直到服务端主动断开连接。</p>
-</li>
-</ul>
-<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
-<p>为了减少网络请求次数，一般可以引入缓存机制，HTTP 服务器通过两种实体头（Entity-Header）来实现缓存的过期：Expires 和 Cache-Control 的 max-age 子项。<br>
-Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还是重新发请求到服务器取数据。只是 Cache-Control 比 Expires 可以控制的多一些，而且 Cache-Control 会重写 Expires 的规则。<br>
-相关 Header 如下所示：</p>
-<ul>
-<li>Cache-Control<br>
-常用的值有：<br>
-（1）max-age（单位为 s）指定设置缓存最大的有效时间，定义的是时间长短。当浏览器向服务器发送请求后，在 max-age 这段时间里浏览器就不会再向服务器发送请求了。 （2）s-maxage（单位为 s）同 max-age，只用于共享缓存（比如 CDN 缓存），也就是说 max-age 用于普通缓存，而 s-maxage 用于代理缓存。如果存在 s-maxage，则会覆盖掉 max-age 和 Expires header。 （3）public 指定响应会被缓存，并且在多用户间共享。如果没有指定 public 还是 private，则默认为 public。 （4）private 响应只作为私有的缓存，不能在用户间共享。如果要求 HTTP 认证，响应会自动设置为 private。 （5）no-cache 指定不缓存响应，表明资源不进行缓存，比如，设置了 no-cache 之后并不代表浏览器不缓存，而是在缓存前要向服务器确认资源是否被更改。因此有的时候只设置 no-cache 防止缓存还是不够保险，还可以加上 private 指令，将过期时间设为过去的时间。 （6）no-store 表示绝对禁止缓存。一看就知道，如果用了这个命令，当然就是不会进行缓存啦！每次请求资源都要从服务器重新获取。 （7）must-revalidate 指定如果页面是过期的，则去服务器进行获取。这个指令并不常用，就不做过多的讨论了。</li>
-<li>Expires<br>
-缓存过期时间，用来指定资源到期的时间，是服务器端的具体时间点。也就是说，Expires=max-age + 请求时间，需要和 Last-modified 结合使用。但在上面我们提到过 cache-control 的优先级更高。Expires 是 Web 服务器响应消息头字段，在响应 HTTP 请求时告诉浏览器在过期时间前浏览器可以直接从浏览器缓存取数据，而无需再次请求。</li>
-<li>Last-modified<br>
-服务器端文件的最后修改时间，需要和 cache-control 共同使用，是检查服务器端资源是否更新的一种方式。当浏览器再次进行请求时，会向服务器传送 If-Modified-Since 报头，询问 Last-Modified 时间点之后资源是否被修改过。如果没有修改，则返回码为 304，使用缓存；如果修改过，则再次去服务器请求资源，返回码和首次请求相同为 200，资源为服务器最新资源。</li>
-<li>Etag<br>
-根据实体内容生成一段 hash 字符串，标识资源的状态，由服务端产生。浏览器会将这串字符串传回服务器，验证资源是否已经修改。<br>
-为什么要使用 Etag 呢?Etag 主要为了解决 Last-Modified 无法解决的一些问题。<br>
-一些文件也许会周期性的更改，但是它的内容并不改变（仅仅改变的修改时间），这个时候我们并不希望客户端认为这个文件被修改了，而重新 Get。<br>
-某些文件修改非常频繁，比如在秒以下的时间内进行修改（比方说 1s 内修改了 N 次），If-Modified-Since 能检查到的粒度是 s 级的，这种修改无法判断（或者说 UNIX 记录 MTIME 只能精确到秒）。<br>
-某些服务器不能精确的得到文件的最后修改时间。<br>
-缓存过程如下图所示。<br>
-<img src="https://tallate.top/imgs/%E7%BD%91%E7%BB%9C/HTTP%E7%BC%93%E5%AD%98.jpg" alt="HTTP缓存" title="HTTP缓存"></li>
-</ul>
-<h2 id="http-1-1"><a class="header-anchor" href="#http-1-1">¶</a>HTTP/1.1</h2>
-<h3 id="新增方法"><a class="header-anchor" href="#新增方法">¶</a>新增方法</h3>
-<p>新增的 HTTP 方法有 PUT、PATCH、HEAD、OPTIONS、DELETE</p>
-<h3 id="主机名标识"><a class="header-anchor" href="#主机名标识">¶</a>主机名标识</h3>
-<p>在 HTTP/1.0 中 Host 头信息不是必须项，但 HTTP/1.1 中要求必须要有 Host 头信息。</p>
-<h3 id="持久性连接"><a class="header-anchor" href="#持久性连接">¶</a>持久性连接</h3>
-<p>正如前面所说，在 HTTP/1.0 中每个连接只有一个请求，且在这个请求完成后该连接就会被关闭，从而会导致严重的性能下降及延迟问题。HTTP/1.1 引入了对持久性连接的支持，例如：默认情况下连接不会被关闭，在多个连续的请求下它会保存连接的打开状态。想要关闭这些连接，需要将 Connection: close 加入到请求的头信息中。客户端通常会在最后一次请求中发送这个头信息用来安全的关闭连接。</p>
-<h3 id="管道机制"><a class="header-anchor" href="#管道机制">¶</a>管道机制</h3>
-<p>HTTP/1.1 也引入了对管道机制的支持，客户端可以向服务器发送多个请求，而无需等待来自同一连接上的服务器响应，并且当收到请求时服务器必须以相同的顺序来响应。但你可能会问客户端是怎么知道第一个响应下载完成和下一个响应内容开始的？要解决这个问题，必须要有 Content-Length 头信息，客户端可以用它来确定响应结束，然后开始等待下一个响应。</p>
-<h2 id="http-2"><a class="header-anchor" href="#http-2">¶</a>HTTP/2</h2>
-<p>HTTP/2 是专为低延迟传输的内容而设计，它与 HTTP/1.1 之间的差异如下所示：</p>
-<h3 id="二进制协议"><a class="header-anchor" href="#二进制协议">¶</a>二进制协议</h3>
-<p>HTTP/2 倾向于使用二进制协议来减少 HTTP/1.x 中的延迟。二进制协议更容易解析，但可读性相对较差。HTTP/2 中的数据块是帧和流。<br>
-帧和流：HTTP 消息是由一个或多个帧组成的。有一个叫做 HEADERS 的帧存放元数据，真正的数据是放在 DATA 帧中的，帧类型定义在 the HTTP/2 specs（HTTP/2 规范），如 HEADERS、DATA、RST_STREAM、SETTINGS、PRIORITY 等。每个 HTTP/2 请求和响应都被赋予一个唯一的流 ID 且放入了帧中。帧就是一块二进制数据。一系列帧的集合就称为流。每个帧都有一个流 id，用于标识它属于哪一个流，每一个帧都有相同的头。同时，除了流标识是唯一的，值得一提的是，客户端发起的任何请求都使用奇数和服务器的响应是偶数的流 id。除了 HEADERS 和 DATA， 另外一个值得说一说帧类型是 RST_STREAM，它是一个特殊的帧类型，用于中止流，如客户端发送这儿帧来告诉服务器我不再需要这个流了。在 HTTP/1.1 中只有一种方式来实现服务器停止发送响应给客户端，那就是关闭连接引起延迟增加，因为后续的请求就需要打开一个新的连接。 在 HTTP/2 中，客户端可以使用 RST_FRAME 来停止接收指定的流而不关闭连接且还可以在此连接中接收其它流。</p>
-<h3 id="多路复用"><a class="header-anchor" href="#多路复用">¶</a>多路复用</h3>
-<p>由于 HTTP/2 现在是一个二进制协议，且是使用帧和流来实现请求和响应，一旦 TCP 连接打开了，所有的流都通过这一连接来进行异步的发送而不需要打开额外的连接。反过来，服务器的响应也是异步的方式，如响应是无序的、客户端使用流 id 来标识属于流的包。这就解决了存在于 HTTP/1.x 中 head-of-line 阻塞问题，如客户端将不必耗时等待请求，而其他请求将被处理。如下图所示。<br>
-<img src="https://tallate.top/imgs/%E7%BD%91%E7%BB%9C/HTTP2.0%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8.jpg" alt="HTTP2.0多路复用" title="HTTP2.0多路复用"></p>
-<h3 id="hpack-头部压缩"><a class="header-anchor" href="#hpack-头部压缩">¶</a>HPACK 头部压缩</h3>
-<p>它是一个单独的用于明确优化发送 Header RFC 的一部分。它的本质是，当我们同一个客户端不断的访问服务器时，在 header 中发送很多冗余的数据，有时 cookie 就增大 header，且消耗带宽和增加了延迟。为了解决这个问题， HTTP/2 引入了头部压缩。与请求和响应不同，header 不是使用 gzip 或 compress 等压缩格式，它有不同的机制，它使用了霍夫曼编码和在客户端和服务器维护的头部表来消除重复的 headers（如 User Agent)，在后续的请求中就只使用头部表中引用。它与 HTTP/1.1 中的一样，不过增加了伪 header，如 :method、:scheme、:host 和:path。</p>
-<h3 id="服务器推送"><a class="header-anchor" href="#服务器推送">¶</a>服务器推送</h3>
-<p>在服务器端，Server Push 是 HTTTP/2 的另外一个重要功能，我们知道，客户端是通过请求来获取资源的，它可以通过推送资源给客户端而不需客户端主动请求。例如，浏览器载入了一个页面，浏览器解析页面时发现了需要从服务器端载入的内容，接着它就发送一个请求来获取这些内容。Server Push 允许服务器推送数据来减少客户端请求。它是如何实现的呢，服务器在一个新的流中发送一个特殊的帧 PUSH_PROMISE，来通知客户端：“嘿，我要把这个资源发给你!你就不要请求了。”</p>
-<h3 id="请求优先级"><a class="header-anchor" href="#请求优先级">¶</a>请求优先级</h3>
-<p>客户端可以在一个打开的流中在流的 HEADERS 帧中放入优先级信息。在任何时间，客户端都可以发送一个 PRIORITY 的帧来改变流的优先级。如果没有优先级信息，服务器就会异步的处理请求，比如无序处理。如果流被赋予了优先级，它就会基于这个优先级来处理，由服务器决定需要多少资源来处理该请求。<br>
-安全。大家对 HTTP/2 是否强制使用安全连接（通过 TLS）进行了充分的讨论。最后的决定是不强制使用。然而，大多数厂商表示，他们将只支持基于 TLS 的 HTTP/2。所以，尽管 HTTP/2 规范不需要加密，但它已经成为默认的强制执行的。在这种情况下，基于 TLS 实现的 HTTP/2 需要的 TLS 版本最低要求是 1.2。 因此必须有最低限度的密钥长度、临时密钥等。</p>
-
-          
+          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -1425,7 +1324,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/72161861.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -1444,7 +1343,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
+                <a class="post-title-link" href="/72161861.html" itemprop="url">Eureka原理分析</a></h1>
         
 
         <div class="post-meta">
@@ -1479,8 +1378,8 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
+                  <a href="/categories/微服务/" itemprop="url" rel="index">
+                    <span itemprop="name">微服务</span>
                   </a>
                 </span>
 
@@ -1510,7 +1409,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.6k 字
+                  1.9k 字
                 </span>
               
 
@@ -1526,7 +1425,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  13 分钟
+                  8 分钟
                 </span>
               
             </div>
@@ -1548,14 +1447,115 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
 
       
         
-          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
+          
+            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
+<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
+现在：Eureka 在中间层提供一种负载均衡的可能。</p>
+<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
+<ul>
+<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
+<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
+<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
+</ul>
+<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
+<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
+<ul>
+<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
+<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
+<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
+<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
+<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
+</ul>
+<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
+<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
+<ul>
+<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
+<li>UP：可以正常进行通信；</li>
+<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
+<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
+<li>UNKNOWN：WTF？</li>
+</ul>
+<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
+<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
+<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
+<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
+<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
+<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
+<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
+<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
+<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
+<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
+<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
+<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
+<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
+DiscoveryManager.getInstance().shutdownComponent()</p>
+<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
+<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
+<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
+<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
+<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
+<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
+<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
+<p>Eureka Client 的高可用设计：</p>
+<ul>
+<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
+<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
+</ul>
+<p>Eureka Server 的高可用设计：</p>
+<ul>
+<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
+Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
+获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
+<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
+在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
+<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
+<ol>
+<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
+<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
+</ol>
+</li>
+<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
+当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
+</ul>
+<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
+<p>比如在测试环境中出现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<ul>
+<li>在生产上可以开自注册，部署两个 server</li>
+<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
+<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
+</ul>
+<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
+<p>配置：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
+Eureka Server 开放的 REST 接口提供动态配置功能：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
+<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
+<p>静态设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
+<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
+动态设置：<br>
+需要提供一个自定义的</p>
+<p>获取：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
+<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
+<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
+<p>EurekaClient</p>
+<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
+<p>ExampleEurekaGovernatedService</p>
+<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
+<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
+EurekaServerConfig extends DefaultEurekaServerConfig<br>
+CloudInstanceConfig extends PropertiesInstanceConfig<br>
+MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
+<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
+</ol>
+
+          
         
       
     </div>
