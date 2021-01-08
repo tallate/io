@@ -689,7 +689,7 @@ all表示统计信息为所有 CPU 的平均值。</li>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/72161861.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -708,7 +708,7 @@ all表示统计信息为所有 CPU 的平均值。</li>
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
+                <a class="post-title-link" href="/72161861.html" itemprop="url">Eureka原理分析</a></h1>
         
 
         <div class="post-meta">
@@ -743,8 +743,8 @@ all表示统计信息为所有 CPU 的平均值。</li>
               
               
                 <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
+                  <a href="/categories/微服务/" itemprop="url" rel="index">
+                    <span itemprop="name">微服务</span>
                   </a>
                 </span>
 
@@ -774,7 +774,7 @@ all表示统计信息为所有 CPU 的平均值。</li>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.6k 字
+                  1.9k 字
                 </span>
               
 
@@ -790,7 +790,7 @@ all表示统计信息为所有 CPU 的平均值。</li>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  13 分钟
+                  8 分钟
                 </span>
               
             </div>
@@ -812,14 +812,115 @@ all表示统计信息为所有 CPU 的平均值。</li>
 
       
         
-          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
+          
+            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
+<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
+现在：Eureka 在中间层提供一种负载均衡的可能。</p>
+<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
+<ul>
+<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
+<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
+<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
+</ul>
+<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
+<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
+<ul>
+<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
+<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
+<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
+<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
+<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
+</ul>
+<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
+<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
+<ul>
+<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
+<li>UP：可以正常进行通信；</li>
+<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
+<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
+<li>UNKNOWN：WTF？</li>
+</ul>
+<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
+<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
+<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
+<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
+<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
+<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
+<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
+<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
+<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
+<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
+<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
+<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
+<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
+DiscoveryManager.getInstance().shutdownComponent()</p>
+<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
+<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
+<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
+<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
+<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
+<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
+<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
+<p>Eureka Client 的高可用设计：</p>
+<ul>
+<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
+<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
+</ul>
+<p>Eureka Server 的高可用设计：</p>
+<ul>
+<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
+Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
+获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
+<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
+在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
+<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
+<ol>
+<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
+<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
+</ol>
+</li>
+<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
+当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
+</ul>
+<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
+<p>比如在测试环境中出现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<ul>
+<li>在生产上可以开自注册，部署两个 server</li>
+<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
+<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
+</ul>
+<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
+<p>配置：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
+Eureka Server 开放的 REST 接口提供动态配置功能：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
+<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
+<p>静态设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
+<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
+动态设置：<br>
+需要提供一个自定义的</p>
+<p>获取：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
+<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
+<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
+<p>EurekaClient</p>
+<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
+<p>ExampleEurekaGovernatedService</p>
+<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
+<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
+EurekaServerConfig extends DefaultEurekaServerConfig<br>
+CloudInstanceConfig extends PropertiesInstanceConfig<br>
+MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
+<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
+</ol>
+
+          
         
       
     </div>
@@ -1133,185 +1234,6 @@ TODO</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b791cedc.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/b791cedc.html" itemprop="url">微服务核心技术总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/微服务/" itemprop="url" rel="index">
-                    <span itemprop="name">微服务</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.8k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  15 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>虚拟化技术将一台服务器虚拟出多个虚拟机来提供服务。<br>
-虚拟化技术包括计算虚拟化（服务器虚拟化）、存储虚拟化、网络虚拟化等。<br>
-在实际讲解虚拟化之前，我们需要先解释一下隔离技术，在隔离的基础上我们才能任意粒度、自由地分配资源。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/b791cedc.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/caf2d9ed.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -1568,7 +1490,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/72161861.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -1587,7 +1509,184 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/72161861.html" itemprop="url">Eureka原理分析</a></h1>
+                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
+                2019-07-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  13 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b791cedc.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/b791cedc.html" itemprop="url">微服务核心技术总结</a></h1>
         
 
         <div class="post-meta">
@@ -1653,7 +1752,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.9k 字
+                  3.8k 字
                 </span>
               
 
@@ -1669,7 +1768,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  8 分钟
+                  15 分钟
                 </span>
               
             </div>
@@ -1691,115 +1790,16 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
 
       
         
-          
-            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
-<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
-现在：Eureka 在中间层提供一种负载均衡的可能。</p>
-<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
-<ul>
-<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
-<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
-<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
-</ul>
-<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
-<ul>
-<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
-<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
-<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
-<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
-<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
-</ul>
-<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
-<ul>
-<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
-<li>UP：可以正常进行通信；</li>
-<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
-<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
-<li>UNKNOWN：WTF？</li>
-</ul>
-<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
-<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
-<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
-<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
-<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
-<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
-<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
-<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
-<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
-<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
-<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
-<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
-<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
-DiscoveryManager.getInstance().shutdownComponent()</p>
-<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
-<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
-<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
-<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
-<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
-<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
-<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
-<p>Eureka Client 的高可用设计：</p>
-<ul>
-<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
-<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
-</ul>
-<p>Eureka Server 的高可用设计：</p>
-<ul>
-<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
-Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
-获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
-<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
-在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
-<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
-<ol>
-<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
-<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
-</ol>
-</li>
-<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
-当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
-</ul>
-<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
-<p>比如在测试环境中出现：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
-<p>解决办法：</p>
-<ul>
-<li>在生产上可以开自注册，部署两个 server</li>
-<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
-<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
-</ul>
-<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
-<p>配置：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
-Eureka Server 开放的 REST 接口提供动态配置功能：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
-<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
-<p>静态设置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
-<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
-动态设置：<br>
-需要提供一个自定义的</p>
-<p>获取：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
-<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
-<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
-<p>EurekaClient</p>
-<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
-<p>ExampleEurekaGovernatedService</p>
-<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
-<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
-EurekaServerConfig extends DefaultEurekaServerConfig<br>
-CloudInstanceConfig extends PropertiesInstanceConfig<br>
-MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
-<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
-</ol>
-
-          
+          <p>虚拟化技术将一台服务器虚拟出多个虚拟机来提供服务。<br>
+虚拟化技术包括计算虚拟化（服务器虚拟化）、存储虚拟化、网络虚拟化等。<br>
+在实际讲解虚拟化之前，我们需要先解释一下隔离技术，在隔离的基础上我们才能任意粒度、自由地分配资源。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/b791cedc.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -1973,183 +1973,6 @@ MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
           <!--noindex-->
           <div class="post-button text-center">
             <a class="btn" href="/10511d14.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/59c58f8f.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/59c58f8f.html" itemprop="url">Linux 三剑客-cut、awk 使用总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
-                2019-07-20
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  13 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>在 awk、sed、cut 三个命令中，awk 是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/59c58f8f.html#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -2472,6 +2295,183 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
 </ol>
 
           
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/59c58f8f.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/59c58f8f.html" itemprop="url">Linux 三剑客-cut、awk 使用总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
+                2019-07-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  13 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>在 awk、sed、cut 三个命令中，awk 是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/59c58f8f.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
