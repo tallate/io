@@ -266,6 +266,463 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/459b2cfd.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/459b2cfd.html" itemprop="url">Dubbo的网络通信</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
+                2019-09-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Dubbo/" itemprop="url" rel="index">
+                    <span itemprop="name">Dubbo</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<p>Dubbo 支持多种协议，如下图所示：<br>
+<img src="https://tallate.top/imgs/Dubbo/Protocol%E6%89%A9%E5%B1%95.png" alt="Protocol扩展" title="Protocol扩展"><br>
+在通信过程中，不同的服务等级一般对应着不同的服务质量，那么选择合适的协议便是一件非常重要的事情，需要根据应用的特征来选择。例如，使用 RMI 协议，一般会受到防火墙的限制，所以对于外部与内部进行通信的场景，就不要使用 RMI 协议，而是基于 HTTP 协议或者 Hessian 协议。</p>
+<h3 id="hessian-协议"><a class="header-anchor" href="#hessian-协议">¶</a>Hessian 协议</h3>
+<ul>
+<li>连接个数：多连接</li>
+<li>连接方式：短连接</li>
+<li>传输协议：HTTP</li>
+<li>传输方式：同步传输</li>
+<li>序列化：Hessian 二进制序列化</li>
+<li>适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。</li>
+<li>适用场景：页面传输，文件传输，Hessian 是 Caucho 开源的一个 RPC 框架，其通讯效率高于 WebService 和 Java 自带的序列化，Hessian 底层采用 Http 通讯，采用 Servlet 暴露服务，Dubbo 缺省内嵌 Jetty 作为服务器实现。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--定义 hessian 协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;hessian&quot; port=&quot;8080&quot; server=&quot;jetty&quot; /&gt;</span><br><span class="line">&lt;!--设置默认协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line">&lt;!--设置 service 协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;hessian&quot; /&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;com.caucho&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hessian&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;4.0.33&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="http-协议"><a class="header-anchor" href="#http-协议">¶</a>Http 协议</h3>
+<ul>
+<li>连接个数：多连接</li>
+<li>连接方式：短连接</li>
+<li>传输协议：HTTP</li>
+<li>传输方式：同步传输</li>
+<li>序列化：表单序列化</li>
+<li>适用范围：传入传出参数数据包大小混合，提供者比消费者个数多，可用浏览器查看，可用表单或 URL 传入参数，暂不支持传文件。</li>
+<li>适用场景：需同时给应用程序和浏览器 JS 使用的服务。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--配置协议 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;http&quot; port=&quot;8080&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="thrift-协议"><a class="header-anchor" href="#thrift-协议">¶</a>Thrift 协议</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.thrift&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;libthrift&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;0.8.0&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dubbo:protocol name=&quot;thrift&quot; port=&quot;3030&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>Dubbo 使用的 Thrift 和原生的 Thrift 协议不兼容，在原生协议的基础上添加了一些额外的头信息，比如 service name，magic number 等。</p>
+<h3 id="rest-协议"><a class="header-anchor" href="#rest-协议">¶</a>Rest 协议</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 用rest协议在8080端口暴露服务 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;rest&quot; port=&quot;8080&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 声明需要暴露的服务接口 --&gt;</span><br><span class="line">&lt;dubbo:service interface=&quot;com.service.OrderService&quot; ref=&quot;orderService&quot;/&gt;</span><br><span class="line"></span><br><span class="line">&lt;!-- 和本地bean一样实现服务 --&gt;</span><br><span class="line">&lt;bean id=&quot;orderService&quot; class=&quot;com.service.OrderServiceImpl&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<p>在代码中需要通过注解指定访问路径：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public class OrderService &#123;    </span><br><span class="line">   void createOrder(Order order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@Path(&quot;orders&quot;) // 访问Url的相对路径</span><br><span class="line">public class OrderServiceImpl implements OrderService &#123;</span><br><span class="line"></span><br><span class="line">    @POST</span><br><span class="line">    @Path(&quot;create&quot;) // 访问Url的相对路径</span><br><span class="line">    // 将传递过来的JSON数据反序列化为Order对象</span><br><span class="line">    @Consumes(&#123;MediaType.APPLICATION_JSON&#125;) </span><br><span class="line">    public void createOrder(Order order) &#123;</span><br><span class="line">        // create the order...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="长连接-or-短连接"><a class="header-anchor" href="#长连接-or-短连接">¶</a>长连接 OR 短连接</h3>
+<p>Dubbo 协议缺省每服务每提供者每消费者使用单一长连接，如果数据量较大，可以使用多个连接。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 表示该服务使用 JVM 共享长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;0&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;0&quot;&gt;</span><br><span class="line">&lt;!-- 表示该服务使用独立长连接 --&gt;</span><br><span class="line">&lt;dubbo:service connections=&quot;1&quot;&gt; </span><br><span class="line">&lt;dubbo:reference connections=&quot;1&quot;&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="为什么要消费者比提供者个数多"><a class="header-anchor" href="#为什么要消费者比提供者个数多">¶</a>为什么要消费者比提供者个数多</h3>
+<p>因为 dubbo 协议采用单一长连接，假设网络为千兆网卡 3，根据测试经验数据每条连接最多只能压满 7MByte（不同的环境可能不一样），理论上 1 个服务提供者需要 20 个服务消费者才能压满网卡。</p>
+<h3 id="为什么不能传大包"><a class="header-anchor" href="#为什么不能传大包">¶</a>为什么不能传大包</h3>
+<p>因 dubbo 协议采用单一长连接，如果每次请求的数据包大小为 500KByte，假设网络为千兆网卡 3，每条连接最大 7MByte(不同的环境可能不一样，供参考)，单个服务提供者的 TPS(每秒处理事务数)最大为：128MByte / 500KByte = 262。单个消费者调用单个服务提供者的 TPS(每秒处理事务数)最大为：7MByte / 500KByte = 14。如果能接受，可以考虑使用，否则网络将成为瓶颈。</p>
+<h3 id="为什么采用异步单一长连接"><a class="header-anchor" href="#为什么采用异步单一长连接">¶</a>为什么采用异步单一长连接</h3>
+<p>因为服务的现状大都是服务提供者少，通常只有几台机器，而服务的消费者多，可能整个网站都在访问该服务，比如 Morgan 的提供者只有 6 台提供者，却有上百台消费者，每天有 1.5 亿次调用，如果采用常规的 hessian 服务，服务提供者很容易就被压跨，通过单一连接，保证单一消费者不会压死提供者，长连接，减少连接握手验证等，并使用异步 IO，复用线程池，防止 C10K 问题（服务器无法服务 1w 左右的并发连接）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 配置协议端口和服务提供方最大连接数，防止服务被压垮 --&gt;</span><br><span class="line">&lt;dubbo:protocol name=&quot;dubbo&quot; port=&quot;20880&quot; accepts=&quot;1000&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo默认协议 --&gt;</span><br><span class="line">&lt;dubbo:provider protocol=&quot;dubbo&quot; /&gt;</span><br><span class="line">&lt;!--配置dubbo设置服务协议 --&gt;</span><br><span class="line">&lt;dubbo:service protocol=&quot;dubbo&quot; /&gt;</span><br></pre></td></tr></table></figure>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/bf6c261d.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/bf6c261d.html" itemprop="url">Dubbo的SPI原理</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
+                2019-09-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Dubbo/" itemprop="url" rel="index">
+                    <span itemprop="name">Dubbo</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  6 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="接口扩展策略注解-spi"><a class="header-anchor" href="#接口扩展策略注解-spi">¶</a>接口扩展策略注解 @SPI</h2>
+<p>Dubbo中的很多扩展接口，如 Protocol、Transporter、Filter 等，都是通过 JDK 的 SPI 机制实现的，也就是说这些功能都可被用户自定义的扩展所替换，接口扩展点由注解<code>@SPI</code>定义。<br>
+JDK 中 SPI（Service Provider Interface）的设计与策略模式如出一辙，开发者可以替换掉 Dubbo 原扩展接口的默认实现，完成自定义需求，即可以自定义实现策略。<br>
+Dubbo 在 JDK 现有 SPI 实现的基础上做了如下改进：</p>
+<ol>
+<li>JDK 标准的 SPI 会一次性实例化扩展点所有实现，如果有扩展实现初始化很耗时，但如果没用上也加载，会很浪费资源。</li>
+<li>如果扩展点加载失败，连扩展点的名称都拿不到了。比如：JDK 标准的 ScriptEngine，通过 getName();获取脚本类型的名称，但如果 RubyScriptEngine 因为所依赖的 jruby.jar 不存在，导致 RubyScriptEngine 类加载失败，这个失败原因被吃掉了，和 ruby 对应不起来，当用户执行 ruby 脚本时，会报不支持 ruby，而不是真正失败的原因。</li>
+<li>增加了对扩展点 IoC 和 AOP 的支持，一个扩展点可以直接 setter 注入其它扩展点。</li>
+</ol>
+<p>那么 Dubbo 的 SPI 机制是怎么实现的呢？以协议扩展为例，Dubbo 中协议被抽象为 Protocol 接口。</p>
+<h3 id="读取扩展点"><a class="header-anchor" href="#读取扩展点">¶</a>读取扩展点</h3>
+<p>ServiceConfig#protocol</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension()</span><br></pre></td></tr></table></figure>
+<p>Dubbo 使用 ExtensionLoader 实现扩展点加载。</p>
+<ul>
+<li>ExtensionLoader#getExtensionLoader()<br>
+获取 ExtensionLoader 实现，保证每种扩展点一个单例。</li>
+<li>ExtensionLoader#getAdaptiveExtension()<br>
+根据不同的 SPI 扩展点，即不同的 interface，生成不同的 Adaptive 实例的代码。<br>
+-&gt; getAdaptiveExtensionClass()<br>
+-&gt; getExtensionClasses()<br>
+-&gt; loadExtensionClasses()<br>
+加载所有的扩展点实现，直到扩展点方法执行时才决定调用是一个扩展点实现，即从众多的实现策略中决定具体使用哪一个策略。<br>
+ExtensionLoader 会依次从<code>META-INF/dubbo/internal</code>（Dubbo 内部实现）、<code>META-INF/dubbo/</code>（开发者自定义策略）、<code>META-INF/services/</code>这几个目录下读取扩展点实现，目录下的同名文件配置了对应扩展点的实现策略，调用 loadFile 来加载对应的扩展策略。<br>
+-&gt; loadFile(Map&lt;String, Class&lt;?&gt;&gt; extensionClasses, String dir)</li>
+</ul>
+<h3 id="生成-adaptive-实例"><a class="header-anchor" href="#生成-adaptive-实例">¶</a>生成 Adaptive 实例</h3>
+<ul>
+<li>ExtensionLoader#loadFile<br>
+-&gt; String fileName = dir + type.getName()<br>
+拼接文件路径<br>
+-&gt; ClassLoader classLoader = findClassLoader()<br>
+拿到 ExtensionLoader 的类加载器。<br>
+-&gt; Class&lt;?&gt; clazz = Class.forName(line, true, classLoader);<br>
+文件每行是一个实现类的全路径名，通过反射加载并拿到具体类型。<br>
+-&gt; extensionClasses.put(n, clazz)<br>
+添加到 map 里返回。</li>
+<li>ExtensionLoader#cachedClasses<br>
+-&gt; cachedClasses.set(classes)<br>
+添加到缓存。</li>
+<li>ExtensionLoader#createAdaptiveExtensionClass<br>
+-&gt; ExtensionLoader#createAdaptiveExtensionClassCode<br>
+生成 Adaptive 类。<br>
+-&gt; compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension()<br>
+拿到编译接口扩展点的一个具体实现，dubbo 内部支持 jdk 和 javassist，默认是 javassist。<br>
+-&gt; compiler.compile(code, classLoader)<br>
+编译代码，生成 Adaptive 实例类。</li>
+</ul>
+<p>上面提到 Compiler 也是一个扩展点，同样也依赖这个流程来实例化，在运行时生成 Adaptive 实例的时候，需要生成 Compiler 接口的 Adaptive 实例，即运行生成 Adaptive 实例的时候需要先有一个 Compiler 接口的 Adaptive 实例，那这样岂不是陷入了死循环，这里就要提到显示指定 Adaptive 实例的情况。<code>@Adaptive</code>注解支持类级别和方法级别：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">1、类级别：只能拥有一个，注解打在接口实现类上，显示的注册一个Adaptive实例，在编译期就存在，如`AdaptiveCompiler`，解决了上面的死循环问题，由`AdaptiveCompiler`依据dubbo配置决定使用哪个编译类；</span><br><span class="line">2、方法级别：在运行期动态的生成Adaptive实例。</span><br></pre></td></tr></table></figure>
+<h3 id="通过-url-动态选择协议"><a class="header-anchor" href="#通过-url-动态选择协议">¶</a>通过 URL 动态选择协议</h3>
+<p>ExtensionLoader#createAdaptiveExtensionClassCode<br>
+生成的 Protocol 的 Adaptive 实例类，依据 URL 中 protocol key-value 的值，选择对应的 Protocol 策略来暴露和引用服务。<br>
+扩展点方法调用会有 URL 参数（或是参数有 URL 成员），这样依赖的扩展点可以从 URL 拿到配置信息，所有的扩展点自己定好配置的 Key 后，配置信息从 URL 上从最外层传入，URL 在配置传递上即是一条总线。<br>
+以 dubbo+zookeeper 为例，暴露和引用远程服务都是注册在 zookeeper 上的，服务注册在 zookeeper 上本质其实是一个 URL，远程服务调用的过程中依据 URL 的 key-value 来动态决定执行 Protocol、Filter 等接口扩展点的执行策略。<br>
+下面是 Provider 端暴露 HelloService 服务时在 zookeeper 上注册的 URL，在 zookeeper 上的路径为/dubbo/com.dubbo.test.service.HelloService/providers，URL 表示了采用 dubbo 协议，接口为 com.dubbo.test.service.HelloService，方法为 say，要执行的 Filter 为 whiteFilter 等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[zk： localhost：2181(CONNECTED) 1] Is /dubbo/com.dubbo.test.service.HelloService/providers</span><br><span class="line">[dubbo://127.0.0.1:2O881/com.dubbo.test.service.HelloService?anyhost=true&amp;application=dubbo-test-service&amp;dubbo=2.4.10&amp;group=test-prod&amp;interface=com.dubbo.test.service.HelloService&amp;methods=say&amp;pid=21242&amp;revision=l.0&amp;service.filter=whiteFilter&amp;side=providerxtamp=1495436105078&amp;version=l.0]</span><br></pre></td></tr></table></figure>
+<h3 id="缓存"><a class="header-anchor" href="#缓存">¶</a>缓存</h3>
+<ul>
+<li>volatile Class&lt;~&gt; cachedAdaptiveClass<br>
+这个是缓存 AdaptiveClass，如果一个扩展类的类上面带有 @Adaptive 注解，那么这个类就会被缓存在这个地方，每一种类型的扩展类只有一个 AdaptiveClass，如果发现有多个，则会报错。另外，当通过 getAdaptiveExtensionClass 来获取自适应扩展类时，如果当前还没有 AdaptiveClass，则会自动创建一个（动态生成 Java 代码，再编译，典型的比如 Protocol$Adaptive 就是这么生成的）</li>
+<li>Set&lt;~&gt; cachedWrapperClasses<br>
+这个是缓存包装类的，Dubbo 判断一个扩展类是否是包装类比较简单，通过构造函数来判断，如果这个扩展类有一个构造函数，其中参数是当前扩展类的类型，那么就是包装类，举个例子，ProtocolFilterWrapper 就是 protocol 扩展类的包装类，因为有这个构造函数：<code>public ProtocolFilterWrapper(Protocol protocol)</code></li>
+<li>Map&lt;~&gt; cachedActivates<br>
+这个是缓存激活的扩展类，当然，@Activate 注解还可以规定激活的条件和时机</li>
+<li>Holder&lt;~&gt; cachedClasses<br>
+这个是缓存 Adaptive 和 Wrapper 扩展类之外的普通扩展类</li>
+</ul>
+<p>扩展类被加载后会根据一定的规则放入以上 4 个缓存中，比如带有 @Adaptive 注解的会被放入 cachedAdaptiveClass。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/89826705.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -539,203 +996,6 @@ Containerization is increasingly popular because containers are:</p>
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b13b8cb6.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/b13b8cb6.html" itemprop="url">Docker 与常用中间件</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-07T18:51:58+08:00">
-                2019-09-07
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Docker/" itemprop="url" rel="index">
-                    <span itemprop="name">Docker</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  98 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  1 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="zookeeper"><a class="header-anchor" href="#zookeeper">¶</a>ZooKeeper</h3>
-<ol>
-<li><a href="https://stackoverflow.com/questions/30940981/zookeeper-error-cannot-open-channel-to-x-at-election-address" target="_blank" rel="noopener">Zookeeper error: Cannot open channel to X at election address</a></li>
-</ol>
-<h3 id="elasticsearch"><a class="header-anchor" href="#elasticsearch">¶</a>Elasticsearch</h3>
-<ol>
-<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html" target="_blank" rel="noopener">Install Elasticsearch with Docker</a></li>
-<li><a href="http://blog.csdn.net/sbsujjbcy/article/details/52335325" target="_blank" rel="noopener">记一次 Docker 下安装 Logstash+Elasticsearch+Kibana 经历</a></li>
-<li><a href="https://stackoverflow.com/questions/40341346/kibana-on-docker-cannot-connect-to-elasticsearch" target="_blank" rel="noopener">Kibana on Docker cannot connect to Elasticsearch</a></li>
-<li><a href="https://www.cnblogs.com/aubin/p/8012840.html" target="_blank" rel="noopener">Elasticsearch 集群部署</a></li>
-</ol>
-<h3 id="docker-mysql"><a class="header-anchor" href="#docker-mysql">¶</a>Docker MySQL</h3>
-<ol>
-<li><a href="https://hub.docker.com/_/mysql/" target="_blank" rel="noopener">Docker MySQL</a></li>
-</ol>
-<h3 id="docker-mysql-双机热备实现"><a class="header-anchor" href="#docker-mysql-双机热备实现">¶</a>Docker MySQL 双机热备实现</h3>
-<ol>
-<li><a href="https://github.com/Junnplus/blog/issues/1" target="_blank" rel="noopener">Mysql Master/Slave Replication With Docker</a></li>
-<li><a href="http://blog.csdn.net/huaweitman/article/details/50853075" target="_blank" rel="noopener">Mysql 双机热备实现</a></li>
-<li><a href="https://dev.mysql.com/doc/refman/8.0/en/linux-installation-docker.html" target="_blank" rel="noopener">2.5.6 Deploying MySQL on Linux with Docker</a></li>
-<li><a href="https://blog.csdn.net/boling_cavalry/article/details/71055159" target="_blank" rel="noopener">让 docker 中的 mysql 启动时自动执行 sql</a></li>
-<li><a href="https://www.2cto.com/database/201503/386265.html" target="_blank" rel="noopener">MySQL 主从复制资料汇总</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/5582e809.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -821,7 +1081,7 @@ Containerization is increasingly popular because containers are:</p>
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.4k 字
+                  4.8k 字
                 </span>
               
 
@@ -837,7 +1097,7 @@ Containerization is increasingly popular because containers are:</p>
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  18 分钟
+                  20 分钟
                 </span>
               
             </div>
@@ -863,6 +1123,183 @@ Containerization is increasingly popular because containers are:</p>
           <!--noindex-->
           <div class="post-button text-center">
             <a class="btn" href="/5582e809.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e3d5c2fc.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e3d5c2fc.html" itemprop="url">并发和线程池</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-01T21:07:49+08:00">
+                2019-09-01
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  9.6k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  36 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>执行异步任务最简单的方式就是通过线程来执行，因为线程本质上是操作系统的资源，应用如果不加限制地占用——最严重的情况下——将会导致系统的宕机。因此，本地线程任务主要依赖线程池来执行，线程池可以看做一种线程资源池，提供了对线程资源的调度功能。当然，提到线程就不得不提并发安全，这又是一个非常复杂的主题，水平有限，无法一一道清。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/e3d5c2fc.html#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -1049,183 +1486,6 @@ Containerization is increasingly popular because containers are:</p>
           <!--noindex-->
           <div class="post-button text-center">
             <a class="btn" href="/9d02e43e.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e3d5c2fc.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e3d5c2fc.html" itemprop="url">并发和线程池</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-01T21:07:49+08:00">
-                2019-09-01
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  9.6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  36 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>执行异步任务最简单的方式就是通过线程来执行，因为线程本质上是操作系统的资源，应用如果不加限制地占用——最严重的情况下——将会导致系统的宕机。因此，本地线程任务主要依赖线程池来执行，线程池可以看做一种线程资源池，提供了对线程资源的调度功能。当然，提到线程就不得不提并发安全，这又是一个非常复杂的主题，水平有限，无法一一道清。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/e3d5c2fc.html#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -1657,522 +1917,6 @@ review 计划，看是否达到了预期。</li>
             </a>
           </div>
           <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1c3259ad.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/1c3259ad.html" itemprop="url">ES 分布式搜索</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-21T09:03:54+08:00">
-                2019-08-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/ElasticSearch/" itemprop="url" rel="index">
-                    <span itemprop="name">ElasticSearch</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  9.1k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  35 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="分布式搜索原理"><a class="header-anchor" href="#分布式搜索原理">¶</a>分布式搜索原理</h2>
-<p>在分布式环境中执行的搜索是一个两阶段的过程，我们称之为 <strong>query then fetch</strong> 。</p>
-<h3 id="查询阶段"><a class="header-anchor" href="#查询阶段">¶</a>查询阶段</h3>
-<p><img src="https://tallate.top/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png" alt="查询阶段" title="查询阶段"></p>
-<ul>
-<li>
-<p>客户端发送一个 search 请求到协调节点（也就是 Node 3），协调节点会创建一个大小为 <code>from+size</code> 的<strong>空优先队列</strong></p>
-</li>
-<li>
-<p>协调节点将请求广播到索引中每一个分片拷贝（主分片或者副本分片）。</p>
-</li>
-<li>
-<p>每个分片在本地执行搜索并构建一个匹配文档的 <strong>优先队列</strong>。<br>
-一个 优先队列 仅仅是一个存有 top-n 匹配文档的有序列表。优先队列的大小取决于分页参数 from 和 size ，其值为 from + size，比如下面的搜索请求需要足够大的优先队列来放入 100 条文档。</p>
-  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;from&quot;: 90,</span><br><span class="line">    &quot;size&quot;: 10</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>协调节点将在之后的请求中轮询所有的分片拷贝来分摊负载，因此更多的副本（结合更多的硬件）能增加搜索吞吐率。<br>
-每个分片返回各自优先队列中所有文档的 ID 和排序值（_score）给协调节点 ，它合并这些值到自己的优先队列中来产生一个全局排序后的结果列表。</p>
-</li>
-</ul>
-<h3 id="取回阶段"><a class="header-anchor" href="#取回阶段">¶</a>取回阶段</h3>
-<p><img src="https://tallate.top/imgs/ES/%E5%8F%96%E5%9B%9E%E9%98%B6%E6%AE%B5.png" alt="取回阶段" title="取回阶段"></p>
-<ul>
-<li>协调节点辨别出哪些文档需要被取回并向相关的分片提交多个 GET 请求。</li>
-<li>每个分片加载并 丰富 文档（_source），如果有需要的话，接着返回文档给协调节点。</li>
-<li>一旦所有的文档都被取回了，协调节点需要对 number_of_shards * (from + size) 大小的文档集合排序，协调节点返回结果给客户端。</li>
-</ul>
-<h3 id="深分页问题-deep-pagination"><a class="header-anchor" href="#深分页问题-deep-pagination">¶</a>深分页问题（Deep Pagination）</h3>
-<p>先查后取的过程支持用 <code>from</code> 和 <code>size</code> 参数分页，但是这是 有限制的 。 要记住需要传递信息给协调节点的每个分片必须先创建一个 from + size 长度的队列，协调节点需要根据 <code>number_of_shards * (from + size)</code> 排序文档，来找到被包含在 size 里的文档。<br>
-取决于你的文档的大小，分片的数量和你使用的硬件，给 10,000 到 50,000 的结果文档深分页（ 1,000 到 5,000 页）是完全可行的。但是使用足够大的 from 值，排序过程可能会变得非常沉重，使用大量的 CPU、内存和带宽。因为这个原因，我们强烈建议你不要使用深分页。<br>
-实际上，深分页很少符合人的行为。当 2 到 3 页过去以后，人会停止翻页，并且改变搜索标准。会不知疲倦地一页一页的获取网页直到你的服务崩溃的罪魁祸首一般是机器人或者 web spider。<br>
-如果你确实需要从你的集群取回大量的文档，你可以通过用 <code>scroll</code> 查询禁用排序使这个取回行为更有效率</p>
-<h3 id="偏好"><a class="header-anchor" href="#偏好">¶</a>偏好</h3>
-<p>偏好这个参数 <code>preference</code> 允许 用来控制由哪些分片或节点来处理搜索请求。 它接受像 <code>_primary, _primary_first, _local, _only_node:xyz, _prefer_node:xyz, 和 _shards:2,3</code> 这样的值，在<a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-preference.html" target="_blank" rel="noopener">search Preference</a>有说明。<br>
-偏好字段可以用于解决<strong>Bouncing Results</strong>问题。</p>
-<blockquote>
-<p>Bouncing Results<br>
-想象一下有两个文档有同样值的时间戳字段，搜索结果用 timestamp 字段来排序。 由于搜索请求是在所有有效的分片副本间轮询的，那就有可能发生主分片处理请求时，这两个文档是一种顺序， 而副本分片处理请求时又是另一种顺序。<br>
-这就是所谓的 bouncing results 问题: 每次用户刷新页面，搜索结果表现是不同的顺序。 让同一个用户始终使用同一个分片，这样可以避免这种问题， 可以设置 preference 参数为一个特定的任意值比如用户会话 ID 来解决。</p>
-</blockquote>
-<h3 id="超时"><a class="header-anchor" href="#超时">¶</a>超时</h3>
-<p>通常分片处理完它所有的数据后再把结果返回给协调节点，协调节点把收到的所有结果合并为最终结果。这意味着花费的时间是最慢分片的处理时间加结果合并的时间。如果有一个节点有问题，就会导致所有的响应缓慢。<br>
-参数 <code>timeout</code> 告诉 分片允许处理数据的最大时间。如果没有足够的时间处理所有数据，这个分片的结果可以是部分的，甚至是空数据。<br>
-搜索的返回结果会用属性 timed_out 标明分片是否返回的是部分结果：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">&quot;time_out&quot;: true // 表示搜索请求超时了</span><br></pre></td></tr></table></figure>
-<p>很有可能查询会超过设定的超时时间，这种情况可能有两个原因：</p>
-<ol>
-<li>超时检查是基于每文档做的。 但是某些查询类型有大量的工作在文档评估之前需要完成。 这种 “setup” 阶段并不考虑超时设置，所以太长的建立时间会导致超过超时时间的整体延迟。</li>
-<li>因为时间检查是基于每个文档的，一次长时间查询在单个文档上执行并且在下个文档被评估之前不会超时。 这也意味着差的脚本（比如带无限循环的脚本）将会永远执行下去。</li>
-</ol>
-<h3 id="路由"><a class="header-anchor" href="#路由">¶</a>路由</h3>
-<p>路由能够在索引时提供来确保相关的文档，比如属于某个用户的文档被存储在某个分片上。 在搜索的时候，不用搜索索引的所有分片，而是通过指定几个 routing 值来限定只搜索几个相关的分片：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?routing=user_1,user2</span><br></pre></td></tr></table></figure>
-<h3 id="搜索类型"><a class="header-anchor" href="#搜索类型">¶</a>搜索类型</h3>
-<p>缺省的搜索类型是 <code>query_then_fetch</code> 。 在某些情况下，你可能想明确设置 <code>search_type</code> 为 <code>dfs_query_then_fetch</code> 来改善相关性精确度：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?search_type=dfs_query_then_fetch</span><br></pre></td></tr></table></figure>
-<p>搜索类型 <code>dfs_query_then_fetch</code> 有预查询阶段，这个阶段可以从所有相关分片获取词频来计算全局词频。</p>
-<h3 id="游标查询-scroll"><a class="header-anchor" href="#游标查询-scroll">¶</a>游标查询 Scroll</h3>
-<p><code>scroll</code> 查询 可以用来对 Elasticsearch 有效地执行大批量的文档查询，而又不用付出深度分页那种代价。<br>
-游标查询允许我们 先做查询初始化，然后再批量地拉取结果。 这有点儿像传统数据库中的 <code>cursor</code> 。<br>
-游标查询会取某个时间点的快照数据。 查询初始化之后索引上的任何变化会被它忽略。 它通过保存旧的数据文件来实现这个特性，结果就像保留初始化时的索引 <code>视图</code> 一样。<br>
-深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。 游标查询用字段 <code>_doc</code> 来排序。 这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果。<br>
-启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间。 游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间。 这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m // 保持游标查询窗口一分钟。</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], // 关键字 _doc 是最有效的排序顺序。</span><br><span class="line">    &quot;size&quot;:  1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个查询的返回结果包括一个字段 <code>_scroll_id</code>， 它是一个 base64 编码的长字符串。现在我们能传递字段 <code>_scroll_id</code> 到 <code>_search/scroll</code> 查询接口获取下一批结果：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, // 注意再次设置游标查询过期时间为一分钟。</span><br><span class="line">    &quot;scroll_id&quot; : &quot;cXVlcnlUaGVuRmV0Y2g7NTsxMDk5NDpkUmpiR2FjOFNhNnlCM1ZDMWpWYnRROzEwOTk1OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MTA5OTM6ZFJqYkdhYzhTYTZ5QjNWQzFqVmJ0UTsxMTE5MDpBVUtwN2lxc1FLZV8yRGVjWlI2QUVBOzEwOTk2OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MDs=&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个游标查询返回的下一批结果。 尽管我们指定字段 size 的值为 1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 <code>size * number_of_primary_shards</code>。<br>
-当没有更多结果返回的时候，我们就处理完所有匹配的文档了。</p>
-<h2 id="搜索-轻量查询-query-string"><a class="header-anchor" href="#搜索-轻量查询-query-string">¶</a>搜索 - 轻量查询（Query-string）</h2>
-<p>当在单一的索引下进行搜索的时候，Elasticsearch 转发请求到索引的每个分片中，可以是主分片也可以是副本分片，然后从每个分片中收集结果。多索引搜索恰好也是用相同的方式工作的——只是会涉及到更多的分片。<br>
-搜索一个索引有五个主分片和搜索五个索引各有一个分片准确来所说是等价的，因为索引只是一种逻辑结构，实际上处理请求的是分片。<br>
-搜索有两种形式：Query-string 和请求体查询。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">HEAD /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">GET /megacorp/employee/_search?q=last_name:Smith</span><br><span class="line">GET /megacorp/employee/_search?q=+first_name:Jane last_name:Smith</span><br><span class="line">GET /_search?q=mary</span><br><span class="line">GET /_search?q=+name:(mary john) +date:&gt;2014-09-10 +(aggregations geo)</span><br><span class="line">GET /_search 在所有的索引中搜索所有的类型（无条件）</span><br><span class="line">/gb/_search 在 gb 索引中搜索所有的类型（指定索引）</span><br><span class="line">/gb,us/_search 在 gb 和 us 索引中搜索所有的文档（指定多个索引）</span><br><span class="line">/g*,u*/_search 在任何以 g 或者 u 开头的索引中搜索所有的类型（通配符）</span><br><span class="line">/gb/user/_search 在 gb 索引中搜索 user 类型（指定类型）</span><br><span class="line">/gb,us/user,tweet/_search 在 gb 和 us 索引中搜索 user 和 tweet 类型（指定多个类型）</span><br><span class="line">/_all/user,tweet/_search 在所有的索引中搜索 user 和 tweet 类型（指定多个类型但不限制索引）</span><br></pre></td></tr></table></figure>
-<h3 id="查询条件"><a class="header-anchor" href="#查询条件">¶</a>查询条件</h3>
-<ul>
-<li>其中 ‘_search’ 表示搜索，默认返回 10 条结果；</li>
-<li>查询本身赋值给了参数 q，查询链接会被 URL 编码，所以可读性会比较差；</li>
-<li>“last_name:Smith&quot;表示 last_name 字段中包含 Smith 的文档，”+last_name:Smith&quot;表示必须与查询条件匹配，&quot;-last_name:Smith&quot;表示一定不与查询条件匹配；<br>
-至于多个条件存在的情况下，其实不会发生矛盾，&quot;+first_name:Jane -first_name:Jane&quot;可以看成先查出 first_name 包含&quot;Jane&quot;的，再过滤掉；</li>
-</ul>
-<h3 id="隐含字段"><a class="header-anchor" href="#隐含字段">¶</a>隐含字段</h3>
-<p>当对文档进行索引时，Elasticsearch 取出所有字段的值拼接成一个大的字符串，作为 <code>_all</code> 字段进行索引。</p>
-<h3 id="query-string-的优点"><a class="header-anchor" href="#query-string-的优点">¶</a>Query-string 的优点</h3>
-<p>简洁</p>
-<h3 id="query-string-的缺点"><a class="header-anchor" href="#query-string-的缺点">¶</a>Query-string 的缺点</h3>
-<ul>
-<li>晦涩难懂</li>
-<li>脆弱，小的语法错误就会报错</li>
-<li>效率较低，查询字符串搜索允许任何用户在索引的任意字段上执行可能较慢且重量级的查询，这可能会暴露隐私信息，甚至将集群拖垮</li>
-</ul>
-<h3 id="搜索返回字段"><a class="header-anchor" href="#搜索返回字段">¶</a>搜索返回字段</h3>
-<p>hits：匹配文档总数及所查询结果的前十个文档<br>
-_score：衡量文档与查询的匹配程度<br>
-took：整个搜索请求耗费的时间（毫秒）<br>
-shards：在查询中参与的分片总数，及失败（主分片和副本分片都挂掉）和成功的数量<br>
-timeout：返回值中的 timed_out 表示查询是否超时， timeout 不是停止执行查询，它仅仅是告知正在协调的节点返回到目前为止收集的结果并且关闭连接。在后台，其他的分片可能仍在执行查询即使是结果已经被发送了。使用超时是因为 SLA(服务等级协议)对你是很重要的，而不是因为想去中止长时间运行的查询。可以在查询条件中指定时间限制：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?timeout=10ms</span><br></pre></td></tr></table></figure>
-<h3 id="分页"><a class="header-anchor" href="#分页">¶</a>分页</h3>
-<p>size：显示应该返回的结果数量，默认是 10<br>
-from：显示应该跳过的初始结果数量，默认是 0</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?size=5&amp;from=5</span><br></pre></td></tr></table></figure>
-<p>考虑到<strong>分页过深（比如请求 10001 到 10010 的数据）<strong>以及</strong>一次请求太多结果</strong>的情况：结果集在返回之前先进行排序，但请记住<strong>一个请求经常跨越多个分片</strong>，每个分片都产生自己的排序结果，这些结果需要进行集中排序以保证整体顺序是正确的。<br>
-假设在一个有 5 个主分片的索引中搜索。 当我们请求结果的第一页（结果从 1 到 10 ），每一个分片产生前 10 的结果，并且返回给 协调节点 ，协调节点对 50 个结果排序得到全部结果的前 10 个。<br>
-现在假设我们请求第 1000 页–结果从 10001 到 10010 。所有都以相同的方式工作除了每个分片不得不产生前 10010 个结果以外。 然后协调节点对全部 50050 个结果排序最后丢弃掉这些结果中的 50040 个结果。可以看到，在分布式系统中，对结果排序的成本随分页的深度成指数上升。这就是 web 搜索引擎对<strong>任何查询都不要返回超过 1000 个结果</strong>的原因。</p>
-<h2 id="请求体查询-查询表达式"><a class="header-anchor" href="#请求体查询-查询表达式">¶</a>请求体查询（查询表达式）</h2>
-<p>es 倾向于使用 GET 来表达查询操作，查询条件可以放到请求体中，而事实是这个 RFC 文档 <strong>RFC 7231</strong> — 一个专门负责处理 HTTP 语义和内容的文档 — 并没有规定一个带有请求体的 GET 请求应该如何处理！结果是，一些 HTTP 服务器允许这样子，而有一些 — 特别是一些用于缓存和代理的服务器 — 则不允许。所以 es 作了一个妥协，下面的 GET 请求同样可以使用 POST 来实现：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match&quot; : &#123;</span><br><span class="line">            &quot;last_name&quot; : &quot;Smith&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>查询表达式主要有两种结构：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        ARGUMENT: VALUE,</span><br><span class="line">        ARGUMENT: VALUE,...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        FIELD_NAME: &#123;</span><br><span class="line">            ARGUMENT: VALUE,</span><br><span class="line">            ARGUMENT: VALUE,...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="query-name-表示查询语句"><a class="header-anchor" href="#query-name-表示查询语句">¶</a>QUERY_NAME 表示查询语句</h3>
-<ul>
-<li>match_all：简单的匹配所有文档，往往和 filter 搭配；</li>
-<li>match：如果你在一个全文字段上使用 match 查询，在执行查询前，它将用正确的分析器去分析查询字符串；<br>
-如果在一个精确值的字段上使用它， 例如数字、日期、布尔或者一个 not_analyzed 字符串字段，那么它将会精确匹配给定的值；</li>
-<li>multi_match：多个字段的 match；</li>
-<li>filter：不评分查询，实际上是给了每个查询出的文档一个默认的中性评价 1，并且<strong>过滤结果将会被缓存</strong>；</li>
-<li>range（范围查询）：查询找出那些落在指定区间内的数字或者时间，gt 大于、gte 大于等于、lt 小于、lte 小于等于；</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;bool&quot;: &#123;</span><br><span class="line">            &quot;must&quot;: &#123;</span><br><span class="line">                &quot;match&quot; : &#123;</span><br><span class="line">                    &quot;last_name&quot; : &quot;smith&quot; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;range&quot; : &#123;</span><br><span class="line">                    &quot;age&quot; : &#123; &quot;gt&quot; : 30 &#125; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>term：精确值 匹配，这些精确值可能是数字、时间、布尔或者那些 not_analyzed 的字符串，注意<strong>term 不会对输入的文本进行分析</strong>，这样和索引过的目标字符串比较很有可能出现明明看起来一样却匹配不上的现象（比如&quot;Jane&quot;被分析后变成&quot;jane&quot;，term 查询时使用&quot;Jane&quot;进行精确匹配当然匹配不上了！）；</li>
-<li>terms：同样是精确值匹配，但可以指定一个数组进行匹配；</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;term&quot; : &#123;&quot;first_name&quot;: &quot;jane&quot;&#125;&#125;</span><br><span class="line">&#123; &quot;terms&quot;: &#123; &quot;tag&quot;: [ &quot;search&quot;, &quot;full_text&quot;, &quot;nosql&quot; ] &#125;&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>exists 和 missing：指定字段有值或无值，但后来的版本中废弃了 missing，因为可以通过 must_not+exists 来实现类似的效果</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;exists&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>bool：复合语句，可以组合其他语句比如 must 必须匹配、must_not 必须不匹配、should 如果满足则增加_score 否则无影响、filter 用来排除文档不评分，特别的，如果没有 must 语句，那么至少需要能够匹配其中的一条 should 语句。但，如果存在至少一条 must 语句，则对 should 语句的匹配没有要求；每一个子查询都独自地计算文档的相关性得分。一旦他们的得分被计算出来， bool 查询就将这些得分进行合并并且返回一个代表整个布尔操作的得分。（虽说是布尔操作，但是结果分数其实是<code>[0, 1]</code>范围内的小数）</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">        &quot;must&quot;: &#123; &quot;match&quot;: &#123; &quot;title&quot;: &quot;how to make millions&quot; &#125;&#125;,</span><br><span class="line">        &quot;must_not&quot;: &#123; &quot;match&quot;: &#123; &quot;tag&quot;: &quot;spam&quot; &#125;&#125;,</span><br><span class="line">        &quot;should&quot;: [</span><br><span class="line">            &#123; &quot;match&quot;: &#123; &quot;tag&quot;: &quot;starred&quot; &#125;&#125;</span><br><span class="line">        ],</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">          &quot;range&quot;: &#123; &quot;date&quot;: &#123; &quot;gte&quot;: &quot;2014-01-01&quot; &#125;&#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>constant_score：将一个不变的常量评分（即 1）应用于所有匹配的文档。经常用于你只需要执行一个 filter 而没有其它查询的情况下，如果使用 bool 查询_score 值将总是为 0：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;constant_score&quot;: &#123;</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">            &quot;term&quot;: &#123; &quot;category&quot;: &quot;ebooks&quot; &#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>about（全文搜索）<br>
-搜索结果将根据相关性排序。</li>
-<li>match_phrase（短语搜索）<br>
-针对&quot;rock climbing&quot;这样的短语，如果直接使用 match 会分别使用&quot;rock&quot;和&quot;climbing&quot;两个单词进行搜索，而使用 match_phrase 则会直接使用整个短语进行搜索。</li>
-<li>highlight（高亮）<br>
-指定某个属性中的匹配部分应该被高亮（结果会使用<em>标签包裹）。</em></li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match_phrase&quot; : &#123;</span><br><span class="line">            &quot;about&quot; : &quot;rock climbing&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;highlight&quot;: &#123;</span><br><span class="line">        &quot;fields&quot; : &#123;</span><br><span class="line">            &quot;about&quot; : &#123;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>aggs 聚合<br>
-Sorting, aggregations, and accessing field values in scripts 需要使用到一个称为 fielddata（正排索引）的数据结构：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">PUT megacorp/_mapping/employee/</span><br><span class="line">&#123;</span><br><span class="line">  &quot;properties&quot;: &#123;</span><br><span class="line">    &quot;interests&quot;: &#123; </span><br><span class="line">      &quot;type&quot;: &quot;text&quot;,</span><br><span class="line">      &quot;fielddata&quot;: true</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;aggs&quot; : &#123;</span><br><span class="line">        &quot;all_interests&quot; : &#123;</span><br><span class="line">            &quot;terms&quot; : &#123; &quot;field&quot; : &quot;interests&quot; &#125;,</span><br><span class="line">            &quot;aggs&quot; : &#123;</span><br><span class="line">                &quot;avg_age&quot; : &#123;</span><br><span class="line">                    &quot;avg&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>前缀查询<br>
-prefix</li>
-<li>正则表达式查询<br>
-regexp</li>
-<li>通配符匹配<br>
-使用<code>*</code>匹配字符序列（包括空字符），使用<code>?</code>匹配单个字符。<br>
-最好不要把通配符放在前面，这样会很慢。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GET mts_sample_order/orders/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;from&quot;: 1,</span><br><span class="line">  &quot;size&quot;: 10,</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;wildcard&quot;: &#123;</span><br><span class="line">      &quot;sample_type_name&quot;: &quot;咽拭子*&quot;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="argument-一些特殊的参数"><a class="header-anchor" href="#argument-一些特殊的参数">¶</a>ARGUMENT 一些特殊的参数</h3>
-<ul>
-<li>from 和 size（分页）</li>
-<li>preference（偏好）<br>
-用来控制由哪些分片或节点来处理搜索请求。 它接受<a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-preference.html" target="_blank" rel="noopener">像 _primary, _primary_first, _local, _only_node:xyz, _prefer_node:xyz, 和 _shards:2,3 这样的值</a>，但是最有用的值是某些随机字符串，它可以避免 bouncing results 问题（不同分片上排序顺序不同），这样可能发生每次用户刷新页面，搜索结果表现是不同的顺序，所以最好让同一个用户始终使用同一个分片，可以设置 preference 参数为一个特定的任意值比如用户会话 ID 来解决。</li>
-<li>timeout（超时）<br>
-在分布式搜索时需要由每个分片处理完、将结果返回给协调节点进行排序、再返回给客户端，所以整个过程的效率受到最慢的那个分片的处理速度和协调节点的处理速度二者的限制；<br>
-参数 timeout 告诉 分片允许处理数据的最大时间。如果没有足够的时间处理所有数据，这个分片的结果可以是部分的，甚至是空数据，搜索的返回结果会用属性 timed_out 标明分片是否返回的是部分结果（是否超时）；<br>
-需要注意可能会影响到整体延迟（并非上面说的超时时间）的条件，比如某些查询类型有大量的工作在文档评估之前需要完成、每次评估时基于每个文档的所以单个文档死循环也会影响整个查询死循环。</li>
-<li>routing（路由）<br>
-在索引时提供 routing 值可以确保文档被存储到某个分片上，在搜索的时候，不用搜索索引的所有分片，而是通过指定几个 routing 值来限定只搜索几个相关的分片，这个技术在 <strong>设计大规模搜索系统</strong> 时就会派上用场。</li>
-<li>search_type（搜索类型）<br>
-缺省的搜索类型是 query_then_fetch。你可能想明确设置 search_type 为 dfs_query_then_fetch 来改善相关性精确度，搜索类型 dfs_query_then_fetch 有预查询阶段，这个阶段可以从所有相关分片获取词频来计算全局词频。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?preference=xyzabc123&amp;routing=user_1,user2&amp;search_type=dfs_query_then_fetch</span><br><span class="line">&#123;</span><br><span class="line">  &quot;from&quot;: 0,</span><br><span class="line">  &quot;size&quot;: 5,</span><br><span class="line">  &quot;timeout&quot;: &quot;1s&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="doc-values-fielddata-正排索引"><a class="header-anchor" href="#doc-values-fielddata-正排索引">¶</a>Doc Values（fielddata 正排索引）</h3>
-<p>在搜索的时候，我们能通过搜索关键词快速得到结果集。当排序的时候，我们需要倒排索引里面某个字段值的集合。换句话说，我们需要 <strong>转置</strong> 倒排索引。转置 结构在其他系统中经常被称作 <strong>列存储</strong> 。实质上，它将所有单字段的值存储在单数据列中，这使得对其进行操作是十分高效的，例如排序。</p>
-<ul>
-<li>Doc Values 是在索引时随同倒排索引一起创建的</li>
-<li>常用于以下场景：<br>
-对一个字段进行排序<br>
-对一个字段进行聚合<br>
-某些过滤，比如地理位置过滤<br>
-某些与字段相关的脚本计算</li>
-<li>当 working set 远小于节点的可用内存，系统会自动将所有的文档值保存在内存中，使得其读写十分高速； 当其远大于可用内存，操作系统会自动把 Doc Values 加载到系统的页缓存中，从而避免了 jvm 堆内存溢出异常。</li>
-</ul>
-<h3 id="验证查询是否合法"><a class="header-anchor" href="#验证查询是否合法">¶</a>验证查询是否合法</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_validate/query?explain</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123; ... &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="排序与相关性"><a class="header-anchor" href="#排序与相关性">¶</a>排序与相关性</h3>
-<ul>
-<li>sort将目标字段转换为排序所需的格式，date 字段的值表示为自 epoch (January 1, 1970 00:00:00 UTC)以来的毫秒数，通过 sort 字段的值进行返回。</li>
-<li>如果字段是一个数组（多值），可以使用 mode 指定其中 min 、 max 、 avg 或是 sum 进行排序；</li>
-<li>评分的计算方式取决于 <strong>查询类型</strong> 不同的查询语句用于不同的目的： fuzzy 查询会计算与关键词的拼写相似程度，terms 查询会计算 找到的内容与关键词组成部分匹配的百分比，但是通常我们说的 relevance 是我们用来计算全文本字段的值相对于全文本检索词相似程度的算法，Elasticsearch 的相似度算法 被定义为检索词频率/反向文档频率（TF/IDF），包括以下内容：
-<ul>
-<li>检索词频率<br>
-　　检索词在该字段出现的频率？出现频率越高，相关性也越高。 字段中出现过 5 次要比只出现过 1 次的相关性高。</li>
-<li>反向文档频率<br>
-　　每个检索词在索引中出现的频率？频率越高，相关性越低。检索词出现在多数文档中会比出现在少数文档中的权重更低。</li>
-<li>字段长度准则<br>
-　　字段的长度是多少？长度越长，相关性越低。 检索词出现在一个短的 title 要比同样的词出现在一个长的 content 字段权重更大。</li>
-</ul>
-</li>
-<li>单个查询可以联合使用 TF/IDF 和其他方式，比如短语查询中检索词的距离或模糊查询里的检索词相似度。如果多条查询子句被合并为一条复合查询语句 ，比如 bool 查询，则每个查询子句计算得出的评分会被合并到总的相关性评分中。</li>
-<li>字符串索引后（analusis）会有变化，排序时希望使用原字段（not_analyzed）进行排序，我们想要对同一个字段索引两次，而不是在_source 中保存两份字符串字段，这可以通过为字段添加一个 not_analyzed 子字段来实现：主字段用于搜索、子字段用于排序：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&quot;tweet&quot;: &#123; </span><br><span class="line">    &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">    &quot;analyzer&quot;: &quot;english&quot;,</span><br><span class="line">    &quot;fields&quot;: &#123;</span><br><span class="line">        &quot;raw&quot;: &#123; </span><br><span class="line">            &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">            &quot;index&quot;: &quot;not_analyzed&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&quot;sort&quot; : &#123;</span><br><span class="line">  &quot;date&quot;: &#123;</span><br><span class="line">    &quot;order&quot;: &quot;desc&quot;,</span><br><span class="line">    &quot;mode&quot;: &quot;min&quot;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>默认情况下，返回结果是按相关性倒序排列的</li>
-<li>可以在查询参数中加入 explain 参数解释排序结果</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?explain </span><br><span class="line">&#123;</span><br><span class="line">   &quot;query&quot; : &#123; &quot;match&quot; : &#123; &quot;tweet&quot; : &quot;honeymoon&quot; &#125;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="scroll查询-游标"><a class="header-anchor" href="#scroll查询-游标">¶</a>Scroll查询（游标）</h3>
-<p>游标查询允许我们先做查询初始化（一些查询类型可能包含初始化，可以使用 search_type 指定），然后再批量地拉取结果，能避免深度分页那种代价。深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。游标查询用字段 _doc 来排序，这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果（每个分片排序，但整体不排序，而由客户端决定）。<br>
-游标查询会取某个时间点的快照数据，查询初始化之后索引上的任何变化会被它忽略，启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间，游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间；字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 size * number_of_primary_shards 。：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m </span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], </span><br><span class="line">    &quot;size&quot;: 1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。<br>
-这个查询的返回结果包括一个字段 _scroll_id<code>， 它是一个base64编码的长字符串 (((&quot;scroll_id&quot;))) 。 现在我们能传递字段</code>_scroll_id 到 _search/scroll 查询接口获取下一批结果（注意游标查询每次返回一个新字段 _scroll_id，每次我们做下一次游标查询， 我们必须把前一次查询返回的字段 _scroll_id 传递进去。 当没有更多的结果返回的时候，我们就处理完所有匹配的文档了），并且可以重新刷新过期时间为 1 分钟：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, </span><br><span class="line">    &quot;scroll_id&quot; : &quot;很长的编码串&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="实践"><a class="header-anchor" href="#实践">¶</a>实践</h3>
-<h4 id="查询订单昨天的问题订单"><a class="header-anchor" href="#查询订单昨天的问题订单">¶</a>查询订单昨天的问题订单</h4>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">// 查询索引</span><br><span class="line">GET _cat/indices</span><br><span class="line">// 查询昨天的订单中属于异常状态的订单，并取其中的部分字段</span><br><span class="line">GET /mts_reg_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: &#123;</span><br><span class="line">        &quot;match&quot;: &#123;</span><br><span class="line">          &quot;order_status&quot;: &quot;SUSPEND&quot;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">          &quot;create_date&quot;: &#123;</span><br><span class="line">            &quot;gt&quot;: &quot;2020-09-23 00:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 00:00:00&quot;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;],</span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="多条件查询"><a class="header-anchor" href="#多条件查询">¶</a>多条件查询</h4>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">// 这个语句的特点是must中放置了多个模糊匹配条件</span><br><span class="line">GET /mts_fee_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: [</span><br><span class="line">        &#123;&quot;match&quot;: &#123;&quot;order_status&quot;: &quot;SUSPEND&quot;&#125;&#125;,</span><br><span class="line">        &#123;&quot;match&quot;: &#123;&quot;pay_status&quot;: &quot;PAY_SUCCESS&quot;&#125;&#125;</span><br><span class="line">      ],</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">            &quot;create_date&quot;: &#123; &quot;gt&quot;: &quot;2020-09-23 15:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 15:00:00&quot;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;], </span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="分析器"><a class="header-anchor" href="#分析器">¶</a>分析器</h2>
-<h3 id="分析器和倒排索引"><a class="header-anchor" href="#分析器和倒排索引">¶</a>分析器和倒排索引</h3>
-<p>一个倒排索引由文档中所有不重复词的列表构成，对于其中每个词，有一个包含它的文档列表。建立倒排索引的过程称为<strong>分析</strong>，执行分析过程的程序称为 <strong>分析器</strong>：</p>
-<ol>
-<li>字符过滤器：字符串按顺序通过每个 字符过滤器 。他们的任务是在分词前整理字符串。一个字符过滤器可以用来去掉 HTML，或者将 &amp; 转化成 <code>and</code>。</li>
-<li>分词器：将待索引的内容拆分成单独的 词（我们称它为 <strong>词条</strong> 或 <strong>tokens</strong> ），创建一个包含所有不重复词条的排序列表，然后列出每个词条出现在哪个文档。</li>
-<li>Token 过滤器：删除无用词（a、and、the 等），合并统一大小写后相同的词（Quick 和 quick）、具有相同词根的词（fox 和 foxes），增加同义词（jump 和 leap）等。</li>
-</ol>
-<h3 id="内置分析器"><a class="header-anchor" href="#内置分析器">¶</a>内置分析器</h3>
-<p>“Set the shape to semi-transparent by calling set_trans(5)”</p>
-<ol>
-<li>标准分析器<br>
-标准分析器是 Elasticsearch 默认使用的分析器。它是分析各种语言文本最常用的选择。它根据 Unicode 联盟 定义的 单词边界 划分文本（standard 分词器）。删除绝大部分标点（standard 语汇单元过滤器）。最后将词条小写（lowercase 语汇单元过滤器），stop 语汇单元过滤器是被禁用的，它会删除停用词–对搜索相关性影响不大的常用词，如 a ， the ， and ， is ，如需启用它，你可以通过创建一个基于 standard 分析器的<strong>自定义分析器</strong>并设置 stopwords 参数，可以给分析器提供一个停用词列表，或者告知使用一个基于特定语言的预定义停用词列表。。它会产生：<br>
-set, the, shape, to, semi, transparent, by, calling, set_trans, 5</li>
-<li>简单分析器<br>
-简单分析器在任何不是字母的地方分隔文本，将词条小写。它会产生：<br>
-set, the, shape, to, semi, transparent, by, calling, set, trans</li>
-<li>空格分析器<br>
-空格分析器在空格的地方划分文本。它会产生：<br>
-Set, the, shape, to, semi-transparent, by, calling, set_trans(5)</li>
-<li>语言分析器<br>
-特定语言分析器可用于 很多语言。它们可以考虑指定语言的特点。例如， 英语 分析器附带了一组英语无用词（常用单词，例如 and 或者 the ，它们对相关性没有多少影响），它们会被删除。 由于理解英语语法的规则，这个分词器可以提取英语单词的 词干 。英语 分词器会产生下面的词条（注意看 transparent<code>、</code>calling 和 set_trans 已经变为词根格式）：<br>
-set, shape, semi, transpar, call, set_tran, 5</li>
-</ol>
-<h3 id="常用字符过滤器"><a class="header-anchor" href="#常用字符过滤器">¶</a>常用字符过滤器</h3>
-<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html</a><br>
-字符过滤器用来整理 一个尚未被分词的字符串：</p>
-<ol>
-<li>Html 擦除字符过滤器<br>
-擦除像<p>这样的 HTML 标签，以及将像&amp;Aacute转换为相对应的 Unicode 字符Á。</p></li>
-</ol>
-<h3 id="常用分词器"><a class="header-anchor" href="#常用分词器">¶</a>常用分词器</h3>
-<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html</a><br>
-分词器把字符串分解成单个词条或者词汇单元：</p>
-<ol>
-<li>标准分词器<br>
-把一个字符串根据单词边界分解成单个词条，并且移除掉大部分的标点符号。</li>
-<li>关键词分词器<br>
-完整地输出 接收到的同样的字符串，并不做任何分词。</li>
-<li>空格分词器<br>
-只根据空格分割文本 。</li>
-<li>正则分词器<br>
-根据匹配正则表达式来分割文本。</li>
-</ol>
-<h3 id="常用词单元过滤器"><a class="header-anchor" href="#常用词单元过滤器">¶</a>常用词单元过滤器</h3>
-<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html</a><br>
-词单元过滤器可以修改、添加或者移除词单元：</p>
-<ol>
-<li>lowercase</li>
-<li>stop</li>
-<li>词干<br>
-把单词 遏制 为 词干。</li>
-<li>ascii_folding<br>
-移除变音符，把一个像 “très” 这样的词转换为 “tres” 。</li>
-<li>ngram 和 edge_ngram<br>
-可以产生 适合用于部分匹配或者自动补全的词单元。</li>
-</ol>
-<h3 id="自定义分析器"><a class="header-anchor" href="#自定义分析器">¶</a>自定义分析器</h3>
-<ul>
-<li>一个分析器可以有<strong>多个过滤器</strong>及<strong>唯一一个分词器</strong>，自定义分析器的格式如下：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;char_filter&quot;: &#123; ... custom character filters ... &#125;,</span><br><span class="line">            &quot;tokenizer&quot;: &#123; ... custom tokenizers ... &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123; ... custom token filters ... &#125;,</span><br><span class="line">            &quot;analyzer&quot;: &#123; ... custom analyzers ... &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>下面创建了一个新的分析器，叫做 es_std ， 并使用预定义的 西班牙语停用词列表：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">PUT /spanish_docs</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;analyzer&quot;: &#123;</span><br><span class="line">                &quot;es_std&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;standard&quot;,</span><br><span class="line">                    &quot;stopwords&quot;: &quot;_spanish_&quot;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>es_std 分析器不是全局的–它仅仅存在于我们定义的 spanish_docs 索引中。 为了使用 analyze API 来对它进行测试，我们必须使用特定的索引名，这会发现停用词 El 已被正确移除：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /spanish_docs/_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;es_std&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;El veloz zorro marrón&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>下面这个分析器除了使用 Html 擦除字符过滤器移除 HTML 部分、标准分词器分词、lowercase 词过滤器将单词转为小写，还使用一个自定义的字符过滤器把<code>&amp;</code>替换为<code>and</code>，一个自定义停词过滤器移除自定义的停止词列表中包含的词：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;char_filter&quot;: &#123;</span><br><span class="line">                &quot;&amp;_to_and&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;mapping&quot;,</span><br><span class="line">                    &quot;mappings&quot;: [ &quot;&amp;=&gt; and &quot;]</span><br><span class="line">            &#125;&#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;my_stopwords&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;stop&quot;,</span><br><span class="line">                    &quot;stopwords&quot;: [ &quot;the&quot;, &quot;a&quot; ]</span><br><span class="line">            &#125;&#125;,</span><br><span class="line">            &quot;analyzer&quot;: &#123;</span><br><span class="line">                &quot;my_analyzer&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;custom&quot;,</span><br><span class="line">                    &quot;char_filter&quot;: [ &quot;html_strip&quot;, &quot;&amp;_to_and&quot; ],</span><br><span class="line">                    &quot;tokenizer&quot;: &quot;standard&quot;,</span><br><span class="line">                    &quot;filter&quot;: [ &quot;lowercase&quot;, &quot;my_stopwords&quot; ]</span><br><span class="line">            &#125;&#125;</span><br><span class="line">&#125;&#125;&#125;</span><br></pre></td></tr></table></figure>
-<p>调用下面的接口来测试：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /my_index/_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;my_analyzer&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;The quick &amp; brown fox&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个分析器现在是没有多大用处的，除非我们告诉 Elasticsearch在哪里用上它。我们可以像下面这样把这个分析器应用在一个 string 字段上：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index/_mapping/my_type</span><br><span class="line">&#123;</span><br><span class="line">    &quot;properties&quot;: &#123;</span><br><span class="line">        &quot;title&quot;: &#123;</span><br><span class="line">            &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">            &quot;analyzer&quot;: &quot;my_analyzer&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="分析器使用时机"><a class="header-anchor" href="#分析器使用时机">¶</a>分析器使用时机</h3>
-<ol>
-<li><strong>索引</strong>一个文档时，它的<strong>全文域</strong>（包括自动给出的**_all**）被分析成词条以用来创建倒排索引。<br>
-具体的，当 Elasticsearch 在你的文档中检测到一个新的字符串域 ，它会自动设置其为一个全文 字符串 域，使用 <strong>标准</strong> 分析器对它进行分析。</li>
-<li>还有在全文域搜索的时候，需要将查询字符串通过 相同的分析过程 ，以保证我们搜索的词条格式与索引中的词条格式一致（当查询一个精确值域时不会分析）。</li>
-<li>或者直接使用以下链接测试分析器： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;standard&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Text to analyze&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>结果中的每个 token 都代表一个实际存储到索引中的词条， position 指明词条在原始文本中出现的位置。 start_offset 和 end_offset 指明字符在原始字符串中的位置。</p>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<ol>
-<li>为什么搜索是近实时的？</li>
-<li>为什么文档的 CRUD (创建-读取-更新-删除) 操作是 实时 的？</li>
-<li>Elasticsearch 是怎样保证更新被持久化在断电时也不丢失数据?</li>
-<li>为什么删除文档不会立刻释放空间？</li>
-<li>refresh, flush, 和 optimize API 都做了什么, 你什么情况下应该使用他们？</li>
-</ol>
-<h3 id="相同查询多次执行结果不同"><a class="header-anchor" href="#相同查询多次执行结果不同">¶</a>相同查询多次执行结果不同</h3>
-<p>有可能是<strong>Bouncing Results</strong>问题，也有可能是主分片发生了<strong>强制段合并(forcemerge)</strong>，导致请求落到不同分片上得到的结果得分不同（<a href="https://cloud.tencent.com/developer/article/1445643" target="_blank" rel="noopener">Elasticsearch:执行同样的查询语句多次结果不一致？！</a>）。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="文档"><a class="header-anchor" href="#文档">¶</a>文档</h3>
-<ol>
-<li><a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/index.html" target="_blank" rel="noopener">Elasticsearch: 权威指南</a></li>
-<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html" target="_blank" rel="noopener">Elasticsearch Reference</a></li>
-<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html" target="_blank" rel="noopener">REST APIs</a></li>
-</ol>
-<h3 id="索引-映射和文档"><a class="header-anchor" href="#索引-映射和文档">¶</a>索引、映射和文档</h3>
-<ol>
-<li><a href="https://blog.csdn.net/napoay/article/details/52032931" target="_blank" rel="noopener">Elasticsearch 索引的父子关系(index parent-child)</a></li>
-<li><a href="https://www.elastic.co/blog/elasticsearch-versioning-support" target="_blank" rel="noopener">Elasticsearch Versioning Support</a></li>
-</ol>
-<h3 id="搜索"><a class="header-anchor" href="#搜索">¶</a>搜索</h3>
-<ol>
-<li><a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/search-in-depth.html" target="_blank" rel="noopener">深入搜索</a></li>
-</ol>
-<h3 id="集群"><a class="header-anchor" href="#集群">¶</a>集群</h3>
-<ol>
-<li><a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/scale.html" target="_blank" rel="noopener">扩容设计</a></li>
-</ol>
-<h3 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h3>
-<ol>
-<li><a href="https://blog.csdn.net/sinat_14913533/article/details/85833635" target="_blank" rel="noopener">elasticsearch 源码编译问题</a></li>
-</ol>
-
-          
         
       
     </div>
@@ -2997,7 +2741,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/4e9d7784.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1c3259ad.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -3016,7 +2760,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/4e9d7784.html" itemprop="url">ES集群</a></h1>
+                <a class="post-title-link" href="/1c3259ad.html" itemprop="url">ES 分布式搜索</a></h1>
         
 
         <div class="post-meta">
@@ -3082,7 +2826,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.7k 字
+                  9.1k 字
                 </span>
               
 
@@ -3098,7 +2842,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  35 分钟
                 </span>
               
             </div>
@@ -3122,257 +2866,349 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
         
           
             <a id="more"></a>
-<h1>分布式概念（Distribution）</h1>
-<h2 id="集群-cluster"><a class="header-anchor" href="#集群-cluster">¶</a>集群 - Cluster</h2>
-<p>一个集群就是由一个或多个节点组织在一起，它们共同持有全部的数据。<br>
-一个集群有一个唯一的名字标识 <code>cluster.name</code> ，其节点只能通过指定某个集群的名字，来加入这个集群。</p>
-<h2 id="节点-node"><a class="header-anchor" href="#节点-node">¶</a>节点 - Node</h2>
-<p>一个节点是集群中的一个服务器，即一个 Elasticsearch 实例。<br>
-作为集群的一部分，它存储数据，参与集群的索引和搜索功能。</p>
-<h2 id="主节点-master"><a class="header-anchor" href="#主节点-master">¶</a>主节点 - Master</h2>
-<p>当一个节点被选举成为主节点时，它将负责管理集群范围内的所有变更，例如增加、删除索引，或者增加、删除节点等。<br>
-主节点并不需要涉及到文档级别的变更和搜索等操作，所以当集群只拥有一个主节点的情况下，即使流量增加它也不会成为瓶颈。</p>
-<h2 id="分片-shard"><a class="header-anchor" href="#分片-shard">¶</a>分片 - Shard</h2>
-<p>一个 分片 是一个底层的 工作单元 ，它仅保存了 <strong>全部数据中的一部分</strong>，是一个 Lucene 的实例，所以它本身就是一个完整的搜索引擎。<br>
-一个索引可以被划分成多个分片，创建索引时可指定分片数量，默认是 5。<br>
-每个分片是一个 Lucene 实例，它本身也是一个功能完善并且独立的“索引”，这个“索引” 可以被放置到集群中的任何节点上。<br>
-分片是 ES 中集群管理的最小单位，在此基础上，ES 允许：</p>
+<h2 id="分布式搜索原理"><a class="header-anchor" href="#分布式搜索原理">¶</a>分布式搜索原理</h2>
+<p>在分布式环境中执行的搜索是一个两阶段的过程，我们称之为 <strong>query then fetch</strong> 。</p>
+<h3 id="查询阶段"><a class="header-anchor" href="#查询阶段">¶</a>查询阶段</h3>
+<p><img src="https://tallate.top/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png" alt="查询阶段" title="查询阶段"></p>
 <ul>
-<li>允许你水平分割/扩展你的内容容量</li>
-<li>允许你在分片（位于多个节点上）之上进行分布式的、并行的操作，进而提高性能/吞吐量</li>
-</ul>
-<p>分片类似 DB 里的分库分表，是为了解决数据量很大查询效率低下的问题，同时突破单节点磁盘限制。<br>
-集群的配置非常灵活，比如对于一个需要占据 100G 磁盘空间的索引，5 个分片每个分片大小 20G，假设单节点磁盘上限 100G，可以有以下几种方案：</p>
-<ol>
-<li>单节点一个分片：单次只能在 100G 数据里查询一条数据，磁盘占用率 100%。</li>
-<li>单节点 5 个分片：每个分片存储 20G 数据，可以 5 个任务并行查询，磁盘占用率 100%，索引大小上限 100G，无法再插入新数据。</li>
-<li>集群（2 个节点）5 个分片：一个节点 3 片，另一个节点 2 片，可以并行查找，同时单节点磁盘占用量 &lt;60%，索引最大存储上限为 200G。</li>
-<li>集群（5 个节点）5 个分片：每个节点包含一个分片，单节点磁盘占用量 20%，索引最大存储上限为 500G。</li>
-</ol>
-<p>至于是否有最佳实践，我认为还是得根据实际场景来说话，比如就简单搭建一个开发环境来说，单节点（单分片或多分片）足够，当然，因为没有荣誉，硬件故障时会有数据丢失风险。</p>
-<h2 id="主分片和副分片"><a class="header-anchor" href="#主分片和副分片">¶</a>主分片和副分片</h2>
-<p>一个分片可以是 主分片 或者 副本分片。<br>
-索引内任意一个文档都归属于一个主分片，所以主分片的数目决定着索引能够保存的最大数据量，在索引建立的时候就已经确定了主分片数，但是副本分片数可以随时修改。<br>
-一个副本分片只是一个主分片的拷贝。副本分片作为硬件故障时保护数据不丢失的冗余备份，并为搜索和返回文档等读操作提供服务。</p>
-<h2 id="索引-index"><a class="header-anchor" href="#索引-index">¶</a>索引（Index）</h2>
-<p>索引实际上是指向一个或者多个物理 分片 的 <strong>逻辑命名空间</strong>。<br>
-所以说一个节点包含多个分片没有问题，但是一个节点包含多个索引是不对的，因为索引包含的分片可以存在于多个节点内，且可以在后期添加。</p>
-<h2 id="复制-replica"><a class="header-anchor" href="#复制-replica">¶</a>复制（Replica）</h2>
-<p>Elasticsearch 允许创建分片的一份或多份拷贝（默认复制 1 份），这些拷贝叫做复制分片。<br>
-在分片/节点失败的情况下，复制提供了高可用性。<br>
-因为搜索可以在所有的复制上并行运行，复制可以扩展你的搜索量/吞吐量<br>
-复制分片不与相同的主分片置于同一节点上，否则失去备份的意义。</p>
-<p>总而言之：</p>
-<ol>
-<li>每个索引可以被分成多个分片。</li>
-<li>一个索引也可以被复制 0 次（即没有复制） 或多次。</li>
-<li>一旦复制了，每个索引就有了主分片（作为复制源的分片）和复制分片（主分片的拷贝）。</li>
-<li>分片和复制的数量可以在索引创建的时候指定。在索引创建之后，可以在任何时候动态地改变复制的数量，但是不能再改变分片的数量。</li>
-</ol>
-<p>至于 ES 集群中如何分配分片与备份，都是 ES 内部维护管理的，对用户完全透明。</p>
-<h1>单节点</h1>
-<h2 id="检测外部环境"><a class="header-anchor" href="#检测外部环境">¶</a>检测外部环境</h2>
-<p>Bootstrap#setup：初始化 node 时重写 validateNodeBeforeAcceptingRequests，在其中包含了检查逻辑<br>
--&gt; BootstrapChecks.check</p>
-<h2 id="启动各模块"><a class="header-anchor" href="#启动各模块">¶</a>启动各模块</h2>
-<p>Bootstrap#start<br>
--&gt; Node#start：调各子模块的 start 来初始化</p>
-<h2 id="keepalive"><a class="header-anchor" href="#keepalive">¶</a>keepalive</h2>
-<p>唯一的用户线程，作用是保持进程运行。</p>
-<p>Bootstrap#keepAliveThread</p>
-<h2 id="节点关闭"><a class="header-anchor" href="#节点关闭">¶</a>节点关闭</h2>
-<p>Bootstrap#stop<br>
--&gt; IOUtils#close：关闭 node，注意 Node 实现了 Closable<br>
--&gt; Node#close</p>
-<h1>主从</h1>
-<h2 id="数据副本模型"><a class="header-anchor" href="#数据副本模型">¶</a>数据副本模型</h2>
-<p>主从模型是分布式的经典模型之一，通过主节点的选举可以实现高可用。的那个然主从只能提高可用性，如果要性能上的可伸缩性，一般还会对数据进行 hash。<br>
-主从模型实际上也是下面将要讨论的分布式文档存储、搜索的基础。</p>
-<blockquote>
-<p>HDFS、Cassandra 等使用的是对等模型。</p>
-</blockquote>
-<h3 id="pacifica-算法"><a class="header-anchor" href="#pacifica-算法">¶</a>PacificA 算法</h3>
-<p>ES 的主副本模型的实现参考了微软的 PacificA 算法，下面是算法中涉及到的几个概念：</p>
-<ul>
-<li>Replica Group</li>
-<li>Configuration</li>
-<li>Configuration Version</li>
-<li>Serial Number（SN）</li>
-</ul>
-<p>PacificA 算法运行在分布式系统之上，对系统有以下几项假设：</p>
-<ul>
-<li>节点可以失效，对消息延迟的上限不做假设；</li>
-<li>消息可以丢失、乱序，但不能被篡改，即不存在<strong>拜占庭问题</strong>；</li>
-</ul>
-<blockquote>
-<p>拜占庭问题</p>
-</blockquote>
-<ul>
-<li>网络分区可以发生，系统时钟可以不同步，但<strong>漂移</strong>是有限度的。</li>
-</ul>
-<blockquote>
-<p>漂移</p>
-</blockquote>
-<h3 id="存储管理-写入"><a class="header-anchor" href="#存储管理-写入">¶</a>存储管理 - 写入</h3>
-<p>数据的读取和更新策略，及使用多副本方式保证数据的可靠性和可用性。<br>
-数据写流程如下：<br>
-<img src="https://tallate.top/imgs/ES/%E6%95%B0%E6%8D%AE%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B.png" alt="数据写入流程" title="数据写入流程"></p>
-<ol>
-<li>写请求进入主副本节点；</li>
-<li>节点为该请求分配 SN，并使用该 SN 创建 UpdateRequest，然后将该 UpdateRequest 插入自己的 prepareList；</li>
-<li>主副本将携带 SN 的 UpdateRequest 发往从副本节点，从节点收到后同样插入 prepareList；</li>
-<li>主副本节点接收到所有从副本节点的 ACK 响应，确认该数据已经被写入到所有的从副本节点；</li>
-<li>此时达到了可提交的状态，主副本将此 UpdateRequest 放入 committedList，committedList 向前移动；</li>
-<li>主副本节点回复客户端更新成功。</li>
-<li>主节点向从节点发送 commit 通知，告诉它们自己的 committed point 位置，从节点收到通知后根据指示来移动 committed point 到相同位置。</li>
-</ol>
-<p>数据存储流程中遵循不变式<code>Commit Invariant</code>：</p>
-<ol>
-<li>主节点 committedList 是任何一个从节点 prepareList 的前缀（子集）；</li>
-<li>任一从节点上的 committedList 是主节点上 committedList 的前缀（子集）。</li>
-</ol>
-<h3 id="配置管理"><a class="header-anchor" href="#配置管理">¶</a>配置管理</h3>
-<p>对配置信息进行管理，维护所有配置信息的一致性。<br>
-配置同样遵循版本控制，由一个全局的配置管理器管理所有副本组的配置。<br>
-当节点向管理器提出添加/移除副本的请求时，每次请求都需要附带当前配置版本号，只有这个版本号和管理器记录的版本号一致的情况下才能被执行，如果请求执行成功，则这个新配置会被赋予新的版本号。</p>
-<h3 id="allocation-ids"><a class="header-anchor" href="#allocation-ids">¶</a>Allocation IDs</h3>
-<p>TODO</p>
-<h3 id="sequence-ids"><a class="header-anchor" href="#sequence-ids">¶</a>Sequence IDs</h3>
-<p>TODO</p>
-<h3 id="乐观并发控制"><a class="header-anchor" href="#乐观并发控制">¶</a>乐观并发控制</h3>
-<p><img src="https://tallate.top/imgs/ES/%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png" alt="并发更新问题" title="并发更新问题"><br>
-如上图所示 Web-2 不知道自己的对象拷贝已经过期，结果执行更新时会认为库存尚充足。<br>
-像这样的变更越频繁，读数据和更新数据的间隙越长，也就越可能丢失变更。<br>
-在数据库领域中，有两种策略通常被用来确保并发更新时变更不会丢失：</p>
-<ul>
-<li>悲观并发控制<br>
-这种方法被关系型数据库广泛使用，它假定有变更冲突可能发生，因此<strong>阻塞访问资源以防止冲突</strong>。 一个典型的例子是读取一行数据之前先将其锁住，确保只有放置锁的线程能够对这行数据进行修改。</li>
-<li>乐观并发控制<br>
-Elasticsearch 中使用的这种方法假定冲突是不可能发生的，并且不会阻塞正在尝试的操作。 然而，<strong>如果源数据在读写当中被修改，更新将会失败</strong>。应用程序接下来将决定该如何解决冲突。 例如，可以重试更新、使用新的数据、或者将相关情况报告给用户。</li>
-</ul>
-<p>Elasticsearch 是分布式的。当文档创建、更新或删除时， 新版本的文档必须复制到集群中的其他节点。Elasticsearch 也是异步和并发的，这意味着这些<strong>复制请求被并行发送，并且到达目的地时也许 顺序是乱的</strong>。 Elasticsearch 需要一种方法确保文档的旧版本不会覆盖新的版本。</p>
-<ol>
 <li>
-<p>内部版本号<br>
-当我们之前讨论 index ， GET 和 delete 请求时，我们指出每个文档都有一个 _version （版本）号，当文档被修改时版本号递增。 Elasticsearch 使用这个 _version 号来确保变更以正确顺序得到执行。如果旧版本的文档在新版本之后到达，它可以被简单的忽略。<br>
-当我们在更新数据时，需要指定想要修改文档的_version，如果该版本不是当前版本号，我们的请求将会失败。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT /website/blog/1?version=1 </span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;My first blog entry&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Starting to get the hang of this...&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>客户端发送一个 search 请求到协调节点（也就是 Node 3），协调节点会创建一个大小为 <code>from+size</code> 的<strong>空优先队列</strong></p>
 </li>
 <li>
-<p>外部版本号<br>
-一个常见的设置是使用其它数据库作为主要的数据存储，使用 Elasticsearch 做数据检索，Elasticsearch 提供了一种机制来重用主数据库中已经存在的版本号字段。<br>
-外部版本号的处理方式和我们之前讨论的内部版本号的处理方式有些不同， Elasticsearch 不是检查当前 _version 和请求中指定的版本号是否相同， 而是检查当前 _version 是否 小于 指定的版本号。 如果是则请求成功，外部的版本号作为文档的新 _version 进行存储，这意味着每次请求必须先在主数据库中增加版本号的值，再将新版本的数据索引到 Elasticsearch 中。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT /website/blog/2?version=5&amp;version_type=external</span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;My first external blog entry&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Starting to get the hang of this...&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>协调节点将请求广播到索引中每一个分片拷贝（主分片或者副本分片）。</p>
+</li>
+<li>
+<p>每个分片在本地执行搜索并构建一个匹配文档的 <strong>优先队列</strong>。<br>
+一个 优先队列 仅仅是一个存有 top-n 匹配文档的有序列表。优先队列的大小取决于分页参数 from 和 size ，其值为 from + size，比如下面的搜索请求需要足够大的优先队列来放入 100 条文档。</p>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;from&quot;: 90,</span><br><span class="line">    &quot;size&quot;: 10</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>协调节点将在之后的请求中轮询所有的分片拷贝来分摊负载，因此更多的副本（结合更多的硬件）能增加搜索吞吐率。<br>
+每个分片返回各自优先队列中所有文档的 ID 和排序值（_score）给协调节点 ，它合并这些值到自己的优先队列中来产生一个全局排序后的结果列表。</p>
+</li>
+</ul>
+<h3 id="取回阶段"><a class="header-anchor" href="#取回阶段">¶</a>取回阶段</h3>
+<p><img src="https://tallate.top/imgs/ES/%E5%8F%96%E5%9B%9E%E9%98%B6%E6%AE%B5.png" alt="取回阶段" title="取回阶段"></p>
+<ul>
+<li>协调节点辨别出哪些文档需要被取回并向相关的分片提交多个 GET 请求。</li>
+<li>每个分片加载并 丰富 文档（_source），如果有需要的话，接着返回文档给协调节点。</li>
+<li>一旦所有的文档都被取回了，协调节点需要对 number_of_shards * (from + size) 大小的文档集合排序，协调节点返回结果给客户端。</li>
+</ul>
+<h3 id="深分页问题-deep-pagination"><a class="header-anchor" href="#深分页问题-deep-pagination">¶</a>深分页问题（Deep Pagination）</h3>
+<p>先查后取的过程支持用 <code>from</code> 和 <code>size</code> 参数分页，但是这是 有限制的 。 要记住需要传递信息给协调节点的每个分片必须先创建一个 from + size 长度的队列，协调节点需要根据 <code>number_of_shards * (from + size)</code> 排序文档，来找到被包含在 size 里的文档。<br>
+取决于你的文档的大小，分片的数量和你使用的硬件，给 10,000 到 50,000 的结果文档深分页（ 1,000 到 5,000 页）是完全可行的。但是使用足够大的 from 值，排序过程可能会变得非常沉重，使用大量的 CPU、内存和带宽。因为这个原因，我们强烈建议你不要使用深分页。<br>
+实际上，深分页很少符合人的行为。当 2 到 3 页过去以后，人会停止翻页，并且改变搜索标准。会不知疲倦地一页一页的获取网页直到你的服务崩溃的罪魁祸首一般是机器人或者 web spider。<br>
+如果你确实需要从你的集群取回大量的文档，你可以通过用 <code>scroll</code> 查询禁用排序使这个取回行为更有效率</p>
+<h3 id="偏好"><a class="header-anchor" href="#偏好">¶</a>偏好</h3>
+<p>偏好这个参数 <code>preference</code> 允许 用来控制由哪些分片或节点来处理搜索请求。 它接受像 <code>_primary, _primary_first, _local, _only_node:xyz, _prefer_node:xyz, 和 _shards:2,3</code> 这样的值，在<a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-preference.html" target="_blank" rel="noopener">search Preference</a>有说明。<br>
+偏好字段可以用于解决<strong>Bouncing Results</strong>问题。</p>
+<blockquote>
+<p>Bouncing Results<br>
+想象一下有两个文档有同样值的时间戳字段，搜索结果用 timestamp 字段来排序。 由于搜索请求是在所有有效的分片副本间轮询的，那就有可能发生主分片处理请求时，这两个文档是一种顺序， 而副本分片处理请求时又是另一种顺序。<br>
+这就是所谓的 bouncing results 问题: 每次用户刷新页面，搜索结果表现是不同的顺序。 让同一个用户始终使用同一个分片，这样可以避免这种问题， 可以设置 preference 参数为一个特定的任意值比如用户会话 ID 来解决。</p>
+</blockquote>
+<h3 id="超时"><a class="header-anchor" href="#超时">¶</a>超时</h3>
+<p>通常分片处理完它所有的数据后再把结果返回给协调节点，协调节点把收到的所有结果合并为最终结果。这意味着花费的时间是最慢分片的处理时间加结果合并的时间。如果有一个节点有问题，就会导致所有的响应缓慢。<br>
+参数 <code>timeout</code> 告诉 分片允许处理数据的最大时间。如果没有足够的时间处理所有数据，这个分片的结果可以是部分的，甚至是空数据。<br>
+搜索的返回结果会用属性 timed_out 标明分片是否返回的是部分结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">&quot;time_out&quot;: true // 表示搜索请求超时了</span><br></pre></td></tr></table></figure>
+<p>很有可能查询会超过设定的超时时间，这种情况可能有两个原因：</p>
+<ol>
+<li>超时检查是基于每文档做的。 但是某些查询类型有大量的工作在文档评估之前需要完成。 这种 “setup” 阶段并不考虑超时设置，所以太长的建立时间会导致超过超时时间的整体延迟。</li>
+<li>因为时间检查是基于每个文档的，一次长时间查询在单个文档上执行并且在下个文档被评估之前不会超时。 这也意味着差的脚本（比如带无限循环的脚本）将会永远执行下去。</li>
+</ol>
+<h3 id="路由"><a class="header-anchor" href="#路由">¶</a>路由</h3>
+<p>路由能够在索引时提供来确保相关的文档，比如属于某个用户的文档被存储在某个分片上。 在搜索的时候，不用搜索索引的所有分片，而是通过指定几个 routing 值来限定只搜索几个相关的分片：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?routing=user_1,user2</span><br></pre></td></tr></table></figure>
+<h3 id="搜索类型"><a class="header-anchor" href="#搜索类型">¶</a>搜索类型</h3>
+<p>缺省的搜索类型是 <code>query_then_fetch</code> 。 在某些情况下，你可能想明确设置 <code>search_type</code> 为 <code>dfs_query_then_fetch</code> 来改善相关性精确度：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?search_type=dfs_query_then_fetch</span><br></pre></td></tr></table></figure>
+<p>搜索类型 <code>dfs_query_then_fetch</code> 有预查询阶段，这个阶段可以从所有相关分片获取词频来计算全局词频。</p>
+<h3 id="游标查询-scroll"><a class="header-anchor" href="#游标查询-scroll">¶</a>游标查询 Scroll</h3>
+<p><code>scroll</code> 查询 可以用来对 Elasticsearch 有效地执行大批量的文档查询，而又不用付出深度分页那种代价。<br>
+游标查询允许我们 先做查询初始化，然后再批量地拉取结果。 这有点儿像传统数据库中的 <code>cursor</code> 。<br>
+游标查询会取某个时间点的快照数据。 查询初始化之后索引上的任何变化会被它忽略。 它通过保存旧的数据文件来实现这个特性，结果就像保留初始化时的索引 <code>视图</code> 一样。<br>
+深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。 游标查询用字段 <code>_doc</code> 来排序。 这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果。<br>
+启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间。 游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间。 这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m // 保持游标查询窗口一分钟。</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], // 关键字 _doc 是最有效的排序顺序。</span><br><span class="line">    &quot;size&quot;:  1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个查询的返回结果包括一个字段 <code>_scroll_id</code>， 它是一个 base64 编码的长字符串。现在我们能传递字段 <code>_scroll_id</code> 到 <code>_search/scroll</code> 查询接口获取下一批结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, // 注意再次设置游标查询过期时间为一分钟。</span><br><span class="line">    &quot;scroll_id&quot; : &quot;cXVlcnlUaGVuRmV0Y2g7NTsxMDk5NDpkUmpiR2FjOFNhNnlCM1ZDMWpWYnRROzEwOTk1OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MTA5OTM6ZFJqYkdhYzhTYTZ5QjNWQzFqVmJ0UTsxMTE5MDpBVUtwN2lxc1FLZV8yRGVjWlI2QUVBOzEwOTk2OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MDs=&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个游标查询返回的下一批结果。 尽管我们指定字段 size 的值为 1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 <code>size * number_of_primary_shards</code>。<br>
+当没有更多结果返回的时候，我们就处理完所有匹配的文档了。</p>
+<h2 id="搜索-轻量查询-query-string"><a class="header-anchor" href="#搜索-轻量查询-query-string">¶</a>搜索 - 轻量查询（Query-string）</h2>
+<p>当在单一的索引下进行搜索的时候，Elasticsearch 转发请求到索引的每个分片中，可以是主分片也可以是副本分片，然后从每个分片中收集结果。多索引搜索恰好也是用相同的方式工作的——只是会涉及到更多的分片。<br>
+搜索一个索引有五个主分片和搜索五个索引各有一个分片准确来所说是等价的，因为索引只是一种逻辑结构，实际上处理请求的是分片。<br>
+搜索有两种形式：Query-string 和请求体查询。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">HEAD /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">GET /megacorp/employee/_search?q=last_name:Smith</span><br><span class="line">GET /megacorp/employee/_search?q=+first_name:Jane last_name:Smith</span><br><span class="line">GET /_search?q=mary</span><br><span class="line">GET /_search?q=+name:(mary john) +date:&gt;2014-09-10 +(aggregations geo)</span><br><span class="line">GET /_search 在所有的索引中搜索所有的类型（无条件）</span><br><span class="line">/gb/_search 在 gb 索引中搜索所有的类型（指定索引）</span><br><span class="line">/gb,us/_search 在 gb 和 us 索引中搜索所有的文档（指定多个索引）</span><br><span class="line">/g*,u*/_search 在任何以 g 或者 u 开头的索引中搜索所有的类型（通配符）</span><br><span class="line">/gb/user/_search 在 gb 索引中搜索 user 类型（指定类型）</span><br><span class="line">/gb,us/user,tweet/_search 在 gb 和 us 索引中搜索 user 和 tweet 类型（指定多个类型）</span><br><span class="line">/_all/user,tweet/_search 在所有的索引中搜索 user 和 tweet 类型（指定多个类型但不限制索引）</span><br></pre></td></tr></table></figure>
+<h3 id="查询条件"><a class="header-anchor" href="#查询条件">¶</a>查询条件</h3>
+<ul>
+<li>其中 ‘_search’ 表示搜索，默认返回 10 条结果；</li>
+<li>查询本身赋值给了参数 q，查询链接会被 URL 编码，所以可读性会比较差；</li>
+<li>“last_name:Smith&quot;表示 last_name 字段中包含 Smith 的文档，”+last_name:Smith&quot;表示必须与查询条件匹配，&quot;-last_name:Smith&quot;表示一定不与查询条件匹配；<br>
+至于多个条件存在的情况下，其实不会发生矛盾，&quot;+first_name:Jane -first_name:Jane&quot;可以看成先查出 first_name 包含&quot;Jane&quot;的，再过滤掉；</li>
+</ul>
+<h3 id="隐含字段"><a class="header-anchor" href="#隐含字段">¶</a>隐含字段</h3>
+<p>当对文档进行索引时，Elasticsearch 取出所有字段的值拼接成一个大的字符串，作为 <code>_all</code> 字段进行索引。</p>
+<h3 id="query-string-的优点"><a class="header-anchor" href="#query-string-的优点">¶</a>Query-string 的优点</h3>
+<p>简洁</p>
+<h3 id="query-string-的缺点"><a class="header-anchor" href="#query-string-的缺点">¶</a>Query-string 的缺点</h3>
+<ul>
+<li>晦涩难懂</li>
+<li>脆弱，小的语法错误就会报错</li>
+<li>效率较低，查询字符串搜索允许任何用户在索引的任意字段上执行可能较慢且重量级的查询，这可能会暴露隐私信息，甚至将集群拖垮</li>
+</ul>
+<h3 id="搜索返回字段"><a class="header-anchor" href="#搜索返回字段">¶</a>搜索返回字段</h3>
+<p>hits：匹配文档总数及所查询结果的前十个文档<br>
+_score：衡量文档与查询的匹配程度<br>
+took：整个搜索请求耗费的时间（毫秒）<br>
+shards：在查询中参与的分片总数，及失败（主分片和副本分片都挂掉）和成功的数量<br>
+timeout：返回值中的 timed_out 表示查询是否超时， timeout 不是停止执行查询，它仅仅是告知正在协调的节点返回到目前为止收集的结果并且关闭连接。在后台，其他的分片可能仍在执行查询即使是结果已经被发送了。使用超时是因为 SLA(服务等级协议)对你是很重要的，而不是因为想去中止长时间运行的查询。可以在查询条件中指定时间限制：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?timeout=10ms</span><br></pre></td></tr></table></figure>
+<h3 id="分页"><a class="header-anchor" href="#分页">¶</a>分页</h3>
+<p>size：显示应该返回的结果数量，默认是 10<br>
+from：显示应该跳过的初始结果数量，默认是 0</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?size=5&amp;from=5</span><br></pre></td></tr></table></figure>
+<p>考虑到<strong>分页过深（比如请求 10001 到 10010 的数据）<strong>以及</strong>一次请求太多结果</strong>的情况：结果集在返回之前先进行排序，但请记住<strong>一个请求经常跨越多个分片</strong>，每个分片都产生自己的排序结果，这些结果需要进行集中排序以保证整体顺序是正确的。<br>
+假设在一个有 5 个主分片的索引中搜索。 当我们请求结果的第一页（结果从 1 到 10 ），每一个分片产生前 10 的结果，并且返回给 协调节点 ，协调节点对 50 个结果排序得到全部结果的前 10 个。<br>
+现在假设我们请求第 1000 页–结果从 10001 到 10010 。所有都以相同的方式工作除了每个分片不得不产生前 10010 个结果以外。 然后协调节点对全部 50050 个结果排序最后丢弃掉这些结果中的 50040 个结果。可以看到，在分布式系统中，对结果排序的成本随分页的深度成指数上升。这就是 web 搜索引擎对<strong>任何查询都不要返回超过 1000 个结果</strong>的原因。</p>
+<h2 id="请求体查询-查询表达式"><a class="header-anchor" href="#请求体查询-查询表达式">¶</a>请求体查询（查询表达式）</h2>
+<p>es 倾向于使用 GET 来表达查询操作，查询条件可以放到请求体中，而事实是这个 RFC 文档 <strong>RFC 7231</strong> — 一个专门负责处理 HTTP 语义和内容的文档 — 并没有规定一个带有请求体的 GET 请求应该如何处理！结果是，一些 HTTP 服务器允许这样子，而有一些 — 特别是一些用于缓存和代理的服务器 — 则不允许。所以 es 作了一个妥协，下面的 GET 请求同样可以使用 POST 来实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match&quot; : &#123;</span><br><span class="line">            &quot;last_name&quot; : &quot;Smith&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>查询表达式主要有两种结构：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        ARGUMENT: VALUE,</span><br><span class="line">        ARGUMENT: VALUE,...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        FIELD_NAME: &#123;</span><br><span class="line">            ARGUMENT: VALUE,</span><br><span class="line">            ARGUMENT: VALUE,...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="query-name-表示查询语句"><a class="header-anchor" href="#query-name-表示查询语句">¶</a>QUERY_NAME 表示查询语句</h3>
+<ul>
+<li>match_all：简单的匹配所有文档，往往和 filter 搭配；</li>
+<li>match：如果你在一个全文字段上使用 match 查询，在执行查询前，它将用正确的分析器去分析查询字符串；<br>
+如果在一个精确值的字段上使用它， 例如数字、日期、布尔或者一个 not_analyzed 字符串字段，那么它将会精确匹配给定的值；</li>
+<li>multi_match：多个字段的 match；</li>
+<li>filter：不评分查询，实际上是给了每个查询出的文档一个默认的中性评价 1，并且<strong>过滤结果将会被缓存</strong>；</li>
+<li>range（范围查询）：查询找出那些落在指定区间内的数字或者时间，gt 大于、gte 大于等于、lt 小于、lte 小于等于；</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;bool&quot;: &#123;</span><br><span class="line">            &quot;must&quot;: &#123;</span><br><span class="line">                &quot;match&quot; : &#123;</span><br><span class="line">                    &quot;last_name&quot; : &quot;smith&quot; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;range&quot; : &#123;</span><br><span class="line">                    &quot;age&quot; : &#123; &quot;gt&quot; : 30 &#125; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>term：精确值 匹配，这些精确值可能是数字、时间、布尔或者那些 not_analyzed 的字符串，注意<strong>term 不会对输入的文本进行分析</strong>，这样和索引过的目标字符串比较很有可能出现明明看起来一样却匹配不上的现象（比如&quot;Jane&quot;被分析后变成&quot;jane&quot;，term 查询时使用&quot;Jane&quot;进行精确匹配当然匹配不上了！）；</li>
+<li>terms：同样是精确值匹配，但可以指定一个数组进行匹配；</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;term&quot; : &#123;&quot;first_name&quot;: &quot;jane&quot;&#125;&#125;</span><br><span class="line">&#123; &quot;terms&quot;: &#123; &quot;tag&quot;: [ &quot;search&quot;, &quot;full_text&quot;, &quot;nosql&quot; ] &#125;&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>exists 和 missing：指定字段有值或无值，但后来的版本中废弃了 missing，因为可以通过 must_not+exists 来实现类似的效果</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;exists&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>bool：复合语句，可以组合其他语句比如 must 必须匹配、must_not 必须不匹配、should 如果满足则增加_score 否则无影响、filter 用来排除文档不评分，特别的，如果没有 must 语句，那么至少需要能够匹配其中的一条 should 语句。但，如果存在至少一条 must 语句，则对 should 语句的匹配没有要求；每一个子查询都独自地计算文档的相关性得分。一旦他们的得分被计算出来， bool 查询就将这些得分进行合并并且返回一个代表整个布尔操作的得分。（虽说是布尔操作，但是结果分数其实是<code>[0, 1]</code>范围内的小数）</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">        &quot;must&quot;: &#123; &quot;match&quot;: &#123; &quot;title&quot;: &quot;how to make millions&quot; &#125;&#125;,</span><br><span class="line">        &quot;must_not&quot;: &#123; &quot;match&quot;: &#123; &quot;tag&quot;: &quot;spam&quot; &#125;&#125;,</span><br><span class="line">        &quot;should&quot;: [</span><br><span class="line">            &#123; &quot;match&quot;: &#123; &quot;tag&quot;: &quot;starred&quot; &#125;&#125;</span><br><span class="line">        ],</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">          &quot;range&quot;: &#123; &quot;date&quot;: &#123; &quot;gte&quot;: &quot;2014-01-01&quot; &#125;&#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>constant_score：将一个不变的常量评分（即 1）应用于所有匹配的文档。经常用于你只需要执行一个 filter 而没有其它查询的情况下，如果使用 bool 查询_score 值将总是为 0：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;constant_score&quot;: &#123;</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">            &quot;term&quot;: &#123; &quot;category&quot;: &quot;ebooks&quot; &#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>about（全文搜索）<br>
+搜索结果将根据相关性排序。</li>
+<li>match_phrase（短语搜索）<br>
+针对&quot;rock climbing&quot;这样的短语，如果直接使用 match 会分别使用&quot;rock&quot;和&quot;climbing&quot;两个单词进行搜索，而使用 match_phrase 则会直接使用整个短语进行搜索。</li>
+<li>highlight（高亮）<br>
+指定某个属性中的匹配部分应该被高亮（结果会使用<em>标签包裹）。</em></li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match_phrase&quot; : &#123;</span><br><span class="line">            &quot;about&quot; : &quot;rock climbing&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;highlight&quot;: &#123;</span><br><span class="line">        &quot;fields&quot; : &#123;</span><br><span class="line">            &quot;about&quot; : &#123;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>aggs 聚合<br>
+Sorting, aggregations, and accessing field values in scripts 需要使用到一个称为 fielddata（正排索引）的数据结构：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">PUT megacorp/_mapping/employee/</span><br><span class="line">&#123;</span><br><span class="line">  &quot;properties&quot;: &#123;</span><br><span class="line">    &quot;interests&quot;: &#123; </span><br><span class="line">      &quot;type&quot;: &quot;text&quot;,</span><br><span class="line">      &quot;fielddata&quot;: true</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;aggs&quot; : &#123;</span><br><span class="line">        &quot;all_interests&quot; : &#123;</span><br><span class="line">            &quot;terms&quot; : &#123; &quot;field&quot; : &quot;interests&quot; &#125;,</span><br><span class="line">            &quot;aggs&quot; : &#123;</span><br><span class="line">                &quot;avg_age&quot; : &#123;</span><br><span class="line">                    &quot;avg&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>前缀查询<br>
+prefix</li>
+<li>正则表达式查询<br>
+regexp</li>
+<li>通配符匹配<br>
+使用<code>*</code>匹配字符序列（包括空字符），使用<code>?</code>匹配单个字符。<br>
+最好不要把通配符放在前面，这样会很慢。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GET mts_sample_order/orders/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;from&quot;: 1,</span><br><span class="line">  &quot;size&quot;: 10,</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;wildcard&quot;: &#123;</span><br><span class="line">      &quot;sample_type_name&quot;: &quot;咽拭子*&quot;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="argument-一些特殊的参数"><a class="header-anchor" href="#argument-一些特殊的参数">¶</a>ARGUMENT 一些特殊的参数</h3>
+<ul>
+<li>from 和 size（分页）</li>
+<li>preference（偏好）<br>
+用来控制由哪些分片或节点来处理搜索请求。 它接受<a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-preference.html" target="_blank" rel="noopener">像 _primary, _primary_first, _local, _only_node:xyz, _prefer_node:xyz, 和 _shards:2,3 这样的值</a>，但是最有用的值是某些随机字符串，它可以避免 bouncing results 问题（不同分片上排序顺序不同），这样可能发生每次用户刷新页面，搜索结果表现是不同的顺序，所以最好让同一个用户始终使用同一个分片，可以设置 preference 参数为一个特定的任意值比如用户会话 ID 来解决。</li>
+<li>timeout（超时）<br>
+在分布式搜索时需要由每个分片处理完、将结果返回给协调节点进行排序、再返回给客户端，所以整个过程的效率受到最慢的那个分片的处理速度和协调节点的处理速度二者的限制；<br>
+参数 timeout 告诉 分片允许处理数据的最大时间。如果没有足够的时间处理所有数据，这个分片的结果可以是部分的，甚至是空数据，搜索的返回结果会用属性 timed_out 标明分片是否返回的是部分结果（是否超时）；<br>
+需要注意可能会影响到整体延迟（并非上面说的超时时间）的条件，比如某些查询类型有大量的工作在文档评估之前需要完成、每次评估时基于每个文档的所以单个文档死循环也会影响整个查询死循环。</li>
+<li>routing（路由）<br>
+在索引时提供 routing 值可以确保文档被存储到某个分片上，在搜索的时候，不用搜索索引的所有分片，而是通过指定几个 routing 值来限定只搜索几个相关的分片，这个技术在 <strong>设计大规模搜索系统</strong> 时就会派上用场。</li>
+<li>search_type（搜索类型）<br>
+缺省的搜索类型是 query_then_fetch。你可能想明确设置 search_type 为 dfs_query_then_fetch 来改善相关性精确度，搜索类型 dfs_query_then_fetch 有预查询阶段，这个阶段可以从所有相关分片获取词频来计算全局词频。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?preference=xyzabc123&amp;routing=user_1,user2&amp;search_type=dfs_query_then_fetch</span><br><span class="line">&#123;</span><br><span class="line">  &quot;from&quot;: 0,</span><br><span class="line">  &quot;size&quot;: 5,</span><br><span class="line">  &quot;timeout&quot;: &quot;1s&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="doc-values-fielddata-正排索引"><a class="header-anchor" href="#doc-values-fielddata-正排索引">¶</a>Doc Values（fielddata 正排索引）</h3>
+<p>在搜索的时候，我们能通过搜索关键词快速得到结果集。当排序的时候，我们需要倒排索引里面某个字段值的集合。换句话说，我们需要 <strong>转置</strong> 倒排索引。转置 结构在其他系统中经常被称作 <strong>列存储</strong> 。实质上，它将所有单字段的值存储在单数据列中，这使得对其进行操作是十分高效的，例如排序。</p>
+<ul>
+<li>Doc Values 是在索引时随同倒排索引一起创建的</li>
+<li>常用于以下场景：<br>
+对一个字段进行排序<br>
+对一个字段进行聚合<br>
+某些过滤，比如地理位置过滤<br>
+某些与字段相关的脚本计算</li>
+<li>当 working set 远小于节点的可用内存，系统会自动将所有的文档值保存在内存中，使得其读写十分高速； 当其远大于可用内存，操作系统会自动把 Doc Values 加载到系统的页缓存中，从而避免了 jvm 堆内存溢出异常。</li>
+</ul>
+<h3 id="验证查询是否合法"><a class="header-anchor" href="#验证查询是否合法">¶</a>验证查询是否合法</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_validate/query?explain</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123; ... &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="排序与相关性"><a class="header-anchor" href="#排序与相关性">¶</a>排序与相关性</h3>
+<ul>
+<li>sort将目标字段转换为排序所需的格式，date 字段的值表示为自 epoch (January 1, 1970 00:00:00 UTC)以来的毫秒数，通过 sort 字段的值进行返回。</li>
+<li>如果字段是一个数组（多值），可以使用 mode 指定其中 min 、 max 、 avg 或是 sum 进行排序；</li>
+<li>评分的计算方式取决于 <strong>查询类型</strong> 不同的查询语句用于不同的目的： fuzzy 查询会计算与关键词的拼写相似程度，terms 查询会计算 找到的内容与关键词组成部分匹配的百分比，但是通常我们说的 relevance 是我们用来计算全文本字段的值相对于全文本检索词相似程度的算法，Elasticsearch 的相似度算法 被定义为检索词频率/反向文档频率（TF/IDF），包括以下内容：
+<ul>
+<li>检索词频率<br>
+　　检索词在该字段出现的频率？出现频率越高，相关性也越高。 字段中出现过 5 次要比只出现过 1 次的相关性高。</li>
+<li>反向文档频率<br>
+　　每个检索词在索引中出现的频率？频率越高，相关性越低。检索词出现在多数文档中会比出现在少数文档中的权重更低。</li>
+<li>字段长度准则<br>
+　　字段的长度是多少？长度越长，相关性越低。 检索词出现在一个短的 title 要比同样的词出现在一个长的 content 字段权重更大。</li>
+</ul>
+</li>
+<li>单个查询可以联合使用 TF/IDF 和其他方式，比如短语查询中检索词的距离或模糊查询里的检索词相似度。如果多条查询子句被合并为一条复合查询语句 ，比如 bool 查询，则每个查询子句计算得出的评分会被合并到总的相关性评分中。</li>
+<li>字符串索引后（analusis）会有变化，排序时希望使用原字段（not_analyzed）进行排序，我们想要对同一个字段索引两次，而不是在_source 中保存两份字符串字段，这可以通过为字段添加一个 not_analyzed 子字段来实现：主字段用于搜索、子字段用于排序：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&quot;tweet&quot;: &#123; </span><br><span class="line">    &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">    &quot;analyzer&quot;: &quot;english&quot;,</span><br><span class="line">    &quot;fields&quot;: &#123;</span><br><span class="line">        &quot;raw&quot;: &#123; </span><br><span class="line">            &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">            &quot;index&quot;: &quot;not_analyzed&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&quot;sort&quot; : &#123;</span><br><span class="line">  &quot;date&quot;: &#123;</span><br><span class="line">    &quot;order&quot;: &quot;desc&quot;,</span><br><span class="line">    &quot;mode&quot;: &quot;min&quot;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>默认情况下，返回结果是按相关性倒序排列的</li>
+<li>可以在查询参数中加入 explain 参数解释排序结果</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?explain </span><br><span class="line">&#123;</span><br><span class="line">   &quot;query&quot; : &#123; &quot;match&quot; : &#123; &quot;tweet&quot; : &quot;honeymoon&quot; &#125;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="scroll查询-游标"><a class="header-anchor" href="#scroll查询-游标">¶</a>Scroll查询（游标）</h3>
+<p>游标查询允许我们先做查询初始化（一些查询类型可能包含初始化，可以使用 search_type 指定），然后再批量地拉取结果，能避免深度分页那种代价。深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。游标查询用字段 _doc 来排序，这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果（每个分片排序，但整体不排序，而由客户端决定）。<br>
+游标查询会取某个时间点的快照数据，查询初始化之后索引上的任何变化会被它忽略，启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间，游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间；字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 size * number_of_primary_shards 。：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m </span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], </span><br><span class="line">    &quot;size&quot;: 1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。<br>
+这个查询的返回结果包括一个字段 _scroll_id<code>， 它是一个base64编码的长字符串 (((&quot;scroll_id&quot;))) 。 现在我们能传递字段</code>_scroll_id 到 _search/scroll 查询接口获取下一批结果（注意游标查询每次返回一个新字段 _scroll_id，每次我们做下一次游标查询， 我们必须把前一次查询返回的字段 _scroll_id 传递进去。 当没有更多的结果返回的时候，我们就处理完所有匹配的文档了），并且可以重新刷新过期时间为 1 分钟：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, </span><br><span class="line">    &quot;scroll_id&quot; : &quot;很长的编码串&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="实践"><a class="header-anchor" href="#实践">¶</a>实践</h3>
+<h4 id="查询订单昨天的问题订单"><a class="header-anchor" href="#查询订单昨天的问题订单">¶</a>查询订单昨天的问题订单</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">// 查询索引</span><br><span class="line">GET _cat/indices</span><br><span class="line">// 查询昨天的订单中属于异常状态的订单，并取其中的部分字段</span><br><span class="line">GET /mts_reg_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: &#123;</span><br><span class="line">        &quot;match&quot;: &#123;</span><br><span class="line">          &quot;order_status&quot;: &quot;SUSPEND&quot;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">          &quot;create_date&quot;: &#123;</span><br><span class="line">            &quot;gt&quot;: &quot;2020-09-23 00:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 00:00:00&quot;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;],</span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="多条件查询"><a class="header-anchor" href="#多条件查询">¶</a>多条件查询</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">// 这个语句的特点是must中放置了多个模糊匹配条件</span><br><span class="line">GET /mts_fee_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: [</span><br><span class="line">        &#123;&quot;match&quot;: &#123;&quot;order_status&quot;: &quot;SUSPEND&quot;&#125;&#125;,</span><br><span class="line">        &#123;&quot;match&quot;: &#123;&quot;pay_status&quot;: &quot;PAY_SUCCESS&quot;&#125;&#125;</span><br><span class="line">      ],</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">            &quot;create_date&quot;: &#123; &quot;gt&quot;: &quot;2020-09-23 15:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 15:00:00&quot;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;], </span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="分析器"><a class="header-anchor" href="#分析器">¶</a>分析器</h2>
+<h3 id="分析器和倒排索引"><a class="header-anchor" href="#分析器和倒排索引">¶</a>分析器和倒排索引</h3>
+<p>一个倒排索引由文档中所有不重复词的列表构成，对于其中每个词，有一个包含它的文档列表。建立倒排索引的过程称为<strong>分析</strong>，执行分析过程的程序称为 <strong>分析器</strong>：</p>
+<ol>
+<li>字符过滤器：字符串按顺序通过每个 字符过滤器 。他们的任务是在分词前整理字符串。一个字符过滤器可以用来去掉 HTML，或者将 &amp; 转化成 <code>and</code>。</li>
+<li>分词器：将待索引的内容拆分成单独的 词（我们称它为 <strong>词条</strong> 或 <strong>tokens</strong> ），创建一个包含所有不重复词条的排序列表，然后列出每个词条出现在哪个文档。</li>
+<li>Token 过滤器：删除无用词（a、and、the 等），合并统一大小写后相同的词（Quick 和 quick）、具有相同词根的词（fox 和 foxes），增加同义词（jump 和 leap）等。</li>
+</ol>
+<h3 id="内置分析器"><a class="header-anchor" href="#内置分析器">¶</a>内置分析器</h3>
+<p>“Set the shape to semi-transparent by calling set_trans(5)”</p>
+<ol>
+<li>标准分析器<br>
+标准分析器是 Elasticsearch 默认使用的分析器。它是分析各种语言文本最常用的选择。它根据 Unicode 联盟 定义的 单词边界 划分文本（standard 分词器）。删除绝大部分标点（standard 语汇单元过滤器）。最后将词条小写（lowercase 语汇单元过滤器），stop 语汇单元过滤器是被禁用的，它会删除停用词–对搜索相关性影响不大的常用词，如 a ， the ， and ， is ，如需启用它，你可以通过创建一个基于 standard 分析器的<strong>自定义分析器</strong>并设置 stopwords 参数，可以给分析器提供一个停用词列表，或者告知使用一个基于特定语言的预定义停用词列表。。它会产生：<br>
+set, the, shape, to, semi, transparent, by, calling, set_trans, 5</li>
+<li>简单分析器<br>
+简单分析器在任何不是字母的地方分隔文本，将词条小写。它会产生：<br>
+set, the, shape, to, semi, transparent, by, calling, set, trans</li>
+<li>空格分析器<br>
+空格分析器在空格的地方划分文本。它会产生：<br>
+Set, the, shape, to, semi-transparent, by, calling, set_trans(5)</li>
+<li>语言分析器<br>
+特定语言分析器可用于 很多语言。它们可以考虑指定语言的特点。例如， 英语 分析器附带了一组英语无用词（常用单词，例如 and 或者 the ，它们对相关性没有多少影响），它们会被删除。 由于理解英语语法的规则，这个分词器可以提取英语单词的 词干 。英语 分词器会产生下面的词条（注意看 transparent<code>、</code>calling 和 set_trans 已经变为词根格式）：<br>
+set, shape, semi, transpar, call, set_tran, 5</li>
+</ol>
+<h3 id="常用字符过滤器"><a class="header-anchor" href="#常用字符过滤器">¶</a>常用字符过滤器</h3>
+<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html</a><br>
+字符过滤器用来整理 一个尚未被分词的字符串：</p>
+<ol>
+<li>Html 擦除字符过滤器<br>
+擦除像<p>这样的 HTML 标签，以及将像&amp;Aacute转换为相对应的 Unicode 字符Á。</p></li>
+</ol>
+<h3 id="常用分词器"><a class="header-anchor" href="#常用分词器">¶</a>常用分词器</h3>
+<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html</a><br>
+分词器把字符串分解成单个词条或者词汇单元：</p>
+<ol>
+<li>标准分词器<br>
+把一个字符串根据单词边界分解成单个词条，并且移除掉大部分的标点符号。</li>
+<li>关键词分词器<br>
+完整地输出 接收到的同样的字符串，并不做任何分词。</li>
+<li>空格分词器<br>
+只根据空格分割文本 。</li>
+<li>正则分词器<br>
+根据匹配正则表达式来分割文本。</li>
+</ol>
+<h3 id="常用词单元过滤器"><a class="header-anchor" href="#常用词单元过滤器">¶</a>常用词单元过滤器</h3>
+<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html</a><br>
+词单元过滤器可以修改、添加或者移除词单元：</p>
+<ol>
+<li>lowercase</li>
+<li>stop</li>
+<li>词干<br>
+把单词 遏制 为 词干。</li>
+<li>ascii_folding<br>
+移除变音符，把一个像 “très” 这样的词转换为 “tres” 。</li>
+<li>ngram 和 edge_ngram<br>
+可以产生 适合用于部分匹配或者自动补全的词单元。</li>
+</ol>
+<h3 id="自定义分析器"><a class="header-anchor" href="#自定义分析器">¶</a>自定义分析器</h3>
+<ul>
+<li>一个分析器可以有<strong>多个过滤器</strong>及<strong>唯一一个分词器</strong>，自定义分析器的格式如下：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;char_filter&quot;: &#123; ... custom character filters ... &#125;,</span><br><span class="line">            &quot;tokenizer&quot;: &#123; ... custom tokenizers ... &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123; ... custom token filters ... &#125;,</span><br><span class="line">            &quot;analyzer&quot;: &#123; ... custom analyzers ... &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>下面创建了一个新的分析器，叫做 es_std ， 并使用预定义的 西班牙语停用词列表：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">PUT /spanish_docs</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;analyzer&quot;: &#123;</span><br><span class="line">                &quot;es_std&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;standard&quot;,</span><br><span class="line">                    &quot;stopwords&quot;: &quot;_spanish_&quot;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>es_std 分析器不是全局的–它仅仅存在于我们定义的 spanish_docs 索引中。 为了使用 analyze API 来对它进行测试，我们必须使用特定的索引名，这会发现停用词 El 已被正确移除：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /spanish_docs/_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;es_std&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;El veloz zorro marrón&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>下面这个分析器除了使用 Html 擦除字符过滤器移除 HTML 部分、标准分词器分词、lowercase 词过滤器将单词转为小写，还使用一个自定义的字符过滤器把<code>&amp;</code>替换为<code>and</code>，一个自定义停词过滤器移除自定义的停止词列表中包含的词：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;char_filter&quot;: &#123;</span><br><span class="line">                &quot;&amp;_to_and&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;mapping&quot;,</span><br><span class="line">                    &quot;mappings&quot;: [ &quot;&amp;=&gt; and &quot;]</span><br><span class="line">            &#125;&#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;my_stopwords&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;stop&quot;,</span><br><span class="line">                    &quot;stopwords&quot;: [ &quot;the&quot;, &quot;a&quot; ]</span><br><span class="line">            &#125;&#125;,</span><br><span class="line">            &quot;analyzer&quot;: &#123;</span><br><span class="line">                &quot;my_analyzer&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;custom&quot;,</span><br><span class="line">                    &quot;char_filter&quot;: [ &quot;html_strip&quot;, &quot;&amp;_to_and&quot; ],</span><br><span class="line">                    &quot;tokenizer&quot;: &quot;standard&quot;,</span><br><span class="line">                    &quot;filter&quot;: [ &quot;lowercase&quot;, &quot;my_stopwords&quot; ]</span><br><span class="line">            &#125;&#125;</span><br><span class="line">&#125;&#125;&#125;</span><br></pre></td></tr></table></figure>
+<p>调用下面的接口来测试：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /my_index/_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;my_analyzer&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;The quick &amp; brown fox&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个分析器现在是没有多大用处的，除非我们告诉 Elasticsearch在哪里用上它。我们可以像下面这样把这个分析器应用在一个 string 字段上：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index/_mapping/my_type</span><br><span class="line">&#123;</span><br><span class="line">    &quot;properties&quot;: &#123;</span><br><span class="line">        &quot;title&quot;: &#123;</span><br><span class="line">            &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">            &quot;analyzer&quot;: &quot;my_analyzer&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="分析器使用时机"><a class="header-anchor" href="#分析器使用时机">¶</a>分析器使用时机</h3>
+<ol>
+<li><strong>索引</strong>一个文档时，它的<strong>全文域</strong>（包括自动给出的**_all**）被分析成词条以用来创建倒排索引。<br>
+具体的，当 Elasticsearch 在你的文档中检测到一个新的字符串域 ，它会自动设置其为一个全文 字符串 域，使用 <strong>标准</strong> 分析器对它进行分析。</li>
+<li>还有在全文域搜索的时候，需要将查询字符串通过 相同的分析过程 ，以保证我们搜索的词条格式与索引中的词条格式一致（当查询一个精确值域时不会分析）。</li>
+<li>或者直接使用以下链接测试分析器： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;standard&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Text to analyze&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
 </ol>
-<h1>集群</h1>
-<h2 id="选主"><a class="header-anchor" href="#选主">¶</a>选主</h2>
-<p>ES 默认服务发现实现是内置的<code>Zen Discovery</code></p>
-<h3 id="选举相关概念"><a class="header-anchor" href="#选举相关概念">¶</a>选举相关概念</h3>
-<ul>
-<li>选举（Election）</li>
-<li>主从（主：Leader、Coordinator、Master，从：Follower、Slave）</li>
-<li>分布式哈希表（DHT）</li>
-<li>多数派（法定人数、Quorum）</li>
-<li>分区和脑裂：集群中出现双主或多主。</li>
-<li>Bully 算法</li>
-<li>Paxos 算法</li>
-</ul>
-<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
-<ul>
-<li>node.master：决定当前节点是否具备 Master 资格</li>
-<li>discovery.zen.minimum_master_nodes</li>
-<li>discovery.zen.ignore_non_master_pings</li>
-</ul>
-<h3 id="本地节点实例的创建"><a class="header-anchor" href="#本地节点实例的创建">¶</a>本地节点实例的创建</h3>
-<p>管理节点配置<br>
-Node#localNodeFactory</p>
-<h3 id="选主流程"><a class="header-anchor" href="#选主流程">¶</a>选主流程</h3>
-<p>ZenDiscovery 的选主流程如下：</p>
+<p>结果中的每个 token 都代表一个实际存储到索引中的词条， position 指明词条在原始文本中出现的位置。 start_offset 和 end_offset 指明字符在原始字符串中的位置。</p>
+<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
 <ol>
-<li>每个节点计算最小的已知节点 ID，该节点为临时 Master，向该节点发送领导投票；</li>
-<li>如果一个节点收到足够多的票数，并且该节点也为自己投票，那么它将扮演领导者的角色，开始发布集群状态。</li>
+<li>为什么搜索是近实时的？</li>
+<li>为什么文档的 CRUD (创建-读取-更新-删除) 操作是 实时 的？</li>
+<li>Elasticsearch 是怎样保证更新被持久化在断电时也不丢失数据?</li>
+<li>为什么删除文档不会立刻释放空间？</li>
+<li>refresh, flush, 和 optimize API 都做了什么, 你什么情况下应该使用他们？</li>
 </ol>
-<h3 id="选举临时-master"><a class="header-anchor" href="#选举临时-master">¶</a>选举临时 Master</h3>
-<p>Node#start<br>
--&gt; ZenDiscovery#startInitialJoin<br>
--&gt; ZenDiscovery#JoinThreadControl#startNewThreadIfNotRunning<br>
--&gt; threadPool.generic().execute：使用 generic 线程池执行选主流程<br>
--&gt; ZenDiscovery#innerJoinCluster：加入集群<br>
--&gt; ZenDiscovery#findMaster：查找当前集群的活跃 Master，或者从候选者中选择新的 Master<br>
--&gt; ZenDiscovery#pingAndWait：ping 一下所有节点（除了本节点），获取 pingResponses<br>
--&gt; 构建<strong>activeMasters</strong>列表，将每个节点所认为的当前 Master 节点加入 activeMasters 列表<br>
--&gt; 构建<strong>masterCandidates</strong>列表，从 pingResponses 列表中去掉不具备 Master 资格的节点<br>
--&gt; 如果 activeMasters 为空，则从 masterCandidates 中选举，否则从 activeMasters 中选择最合适的作为 Master</p>
-<h3 id="从-mastercandidates-选主"><a class="header-anchor" href="#从-mastercandidates-选主">¶</a>从 masterCandidates 选主</h3>
-<p>activeMasters 为空一般发生在集群刚启动或大规模重启的情况下。</p>
-<p>ZenDiscovery#findMaster<br>
--&gt; ElectMasterService#hasEnoughCandidates：当前候选人数是否达到法定人数，若未达到则直接令选举失败<br>
--&gt; ElectMasterService#electMaster：当候选者达到法定人数后，从中选出一个作为 Master，选择前需要先用自定义比较函数进行排序<br>
--&gt; MasterCandidate.compare 自定义的排序逻辑</p>
-<p>排序条件：</p>
+<h3 id="相同查询多次执行结果不同"><a class="header-anchor" href="#相同查询多次执行结果不同">¶</a>相同查询多次执行结果不同</h3>
+<p>有可能是<strong>Bouncing Results</strong>问题，也有可能是主分片发生了<strong>强制段合并(forcemerge)</strong>，导致请求落到不同分片上得到的结果得分不同（<a href="https://cloud.tencent.com/developer/article/1445643" target="_blank" rel="noopener">Elasticsearch:执行同样的查询语句多次结果不一致？！</a>）。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<h3 id="文档"><a class="header-anchor" href="#文档">¶</a>文档</h3>
 <ol>
-<li>版本号大的优先；</li>
-<li>具备 Master 资格的优先；</li>
-<li>节点 ID 小的优先。</li>
+<li><a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/index.html" target="_blank" rel="noopener">Elasticsearch: 权威指南</a></li>
+<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html" target="_blank" rel="noopener">Elasticsearch Reference</a></li>
+<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html" target="_blank" rel="noopener">REST APIs</a></li>
 </ol>
-<h3 id="从-activemasters-列表中选主"><a class="header-anchor" href="#从-activemasters-列表中选主">¶</a>从 activeMasters 列表中选主</h3>
-<p>此时列表中存储着集群当前活跃的 Master，从这些已知的 Master 节点中选择一个作为选举结果。</p>
-<p>ZenDiscovery#findMaster<br>
--&gt; ElectMasterService#tieBreakActiveMasters：使用自定义比较函数排序后取第一个<br>
--&gt; ElectMasterService#compareNodes</p>
-<p>排序条件：</p>
+<h3 id="索引-映射和文档"><a class="header-anchor" href="#索引-映射和文档">¶</a>索引、映射和文档</h3>
 <ol>
-<li>具备 Master 资格的优先；</li>
-<li>节点 ID 小的优先。</li>
+<li><a href="https://blog.csdn.net/napoay/article/details/52032931" target="_blank" rel="noopener">Elasticsearch 索引的父子关系(index parent-child)</a></li>
+<li><a href="https://www.elastic.co/blog/elasticsearch-versioning-support" target="_blank" rel="noopener">Elasticsearch Versioning Support</a></li>
 </ol>
-<h3 id="收集投票进行统计"><a class="header-anchor" href="#收集投票进行统计">¶</a>收集投票进行统计</h3>
-<p>ZenDiscovery#handleJoinRequest<br>
--&gt; NodeJoinController#handleJoinRequest<br>
--&gt; NodeJoinController.ElectionContext#addIncomingJoin 将收到的连接存储到 NodeJoinController.ElectionContext#joinRequestAccumulator 中</p>
-<p>NodeJoinController.ElectionContext#getPendingMasterJoinsCount：节点检查收到的投票是否足够时，就是检查加入它的连接数是否足够，其中会去掉没有 Master 资格节点的投票</p>
-<h3 id="加入集群"><a class="header-anchor" href="#加入集群">¶</a>加入集群</h3>
-<p>如果按以上逻辑选举出的临时 Master 是本节点：</p>
+<h3 id="搜索"><a class="header-anchor" href="#搜索">¶</a>搜索</h3>
 <ol>
-<li>等待足够多的具备 Master 资格的节点加入本节点，直到投票达到法定人数，完成选举；</li>
-<li>超时（默认 30 秒且可配置）后还没有满足数量的 join 请求，则选举失败，需要进行新一轮选举；</li>
-<li>成功后发布新的 clusterState。</li>
+<li><a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/search-in-depth.html" target="_blank" rel="noopener">深入搜索</a></li>
 </ol>
-<p>ZenDiscovery#innerJoinCluster<br>
-NodeJoinController#waitToBeElectedAsMaster</p>
-<p>如果按以上逻辑选举出的临时 Master 并非本节点：</p>
+<h3 id="集群"><a class="header-anchor" href="#集群">¶</a>集群</h3>
 <ol>
-<li>不再接受其他节点的 join 请求；</li>
-<li>向 Master 发送 join 请求，并等待回复。超时时间默认为 1 分钟（可配置），如果遇到异常，则默认重试 3 次（可配置）。</li>
-<li>最终当选的 Master 会先发布集群状态，再确认客户的 join 请求，因此，joinElectedMaster 返回代表收到了 join 请求的确认，并且已经收到了集群状态。本步骤检查收到的集群状态中的 Master 节点如果为空，或者当选的 Master 不是之前选择的节点，则重新选举。</li>
+<li><a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/scale.html" target="_blank" rel="noopener">扩容设计</a></li>
 </ol>
-<p>ZenDiscovery#innerJoinCluster<br>
--&gt; ZenDiscovery#joinElectedMaster</p>
-<h2 id="集群扩容"><a class="header-anchor" href="#集群扩容">¶</a>集群扩容</h2>
-<h3 id="配置节点"><a class="header-anchor" href="#配置节点">¶</a>配置节点</h3>
-<p>集群是由一个或者多个拥有相同 <strong><a href="http://cluster.name" target="_blank" rel="noopener">cluster.name</a></strong> 配置的节点组成， 它们共同承担数据和负载的压力。当有节点加入集群中或者从集群中移除节点时，集群将会<strong>重新平均分布所有的数据</strong>。</p>
-<h3 id="水平扩容"><a class="header-anchor" href="#水平扩容">¶</a>水平扩容</h3>
-<p><img src="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B91.png" alt="水平扩容1" title="水平扩容1"><br>
-主分片的数目在索引创建时 就已经确定了下来。实际上，这个数目定义了这个索引能够 存储 的最大数据量。但是，<strong>读操作</strong>——搜索和返回数据——可以同时被主分片 或 副本分片所处理，所以当你拥有越多的副本分片时，也将拥有越高的吞吐量。<br>
-动态调整副本分片数目的命令：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">PUT /blogs/_settings</span><br><span class="line">&#123;</span><br><span class="line">   &quot;number_of_replicas&quot; : 2</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><img src="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B92.png" alt="水平扩容2" title="水平扩容2"><br>
-为了提高性能，要么是为已有的结点分配更多的资源，要么是分配更多的结点并扩展当前集群。但是不能通过为已有的分片分配更多的资源或者为一个结点分配更多的分片来提高性能，因为一个结点内的所有分片共享这个结点（JVM）的资源，最终还是必须增加更多的硬件资源来提升吞吐量。<br>
-更多的副本分片数提高了数据冗余量：按照上面的节点配置，我们可以在失去 2 个节点的情况下不丢失任何数据（因为每个结点上要么存在一个分片要么存在一个分片的冗余）。</p>
-<p>更多关于扩容的知识需要阅读相关文献，比如：<a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/scale.html" target="_blank" rel="noopener">扩容设计</a>。</p>
-<h2 id="故障转移"><a class="header-anchor" href="#故障转移">¶</a>故障转移</h2>
-<h3 id="同机多节点"><a class="header-anchor" href="#同机多节点">¶</a>同机多节点</h3>
-<p>当在同一台机器上启动了第二个节点时，只要它和第一个节点有同样的 <a href="http://cluster.name" target="_blank" rel="noopener">cluster.name</a> 配置，它就会自动发现集群并加入到其中。</p>
-<h3 id="不同机器多节点"><a class="header-anchor" href="#不同机器多节点">¶</a>不同机器多节点</h3>
-<p>在不同机器上启动节点的时候，为了加入到同一集群，你需要配置一个可连接到的单播主机列表，设置其他节点的 ip:port 列表：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">discovery.zen.ping.unicast.hosts: [&quot;host1&quot;, &quot;host2&quot;]</span><br></pre></td></tr></table></figure>
-<h3 id="故障转移机制"><a class="header-anchor" href="#故障转移机制">¶</a>故障转移机制</h3>
-<p><img src="https://tallate.top/imgs/ES/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.png" alt="故障转移" title="故障转移"><br>
-所有新近被索引的文档都将会保存在主分片上，然后被并行的复制到对应的副本分片上。这就保证了我们既可以从主分片又可以从副本分片上获得文档，即使主分片不可用了，服务仍然可用。如上图所示。<br>
-如果集群缺失主节点，集群不能正常工作。所以发生的第一件事情就是选举一个新的主节点。但是需要注意的是<strong>集群必须存在且仅存在一个主节点</strong>，否则会出现<strong>脑裂</strong>现象，因此 Elasticsearch 提供了很多参数来避免这个情况。<br>
-如果索引缺失主分片，索引也不能正常工作。 如果此时来检查集群的状况，我们看到的状态将会为 red ：不是所有主分片都在正常工作。在其它节点上存在着这两个主分片的完整副本， 所以新的主节点立即将这些分片在 Node 2 和 Node 3 上对应的副本分片<strong>提升</strong>为主分片， 此时集群的状态将会为 yellow ，因为在创建索引时设置了每个主分片需要对应 2 份副本分片：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">number_of_replicas : 2</span><br></pre></td></tr></table></figure>
-<p>重启节点后，集群可以将缺失的副本分片再次进行分配，如果 Node 1 依然拥有着之前的分片，它将尝试去重用它们，同时仅从主分片复制发生了修改的数据文件。</p>
+<h3 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h3>
+<ol>
+<li><a href="https://blog.csdn.net/sinat_14913533/article/details/85833635" target="_blank" rel="noopener">elasticsearch 源码编译问题</a></li>
+</ol>
 
           
         
@@ -3458,7 +3294,7 @@ NodeJoinController#waitToBeElectedAsMaster</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">137</span>
+                  <span class="site-state-item-count">138</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -3469,7 +3305,7 @@ NodeJoinController#waitToBeElectedAsMaster</p>
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-count">21</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -3480,7 +3316,7 @@ NodeJoinController#waitToBeElectedAsMaster</p>
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">71</span>
+                  <span class="site-state-item-count">72</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>

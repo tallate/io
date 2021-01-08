@@ -88,7 +88,7 @@
 <meta property="og:description" content="不论一家企业做什么领域业务，登录基本都是绕不过去的功能——任何操作都必须在已经登录的前提下才能执行，我这里主要聚焦登录中分布式 Session 的设计，然后连带提一下其他方方面面。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png">
-<meta property="og:updated_time" content="2020-12-19T11:58:32.204Z">
+<meta property="og:updated_time" content="2021-01-08T11:59:43.364Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="分布式 Session">
 <meta name="twitter:description" content="不论一家企业做什么领域业务，登录基本都是绕不过去的功能——任何操作都必须在已经登录的前提下才能执行，我这里主要聚焦登录中分布式 Session 的设计，然后连带提一下其他方方面面。">
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.4k 字
+                  4.8k 字
                 </span>
               
 
@@ -376,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  18 分钟
+                  20 分钟
                 </span>
               
             </div>
@@ -426,8 +426,35 @@ HTTP Basic Auth、HTTP Digest Auth 是例外，但是这些标准并不常用。
 <h3 id="高可用-高性能"><a class="header-anchor" href="#高可用-高性能">¶</a>高可用 &amp; 高性能</h3>
 <p>为了高性能，MySQL 等数据库必然不能选择，何况几乎每次请求都必须要查询一次 Session，如果使用 MySQL 存储 Session 分分钟就能爆炸。<br>
 最常见的方案是基于 Redis 实现的，通过 Sentinel 可以实现高可用，单机可以支持 10W+的 QPS，如果用户规模超过了这个数，也可以集群化来扩容。</p>
+<h2 id="oauth2"><a class="header-anchor" href="#oauth2">¶</a>OAuth2</h2>
+<h3 id="oauth2概述"><a class="header-anchor" href="#oauth2概述">¶</a>OAuth2概述</h3>
+<p>OAuth2中定义了以下几种角色：</p>
+<ul>
+<li>资源所有者（Resource Owner）：用户，即资源服务器上资源的所有者。</li>
+<li>客户端（Client）：意图访问受限资源的第三方应用。在访问前，它必须先经过用户授权，并且获得的授权凭证将进一步由授权服务器进行验证；</li>
+<li>授权服务器（Authorization Server）：授权服务器用来验证用户提供的信息是否正确，并返回一个令牌给第三方应用；</li>
+<li>资源服务器（Resource Server）：资源服务器是提供给用户资源的服务器，例如用户的证件号码、照片等。</li>
+</ul>
+<p>OAuth2的4种授权模式：</p>
+<ul>
+<li>授权码<br>
+客户端从授权服务器获取授权码。<br>
+优点：功能最完善、流程最严谨。</li>
+<li>简化模式<br>
+直接在浏览器中向授权服务器申请令牌。<br>
+优点：简单，适用于纯静态页面；</li>
+<li>密码模式<br>
+用户直接把用户名密码告诉客户端，客户端使用这些信息向授权服务器申请令牌；<br>
+优点：免去了授权步骤，但用户必须对客户端高度信任，一般发生在客户端和资源服务器属于同一家公司的情况。</li>
+<li>客户端模式</li>
+</ul>
+<p>OAuth2中4种角色之间的交互（以授权码模式为例）：<br>
+1、2：客户端向用户请求授权，用户同意后授权服务器将授权许可凭证返回给客户端；<br>
+3、4：客户端携带授权许可凭证去授权服务器申请令牌，授权服务器确认无误后发放令牌给客户端；<br>
+5、6：客户端携带令牌去资源服务器上访问资源，资源服务器确认令牌无误后返回资源。</p>
+<h3 id="springsecurity中的oauth2实现"><a class="header-anchor" href="#springsecurity中的oauth2实现">¶</a>SpringSecurity中的OAuth2实现</h3>
+<p>OAuth2是一个协议，SpringSecurity包含了其一种实现。</p>
 <h2 id="仿-oauth-令牌机制"><a class="header-anchor" href="#仿-oauth-令牌机制">¶</a>仿 OAuth 令牌机制</h2>
-<p>登录功能在上面提到的各种框架中都已经有封装好的实现，但是灵活性相对较低。下面我们就来讨论一下如果要自己实现应该怎么做。</p>
 <h3 id="登录及登录校验"><a class="header-anchor" href="#登录及登录校验">¶</a>登录及登录校验</h3>
 <p>下面描述一个简化版的登录功能实现，没有严格遵照标准，仅仅作为一个参考。<br>
 <img src="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png" alt="登录流程" title="登录流程"><br>
@@ -540,6 +567,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
 <li><a href="http://www.ruanyifeng.com/blog/2019/04/oauth-grant-types.html" target="_blank" rel="noopener">OAuth 2.0 的四种方式</a></li>
 <li><a href="http://www.ruanyifeng.com/blog/2019/04/github-oauth.html" target="_blank" rel="noopener">GitHub OAuth 第三方登录示例教程</a></li>
 <li><a href="http://www.ruanyifeng.com/blog/2018/07/json_web_token-tutorial.html" target="_blank" rel="noopener">JSON Web Token 入门教程</a></li>
+<li><a href="https://juejin.cn/post/6844904034181070861" target="_blank" rel="noopener">傻傻分不清之 Cookie、Session、Token、JWT</a></li>
 <li>Spring Shiro<br>
 <a href="https://blog.csdn.net/taojin12/article/details/88343990" target="_blank" rel="noopener">Spring Boot 中集成 Shiro</a></li>
 <li>Spring Security<br>
@@ -576,8 +604,8 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/9d02e43e.html" rel="next" title="并发的定义">
-                <i class="fa fa-chevron-left"></i> 并发的定义
+              <a href="/e3d5c2fc.html" rel="next" title="并发和线程池">
+                <i class="fa fa-chevron-left"></i> 并发和线程池
               </a>
             
           </div>
@@ -586,8 +614,8 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/b13b8cb6.html" rel="prev" title="Docker 与常用中间件">
-                Docker 与常用中间件 <i class="fa fa-chevron-right"></i>
+              <a href="/89826705.html" rel="prev" title="Docker 入门">
+                Docker 入门 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -670,7 +698,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">137</span>
+                  <span class="site-state-item-count">138</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -681,7 +709,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-count">21</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -692,7 +720,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">71</span>
+                  <span class="site-state-item-count">72</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -727,7 +755,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式-session"><span class="nav-number">1.</span> <span class="nav-text">¶分布式 Session</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何标识一次会话"><span class="nav-number">1.1.</span> <span class="nav-text">¶如何标识一次会话</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#高可用-高性能"><span class="nav-number">1.2.</span> <span class="nav-text">¶高可用 &amp; 高性能</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#仿-oauth-令牌机制"><span class="nav-number">2.</span> <span class="nav-text">¶仿 OAuth 令牌机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#登录及登录校验"><span class="nav-number">2.1.</span> <span class="nav-text">¶登录及登录校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发登录控制"><span class="nav-number">2.2.</span> <span class="nav-text">¶并发登录控制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-一个账号同时允许登录一次"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶不考虑 RefreshToken，一个账号同时允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-允许多人登录一个账号-同一账号最大会话数"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶不考虑 RefreshToken，允许多人登录一个账号（同一账号最大会话数）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号只允许登录一次"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号只允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号允许登录多次"><span class="nav-number">2.2.4.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号允许登录多次</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重定向"><span class="nav-number">2.3.</span> <span class="nav-text">¶重定向</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#refresh-并发问题"><span class="nav-number">2.4.</span> <span class="nav-text">¶Refresh 并发问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#跨域"><span class="nav-number">2.5.</span> <span class="nav-text">¶跨域</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#token-加密"><span class="nav-number">2.6.</span> <span class="nav-text">¶Token 加密</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-https-对请求加密"><span class="nav-number">2.7.</span> <span class="nav-text">¶利用 HTTPS 对请求加密</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式-session"><span class="nav-number">1.</span> <span class="nav-text">¶分布式 Session</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何标识一次会话"><span class="nav-number">1.1.</span> <span class="nav-text">¶如何标识一次会话</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#高可用-高性能"><span class="nav-number">1.2.</span> <span class="nav-text">¶高可用 &amp; 高性能</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#oauth2"><span class="nav-number">2.</span> <span class="nav-text">¶OAuth2</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#oauth2概述"><span class="nav-number">2.1.</span> <span class="nav-text">¶OAuth2概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#springsecurity中的oauth2实现"><span class="nav-number">2.2.</span> <span class="nav-text">¶SpringSecurity中的OAuth2实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#仿-oauth-令牌机制"><span class="nav-number">3.</span> <span class="nav-text">¶仿 OAuth 令牌机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#登录及登录校验"><span class="nav-number">3.1.</span> <span class="nav-text">¶登录及登录校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发登录控制"><span class="nav-number">3.2.</span> <span class="nav-text">¶并发登录控制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-一个账号同时允许登录一次"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶不考虑 RefreshToken，一个账号同时允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-允许多人登录一个账号-同一账号最大会话数"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶不考虑 RefreshToken，允许多人登录一个账号（同一账号最大会话数）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号只允许登录一次"><span class="nav-number">3.2.3.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号只允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号允许登录多次"><span class="nav-number">3.2.4.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号允许登录多次</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重定向"><span class="nav-number">3.3.</span> <span class="nav-text">¶重定向</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#refresh-并发问题"><span class="nav-number">3.4.</span> <span class="nav-text">¶Refresh 并发问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#跨域"><span class="nav-number">3.5.</span> <span class="nav-text">¶跨域</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#token-加密"><span class="nav-number">3.6.</span> <span class="nav-text">¶Token 加密</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-https-对请求加密"><span class="nav-number">3.7.</span> <span class="nav-text">¶利用 HTTPS 对请求加密</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
             
 
           </div>
