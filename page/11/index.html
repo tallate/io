@@ -266,261 +266,6 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/60ef81a3.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/60ef81a3.html" itemprop="url">ZooKeeper 的应用</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T18:52:36+08:00">
-                2019-07-29
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/ZooKeeper/" itemprop="url" rel="index">
-                    <span itemprop="name">ZooKeeper</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.1k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  7 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h1>命名服务</h1>
-<p>把服务器名、资源名记录到zk里。<br>
-<img src="https://tallate.top/imgs/ZooKeeper/ZooKeeper%E5%91%BD%E5%90%8D%E6%9C%8D%E5%8A%A1.png" alt="ZooKeeper命名服务" title="ZooKeeper命名服务"><br>
-通过调用Zookeeper节点创建的API接口就可以创建一个顺序节点，并且在API返回值中会返回这个节点的完整名字，利用此特性，可以生成全局ID，其步骤如下</p>
-<ol>
-<li>客户端根据任务类型，在指定类型的任务下通过调用接口创建一个顺序节点，如&quot;job-&quot;。</li>
-<li>创建完成后，会返回一个完整的节点名，如&quot;job-00000001&quot;。</li>
-<li>客户端拼接type类型和返回值后，就可以作为全局唯一ID了，如&quot;type2-job-00000001&quot;。</li>
-</ol>
-<h1>配置管理</h1>
-<p>程序分布式的部署在不同的机器上，将程序的配置信息放在zk的znode下，当有配置发生改变时，也就是znode发生变化时，可以通过改变zk中某个目录节点的内容，利用watcher通知给各个客户端从而更改配置。</p>
-<h1>集群管理</h1>
-<p>Zookeeper的两大特性：</p>
-<ul>
-<li>客户端如果对Zookeeper的数据节点注册Watcher监听，那么当该数据及诶单内容或是其子节点列表发生变更时，Zookeeper服务器就会向订阅的客户端发送变更通知。</li>
-<li>对在Zookeeper上创建的临时节点，一旦客户端与服务器之间的会话失效，那么临时节点也会被自动删除。</li>
-</ul>
-<p>利用其两大特性，可以实现集群机器存活监控系统，若监控系统在<code>/clusterServers</code>节点上注册一个Watcher监听，那么但凡进行动态添加机器的操作，就会在/clusterServers节点下创建一个临时节点：<code>/clusterServers/[Hostname]</code>，这样，监控系统就能够实时监测机器的变动情况。</p>
-<h1>Master选举</h1>
-<p>集群需要有一个Master，比如MySQL中需要有一个Master来负责写请求。ZooKeeper的强一致性可以保证这样的Master是唯一的。<br>
-集群中的每个节点可以定时在一个命名空间内创建节点，但只有一个客户端能创建成功，此时其成为Master。</p>
-<h1>分布式锁</h1>
-<p>分布式锁用于控制分布式系统之间同步访问共享资源的一种方式，可以保证不同系统访问一个或一组资源时的一致性，主要分为排它锁和共享锁。</p>
-<h2 id="排他锁"><a class="header-anchor" href="#排他锁">¶</a>排他锁</h2>
-<p><img src="https://tallate.top/imgs/ZooKeeper/%E6%8E%92%E4%BB%96%E9%94%81.png" alt="排他锁" title="排他锁"></p>
-<ul>
-<li>获取锁，在需要获取排它锁时，所有客户端通过调用接口，在/exclusive_lock节点下创建临时子节点/exclusive_lock/lock。Zookeeper可以保证只有一个客户端能够创建成功，没有成功的客户端需要注册/exclusive_lock节点监听。</li>
-<li>释放锁，当获取锁的客户端宕机或者正常完成业务逻辑都会导致临时节点的删除，此时，所有在/exclusive_lock节点上注册监听的客户端都会收到通知，可以重新发起分布式锁获取。</li>
-</ul>
-<h2 id="共享锁"><a class="header-anchor" href="#共享锁">¶</a>共享锁</h2>
-<p>共享锁又称为读锁，若事务T1对数据对象O1加上共享锁，那么当前事务只能对O1进行读取操作，其他事务也只能对这个数据对象加共享锁，直到该数据对象上的所有共享锁都被释放。<br>
-<img src="https://tallate.top/imgs/ZooKeeper/%E5%85%B1%E4%BA%AB%E9%94%81.png" alt="共享锁" title="共享锁"></p>
-<h3 id="获取锁"><a class="header-anchor" href="#获取锁">¶</a>获取锁</h3>
-<p>在需要获取共享锁时，所有客户端都会到/shared_lock下面创建一个临时顺序节点，如果是读请求，那么就创建例如/shared_lock/host1-R-00000001的节点，如果是写请求，那么就创建例如/shared_lock/host2-W-00000002的节点。</p>
-<h3 id="判断读写顺序"><a class="header-anchor" href="#判断读写顺序">¶</a>判断读写顺序</h3>
-<p>不同事务可以同时对一个数据对象进行读写操作，而更新操作必须在当前没有任何事务进行读写情况下进行，通过Zookeeper来确定分布式读写顺序，大致分为四步。</p>
-<ol>
-<li>创建完节点后，获取/shared_lock节点下所有子节点，并对该节点变更注册监听。</li>
-<li>确定自己的节点序号在所有子节点中的顺序。</li>
-<li>对于读请求：若没有比自己序号小的子节点或所有比自己序号小的子节点都是读请求，那么表明自己已经成功获取到共享锁，同时开始执行读取逻辑，若有写请求，则需要等待。对于写请求：若自己不是序号最小的子节点，那么需要等待。</li>
-<li>接收到Watcher通知后，重复步骤1。</li>
-</ol>
-<h3 id="释放锁"><a class="header-anchor" href="#释放锁">¶</a>释放锁</h3>
-<p>其释放锁的流程与独占锁一致。</p>
-<h3 id="惊群现象"><a class="header-anchor" href="#惊群现象">¶</a>惊群现象</h3>
-<p>上述共享锁的实现方案，可以满足一般分布式集群竞争锁的需求，但是如果机器规模扩大会出现一些问题，下面着重分析判断读写顺序的步骤3。</p>
-<p>针对如上图所示的情况进行分析</p>
-<ol>
-<li>host1首先进行读操作，完成后将节点/shared_lock/host1-R-00000001删除。</li>
-<li>余下4台机器均收到这个节点移除的通知，然后重新从/shared_lock节点上获取一份新的子节点列表。</li>
-<li>每台机器判断自己的读写顺序，其中host2检测到自己序号最小，于是进行写操作，余下的机器则继续等待。</li>
-<li>继续…</li>
-</ol>
-<p>可以看到，host1客户端在移除自己的共享锁后，Zookeeper发送了子节点更变Watcher通知给所有机器，然而除了给host2产生影响外，对其他机器没有任何作用。大量的Watcher通知和子节点列表获取两个操作会重复运行，这样会造成系能鞥影响和网络开销，更为严重的是，如果同一时间有多个节点对应的客户端完成事务或事务中断引起节点小时，Zookeeper服务器就会在短时间内向其他所有客户端发送大量的事件通知，这就是所谓的<strong>羊群效应（惊群效应）</strong>。</p>
-<p>可以有如下改动来避免羊群效应。</p>
-<ol>
-<li>客户端调用create接口常见类似于<code>/shared_lock/[Hostname]-请求类型-序号</code>的临时顺序节点。</li>
-<li>客户端调用getChildren接口获取所有已经创建的子节点列表（不注册任何Watcher）。</li>
-<li>如果无法获取共享锁，就调用exist接口来对比自己小的节点注册Watcher。对于读请求：向比自己序号小的最后一个写请求节点注册Watcher监听。对于写请求：向比自己序号小的最后一个节点注册Watcher监听。</li>
-<li>等待Watcher通知，继续进入步骤2。</li>
-</ol>
-<p>此方案改动主要在于：每个锁竞争者，只需要关注/shared_lock节点下序号比自己小的那个节点是否存在即可。</p>
-<h1>分布式队列（FIFO先入先出）</h1>
-<p>先进入队列的请求操作先完成后，才会开始处理后面的请求。FIFO队列就类似于全写的共享模型，所有客户端都会到/queue_fifo这个节点下创建一个临时节点，如/queue_fifo/host1-00000001。<br>
-<img src="https://tallate.top/imgs/ZooKeeper/%E5%88%86%E5%B8%83%E5%BC%8F%E9%98%9F%E5%88%97.png" alt="分布式队列" title="分布式队列"><br>
-创建完节点后，按照如下步骤执行。</p>
-<ol>
-<li>通过调用getChildren接口来获取/queue_fifo节点的所有子节点，即获取队列中所有的元素。</li>
-<li>确定自己的节点序号在所有子节点中的顺序。</li>
-<li>如果自己的序号不是最小，那么需要等待，同时向比自己序号小的最后一个节点注册Watcher监听。</li>
-<li>接收到Watcher通知后，重复步骤1。</li>
-</ol>
-<h1>分布式屏障</h1>
-<p>最终的合并计算需要基于很多并行计算的子结果来进行，开始时，/queue_barrier节点已经默认存在，并且将结点数据内容赋值为数字n来代表Barrier值，之后，所有客户端都会到/queue_barrier节点下创建一个临时节点，例如/queue_barrier/host1。<br>
-<img src="https://tallate.top/imgs/ZooKeeper/%E5%88%86%E5%B8%83%E5%BC%8F%E5%B1%8F%E9%9A%9C.png" alt="分布式屏障" title="分布式屏障"></p>
-<p>创建完节点后，按照如下步骤执行。</p>
-<ol>
-<li>通过调用getData接口获取/queue_barrier节点的数据内容，如10。</li>
-<li>通过调用getChildren接口获取/queue_barrier节点下的所有子节点，同时注册对子节点变更的Watcher监听。</li>
-<li>统计子节点的个数。</li>
-<li>如果子节点个数还不足10个，那么需要等待。</li>
-<li>接受到Wacher通知后，重复步骤3。</li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/4ea5471b.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2117,6 +1862,388 @@ all表示统计信息为所有 CPU 的平均值。</li>
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/72161861.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/72161861.html" itemprop="url">Eureka原理分析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
+                2019-07-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/微服务/" itemprop="url" rel="index">
+                    <span itemprop="name">微服务</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2.7k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  11 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
+<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
+现在：Eureka 在中间层提供一种负载均衡的可能。</p>
+<h2 id="服务发现比较"><a class="header-anchor" href="#服务发现比较">¶</a>服务发现比较</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Consul</th>
+<th>zookeeper</th>
+<th>etcd</th>
+<th>euerka</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>服务健康检查</td>
+<td>服务状态，内存，硬盘等</td>
+<td>(弱)长连接，keepalive</td>
+<td>连接心跳</td>
+<td>可配支持</td>
+</tr>
+<tr>
+<td>多数据中心</td>
+<td>支持</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>kv存储服务</td>
+<td>支持</td>
+<td>支持</td>
+<td>支持</td>
+<td>—</td>
+</tr>
+<tr>
+<td>一致性</td>
+<td>raft</td>
+<td>paxos(zab)</td>
+<td>raft</td>
+<td>—</td>
+</tr>
+<tr>
+<td>cap</td>
+<td>ca</td>
+<td>cp</td>
+<td>cp</td>
+<td>ap</td>
+</tr>
+<tr>
+<td>使用接口(多语言能力)</td>
+<td>支持http和dns</td>
+<td>客户端</td>
+<td>http/grpc</td>
+<td>http（sidecar）</td>
+</tr>
+<tr>
+<td>watch支持</td>
+<td>全量/支持long polling</td>
+<td>支持</td>
+<td>支持 long polling</td>
+<td>支持 long polling/大部分增量</td>
+</tr>
+<tr>
+<td>自身监控</td>
+<td>metrics</td>
+<td>—</td>
+<td>metrics</td>
+<td>metrics</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>acl /https</td>
+<td>acl</td>
+<td>https支持（弱）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>spring cloud集成</td>
+<td>已支持</td>
+<td>已支持</td>
+<td>已支持</td>
+<td>已支持</td>
+</tr>
+</tbody>
+</table>
+<h2 id="纵向-功能-比较"><a class="header-anchor" href="#纵向-功能-比较">¶</a>纵向（功能）比较</h2>
+<h3 id="服务的健康检查"><a class="header-anchor" href="#服务的健康检查">¶</a>服务的健康检查</h3>
+<p>Euraka 使用时需要显式配置健康检查支持；Zookeeper,Etcd 则在失去了和服务进程的连接情况下任务不健康，而 Consul 相对更为详细点，比如内存是否已使用了90%，文件系统的空间是不是快不足了。</p>
+<h3 id="多数据中心支持"><a class="header-anchor" href="#多数据中心支持">¶</a>多数据中心支持</h3>
+<p>Consul 通过 WAN 的 Gossip 协议，完成跨数据中心的同步；而且其他的产品则需要额外的开发工作来实现。</p>
+<h3 id="kv-存储服务"><a class="header-anchor" href="#kv-存储服务">¶</a>KV 存储服务</h3>
+<p>除了 Eureka ,其他几款都能够对外支持 k-v 的存储服务，所以后面会讲到这几款产品追求高一致性的重要原因。而提供存储服务，也能够较好的转化为动态配置服务哦。</p>
+<h3 id="产品设计中-cap-理论的取舍-这一段感觉是瞎说的-博客下面评论产生很多争议"><a class="header-anchor" href="#产品设计中-cap-理论的取舍-这一段感觉是瞎说的-博客下面评论产生很多争议">¶</a>产品设计中 CAP 理论的取舍（这一段感觉是瞎说的，博客下面评论产生很多争议）</h3>
+<p>Eureka 典型的 AP,作为分布式场景下的服务发现的产品较为合适，服务发现场景的可用性优先级较高，一致性并不是特别致命。其次 CA 类型的场景 Consul,也能提供较高的可用性，并能 k-v store 服务保证一致性。 而Zookeeper,Etcd则是CP类型 牺牲可用性，在服务发现场景并没太大优势。</p>
+<h3 id="多语言能力与对外提供服务的接入协议"><a class="header-anchor" href="#多语言能力与对外提供服务的接入协议">¶</a>多语言能力与对外提供服务的接入协议</h3>
+<p>Zookeeper的跨语言支持较弱，其他几款支持 http11 提供接入的可能。Euraka 一般通过 sidecar的方式提供多语言客户端的接入支持。Etcd 还提供了Grpc的支持。 Consul除了标准的Rest服务api,还提供了DNS的支持。</p>
+<h3 id="watch的支持-客户端观察到服务提供者变化"><a class="header-anchor" href="#watch的支持-客户端观察到服务提供者变化">¶</a>Watch的支持（客户端观察到服务提供者变化）</h3>
+<p>Zookeeper 支持服务器端推送变化，Eureka 2.0(正在开发中)也计划支持。 Eureka 1,Consul,Etcd则都通过长轮询的方式来实现变化的感知。</p>
+<h3 id="自身集群的监控"><a class="header-anchor" href="#自身集群的监控">¶</a>自身集群的监控</h3>
+<p>除了 Zookeeper ,其他几款都默认支持 metrics，运维者可以搜集并报警这些度量信息达到监控目的。</p>
+<h3 id="安全"><a class="header-anchor" href="#安全">¶</a>安全</h3>
+<p>Consul,Zookeeper 支持ACL，另外 Consul,Etcd 支持安全通道https。</p>
+<h3 id="spring-cloud的集成"><a class="header-anchor" href="#spring-cloud的集成">¶</a>Spring Cloud的集成</h3>
+<p>目前都有相对应的 boot starter，提供了集成能力。<br>
+总的来看，目前Consul 自身功能，和 spring cloud 对其集成的支持都相对较为完善，而且运维的复杂度较为简单（没有详细列出讨论），Eureka 设计上比较符合场景，但还需持续的完善。</p>
+<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
+<ul>
+<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
+<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
+<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
+</ul>
+<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
+<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
+<ul>
+<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
+<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
+<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
+<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
+<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
+</ul>
+<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
+<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
+<ul>
+<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
+<li>UP：可以正常进行通信；</li>
+<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
+<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
+<li>UNKNOWN：WTF？</li>
+</ul>
+<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
+<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
+<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
+<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
+<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
+<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
+<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
+<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
+<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
+<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
+<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
+<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
+<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
+DiscoveryManager.getInstance().shutdownComponent()</p>
+<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
+<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
+<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
+<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
+<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
+<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
+<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
+<p>Eureka Client 的高可用设计：</p>
+<ul>
+<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
+<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
+</ul>
+<p>Eureka Server 的高可用设计：</p>
+<ul>
+<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
+Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
+获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
+<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
+在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
+<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
+<ol>
+<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
+<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
+</ol>
+</li>
+<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
+当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
+</ul>
+<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
+<p>比如在测试环境中出现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<ul>
+<li>在生产上可以开自注册，部署两个 server</li>
+<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
+<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
+</ul>
+<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
+<p>配置：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
+Eureka Server 开放的 REST 接口提供动态配置功能：<br>
+<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
+<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
+<p>静态设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
+<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
+动态设置：<br>
+需要提供一个自定义的</p>
+<p>获取：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
+<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
+<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
+<p>EurekaClient</p>
+<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
+<p>ExampleEurekaGovernatedService</p>
+<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
+<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
+EurekaServerConfig extends DefaultEurekaServerConfig<br>
+CloudInstanceConfig extends PropertiesInstanceConfig<br>
+MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
+<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/caf2d9ed.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2410,7 +2537,7 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">145</span>
+                  <span class="site-state-item-count">144</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
