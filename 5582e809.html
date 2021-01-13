@@ -82,17 +82,19 @@
 <meta name="description" content="不论一家企业做什么领域业务，登录基本都是绕不过去的功能——任何操作都必须在已经登录的前提下才能执行，我这里主要聚焦登录中分布式 Session 的设计，然后连带提一下其他方方面面。">
 <meta name="keywords" content="Session">
 <meta property="og:type" content="article">
-<meta property="og:title" content="分布式 Session">
+<meta property="og:title" content="分布式 Session 和 OAuth">
 <meta property="og:url" content="https://tallate.github.io/5582e809.html">
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="不论一家企业做什么领域业务，登录基本都是绕不过去的功能——任何操作都必须在已经登录的前提下才能执行，我这里主要聚焦登录中分布式 Session 的设计，然后连带提一下其他方方面面。">
 <meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://tallate.top/imgs/OAuth2/OAuth2%E6%A8%A1%E5%9D%97%E4%BA%A4%E4%BA%92.png">
+<meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E6%8E%88%E6%9D%83%E6%97%B6%E5%BA%8F%E5%9B%BE.png">
 <meta property="og:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png">
-<meta property="og:updated_time" content="2021-01-08T11:59:43.364Z">
+<meta property="og:updated_time" content="2021-01-10T16:00:52.099Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="分布式 Session">
+<meta name="twitter:title" content="分布式 Session 和 OAuth">
 <meta name="twitter:description" content="不论一家企业做什么领域业务，登录基本都是绕不过去的功能——任何操作都必须在已经登录的前提下才能执行，我这里主要聚焦登录中分布式 Session 的设计，然后连带提一下其他方方面面。">
-<meta name="twitter:image" content="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png">
+<meta name="twitter:image" content="https://tallate.top/imgs/OAuth2/OAuth2%E6%A8%A1%E5%9D%97%E4%BA%A4%E4%BA%92.png">
 
 
 
@@ -130,7 +132,7 @@
 
 
 
-  <title>分布式 Session | Tallate</title>
+  <title>分布式 Session 和 OAuth | Tallate</title>
   
 
 
@@ -289,7 +291,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">分布式 Session</h1>
+          <h1 class="post-title" itemprop="name headline">分布式 Session 和 OAuth</h1>
         
 
         <div class="post-meta">
@@ -360,7 +362,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.8k 字
+                  5k 字
                 </span>
               
 
@@ -376,7 +378,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  20 分钟
+                  21 分钟
                 </span>
               
             </div>
@@ -435,6 +437,7 @@ HTTP Basic Auth、HTTP Digest Auth 是例外，但是这些标准并不常用。
 <li>授权服务器（Authorization Server）：授权服务器用来验证用户提供的信息是否正确，并返回一个令牌给第三方应用；</li>
 <li>资源服务器（Resource Server）：资源服务器是提供给用户资源的服务器，例如用户的证件号码、照片等。</li>
 </ul>
+<p><img src="https://tallate.top/imgs/OAuth2/OAuth2%E6%A8%A1%E5%9D%97%E4%BA%A4%E4%BA%92.png" alt="OAuth2模块交互" title="OAuth2模块交互"></p>
 <p>OAuth2的4种授权模式：</p>
 <ul>
 <li>授权码<br>
@@ -446,15 +449,25 @@ HTTP Basic Auth、HTTP Digest Auth 是例外，但是这些标准并不常用。
 <li>密码模式<br>
 用户直接把用户名密码告诉客户端，客户端使用这些信息向授权服务器申请令牌；<br>
 优点：免去了授权步骤，但用户必须对客户端高度信任，一般发生在客户端和资源服务器属于同一家公司的情况。</li>
-<li>客户端模式</li>
+<li>客户端模式<br>
+客户端以自己的名义而不是用户的名义向服务提供者申请授权。</li>
 </ul>
 <p>OAuth2中4种角色之间的交互（以授权码模式为例）：<br>
 1、2：客户端向用户请求授权，用户同意后授权服务器将授权许可凭证返回给客户端；<br>
 3、4：客户端携带授权许可凭证去授权服务器申请令牌，授权服务器确认无误后发放令牌给客户端；<br>
 5、6：客户端携带令牌去资源服务器上访问资源，资源服务器确认令牌无误后返回资源。</p>
 <h3 id="springsecurity中的oauth2实现"><a class="header-anchor" href="#springsecurity中的oauth2实现">¶</a>SpringSecurity中的OAuth2实现</h3>
-<p>OAuth2是一个协议，SpringSecurity包含了其一种实现。</p>
+<p>OAuth2是一个协议，SpringSecurity包含了其一种实现。<br>
+，使用SpringSecurity的过程中需要先配置授权服务器和资源服务器，之后客户端想要从资源服务器上获取资源前，需要先引导用户跳转到授权页触发授权，授权成功后客户端再拿着授权码调用资源服务器。</p>
+<h4 id="授权"><a class="header-anchor" href="#授权">¶</a>授权</h4>
+<p>入口为授权服务器开放的<code>/oauth/token</code>接口。<br>
+TODO</p>
+<h4 id="资源"><a class="header-anchor" href="#资源">¶</a>资源</h4>
+<h4 id="授权刷新"><a class="header-anchor" href="#授权刷新">¶</a>授权刷新</h4>
 <h2 id="仿-oauth-令牌机制"><a class="header-anchor" href="#仿-oauth-令牌机制">¶</a>仿 OAuth 令牌机制</h2>
+<p>之前做的一个项目中涉及到了一个类OAuth2的登录功能，简化后的时序图如下所示：<br>
+<img src="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E6%8E%88%E6%9D%83%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="授权时序图" title="授权时序图"><br>
+接下来我详细介绍一下当时对登录过程的实现。</p>
 <h3 id="登录及登录校验"><a class="header-anchor" href="#登录及登录校验">¶</a>登录及登录校验</h3>
 <p>下面描述一个简化版的登录功能实现，没有严格遵照标准，仅仅作为一个参考。<br>
 <img src="https://tallate.top/imgs/%E5%88%86%E5%B8%83%E5%BC%8FSession/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png" alt="登录流程" title="登录流程"><br>
@@ -574,6 +587,12 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
 <a href="http://www.zijin.net/news/tech/1190163.html" target="_blank" rel="noopener">Spring 高级篇—Spring Security 入门原理及实战</a></li>
 <li><a href="https://mp.weixin.qq.com/s/3gux7M-DQk5bmwoUeS2N_w" target="_blank" rel="noopener">基于 Shiro 的统一用户中心</a></li>
 </ol>
+<h3 id="springsecurity"><a class="header-anchor" href="#springsecurity">¶</a>SpringSecurity</h3>
+<ol>
+<li><a href="https://www.hangge.com/blog/cache/detail_2683.html" target="_blank" rel="noopener">SpringBoot - 使用Spring Security实现OAuth2授权认证教程（实现token认证）</a></li>
+<li><a href="https://www.jianshu.com/p/d80061e6d900" target="_blank" rel="noopener">Spring Security 与 OAuth2（完整案例）</a></li>
+<li><a href="http://www.iocoder.cn/Spring-Security/laoxu/Core-configuration-interpretation/" target="_blank" rel="noopener"></a></li>
+</ol>
 
       
     </div>
@@ -604,8 +623,8 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/54dfb258.html" rel="next" title="异地多活">
-                <i class="fa fa-chevron-left"></i> 异地多活
+              <a href="/9d02e43e.html" rel="next" title="并发的定义">
+                <i class="fa fa-chevron-left"></i> 并发的定义
               </a>
             
           </div>
@@ -614,8 +633,8 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/b13b8cb6.html" rel="prev" title="Docker 与常用中间件">
-                Docker 与常用中间件 <i class="fa fa-chevron-right"></i>
+              <a href="/353ec849.html" rel="prev" title="Dubbo 概述">
+                Dubbo 概述 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -698,7 +717,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">138</span>
+                  <span class="site-state-item-count">137</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -755,7 +774,7 @@ Token 包括 AccessToken 和 RefreshToken 两种，它们的生成方式都是�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式-session"><span class="nav-number">1.</span> <span class="nav-text">¶分布式 Session</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何标识一次会话"><span class="nav-number">1.1.</span> <span class="nav-text">¶如何标识一次会话</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#高可用-高性能"><span class="nav-number">1.2.</span> <span class="nav-text">¶高可用 &amp; 高性能</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#oauth2"><span class="nav-number">2.</span> <span class="nav-text">¶OAuth2</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#oauth2概述"><span class="nav-number">2.1.</span> <span class="nav-text">¶OAuth2概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#springsecurity中的oauth2实现"><span class="nav-number">2.2.</span> <span class="nav-text">¶SpringSecurity中的OAuth2实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#仿-oauth-令牌机制"><span class="nav-number">3.</span> <span class="nav-text">¶仿 OAuth 令牌机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#登录及登录校验"><span class="nav-number">3.1.</span> <span class="nav-text">¶登录及登录校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发登录控制"><span class="nav-number">3.2.</span> <span class="nav-text">¶并发登录控制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-一个账号同时允许登录一次"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶不考虑 RefreshToken，一个账号同时允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-允许多人登录一个账号-同一账号最大会话数"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶不考虑 RefreshToken，允许多人登录一个账号（同一账号最大会话数）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号只允许登录一次"><span class="nav-number">3.2.3.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号只允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号允许登录多次"><span class="nav-number">3.2.4.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号允许登录多次</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重定向"><span class="nav-number">3.3.</span> <span class="nav-text">¶重定向</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#refresh-并发问题"><span class="nav-number">3.4.</span> <span class="nav-text">¶Refresh 并发问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#跨域"><span class="nav-number">3.5.</span> <span class="nav-text">¶跨域</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#token-加密"><span class="nav-number">3.6.</span> <span class="nav-text">¶Token 加密</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-https-对请求加密"><span class="nav-number">3.7.</span> <span class="nav-text">¶利用 HTTPS 对请求加密</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式-session"><span class="nav-number">1.</span> <span class="nav-text">¶分布式 Session</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何标识一次会话"><span class="nav-number">1.1.</span> <span class="nav-text">¶如何标识一次会话</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#高可用-高性能"><span class="nav-number">1.2.</span> <span class="nav-text">¶高可用 &amp; 高性能</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#oauth2"><span class="nav-number">2.</span> <span class="nav-text">¶OAuth2</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#oauth2概述"><span class="nav-number">2.1.</span> <span class="nav-text">¶OAuth2概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#springsecurity中的oauth2实现"><span class="nav-number">2.2.</span> <span class="nav-text">¶SpringSecurity中的OAuth2实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#授权"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶授权</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#资源"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶资源</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#授权刷新"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶授权刷新</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#仿-oauth-令牌机制"><span class="nav-number">3.</span> <span class="nav-text">¶仿 OAuth 令牌机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#登录及登录校验"><span class="nav-number">3.1.</span> <span class="nav-text">¶登录及登录校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#并发登录控制"><span class="nav-number">3.2.</span> <span class="nav-text">¶并发登录控制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-一个账号同时允许登录一次"><span class="nav-number">3.2.1.</span> <span class="nav-text">¶不考虑 RefreshToken，一个账号同时允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#不考虑-refreshtoken-允许多人登录一个账号-同一账号最大会话数"><span class="nav-number">3.2.2.</span> <span class="nav-text">¶不考虑 RefreshToken，允许多人登录一个账号（同一账号最大会话数）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号只允许登录一次"><span class="nav-number">3.2.3.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号只允许登录一次</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加入-refreshtoken-且一个账号允许登录多次"><span class="nav-number">3.2.4.</span> <span class="nav-text">¶加入 RefreshToken，且一个账号允许登录多次</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重定向"><span class="nav-number">3.3.</span> <span class="nav-text">¶重定向</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#refresh-并发问题"><span class="nav-number">3.4.</span> <span class="nav-text">¶Refresh 并发问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#跨域"><span class="nav-number">3.5.</span> <span class="nav-text">¶跨域</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#token-加密"><span class="nav-number">3.6.</span> <span class="nav-text">¶Token 加密</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-https-对请求加密"><span class="nav-number">3.7.</span> <span class="nav-text">¶利用 HTTPS 对请求加密</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#springsecurity"><span class="nav-number">4.1.</span> <span class="nav-text">¶SpringSecurity</span></a></li></ol></li></ol></div>
             
 
           </div>

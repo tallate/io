@@ -79,19 +79,19 @@
 
 
 
-<meta name="description" content="实际工作中很多场景会面对热数据问题，当QPS一高就不能完全以来数据库应付了。最容易想到的解决办法就是加缓存，但是如果数据非常多呢？难道全部都加缓存吗？ 退一步讲，在所有的数据中：  其实大部分都是不必要加载到缓存的，符合8-2规律； 而且有的数据一会是热的，一会可能会变冷，比如因为流感季节到来，对口罩的搜索量忽然上升，之后随着流感季节过去又降回去；  所以我认为最根本的解决办法还是检测出哪些key">
+<meta name="description" content="实验性质的项目，因为之前被问过两次，当时没有太好的思路，这里试想一种解决方案。">
 <meta name="keywords" content="Redis">
 <meta property="og:type" content="article">
 <meta property="og:title" content="热点数据发现">
 <meta property="og:url" content="https://tallate.github.io/14bfa738.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="实际工作中很多场景会面对热数据问题，当QPS一高就不能完全以来数据库应付了。最容易想到的解决办法就是加缓存，但是如果数据非常多呢？难道全部都加缓存吗？ 退一步讲，在所有的数据中：  其实大部分都是不必要加载到缓存的，符合8-2规律； 而且有的数据一会是热的，一会可能会变冷，比如因为流感季节到来，对口罩的搜索量忽然上升，之后随着流感季节过去又降回去；  所以我认为最根本的解决办法还是检测出哪些key">
+<meta property="og:description" content="实验性质的项目，因为之前被问过两次，当时没有太好的思路，这里试想一种解决方案。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://tallate.top/imgs/%E7%83%AD%E7%82%B9%E6%95%B0%E6%8D%AE%E5%8F%91%E7%8E%B0/%E7%83%AD%E7%82%B9%E6%95%B0%E6%8D%AE%E5%8F%91%E7%8E%B0.png">
-<meta property="og:updated_time" content="2021-01-08T12:07:56.056Z">
+<meta property="og:updated_time" content="2021-01-13T00:50:21.508Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="热点数据发现">
-<meta name="twitter:description" content="实际工作中很多场景会面对热数据问题，当QPS一高就不能完全以来数据库应付了。最容易想到的解决办法就是加缓存，但是如果数据非常多呢？难道全部都加缓存吗？ 退一步讲，在所有的数据中：  其实大部分都是不必要加载到缓存的，符合8-2规律； 而且有的数据一会是热的，一会可能会变冷，比如因为流感季节到来，对口罩的搜索量忽然上升，之后随着流感季节过去又降回去；  所以我认为最根本的解决办法还是检测出哪些key">
+<meta name="twitter:description" content="实验性质的项目，因为之前被问过两次，当时没有太好的思路，这里试想一种解决方案。">
 <meta name="twitter:image" content="https://tallate.top/imgs/%E7%83%AD%E7%82%B9%E6%95%B0%E6%8D%AE%E5%8F%91%E7%8E%B0/%E7%83%AD%E7%82%B9%E6%95%B0%E6%8D%AE%E5%8F%91%E7%8E%B0.png">
 
 
@@ -360,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  590 字
+                  1.5k 字
                 </span>
               
 
@@ -376,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  2 分钟
+                  5 分钟
                 </span>
               
             </div>
@@ -397,14 +397,16 @@
       
 
       
-        <p>实际工作中很多场景会面对热数据问题，当QPS一高就不能完全以来数据库应付了。最容易想到的解决办法就是加缓存，但是如果数据非常多呢？难道全部都加缓存吗？<br>
+        <p>实验性质的项目，因为之前被问过两次，当时没有太好的思路，这里试想一种解决方案。</p>
+<a id="more"></a>
+<hr>
+<p>实际工作中很多场景会面对热数据问题，当QPS一高就不能完全以来数据库应付了。最容易想到的解决办法就是加缓存，但是如果数据非常多呢？难道全部都加缓存吗？<br>
 退一步讲，在所有的数据中：</p>
 <ul>
 <li>其实大部分都是不必要加载到缓存的，符合8-2规律；</li>
 <li>而且有的数据一会是热的，一会可能会变冷，比如因为流感季节到来，对口罩的搜索量忽然上升，之后随着流感季节过去又降回去；</li>
 </ul>
 <p>所以我认为最根本的解决办法还是检测出哪些key是热的并加载到缓存，然后自动将不热的数据从缓存中淘汰掉。</p>
-<a id="more"></a>
 <h1>热key检测功能的实现</h1>
 <h2 id="需求"><a class="header-anchor" href="#需求">¶</a>需求</h2>
 <p>在现实中，数据库可能存在热点数据、分布式缓存也可能存在热点数据。</p>
@@ -421,7 +423,7 @@
 <h2 id="数据模型"><a class="header-anchor" href="#数据模型">¶</a>数据模型</h2>
 <p>这个场景非常简单，从数据库中查询一个key，我先列出DB和Redis中如何保存数据<br>
 DB：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">create table data (</span><br><span class="line">    id int primary key,</span><br><span class="line">    name varchar(20) not null default &apos;&apos;</span><br><span class="line">) default engine InnoDB;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">create table data (</span><br><span class="line">    id int primary key,</span><br><span class="line">    key varchar(20) not null default &apos;&apos;,</span><br><span class="line">    name varchar(20) not null default &apos;&apos;,</span><br><span class="line">    uniq key uniq_key(key)</span><br><span class="line">) default engine = InnoDB;</span><br></pre></td></tr></table></figure>
 <p>热点数据是有<strong>时效</strong>的，因此最好key里带上时间，时间的粒度也可以配置，比如将1秒钟拆成4个时段，统计时统计4个时段，这样就不会出现每一秒都重新计数的情况了。<br>
 Redis：<br>
 <code>&lt;HOT_毫秒_keyname, counter&gt;</code></p>
@@ -430,6 +432,41 @@ Redis：<br>
 <ul>
 <li>热点统计和上报是异步执行的，因此不会阻塞业务。</li>
 </ul>
+<h2 id="热点统计"><a class="header-anchor" href="#热点统计">¶</a>热点统计</h2>
+<p>记录key被访问的频率，统计不能影响服务本身的执行效率，因此不能直接调其他服务。客户端可以<strong>每个key使用一个LongAdder来统计其访问频率</strong>。<br>
+问题是服务挂掉的话，计数器会丢失，不过试想这台机器挂掉后，对该key的访问请求其实就都转移到其他机器上了，所以总数是不会丢失的，只是挂掉的那台机器在上次上报之后的数据会丢失，需要从头开始统计。</p>
+<h2 id="热点上报"><a class="header-anchor" href="#热点上报">¶</a>热点上报</h2>
+<p>热点数据的上报需要将数据上传到一个汇总服务器上，注意每次上传的是全量的统计数据，然后由hot-key服务来计算单位时间内的访问频。</p>
+<p>上传数据的格式？<br>
+因此上传的数据格式可以如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;key&quot;: &quot;Mike&quot;,</span><br><span class="line">    &quot;count&quot;: 100,</span><br><span class="line">    &quot;ip&quot;: &quot;123.123.123.123&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>每次要把全量的数据都上报吗？<br>
+我们现在线上的Redis平时保持有百万量级的key，如果要把所有这些key的访问数据都上报，每次传输的数据量非常大，而且也没有必要，因为大部分key都不是热key。<br>
+因此本地统计数据的时候，<strong>用一个LFU缓存记录使用频率最高的key。</strong></p>
+<p>hot-key服务如何保存数据？</p>
+<ul>
+<li>因为统计的频率不能太低，不然热key不能被及时检测出来，比如3秒上报一次，这样一天单机就需要上报28800次，假设我们的网站有10个服务，每个服务又有5个副本，<strong>一天的数据量级就在100W左右。</strong></li>
+<li>可以保存到数据库中，虽然一天100W挺多的，但是热点统计数据是有时效性的，完全可以每隔1小时将1小时之前的数据清掉。<br>
+判断一个key是否是热key时需要将每台服务器的统计数据都从数据库拿出来然后计算频率。</li>
+<li>可以保存到Redis中，比如每个key存一个hash格式的数据来保存每个服务器的统计数据。<br>
+优点：相对数据库来说查得快些。<br>
+缺点：Redis只是缓存，不能持久化数据（有持久化功能，不过那主要用于备份），不便后续的数据分析。</li>
+</ul>
+<p>综上所述，我还是选择了数据库来持久化访问频率数据。</p>
+<h2 id="热点探测"><a class="header-anchor" href="#热点探测">¶</a>热点探测</h2>
+<p>热点数据上报后由hot-key服务来保存热点数据，之后定时将数据推给其他服务。</p>
+<p>应该推给哪些服务？<br>
+<strong>上报时客户端会告诉hot-key服务自己的IP地址，之后hot-key再根据IP将热key列表推给客户端。</strong></p>
+<p>怎么样才算热点数据？</p>
+<ol>
+<li>从数据库中查找最后一次统计频率大于阈值的；</li>
+<li>根据IP分组；</li>
+<li>分IP推送。</li>
+</ol>
+<p>客户端如何保存热点数据？<br>
+只需要知道哪些key属于热点数据即可，可以用一个Set存key的集合。</p>
+<h2 id="本地缓存"><a class="header-anchor" href="#本地缓存">¶</a>本地缓存</h2>
+<p>通过热点探测知道哪些key属于热点后，客户端在下次访问数据时，会将这些热点数据保存到本地缓存。</p>
 <h1>关于热key的其他讨论</h1>
 <h2 id="缓存穿透"><a class="header-anchor" href="#缓存穿透">¶</a>缓存穿透</h2>
 <p>缓存穿透指的是一个热key过期后大量请求回源导致数据库被打爆的情况。</p>
@@ -476,10 +513,6 @@ Redis：<br>
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
-            
-              <a href="/0.html" rel="prev" title="">
-                 <i class="fa fa-chevron-right"></i>
-              </a>
             
           </div>
         </div>
@@ -561,7 +594,7 @@ Redis：<br>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">138</span>
+                  <span class="site-state-item-count">137</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -618,7 +651,7 @@ Redis：<br>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">热key检测功能的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#需求"><span class="nav-number">1.1.</span> <span class="nav-text">¶需求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据模型"><span class="nav-number">1.2.</span> <span class="nav-text">¶数据模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构"><span class="nav-number">1.3.</span> <span class="nav-text">¶架构</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">关于热key的其他讨论</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存穿透"><span class="nav-number">2.1.</span> <span class="nav-text">¶缓存穿透</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">热key检测功能的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#需求"><span class="nav-number">1.1.</span> <span class="nav-text">¶需求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据模型"><span class="nav-number">1.2.</span> <span class="nav-text">¶数据模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构"><span class="nav-number">1.3.</span> <span class="nav-text">¶架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#热点统计"><span class="nav-number">1.4.</span> <span class="nav-text">¶热点统计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#热点上报"><span class="nav-number">1.5.</span> <span class="nav-text">¶热点上报</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#热点探测"><span class="nav-number">1.6.</span> <span class="nav-text">¶热点探测</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#本地缓存"><span class="nav-number">1.7.</span> <span class="nav-text">¶本地缓存</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">关于热key的其他讨论</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存穿透"><span class="nav-number">2.1.</span> <span class="nav-text">¶缓存穿透</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>

@@ -684,7 +684,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d368c702.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/a2b16944.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -703,7 +703,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/d368c702.html" itemprop="url">Redis高可用方案Sentinel</a></h1>
+                <a class="post-title-link" href="/a2b16944.html" itemprop="url">Redis 持久化</a></h1>
         
 
         <div class="post-meta">
@@ -769,7 +769,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  6.3k 字
+                  3.2k 字
                 </span>
               
 
@@ -785,7 +785,7 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  24 分钟
+                  12 分钟
                 </span>
               
             </div>
@@ -807,214 +807,16 @@ slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能�
 
       
         
-          
-            <a id="more"></a>
-<h2 id="操作"><a class="header-anchor" href="#操作">¶</a>操作</h2>
-<ol>
-<li>
-<p>Master<br>
-TODO</p>
-</li>
-<li>
-<p>Slave</p>
-</li>
-<li>
-<p>Sentinel</p>
-</li>
-<li>
-<p>获取集群信息</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 info Sentinel</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>获取 master 节点地址</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h2 id="客户端如何连接sentinel集群"><a class="header-anchor" href="#客户端如何连接sentinel集群">¶</a>客户端如何连接Sentinel集群</h2>
-<p><img src="https://tallate.top/imgs/Redis/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
-在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
-<ul>
-<li>Master 和 Slave 的配置和之前并无区别；</li>
-<li>Sentinel 相当于对 Master 的代理，Sentinel 可以通过发布订阅功能获取到 Slave 和其他 Sentinel 的信息。</li>
-</ul>
-<blockquote>
-<p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
-</blockquote>
-<p>同理，客户端也可以通过pubsub功能来订阅集群中的其他信息，关键事件如下：<br>
-<img src="https://tallate.top/imgs/Redis/RedisSentinel%E4%BA%8B%E4%BB%B6.jpg" alt="RedisSentinel事件" title="RedisSentinel事件"></p>
-<h2 id="sentinel-执行原理"><a class="header-anchor" href="#sentinel-执行原理">¶</a>Sentinel 执行原理</h2>
-<p><img src="https://tallate.top/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg" alt="Sentinel的主要任务" title="Sentinel的主要任务"><br>
-在Sentinel的主事件循环中可以看到它每100毫秒执行的定时任务：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Run the Sentinel timer if we are in sentinel mode. */</span><br><span class="line">    // 如果服务器运行在 sentinel 模式下，那么执行 SENTINEL 的主函数</span><br><span class="line">    run_with_period(100) &#123;</span><br><span class="line">        if (server.sentinel_mode) sentinelTimer();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="实例状态探测"><a class="header-anchor" href="#实例状态探测">¶</a>实例状态探测</h3>
-<ul>
-<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。<br>
-如果一个实例（instance）距离最后一次有效回复 <code>PING</code> 命令的时间超过 <code>down-after-milliseconds</code> 选项所指定的值， 那么这个实例会被 Sentinel 标记为<strong>主观下线</strong>。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br></pre></td><td class="code"><pre><span class="line">void sentinelHandleDictOfRedisInstances(dict *instances) &#123;</span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">    // 遍历多个实例，这些实例可以是多个主服务器、多个从服务器或者多个 sentinel</span><br><span class="line">    di = dictGetIterator(instances);</span><br><span class="line">    while((de = dictNext(di)) != NULL) &#123;</span><br><span class="line"></span><br><span class="line">        // 取出实例对应的实例结构</span><br><span class="line">        sentinelRedisInstance *ri = dictGetVal(de);</span><br><span class="line"></span><br><span class="line">        // 执行调度操作</span><br><span class="line">        sentinelHandleRedisInstance(ri);</span><br><span class="line"></span><br><span class="line">        // 如果被遍历的是主服务器，那么递归地遍历该主服务器的所有从服务器</span><br><span class="line">        // 以及所有 sentinel</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">            // 所有从服务器</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;slaves);</span><br><span class="line"></span><br><span class="line">            // 所有 sentinel</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;sentinels);</span><br><span class="line"></span><br><span class="line">            // 对已下线主服务器（ri）的故障迁移已经完成</span><br><span class="line">            // ri 的所有从服务器都已经同步到新主服务器</span><br><span class="line">            if (ri-&gt;failover_state == SENTINEL_FAILOVER_STATE_UPDATE_CONFIG) &#123;</span><br><span class="line">                // 已选出新的主服务器</span><br><span class="line">                switch_to_promoted = ri;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    /* ========== MONITORING HALF ============ */</span><br><span class="line">    /* ==========     监控操作    =========*/</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    /* 对所有类型实例进行处理 */</span><br><span class="line"></span><br><span class="line">    // 如果有需要的话，创建连向实例的网络连接</span><br><span class="line">    sentinelReconnectInstance(ri);</span><br><span class="line"></span><br><span class="line">    // 根据情况，向实例发送 PING、 INFO 或者 PUBLISH 命令</span><br><span class="line">    sentinelSendPeriodicCommands(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 根据时间和实例类型等情况，向实例发送命令，比如 INFO 、PING 和 PUBLISH</span><br><span class="line">// 虽然函数的名字包含 Ping ，但命令并不只发送 PING 命令</span><br><span class="line">/* Send periodic PING, INFO, and PUBLISH to the Hello channel to</span><br><span class="line"> * the specified master or slave instance. */</span><br><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    mstime_t now = mstime();</span><br><span class="line">    mstime_t info_period, ping_period;</span><br><span class="line">    int retval;</span><br><span class="line"></span><br><span class="line">    /* Return ASAP if we have already a PING or INFO already pending, or</span><br><span class="line">     * in the case the instance is not properly connected. */</span><br><span class="line">    // 函数不能在网络连接未创建时执行</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_DISCONNECTED) return;</span><br><span class="line"></span><br><span class="line">    /* For INFO, PING, PUBLISH that are not critical commands to send we</span><br><span class="line">     * also have a limit of SENTINEL_MAX_PENDING_COMMANDS. We don&apos;t</span><br><span class="line">     * want to use a lot of memory just because a link is not working</span><br><span class="line">     * properly (note that anyway there is a redundant protection about this,</span><br><span class="line">     * that is, the link will be disconnected and reconnected if a long</span><br><span class="line">     * timeout condition is detected. */</span><br><span class="line">    // 为了避免 sentinel 在实例处于不正常状态时，发送过多命令</span><br><span class="line">    // sentinel 只在待发送命令的数量未超过 SENTINEL_MAX_PENDING_COMMANDS 常量时</span><br><span class="line">    // 才进行命令发送</span><br><span class="line">    if (ri-&gt;pending_commands &gt;= SENTINEL_MAX_PENDING_COMMANDS) return;</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* We ping instances every time the last received pong is older than</span><br><span class="line">     * the configured &apos;down-after-milliseconds&apos; time, but every second</span><br><span class="line">     * anyway if &apos;down-after-milliseconds&apos; is greater than 1 second. */</span><br><span class="line">    ping_period = ri-&gt;down_after_period;</span><br><span class="line">    if (ping_period &gt; SENTINEL_PING_PERIOD) ping_period = SENTINEL_PING_PERIOD;</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pong_time) &gt; ping_period) &#123;</span><br><span class="line">        /* Send PING to all the three kinds of instances. */</span><br><span class="line">        sentinelSendPing(ri);</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pub_time) &gt; SENTINEL_PUBLISH_PERIOD) &#123;</span><br><span class="line">        /* PUBLISH hello messages to all the three kinds of instances. */</span><br><span class="line">        sentinelSendHello(ri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="从主观下线到客观下线"><a class="header-anchor" href="#从主观下线到客观下线">¶</a>从主观下线到客观下线</h3>
-<ul>
-<li>如果一个主服务器被标记为<strong>主观下线</strong>， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line"></span><br><span class="line">    /* We don&apos;t proceed with the acting half if we are in TILT mode.</span><br><span class="line">     * TILT happens when we find something odd with the time, like a</span><br><span class="line">     * sudden change in the clock. */</span><br><span class="line">    // 如果 Sentinel 处于 TILT 模式，那么不执行故障检测。</span><br><span class="line">    if (sentinel.tilt) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果 TILI 模式未解除，那么不执行动作</span><br><span class="line">        if (mstime()-sentinel.tilt_start_time &lt; SENTINEL_TILT_PERIOD) return;</span><br><span class="line"></span><br><span class="line">        // 时间已过，退出 TILT 模式</span><br><span class="line">        sentinel.tilt = 0;</span><br><span class="line">        sentinelEvent(REDIS_WARNING,&quot;-tilt&quot;,NULL,&quot;#tilt mode exited&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    // 检查给定实例是否进入 SDOWN 状态</span><br><span class="line">    sentinelCheckSubjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Is this instance down from our point of view? */</span><br><span class="line">// 检查实例是否已下线（从本 Sentinel 的角度来看）</span><br><span class="line">void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Update the SDOWN flag. We believe the instance is SDOWN if:</span><br><span class="line">     *</span><br><span class="line">     * 更新 SDOWN 标识。如果以下条件被满足，那么 Sentinel 认为实例已下线：</span><br><span class="line">     *</span><br><span class="line">     * 1) It is not replying.</span><br><span class="line">     *    它没有回应命令</span><br><span class="line">     * 2) We believe it is a master, it reports to be a slave for enough time</span><br><span class="line">     *    to meet the down_after_period, plus enough time to get two times</span><br><span class="line">     *    INFO report from the instance. </span><br><span class="line">     *    Sentinel 认为实例是主服务器，这个服务器向 Sentinel 报告它将成为从服务器，</span><br><span class="line">     *    但在超过给定时限之后，服务器仍然没有完成这一角色转换。</span><br><span class="line">     */</span><br><span class="line">    if (elapsed &gt; ri-&gt;down_after_period ||</span><br><span class="line">        (ri-&gt;flags &amp; SRI_MASTER &amp;&amp;</span><br><span class="line">         ri-&gt;role_reported == SRI_SLAVE &amp;&amp;</span><br><span class="line">         mstime() - ri-&gt;role_reported_time &gt;</span><br><span class="line">          (ri-&gt;down_after_period+SENTINEL_INFO_PERIOD*2)))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Is subjectively down */</span><br><span class="line">        if ((ri-&gt;flags &amp; SRI_S_DOWN) == 0) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;+sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 记录进入 SDOWN 状态的时间</span><br><span class="line">            ri-&gt;s_down_since_time = mstime();</span><br><span class="line">            // 打开 SDOWN 标志</span><br><span class="line">            ri-&gt;flags |= SRI_S_DOWN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 移除（可能有的） SDOWN 状态</span><br><span class="line">        /* Is subjectively up */</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_S_DOWN) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;-sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 移除相关标志</span><br><span class="line">            ri-&gt;flags &amp;= ~(SRI_S_DOWN|SRI_SCRIPT_KILL_SENT);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>如果有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为<strong>客观下线</strong>。<br>
-这个数量是可以配置的，即<strong>quorum</strong>的数量。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line">    </span><br><span class="line">    ...这里省略SDOWN检测代码</span><br><span class="line"></span><br><span class="line">    /* Only masters */</span><br><span class="line">    /* 对主服务器进行处理 */</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">        // 判断 master 是否进入 ODOWN 状态</span><br><span class="line">        sentinelCheckObjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">        // 如果主服务器进入了 ODOWN 状态，那么开始一次故障转移操作</span><br><span class="line">        if (sentinelStartFailoverIfNeeded(ri))</span><br><span class="line">            // 强制向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">            // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">            sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_ASK_FORCED);</span><br><span class="line"></span><br><span class="line">        // 执行故障转移</span><br><span class="line">        sentinelFailoverStateMachine(ri);</span><br><span class="line"></span><br><span class="line">        // 如果有需要的话，向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">        // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">        // 这一句是对那些没有进入 if(sentinelStartFailoverIfNeeded(ri)) &#123; /* ... */ &#125;</span><br><span class="line">        // 语句的主服务器使用的</span><br><span class="line">        sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_NO_FLAGS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>注意上边发请求时使用的回调函数<code>sentinelInfoReplyCallback</code>：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 处理 INFO 命令的回复</span><br><span class="line">void sentinelInfoReplyCallback(redisAsyncContext *c, void *reply, void *privdata) &#123;</span><br><span class="line">    sentinelRedisInstance *ri = c-&gt;data;</span><br><span class="line">    redisReply *r;</span><br><span class="line"></span><br><span class="line">    if (ri) ri-&gt;pending_commands--;</span><br><span class="line">    if (!reply || !ri) return;</span><br><span class="line">    r = reply;</span><br><span class="line"></span><br><span class="line">    if (r-&gt;type == REDIS_REPLY_STRING) &#123;</span><br><span class="line">        // 解析info命令的响应数据</span><br><span class="line">        sentinelRefreshInstanceInfo(ri,r-&gt;str);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>当没有足够数量的 Sentinel 同意主服务器已经下线，主服务器的客观下线状态就会被移除。<br>
-当主服务器重新向 Sentinel 的 PING 命令返回有效回复时，主服务器的主观下线状态就会被移除。</li>
-</ul>
-<h3 id="故障转移-选举-sentinel-leader"><a class="header-anchor" href="#故障转移-选举-sentinel-leader">¶</a>故障转移 - 选举 Sentinel Leader</h3>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Only masters */</span><br><span class="line">    /* 对主服务器进行处理 */</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">        // 判断 master 是否进入 ODOWN 状态</span><br><span class="line">        sentinelCheckObjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">        // 如果主服务器进入了 ODOWN 状态，那么开始一次故障转移操作</span><br><span class="line">        if (sentinelStartFailoverIfNeeded(ri))</span><br><span class="line">            // 强制向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">            // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">            sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_ASK_FORCED);</span><br><span class="line"></span><br><span class="line">        // 执行故障转移</span><br><span class="line">        sentinelFailoverStateMachine(ri);</span><br><span class="line"></span><br><span class="line">        // 如果有需要的话，向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">        // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">        // 这一句是对那些没有进入 if(sentinelStartFailoverIfNeeded(ri)) &#123; /* ... */ &#125;</span><br><span class="line">        // 语句的主服务器使用的</span><br><span class="line">        sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_NO_FLAGS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h2>
-<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
-哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
-<ul>
-<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
-<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
-</ul>
-<h2 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h2>
-<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
-每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
-<blockquote>
-<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
-</blockquote>
-<h2 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h2>
-<ul>
-<li>主观下线（Subjectively Down， 简称 SDOWN）<br>
-主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
-如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
-</ul>
-<blockquote>
-<p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
-</blockquote>
-<ul>
-<li>客观下线（Objectively Down， 简称 ODOWN）<br>
-客观下线指的是多个 Sentinel 实例在对同一个 Master 做出 SDOWN 判断， 并且通过 SENTINEL <code>is-master-down-by-addr</code> 命令互相交流之后，得出的服务器下线判断。 （一个 Sentinel 可以通过向另一个 Sentinel 发送 SENTINEL is-master-down-by-addr 命令来询问对方是否认为给定的服务器已下线。）<br>
-从主观下线切换到客观下线并不是通过较严格的投票算法，而是采用了<strong>流言协议（gossip protocol）</strong>：只要 Sentinel 在给定时间内从其他 Sentinel 接收到足够数量的 Master 下线通知，那么 Sentinel 就会执行状态的切换；如果之后其他 Sentinel 不再报告 Master 已下线，则客观下线状态就会被移除。<br>
-只要一个 Sentinel 发现某个 Master 进入客观下线状态，之后就会进入<strong>故障迁移</strong>阶段，选举出一个 Sentinel 对失效的 Master 执行自动故障迁移操作。</li>
-</ul>
-<blockquote>
-<p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
-</blockquote>
-<h2 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h2>
-<p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
-<ul>
-<li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
-<li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
-</ul>
-<p>故障转移主要分为Sentinel选举和故障转移（Master替换）两个步骤，Sentinel选主流程如下：</p>
-<ul>
-<li>Sentinel发现主服务器已经进入客观下线状态。</li>
-<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
-<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
-</ul>
-<h3 id="slave选举"><a class="header-anchor" href="#slave选举">¶</a>Slave选举</h3>
-<p>Slave选举的规则如下：</p>
-<ul>
-<li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
-<li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
-<li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
-</ul>
-<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
-<p>之后所有Sentinel要进行投票选出一个Leader：<br>
-<img src="https://tallate.top/imgs/Redis/RedisSentinel%E6%8A%95%E7%A5%A8.jpg" alt="RedisSentinel投票" title="RedisSentinel投票"></p>
-<p>选出Leader后，Leader需要从现有的Slave中选出</p>
-<h3 id="故障转移"><a class="header-anchor" href="#故障转移">¶</a>故障转移</h3>
-<p>提升新的Master的流程如下：</p>
-<ul>
-<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
-<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
-<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
-<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
-</ul>
-<p>客户端感知新master流程如下：<br>
-哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
-另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
-一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
-<h2 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h2>
-<p>配置安全性：</p>
-<ul>
-<li>每当一个 Redis 实例被重新配置（reconfigured） —— 无论是被设置成主服务器、从服务器、又或者被设置成其他主服务器的从服务器 —— Sentinel 都会向被重新配置的实例发送一个 CONFIG REWRITE 命令， 从而确保这些配置会持久化在硬盘里。完成重新配置之后，从服务器会去复制正确的主服务器。</li>
-<li>Sentinel 的状态会被持久化到 Sentinel 配置文件里，当 Sentinel 接收到新配置或 Leader Sentinel 为 Master 创建一个新配置时，这些配置都会与<code>epoch</code>一起被保存到磁盘；</li>
-</ul>
-<p>故障自动迁移的一致性：</p>
-<ul>
-<li>Raft 算法保证在一个 epoch 里只有一个 Leader Sentinel 产生，减少了脑裂的风险；</li>
-<li>Sentinel 集群总是以更高的 epoch 为准，因为发生<code>网络分区（network partition）</code>时可能会有 Sentinel 包含老的配置，而当这个 Sentinel 服务器接收到其他 Sentinel 的版本更新配置时就会进行更新。</li>
-<li>发生网络分区并且某些 Sentinel 仍在采用老的配置时，如果有客户端连接到这些 Sentinel 上，最终可能就会将请求转发到非 Master 服务器上，造成数据不一致。因此，应该使用 <code>min-slaves-to-write</code> 选项， 让主服务器在连接的从实例少于给定数量时停止执行写操作， 与此同时， 应该在每个运行 Redis 主服务器或从服务器的机器上运行 Redis Sentinel 进程。</li>
-</ul>
-<h2 id="sentinel-故障迁移的实时性"><a class="header-anchor" href="#sentinel-故障迁移的实时性">¶</a>Sentinel 故障迁移的实时性</h2>
-<p>故障迁移虽然能提供主从切换来保证挂掉的Master能被其他Slave顶替上来，但是这个顶替过程大概需要多长时间呢？具体又是哪些步骤会比较耗时？</p>
-<ol>
-<li>判断Master下线<br>
-Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>master-down-after-milliseconds</code>时间，则表示主观下线了。<br>
-将Master标记为SDOWN后，这个Sentinel会通过发事件消息来通知其他Sentinel。</li>
-</ol>
-<blockquote>
-<p>Cluster中是通过gossip协议来通知其他节点的。</p>
-</blockquote>
-<ol>
-<li>
-<p>重新选主</p>
-</li>
-<li>
-<p>Slave提升</p>
-</li>
-</ol>
-<p>这个实时性的讨论并不是纯粹的极客行为，因为切换要多长时间是评估我们服务可用性的重要指标，并且提供后续优化的指导方向。</p>
-<h2 id="tilt-模式"><a class="header-anchor" href="#tilt-模式">¶</a>TILT 模式</h2>
-<p>TILT 模式是一种特殊的保护模式，Sentinel 每隔 100ms 会向实例发一次<code>PING</code>命令，并将上一次 PING 成功的时间和当前时间比对，从而知道与该实例有多长时间没有进行任何成功通讯：</p>
-<ul>
-<li>如果两次调用时间之间的差距为负值， 或者非常大（超过 2 秒钟）， 那么 Sentinel 进入 TILT 模式。</li>
-<li>如果 Sentinel 已经进入 TILT 模式， 那么 Sentinel 延迟退出 TILT 模式的时间。</li>
-</ul>
-<blockquote>
-<p>Sentinel严重依赖计算机的时间功能，一旦计算机的时间功能出现故障， 或者计算机非常忙碌， 又或者进程因为某些原因而被阻塞时， Sentinel 可能也会跟着出现故障。</p>
-</blockquote>
-<p>进入 TILT 模式后，Sentinel 仍然会继续监视所有目标，但是：</p>
-<ul>
-<li>它不再执行任何操作，比如故障转移。</li>
-<li>当有实例向这个 Sentinel 发送 SENTINEL <code>is-master-down-by-addr</code> 命令时， Sentinel 返回负值： 因为这个 Sentinel 所进行的下线判断已经不再准确。</li>
-</ul>
-<p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
-<h2 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h2>
-<p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
-<h2 id="脑裂"><a class="header-anchor" href="#脑裂">¶</a>脑裂</h2>
-<p>虽然Sentinel利用Raft选举不会发生脑裂，但是在一些极端的情况下还是有可能会发生脑裂的，比如：</p>
-<ol>
-<li>原Master不能提供服务了，但是它本身并没有挂掉；</li>
-<li>Sentinel发现连不上Master，于是判定客观下线，并发起主从切换；</li>
-<li>原Master和新Master同时给Client提供服务，发生脑裂。</li>
-</ol>
-<p>这种脑裂并不会影响可用性，但是却破坏了数据的一致性，甚至会导致数据丢失：在Sentinel重连上原Master后，会将其归入到新Master的Slave，这时脑裂期间的数据就会被从新Master上复制过来的数据覆盖掉了，导致数据的丢失。</p>
-<p>脑裂的解决办法主要是以下两个配置参数：</p>
-<ul>
-<li>min-slaves-to-write：这个配置项设置了主库能进行数据同步的最少从库数量；</li>
-<li>min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时，从库给主库发送 ACK 消息的最大延迟（以秒为单位）。</li>
-</ul>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？"><a class="header-anchor" href="#5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？">¶</a>5个哨兵的集群，quorum设置为2，在运行过程中，有3个实例都发生了故障，这时主库也发生了故障，还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？</h3>
-<p>判断客户端下线是可以的，因为判断ODOWN的条件是有不少于quorum数量的Sentinel同意即可。<br>
-不可执行主从切换，因为一个哨兵要执行主从切换，得获得半数以上哨兵的投票同意，也就是3个哨兵。</p>
-<h3 id="哨兵实例是不是越多越好？"><a class="header-anchor" href="#哨兵实例是不是越多越好？">¶</a>哨兵实例是不是越多越好？</h3>
-<p>哨兵实例越多，误判率越低，但是判断主库下线和选举Leader时实例要拿到的赞成票也越多，主从切换花费的时间也相对会更多。<br>
-如果客户端对Redis的响应时间有要求，则很有可能会报警。</p>
-<h3 id="调大down-after-milliseconds对减少误判是不是有好处？"><a class="header-anchor" href="#调大down-after-milliseconds对减少误判是不是有好处？">¶</a>调大down-after-milliseconds对减少误判是不是有好处？</h3>
-<p>这个值的作用是：判断距离上次PING成功的时间超过了这个值，就标记实例主观下线。<br>
-调大的话Sentinel需要更长的时间才能判断集群出问题了，也即影响到Redis的可用性。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="http://redisdoc.com/topic/sentinel.html" target="_blank" rel="noopener">Sentinel</a></li>
-</ol>
-
-          
+          <p>Redis 为了达到最快的读写速度将数据都读到内存中，并通过异步的方式将数据写入磁盘。所以 redis 具有快速和数据持久化的特征。如果不将数据放在内存中，磁盘 I/O 速度为严重影响 redis 的性能。在内存越来越便宜的今天，redis 将会越来越受欢迎。<br>
+如果设置了最大使用的内存，则数据已有记录数达到内存限值后不能继续插入新值。<br>
+不过 Redis 也提供了持久化的选项。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/a2b16944.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
@@ -1061,7 +863,7 @@ Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>mas
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/df2941e1.html">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9dda6023.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="tallate">
@@ -1080,7 +882,7 @@ Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>mas
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/df2941e1.html" itemprop="url">Redis 概述</a></h1>
+                <a class="post-title-link" href="/9dda6023.html" itemprop="url">Redis 进程和 IO 模型</a></h1>
         
 
         <div class="post-meta">
@@ -1146,7 +948,7 @@ Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>mas
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  4.5k 字
+                  2.7k 字
                 </span>
               
 
@@ -1162,7 +964,7 @@ Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>mas
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  16 分钟
+                  11 分钟
                 </span>
               
             </div>
@@ -1186,245 +988,60 @@ Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>mas
         
           
             <a id="more"></a>
-<p><img src="https://tallate.top/imgs/Redis/Redis%E6%9E%B6%E6%9E%84%E5%9B%BE.jpg" alt="Redis架构图" title="Redis架构图"><br>
-<img src="https://tallate.top/imgs/Redis/Redis%E7%9F%A5%E8%AF%86%E6%A1%86%E6%9E%B6.jpeg" alt="Redis知识框架" title="Redis知识框架"><br>
-<img src="https://tallate.top/imgs/Redis/Redis%E9%97%AE%E9%A2%98%E7%94%BB%E5%83%8F.jpg" alt="Redis问题画像" title="Redis问题画像"></p>
-<blockquote>
-<p>以上图片来自极客时间的《Redis核心技术与实战》。<br>
-对原理的分析都是基于Redis3.0版本的代码，现在最新的版本应该是6.0，很多功能都是后面的版本引入的，因此这篇里不会描述多线程这些功能。</p>
-</blockquote>
-<h2 id="为什么使用-redis"><a class="header-anchor" href="#为什么使用-redis">¶</a>为什么使用 Redis</h2>
-<h3 id="redis-的缺点-优点"><a class="header-anchor" href="#redis-的缺点-优点">¶</a>Redis 的缺点 &amp; 优点</h3>
-<p>特性及优势：</p>
+<h2 id="为什么-redis-这么快"><a class="header-anchor" href="#为什么-redis-这么快">¶</a>为什么 Redis 这么快</h2>
+<p>Redis 采用的是一种<strong>单线程工作模型</strong>，它能这么快主要归功于下面几个策略：</p>
 <ol>
-<li>内存数据库，吞吐率不受磁盘影响；</li>
-<li>每秒可以处理超过 10 万次读写操作；</li>
-<li>多数据结构支持，包括 string、hash、list、set、zset、Bitmaps、Hyperloglog、Geo、Pub/Sub、Redis Module、BloomFilter、RedisSearch、Redis-ML 等，支持绝大多数应用场景；</li>
-<li>Replication（复制）；</li>
-<li>lua（支持服务端执行复杂的业务逻辑）；</li>
-<li>LRU eviction（缓存淘汰）；</li>
-<li>Transactions；</li>
-<li>Persistence（持久化），包括 rdb（快照）和 AOF 两种；</li>
-<li>Sentinel（哨兵）；</li>
-<li>Cluster（分区）。</li>
+<li>完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)；</li>
+<li>数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的；</li>
+<li>采用单线程，避免了不必要的上下文切换和竞争条件，也不存在多进程或者多线程导致的切换而消耗 CPU，不用去考虑各种锁的问题，不存在加锁释放锁操作，没有因为可能出现死锁而导致的性能消耗；</li>
+<li>使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；</li>
+<li>使用<strong>多路 I/O 复用</strong>模型，非阻塞 IO；<br>
+多路 I/O 复用模型是利用 select、poll、epoll 可以同时监察多个流的 I/O 事件的能力，在空闲的时候，会把当前线程阻塞掉，当有一个或多个流有 I/O 事件时，就从阻塞态中唤醒，于是程序就会轮询一遍所有的流（epoll 是只轮询那些真正发出了事件的流），并且只依次顺序的处理就绪的流，这种做法就避免了大量的无用操作。<br>
+Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，在服务端，有一段 I/O 多路复用程序，将其置入队列之中，然后，文件事件分派器依次去队列中取，转发到不同的事件处理器中（对这个 I/O 多路复用机制，Redis 还提供了 select、epoll、evport、kqueue 等多路复用函数库）。<br>
+这里“多路”指的是多个网络连接，“复用”指的是复用同一个线程。采用多路 I/O 复用技术可以让单个线程高效的处理多个连接请求（尽量减少网络 IO 的时间消耗），且 Redis 在内存中操作数据的速度非常快，也就是说内存内的操作不会成为影响 Redis 性能的瓶颈，主要由以上几点造就了 Redis 具有很高的吞吐量。<br>
+<img src="https://tallate.top/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg" alt="多路IO复用模型" title="多路IO复用模型"></li>
 </ol>
-<p>但是也不能忽略 Redis 本身的一些缺点：</p>
+<h2 id="一些常见的进程模型"><a class="header-anchor" href="#一些常见的进程模型">¶</a>一些常见的进程模型</h2>
 <ol>
-<li>数据库容量受到物理内存的限制，不能用作海量数据的高性能读写，因此 Redis 适合的场景主要局限在较小数据量的高性能操作和运算上；</li>
-<li>缓存和数据库双写一致性问题；</li>
-<li>缓存雪崩问题；</li>
-<li>缓存击穿问题；</li>
-<li>缓存的并发竞争问题。</li>
-</ol>
-<h3 id="redis-memcached"><a class="header-anchor" href="#redis-memcached">¶</a>Redis &amp; Memcached</h3>
-<p>Redis 相对 Memcached 来说有以下优点：</p>
+<li>单进程多线程模型：MySQL、Memcached、Oracle（Windows 版本）；</li>
+<li>多进程模型：Oracle（Linux 版本）；</li>
+<li>Nginx 有两类进程，一类称为 Master 进程(相当于管理进程)，另一类称为 Worker 进程（实际工作进程）。启动方式有两种：
 <ol>
-<li>memcached 所有的值均是简单的字符串，redis 作为其替代者，支持更为丰富的数据类型</li>
-<li>redis 的速度比 memcached 快很多</li>
-<li>redis 可以持久化其数据</li>
+<li>单进程启动：此时系统中仅有一个进程，该进程既充当 Master 进程的角色，也充当 Worker 进程的角色。</li>
+<li>多进程启动：此时系统有且仅有一个 Master 进程，至少有一个 Worker 进程工作。</li>
+<li>Master 进程主要进行一些全局性的初始化工作和管理 Worker 的工作；事件处理是在 Worker 中进行的。</li>
 </ol>
-<p>Redis 和 Memcached 之间存在以下区别：</p>
+</li>
+</ol>
+<h2 id="为什么是-nio"><a class="header-anchor" href="#为什么是-nio">¶</a>为什么是 NIO</h2>
+<p>对于优化单个 server 节点的网络层，多使用 NIO 方式，server 端与 client 端在多次通讯的情况下使用 TCP 长连接维持会话，比如 Redis epoll 模型，RocketMq 的 netty 模型<br>
+对于高性能 Server 节点，在处理好网络请求同时，还要保证 server 端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型。<br>
+在 Redis 中，采用的是 Reactor 模式实现文件事件处理器：<br>
+<img src="https://tallate.top/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png" alt="Redis-事件处理模型" title="Redis-事件处理模型"></p>
 <ol>
-<li>存储方式 Memecache 把数据全部存在内存之中，断电后会挂掉，数据不能超过内存大小。 Redis 有部份存在硬盘上，这样能保证数据的持久性。</li>
-<li>数据支持类型 Memcache 对数据类型支持相对简单。 Redis 有复杂的数据类型。</li>
-<li>使用底层模型不同 它们之间底层实现方式 以及与客户端之间通信的应用协议不一样。 Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求。</li>
+<li>IO 多路复用<br>
+根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
+<li>封装不同 IO 模型，为事件处理器提供统一接口</li>
 </ol>
-<h3 id="应用场景"><a class="header-anchor" href="#应用场景">¶</a>应用场景</h3>
-<ol>
-<li>会话缓存（Session Cache）<br>
-最常用的一种使用 Redis 的情景是会话缓存（session cache）。用 Redis 缓存会话比其他存储（如 Memcached）的优势在于：Redis 提供持久化。当维护一个不是严格要求一致性的缓存时，如果用户的购物车信息全部丢失，大部分人都会不高兴的，现在，他们还会这样吗？<br>
-幸运的是，随着 Redis 这些年的改进，很容易找到怎么恰当的使用 Redis 来缓存会话的文档。甚至广为人知的商业平台 Magento 也提供 Redis 的插件。</li>
-<li>全页缓存（FPC）<br>
-除基本的会话 token 之外，Redis 还提供很简便的 FPC 平台。回到一致性问题，即使重启了 Redis 实例，因为有磁盘的持久化，用户也不会看到页面加载速度的下降，这是一个极大改进，类似 PHP 本地 FPC。<br>
-再次以 Magento 为例，Magento 提供一个插件来使用 Redis 作为全页缓存后端。<br>
-此外，对 WordPress 的用户来说，Pantheon 有一个非常好的插件 wp-redis，这个插件能帮助你以最快速度加载你曾浏览过的页面。</li>
-<li>队列<br>
-Reids 在内存存储引擎领域的一大优点是提供 list 和 set 操作，这使得 Redis 能作为一个很好的消息队列平台来使用。Redis 作为队列使用的操作，就类似于本地程序语言（如 Python）对 list 的 push/pop 操作。<br>
-当然要将 Redis 作为消息队列投入生产环境还有很多设计要点，比如采用 sleep 一段时间重试还是 blpop 阻塞、主题订阅、如何应对消费者下线导致的消息丢失问题（如何保证消息一定能被消费）等。<br>
-Redis 作为消息队列坑比较多，如果希望少点麻烦且对服务质量有一定要求，最好还是采用 RocketMQ 这些比较成熟的方案。</li>
-<li>延时队列<br>
-使用 zset，时间戳作为 score，消费者用 zrangebyscore 指令获取 N 秒之前的数据轮询进行处理，这种思路和 JDK 中的 ScheduledThreadPoolExecutor 有点像。</li>
-<li>排行榜/计数器<br>
-Redis 在内存中对数字进行递增或递减的操作实现的非常好。集合（Set）和有序集合（Sorted Set）也使得我们在执行这些操作的时候变的非常简单，Redis 只是正好提供了这两种数据结构。所以，我们要从排序集合中获取到排名最靠前的 10 个用户–我们<br>
-称之为“user_scores”，我们只需要像下面一样执行即可：<br>
-当然，这是假定你是根据你用户的分数做递增的排序。如果你想返回用户及用户的分数，你需要这样执行：<br>
-ZRANGE user_scores 0 10 WITHSCORES<br>
-Agora Games 就是一个很好的例子，用 Ruby 实现的，它的排行榜就是使用 Redis 来存储数据的，你可以在这里看到。</li>
-<li>发布/订阅<br>
-最后（但肯定不是最不重要的）是 Redis 的发布/订阅功能。发布/订阅的使用场景确实非常多。我已看见人们在社交网络连接中使用，还可作为基于发布/订阅的脚本触发器，甚至用 Redis 的发布/订阅功能来建立聊天系统！（不，这是真的，你可以去核实）。<br>
-Redis 提供的所有特性中，我感觉这个是喜欢的人最少的一个，虽然它为用户提供如果此多功能。</li>
-<li>分布式锁<br>
-不要用 setnx+expire，因为如果进程 crash 或重启这个锁就直接失效了。实际上 set 命令本身就包含超时和 cas 的设置。</li>
-<li>扫描<br>
-如果 Redis 中有 1 亿多个 key，其中有 10W+个 key 有固定的前缀（这种场景非常常见），如何将它们全部找出来？<br>
-由于 Redis 的单线程特性，使用 keys 可能会阻塞 Redis 进程，最好换成 scan 命令，不过可能提取出的部分 key 是重复的，需要客户端做去重。</li>
-</ol>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="redis与其他kv存储有何不同？"><a class="header-anchor" href="#redis与其他kv存储有何不同？">¶</a>Redis与其他KV存储有何不同？</h3>
+<h2 id="redis单线程多路复用io模型实现-事件注册"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件注册">¶</a>Redis单线程多路复用IO模型实现 - 事件注册</h2>
+<p>Redis服务器的初始化过程中包括了对事件处理器的初始化。<br>
+1、服务器启动期间初始化事件处理器<br>
+服务器初始化代码：<code>redis.c/initServer</code><br>
+初始化事件处理器代码：<code>ae.c/aeCreateEventLoop</code><br>
+2、根据系统的不同，选择不同的底层IO事件处理实现<br>
+比如linux的话，会选择epoll作为实现：<code>epoll.c/aeApiCreate</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 创建一个新的 epoll 实例，并将它赋值给 eventLoop</span><br><span class="line"> */</span><br><span class="line">static int aeApiCreate(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    aeApiState *state = zmalloc(sizeof(aeApiState));</span><br><span class="line"></span><br><span class="line">    if (!state) return -1;</span><br><span class="line"></span><br><span class="line">    // 初始化事件槽空间</span><br><span class="line">    state-&gt;events = zmalloc(sizeof(struct epoll_event)*eventLoop-&gt;setsize);</span><br><span class="line">    if (!state-&gt;events) &#123;</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 创建 epoll 实例</span><br><span class="line">    state-&gt;epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */</span><br><span class="line">    if (state-&gt;epfd == -1) &#123;</span><br><span class="line">        zfree(state-&gt;events);</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 赋值给 eventLoop</span><br><span class="line">    eventLoop-&gt;apidata = state;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当服务器需要监听某些事件时，会注册对这些事件的监听器，下面是注册监听器的函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 根据 mask 参数的值，监听 fd 文件的状态，</span><br><span class="line"> * 当 fd 可用时，执行 proc 函数</span><br><span class="line"> */</span><br><span class="line">int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,</span><br><span class="line">        aeFileProc *proc, void *clientData)</span><br><span class="line">&#123;</span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) &#123;</span><br><span class="line">        errno = ERANGE;</span><br><span class="line">        return AE_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 取出文件事件结构</span><br><span class="line">    aeFileEvent *fe = &amp;eventLoop-&gt;events[fd];</span><br><span class="line"></span><br><span class="line">    // 监听指定 fd 的指定事件</span><br><span class="line">    if (aeApiAddEvent(eventLoop, fd, mask) == -1)</span><br><span class="line">        return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 设置文件事件类型，以及事件的处理器</span><br><span class="line">    fe-&gt;mask |= mask;</span><br><span class="line">    if (mask &amp; AE_READABLE) fe-&gt;rfileProc = proc;</span><br><span class="line">    if (mask &amp; AE_WRITABLE) fe-&gt;wfileProc = proc;</span><br><span class="line"></span><br><span class="line">    // 私有数据</span><br><span class="line">    fe-&gt;clientData = clientData;</span><br><span class="line"></span><br><span class="line">    // 如果有需要，更新事件处理器的最大 fd</span><br><span class="line">    if (fd &gt; eventLoop-&gt;maxfd)</span><br><span class="line">        eventLoop-&gt;maxfd = fd;</span><br><span class="line"></span><br><span class="line">    return AE_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>比如Redis服务器要接受客户端的请求，就要注册一个监听连接事件，回调函数中会为客户端连接创建一个socket，并注册可读文件事件。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">void initServer() &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Create an event handler for accepting new connections in TCP and Unix</span><br><span class="line">     * domain sockets. */</span><br><span class="line">    // 为 TCP 连接关联连接应答（accept）处理器</span><br><span class="line">    // 用于接受并应答客户端的 connect() 调用</span><br><span class="line">    for (j = 0; j &lt; server.ipfd_count; j++) &#123;</span><br><span class="line">        if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,</span><br><span class="line">            acceptTcpHandler,NULL) == AE_ERR)</span><br><span class="line">            &#123;</span><br><span class="line">                redisPanic(</span><br><span class="line">                    &quot;Unrecoverable error creating server.ipfd file event.&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="redis单线程多路复用io模型实现-事件循环-处理"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件循环-处理">¶</a>Redis单线程多路复用IO模型实现 - 事件循环（处理）</h2>
+<p>Redis中定义了两种事件：时间事件TimeEvents、文件事件FileEvents：</p>
 <ul>
-<li>更多复杂的数据结构，支持更多特殊的场景；</li>
-<li>Redis是内存数据库，但是支持持久化到磁盘。</li>
+<li><code>TimeEvents</code>：一般都是一些定时任务，实际上现在时间事件只应用于服务器启动时注册的<code>serverCron</code>定时任务的执行；</li>
+<li><code>FileEvents</code>：socket文件的IO事件，比如上面的监听连接的事件就是文件事件。</li>
 </ul>
-<h3 id="有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？"><a class="header-anchor" href="#有人说-redis-只适合用来做缓存-当数据库来用并不合适-为什么？">¶</a>有人说 Redis 只适合用来做缓存，当数据库来用并不合适，为什么？</h3>
-<p>Redis 的事务并不严格：<br>
-* A(原子性)：Redis 支持事务，所有命令会被保存到一个事务队列中，服务器接收到 exec 时才会被真正执行，注意如果中间出错，事务不会回滚，后面的指令还会继续执行；而且如果涉及到复杂的逻辑判断，则只能通过<strong>lua 脚本</strong>实现“伪原子性”，说它是“伪原子性”是因为虽然脚本可以一次性执行多条命令，如果中间某个命令出错还是会无法保证“要么全部执行，要么都不执行”的要求。<br>
-* I(隔离性)：Redis 是单线程模型，因此可以保证隔离性。<br>
-* D(持久性)：Redis 是内存数据库，服务器意外崩溃会导致内存中的数据丢失，除非开启 AOF，并且配置成每次写入都记日志，但是这样又会极大地影响效率，所以一般会配置成混合模式的持久化。</p>
-<h3 id="redis会占用多少内存空间？"><a class="header-anchor" href="#redis会占用多少内存空间？">¶</a>Redis会占用多少内存空间？</h3>
-<ul>
-<li>An empty instance uses ~ 3MB of memory.</li>
-<li>1 Million small Keys -&gt; String Value pairs use ~ 85MB of memory.<br>
-那么10亿个kv，大概就会占用85G的内存了。</li>
-<li>1 Million Keys -&gt; Hash value, representing an object with 5 fields, use ~ 160 MB of memory.</li>
-</ul>
-<p>64位机器会占用比32位机器更多的内存，因为指针在64位机器上占用更多空间，但同时64位机器也可以有更大的内存空间。</p>
-<h3 id="redis-的底层数据结构有哪些"><a class="header-anchor" href="#redis-的底层数据结构有哪些">¶</a>Redis 的底层数据结构有哪些</h3>
-<p>sds：string 使用，变长字符串，不够的情况下重新分配空间并将老字符串数据拷贝过去；<br>
-dict：字典应用很多，包括 Redis 数据库中保存所有 key-value、hash、set、zset。dict 类似 Java 中的 HashMap，将 key 散列到哈希桶数组中，每个哈希桶都是一个链表，插入就是插入到链表头部，当元素超过了容量的一半后会启动渐进式 rehash 进行扩容。<br>
-ziplist：相当于一个数组，查询时需要遍历一次，每次插入都需要 realloc 重新分配一个新的更大的数组，然后把老数组内容拷贝过去。<br>
-quicklist：由于 linkedlist 附加空间成本高且容易产生碎片，因此 Redis 里的 quicklist 设计成了 linkedlist 和 ziplist 的结合，它将 linkedlist 按段切分，每一段使用 ziplist 存储；<br>
-skiplist：skiplist 用于实现 zset 中按 score 排序的要求，插入时先自顶向下查位置，然后按概率计算该节点应该分配到几层。</p>
-<h3 id="存储数据选择-string-还是-hash？"><a class="header-anchor" href="#存储数据选择-string-还是-hash？">¶</a>存储数据选择 string 还是 hash？</h3>
-<p>从业务层面来看，如果要存好多字段的对象、而且这个对象的每个字段都会单独拿出来用，则可以考虑使用 hash，否则没有太多限制条件。<br>
-从性能角度来看，如果存的字段少，hash 会使用 ziplist 结构存储，性能多少受点影响，而且还要考虑转换结构和渐进式扩容对性能的损耗。<br>
-从节约空间的角度来看，string 的 key 一般都会加个前缀，一般会比 hash 占用更多的空间，不过差距不大。</p>
-<h3 id="设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前"><a class="header-anchor" href="#设计-redis-排序-数据结构是金额-花钱的时间-金额越大-时间越早越靠前">¶</a>设计 redis 排序，数据结构是金额+花钱的时间，金额越大，时间越早越靠前</h3>
-<p>用 zset 存，score 是金额拼上时间，金额放高位，MAX_INT 和时间作差放低位，查询时使用<code>ZREVRANGE</code>命令查询。</p>
-<h3 id="hash-中哈希冲突怎么解决的"><a class="header-anchor" href="#hash-中哈希冲突怎么解决的">¶</a>hash 中哈希冲突怎么解决的</h3>
-<p>分两种情况：hash 在数据量小时结构是 ziplist，这时插入不会做冲突检测，插入到目标位置后就向后统一移动数据，给新插入的数据项流出空间；在数据量大时结构是 dict，这种结构和 Java 中的 HashMap 类似，使用链表来处理冲突。</p>
-<ol>
-<li>说说 Redis 为什么那么快。<br>
-单线程模型-&gt;减少了线程间上下文切换的开销。<br>
-多路复用的 IO 模型-&gt;单线程监控多个连接。</li>
-<li>为什么 Redis 记录 AOF 日志是先执行指令然后再记录 AOF 日志？而不是像其他存储引擎一样反过来？<br>
-主要是因为 Redis 本身是缓存而不是 db，侧重点不同，db 先写日志是为了失败回滚，而 Redis 持久化是一个附加功能，只能保证数据不会完全丢失。</li>
-</ol>
-<h3 id="redis-淘汰时-如果读取-会不会数据不完整"><a class="header-anchor" href="#redis-淘汰时-如果读取-会不会数据不完整">¶</a>Redis 淘汰时，如果读取，会不会数据不完整</h3>
-<p>redis 的淘汰分两种：</p>
-<ul>
-<li>一种是过期，这种不会导致这种问题，因为查询时会判断下过期时间，过期了就不返回；</li>
-<li>另一种是超过内存容量淘汰，比如 LRU，这种也不会导致这种问题，因为执行每个命令时都会检查下缓存是否超出了阈值，可见代码<code>server.c/processCommand</code>：<br>
-<img src="https://tallate.top/imgs/Redis/Redis-%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4%E5%89%8D%E6%A3%80%E6%9F%A5%E7%BC%93%E5%AD%98%E6%98%AF%E5%90%A6%E6%BA%A2%E5%87%BA.jpeg" alt="Redis-执行命令前检查缓存是否溢出" title="Redis-执行命令前检查缓存是否溢出"></li>
-</ul>
-<h3 id="redis-的持久化原理是什么"><a class="header-anchor" href="#redis-的持久化原理是什么">¶</a>Redis 的持久化原理是什么</h3>
-<p>Redis 有两种持久化方式：RDB 和 AOF<br>
-RDB 是快照，AOF 记录了写操作，效率起见，一般 RDB 作为 checkpoint，checkpoint 后的数据通过 AOF 恢复。</p>
-<h3 id="rdb-和-aof-之间的区别"><a class="header-anchor" href="#rdb-和-aof-之间的区别">¶</a>RDB 和 AOF 之间的区别</h3>
-<p>RDB 二进制文件可以直接加载到内存速度较快；AOF 要重放命令，所以速度比较慢。<br>
-RDB 需要全量备份，AOF 可以增量备份，二者的应用场景不同。</p>
-<h3 id="redis的复制原理是什么？"><a class="header-anchor" href="#redis的复制原理是什么？">¶</a>Redis的复制原理是什么？</h3>
-<p>master 会启动一个后台进程进行持久化（RDB or AOF），第一次连接时会将 RDB 文件发给 slave，slave 先保存到磁盘，之后加载到内存中；如果不是第一次连接，slave 连接 master 后通过 PSYNC 命令告知自己同步的起始位置，master 将增量部分 AOF 文件发送给 slave。</p>
-<h3 id="redis-持久化期间-主进程还能对外提供服务吗？为什么"><a class="header-anchor" href="#redis-持久化期间-主进程还能对外提供服务吗？为什么">¶</a>Redis 持久化期间，主进程还能对外提供服务吗？为什么</h3>
-<p>能。<br>
-因为 Redis 的复制是通过 fork 子进程实现的，父进程仍然可以接收请求。</p>
-<h3 id="持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？"><a class="header-anchor" href="#持久化期间-redis如何处理新写入的数据呢-这个数据也会直接进行持久化吗？">¶</a>持久化期间，Redis如何处理新写入的数据呢，这个数据也会直接进行持久化吗？</h3>
-<p>不会。<br>
-因为 Redis 复制是通过 fork 子进程实现的，由于 COW 机制，子进程只能看到老数据。</p>
-<h3 id="主从复制为什么会发生延迟？怎么解决"><a class="header-anchor" href="#主从复制为什么会发生延迟？怎么解决">¶</a>主从复制为什么会发生延迟？怎么解决</h3>
-<p>延迟无法避免，比如主从之间的网络抖动、slave 发生阻塞（如 IO）等情况。<br>
-解决办法有两种：</p>
-<ul>
-<li><code>min-slave-to-write N</code>和<code>min-slave-max-lag M</code>，控制 Master，只有在至少有 N 个 slave 正在工作，并且滞后时间均小于 M 秒的情况下，Master 将不接受写入请求；</li>
-<li><code>slave-serve-stale-data</code>，控制从库对主库失去响应或复制进行过程中从库的表现，为 yes 则从库会继续响应客户端的请求，为 no 则除去 INFO 和 SLAVOF 命令之外的任何请求都会返回一个错误<code>SYNC with master in progress</code>；</li>
-<li>编写外部监控程序，如果某个 slave 延迟较大，则通知 client 不要读这个 slave。</li>
-</ul>
-<h3 id="redis-怎么实现高可用"><a class="header-anchor" href="#redis-怎么实现高可用">¶</a>Redis 怎么实现高可用</h3>
-<p>从复制、Sentinel 到 Cluster</p>
-<h3 id="sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置"><a class="header-anchor" href="#sentinel-中-使用客户端是怎么连接服务器的？-redisson-配置">¶</a>sentinel 中，使用客户端是怎么连接服务器的？（Redisson 配置）</h3>
-<p>见《Redis 客户端》。</p>
-<h3 id="哈希槽原理？和一致性哈希的区别？怎么落点"><a class="header-anchor" href="#哈希槽原理？和一致性哈希的区别？怎么落点">¶</a>哈希槽原理？和一致性哈希的区别？怎么落点</h3>
-<p>redis cluster 默认分配了 16384 个 slot，当我们 set 一个 key 时，会用<strong>CRC16</strong>算法来取模得到所属的 slot，然后将这个 key 分到哈希槽区间的节点上，具体算法就是：<code>CRC16(key) % 16384</code>。所以我们在测试的时候看到 set 和 get 的时候，直接跳转到了 7000 端口的节点。<br>
-哈希槽与一致性哈希的区别：哈希槽由客户端来重定向到目标 slot 所在节点，一致性哈希需要由服务器端重定向到目标节点，而且需要按顺时针方向一个一个节点递归地找。</p>
-<h3 id="redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决"><a class="header-anchor" href="#redis雪崩-击穿-穿透等现象是怎么出现的？怎么解决">¶</a>Redis雪崩、击穿、穿透等现象是怎么出现的？怎么解决</h3>
-<ol>
-<li>缓存穿透<br>
-缓存穿透指查询一个不存在的数据，出于容错考虑这个查询会穿透到 DB 层，如果这种带穿透的查询特别多可能会把 DB 打挂掉。<br>
-解决办法：使用布隆过滤器，保存所有可能存在的数据到一个足够大的 bitmap 中，由于布隆过滤器的特性，一定不存在的数据在 bitmap 中一定找不到，从而可以很大程度上避免对底层存储系统的查询压力；还有一种更简单的方法，就是在查询返回结果为空时也把这个空结果缓存起来，但是它的过期时间会短一些，最长时间不超过 5 分钟。</li>
-<li>缓存雪崩<br>
-缓存雪崩指的是设置缓存时采用了相同的过期时间，导致缓存在同一时间同时失效，请求全部打到 DB，DB 瞬时压力过大导致雪崩。<br>
-解决办法：缓存失效时间随机化，在原有失效时间基础上加上一个随机值，可以使得过期时间的重复率降低；加锁并令请求排队，使得请求串行化，避免所有请求都查询数据库，不过这样会导致性能的降低。</li>
-<li>缓存击穿<br>
-缓存击穿指的是某个 key 在过期时正好有大量请求访问该 key，这些请求会同时回表，可能会瞬间将后端 DB 打挂。<br>
-解决办法：使用互斥锁，缓存失效时先加锁，避免并发回表；一些长时间不变的数据完全可以不设置过期时间，或者过期时间特别长。</li>
-</ol>
-<h3 id="主从复制的流程？传的是文件吗？"><a class="header-anchor" href="#主从复制的流程？传的是文件吗？">¶</a>主从复制的流程？传的是文件吗？</h3>
-<p>流程见《主从同步》。<br>
-如果是全量同步，同步时会先同步 RDB 文件，再同步增量写命令；<br>
-如果是部分重同步，则只同步增量写命令。</p>
-<h3 id="中间传输失败怎么办？中间传输不一致怎么办"><a class="header-anchor" href="#中间传输失败怎么办？中间传输不一致怎么办">¶</a>中间传输失败怎么办？中间传输不一致怎么办</h3>
-<p>如果上次传输中断，则下次同步时从中断位置开始执行部分重同步。</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://redis.io/topics/faq" target="_blank" rel="noopener">FAQ</a></li>
-<li><a href="https://www.cxc233.com/blog/e1d54234.html" target="_blank" rel="noopener">使用vscode(gdb)调试redis</a></li>
-</ol>
-<h3 id="应用"><a class="header-anchor" href="#应用">¶</a>应用</h3>
-<ol>
-<li><a href="https://stackoverflow.com/questions/16375188/redis-strings-vs-redis-hashes-to-represent-json-efficiency" target="_blank" rel="noopener">Redis strings vs Redis hashes to represent JSON: efficiency?</a></li>
-</ol>
-<h3 id="数据结构"><a class="header-anchor" href="#数据结构">¶</a>数据结构</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/4992bed65b22" target="_blank" rel="noopener">Redis 源码涉及 C 语言</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261203&amp;idx=1&amp;sn=f7ff61ce42e29b874a8026683875bbb1&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(1)——dict</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261213&amp;idx=1&amp;sn=0ddddf48929610a4155bd82794cad4fa&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(2)——sds</a></li>
-<li><a href="http://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261237&amp;idx=1&amp;sn=380d183332d41d24ea6f88a54f533fc3&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(3)——robj</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261265&amp;idx=1&amp;sn=e105c4b86a5640c5fc8212cd824f750b&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(4)——ziplist</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261335&amp;idx=1&amp;sn=053d72a348be2e78040f3847f4092d92&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 内部数据结构详解(5)——quicklist</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261457&amp;idx=1&amp;sn=fe966f3825b81e9d50a2cf38dac9060c&amp;chksm=84479e48b330175ea07905e791856cca5fc50694db9fd4c3485ba5dc097443e69f5ed28a34b5&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 为什么用跳表而不用平衡树？</a></li>
-<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4NTg1MjM0Mg==&amp;mid=2657261457&amp;idx=1&amp;sn=fe966f3825b81e9d50a2cf38dac9060c&amp;chksm=84479e48b330175ea07905e791856cca5fc50694db9fd4c3485ba5dc097443e69f5ed28a34b5&amp;scene=21#wechat_redirect" target="_blank" rel="noopener">Redis 中的集合类型是怎么实现的？</a></li>
-</ol>
-<h3 id="persistence"><a class="header-anchor" href="#persistence">¶</a>Persistence</h3>
-<ol>
-<li><a href="https://www.jianshu.com/p/c210851d3558" target="_blank" rel="noopener">剖析 Redis RDB 文件</a></li>
-<li><a href="https://www.jianshu.com/p/131cf929a262" target="_blank" rel="noopener">Redis 源码分析–RDB 实现源码阅读</a></li>
-<li><a href="https://www.jianshu.com/p/90cdd28c5e92" target="_blank" rel="noopener">Redis 源码分析–AOF 文件全量重写源码阅读</a></li>
-<li><a href="https://www.jianshu.com/p/91cf48c8c082" target="_blank" rel="noopener">Redis 源码分析–AOF 文件增量追写源码阅读</a></li>
-</ol>
-<h3 id="客户端"><a class="header-anchor" href="#客户端">¶</a>客户端</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/clients.html" target="_blank" rel="noopener">Redis 如何处理客户端连接</a></li>
-<li><a href="https://www.jianshu.com/p/36a5935db85b" target="_blank" rel="noopener">剖析 Redis 协议</a></li>
-<li><a href="https://www.jianshu.com/p/78b94407f59c" target="_blank" rel="noopener">剖析 Redis 协议(续)</a></li>
-</ol>
-<h3 id="主从复制"><a class="header-anchor" href="#主从复制">¶</a>主从复制</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/replication.html" target="_blank" rel="noopener">复制</a></li>
-<li><a href="https://www.cnblogs.com/wdliu/p/9407179.html" target="_blank" rel="noopener">redis 系列–主从复制以及 redis 复制演进</a></li>
-</ol>
-<h3 id="sentinel-cluster"><a class="header-anchor" href="#sentinel-cluster">¶</a>Sentinel &amp; Cluster</h3>
-<ol>
-<li><a href="http://www.redis.cn/topics/partitioning.html" target="_blank" rel="noopener">分区：怎样将数据分布到多个 redis 实例</a></li>
-<li><a href="http://www.redis.cn/topics/sentinel.html" target="_blank" rel="noopener">Redis 的 Sentinel 文档</a></li>
-<li><a href="http://www.redis.cn/topics/cluster-tutorial.html" target="_blank" rel="noopener">Redis 集群教程</a></li>
-<li><a href="http://www.redis.cn/topics/cluster-spec.html" target="_blank" rel="noopener">Redis 集群规范</a></li>
-<li><a href="https://www.jianshu.com/p/4163916a2a8a" target="_blank" rel="noopener">一致性哈希和哈希槽对比</a></li>
-<li><a href="https://www.jianshu.com/p/145215dc3440" target="_blank" rel="noopener">Redis 集群扩容和缩容</a></li>
-</ol>
-<h3 id="架构迁移"><a class="header-anchor" href="#架构迁移">¶</a>架构迁移</h3>
-<ol>
-<li><a href="http://www.redis.cn/articles/20170830103.html" target="_blank" rel="noopener">Redis 集群迁移案例</a></li>
-<li><a href="https://github.com/vipshop/redis-migrate-tool" target="_blank" rel="noopener">redis-migrate-tool</a></li>
-<li><a href="https://github.com/CodisLabs/redis-port" target="_blank" rel="noopener">redis-port</a></li>
-<li>redis-migration<br>
-<a href="https://github.com/helifu/redis-migration" target="_blank" rel="noopener">redis-migration</a><br>
-<a href="https://mp.weixin.qq.com/s?__biz=MzAxNjc1MTk5Nw==&amp;mid=401404354&amp;idx=1&amp;sn=36225e1e72aa1402d2fb79928addadd9&amp;scene=1&amp;srcid=0304rSI42ziy0Qfb9wvNDzBi&amp;key=8dcebf9e179c9f3a6f34ddb7f5de1b77fe12f5078f6a2ac7bf9f7c0d8485989ab2d848694250dec6c20a3f96f42c0e09&amp;ascene=0&amp;uin=MzM4Njg2NDU1&amp;devicetype=iMac+MacBookPro12%2C1+OSX+OSX+10.10.3+build(14D136)&amp;version=11020201&amp;pass_ticket=MGWnMZAOg9KlbJTWgO9ARaZA3po2c%2BLDVDHD6Xtt9cZYpjpc9ygP%2BpjWQz3D6NBE" target="_blank" rel="noopener">redis-migration：独创的 redis 在线数据迁移工具</a></li>
-</ol>
-<h3 id="twemproxy"><a class="header-anchor" href="#twemproxy">¶</a>Twemproxy</h3>
-<ol>
-<li><a href="https://github.com/twitter/twemproxy" target="_blank" rel="noopener">Twemproxy</a></li>
-</ol>
-<h3 id="codis"><a class="header-anchor" href="#codis">¶</a>Codis</h3>
-<ol>
-<li><a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">Codis</a></li>
-</ol>
-<h3 id="redisson"><a class="header-anchor" href="#redisson">¶</a>Redisson</h3>
-<ol>
-<li><a href="https://github.com/redisson/redisson" target="_blank" rel="noopener">Redisson</a></li>
-</ol>
-<h3 id="系统优化"><a class="header-anchor" href="#系统优化">¶</a>系统优化</h3>
-<ol>
-<li><a href="https://www.oschina.net/translate/redis-latency-problems-troubleshooting?lang=chs&amp;p=1" target="_blank" rel="noopener">Redis 响应延迟问题排查</a></li>
-</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 事件处理器的主循环</span><br><span class="line"> */</span><br><span class="line">void aeMain(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    eventLoop-&gt;stop = 0;</span><br><span class="line"></span><br><span class="line">    while (!eventLoop-&gt;stop) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果有需要在事件处理前执行的函数，那么运行它</span><br><span class="line">        if (eventLoop-&gt;beforesleep != NULL)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        // 开始处理事件</span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 1、看是否有事件到达了执行时间</span><br><span class="line">// 2、如果有，则执行这些事件</span><br><span class="line">/* Process every pending time event, then every pending file event</span><br><span class="line"> * (that may be registered by time event callbacks just processed).</span><br><span class="line"> *</span><br><span class="line"> * 处理所有已到达的时间事件，以及所有已就绪的文件事件。</span><br><span class="line"> *</span><br><span class="line"> * Without special flags the function sleeps until some file event</span><br><span class="line"> * fires, or when the next time event occurs (if any).</span><br><span class="line"> *</span><br><span class="line"> * 如果不传入特殊 flags 的话，那么函数睡眠直到文件事件就绪，</span><br><span class="line"> * 或者下个时间事件到达（如果有的话）。</span><br><span class="line"> *</span><br><span class="line"> * If flags is 0, the function does nothing and returns.</span><br><span class="line"> * 如果 flags 为 0 ，那么函数不作动作，直接返回。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_ALL_EVENTS set, all the kind of events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_ALL_EVENTS ，所有类型的事件都会被处理。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_FILE_EVENTS set, file events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_FILE_EVENTS ，那么处理文件事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_TIME_EVENTS set, time events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_TIME_EVENTS ，那么处理时间事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_DONT_WAIT set the function returns ASAP until all</span><br><span class="line"> * the events that&apos;s possible to process without to wait are processed.</span><br><span class="line"> * 如果 flags 包含 AE_DONT_WAIT ，</span><br><span class="line"> * 那么函数在处理完所有不许阻塞的事件之后，即刻返回。</span><br><span class="line"> *</span><br><span class="line"> * The function returns the number of events processed. </span><br><span class="line"> * 函数的返回值为已处理事件的数量</span><br><span class="line"> */</span><br><span class="line">int aeProcessEvents(aeEventLoop *eventLoop, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    int processed = 0, numevents;</span><br><span class="line"></span><br><span class="line">    /* Nothing to do? return ASAP */</span><br><span class="line">    if (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) return 0;</span><br><span class="line"></span><br><span class="line">    /* Note that we want call select() even if there are no</span><br><span class="line">     * file events to process as long as we want to process time</span><br><span class="line">     * events, in order to sleep until the next time event is ready</span><br><span class="line">     * to fire.</span><br><span class="line">     */</span><br><span class="line">    if (eventLoop-&gt;maxfd != -1 ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        int j;</span><br><span class="line">        aeTimeEvent *shortest = NULL;</span><br><span class="line">        struct timeval tv, *tvp;</span><br><span class="line"></span><br><span class="line">        // 获取最近的时间事件</span><br><span class="line">        if (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            shortest = aeSearchNearestTimer(eventLoop);</span><br><span class="line">        if (shortest) &#123;</span><br><span class="line">            // 如果时间事件存在的话</span><br><span class="line">            // 那么根据最近可执行时间事件和现在时间的时间差来决定文件事件的阻塞时间</span><br><span class="line">            long now_sec, now_ms;</span><br><span class="line"></span><br><span class="line">            /* Calculate the time missing for the nearest</span><br><span class="line">             * timer to fire. */</span><br><span class="line">            // 计算距今最近的时间事件还要多久才能达到</span><br><span class="line">            // 并将该时间距保存在 tv 结构中</span><br><span class="line">            aeGetTime(&amp;now_sec, &amp;now_ms);</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">            tvp-&gt;tv_sec = shortest-&gt;when_sec - now_sec;</span><br><span class="line">            if (shortest-&gt;when_ms &lt; now_ms) &#123;</span><br><span class="line">                tvp-&gt;tv_usec = ((shortest-&gt;when_ms+1000) - now_ms)*1000;</span><br><span class="line">                tvp-&gt;tv_sec --;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                tvp-&gt;tv_usec = (shortest-&gt;when_ms - now_ms)*1000;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            // 时间差小于 0 ，说明事件已经可以执行了，将秒和毫秒设为 0 （不阻塞）</span><br><span class="line">            if (tvp-&gt;tv_sec &lt; 0) tvp-&gt;tv_sec = 0;</span><br><span class="line">            if (tvp-&gt;tv_usec &lt; 0) tvp-&gt;tv_usec = 0;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            </span><br><span class="line">            // 执行到这一步，说明没有时间事件</span><br><span class="line">            // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span><br><span class="line"></span><br><span class="line">            /* If we have to check for events but need to return</span><br><span class="line">             * ASAP because of AE_DONT_WAIT we need to set the timeout</span><br><span class="line">             * to zero */</span><br><span class="line">            if (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                // 设置文件事件不阻塞</span><br><span class="line">                tv.tv_sec = tv.tv_usec = 0;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                /* Otherwise we can block */</span><br><span class="line">                // 文件事件可以阻塞直到有事件到达为止</span><br><span class="line">                tvp = NULL; /* wait forever */</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 处理文件事件，阻塞时间由 tvp 决定</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line">        for (j = 0; j &lt; numevents; j++) &#123;</span><br><span class="line">            // 从已就绪数组中获取事件</span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line"></span><br><span class="line">            int mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            int fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            int rfired = 0;</span><br><span class="line"></span><br><span class="line">           /* note the fe-&gt;mask &amp; mask &amp; ... code: maybe an already processed</span><br><span class="line">             * event removed an element that fired and we still didn&apos;t</span><br><span class="line">             * processed, so we check if the event is still valid. */</span><br><span class="line">            // 读事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                // rfired 确保读/写事件只能执行其中一个</span><br><span class="line">                rfired = 1;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line">            // 写事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                if (!rfired || fe-&gt;wfileProc != fe-&gt;rfileProc)</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Check time events */</span><br><span class="line">    // 执行时间事件</span><br><span class="line">    if (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line"></span><br><span class="line">    return processed; /* return the number of processed file/time events */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
           
         
@@ -1825,233 +1442,6 @@ quicklist 是 ziplist 和 linkedlist 的混合体，它将 linkedlist 按段切�
 <ol>
 <li><a href="https://redissrc.readthedocs.io/en/latest/" target="_blank" rel="noopener">redis源码解析</a></li>
 </ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9dda6023.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/9dda6023.html" itemprop="url">Redis 进程和 IO 模型</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
-                2019-09-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/缓存/" itemprop="url" rel="index">
-                    <span itemprop="name">缓存</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.7k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  11 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="为什么-redis-这么快"><a class="header-anchor" href="#为什么-redis-这么快">¶</a>为什么 Redis 这么快</h2>
-<p>Redis 采用的是一种<strong>单线程工作模型</strong>，它能这么快主要归功于下面几个策略：</p>
-<ol>
-<li>完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于 HashMap，HashMap 的优势就是查找和操作的时间复杂度都是 O(1)；</li>
-<li>数据结构简单，对数据操作也简单，Redis 中的数据结构是专门进行设计的；</li>
-<li>采用单线程，避免了不必要的上下文切换和竞争条件，也不存在多进程或者多线程导致的切换而消耗 CPU，不用去考虑各种锁的问题，不存在加锁释放锁操作，没有因为可能出现死锁而导致的性能消耗；</li>
-<li>使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis 直接自己构建了 VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；</li>
-<li>使用<strong>多路 I/O 复用</strong>模型，非阻塞 IO；<br>
-多路 I/O 复用模型是利用 select、poll、epoll 可以同时监察多个流的 I/O 事件的能力，在空闲的时候，会把当前线程阻塞掉，当有一个或多个流有 I/O 事件时，就从阻塞态中唤醒，于是程序就会轮询一遍所有的流（epoll 是只轮询那些真正发出了事件的流），并且只依次顺序的处理就绪的流，这种做法就避免了大量的无用操作。<br>
-Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，在服务端，有一段 I/O 多路复用程序，将其置入队列之中，然后，文件事件分派器依次去队列中取，转发到不同的事件处理器中（对这个 I/O 多路复用机制，Redis 还提供了 select、epoll、evport、kqueue 等多路复用函数库）。<br>
-这里“多路”指的是多个网络连接，“复用”指的是复用同一个线程。采用多路 I/O 复用技术可以让单个线程高效的处理多个连接请求（尽量减少网络 IO 的时间消耗），且 Redis 在内存中操作数据的速度非常快，也就是说内存内的操作不会成为影响 Redis 性能的瓶颈，主要由以上几点造就了 Redis 具有很高的吞吐量。<br>
-<img src="https://tallate.top/imgs/Redis/%E5%A4%9A%E8%B7%AFIO%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.jpg" alt="多路IO复用模型" title="多路IO复用模型"></li>
-</ol>
-<h2 id="一些常见的进程模型"><a class="header-anchor" href="#一些常见的进程模型">¶</a>一些常见的进程模型</h2>
-<ol>
-<li>单进程多线程模型：MySQL、Memcached、Oracle（Windows 版本）；</li>
-<li>多进程模型：Oracle（Linux 版本）；</li>
-<li>Nginx 有两类进程，一类称为 Master 进程(相当于管理进程)，另一类称为 Worker 进程（实际工作进程）。启动方式有两种：
-<ol>
-<li>单进程启动：此时系统中仅有一个进程，该进程既充当 Master 进程的角色，也充当 Worker 进程的角色。</li>
-<li>多进程启动：此时系统有且仅有一个 Master 进程，至少有一个 Worker 进程工作。</li>
-<li>Master 进程主要进行一些全局性的初始化工作和管理 Worker 的工作；事件处理是在 Worker 中进行的。</li>
-</ol>
-</li>
-</ol>
-<h2 id="为什么是-nio"><a class="header-anchor" href="#为什么是-nio">¶</a>为什么是 NIO</h2>
-<p>对于优化单个 server 节点的网络层，多使用 NIO 方式，server 端与 client 端在多次通讯的情况下使用 TCP 长连接维持会话，比如 Redis epoll 模型，RocketMq 的 netty 模型<br>
-对于高性能 Server 节点，在处理好网络请求同时，还要保证 server 端逻辑可以快速执行完成，这就涉及到合理的数据结构与线程模型。<br>
-在 Redis 中，采用的是 Reactor 模式实现文件事件处理器：<br>
-<img src="https://tallate.top/imgs/Redis/Redis-%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B.png" alt="Redis-事件处理模型" title="Redis-事件处理模型"></p>
-<ol>
-<li>IO 多路复用<br>
-根据平台不同选择不同的 IO 复用模型，比如 Linux 就是选择 epoll，select 是备选方案，不过正常情况下根本不会采用，因为 select 效率低，且有文件描述符监听上限。</li>
-<li>封装不同 IO 模型，为事件处理器提供统一接口</li>
-</ol>
-<h2 id="redis单线程多路复用io模型实现-事件注册"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件注册">¶</a>Redis单线程多路复用IO模型实现 - 事件注册</h2>
-<p>Redis服务器的初始化过程中包括了对事件处理器的初始化。<br>
-1、服务器启动期间初始化事件处理器<br>
-服务器初始化代码：<code>redis.c/initServer</code><br>
-初始化事件处理器代码：<code>ae.c/aeCreateEventLoop</code><br>
-2、根据系统的不同，选择不同的底层IO事件处理实现<br>
-比如linux的话，会选择epoll作为实现：<code>epoll.c/aeApiCreate</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 创建一个新的 epoll 实例，并将它赋值给 eventLoop</span><br><span class="line"> */</span><br><span class="line">static int aeApiCreate(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    aeApiState *state = zmalloc(sizeof(aeApiState));</span><br><span class="line"></span><br><span class="line">    if (!state) return -1;</span><br><span class="line"></span><br><span class="line">    // 初始化事件槽空间</span><br><span class="line">    state-&gt;events = zmalloc(sizeof(struct epoll_event)*eventLoop-&gt;setsize);</span><br><span class="line">    if (!state-&gt;events) &#123;</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 创建 epoll 实例</span><br><span class="line">    state-&gt;epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */</span><br><span class="line">    if (state-&gt;epfd == -1) &#123;</span><br><span class="line">        zfree(state-&gt;events);</span><br><span class="line">        zfree(state);</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 赋值给 eventLoop</span><br><span class="line">    eventLoop-&gt;apidata = state;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>当服务器需要监听某些事件时，会注册对这些事件的监听器，下面是注册监听器的函数：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 根据 mask 参数的值，监听 fd 文件的状态，</span><br><span class="line"> * 当 fd 可用时，执行 proc 函数</span><br><span class="line"> */</span><br><span class="line">int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,</span><br><span class="line">        aeFileProc *proc, void *clientData)</span><br><span class="line">&#123;</span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) &#123;</span><br><span class="line">        errno = ERANGE;</span><br><span class="line">        return AE_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (fd &gt;= eventLoop-&gt;setsize) return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 取出文件事件结构</span><br><span class="line">    aeFileEvent *fe = &amp;eventLoop-&gt;events[fd];</span><br><span class="line"></span><br><span class="line">    // 监听指定 fd 的指定事件</span><br><span class="line">    if (aeApiAddEvent(eventLoop, fd, mask) == -1)</span><br><span class="line">        return AE_ERR;</span><br><span class="line"></span><br><span class="line">    // 设置文件事件类型，以及事件的处理器</span><br><span class="line">    fe-&gt;mask |= mask;</span><br><span class="line">    if (mask &amp; AE_READABLE) fe-&gt;rfileProc = proc;</span><br><span class="line">    if (mask &amp; AE_WRITABLE) fe-&gt;wfileProc = proc;</span><br><span class="line"></span><br><span class="line">    // 私有数据</span><br><span class="line">    fe-&gt;clientData = clientData;</span><br><span class="line"></span><br><span class="line">    // 如果有需要，更新事件处理器的最大 fd</span><br><span class="line">    if (fd &gt; eventLoop-&gt;maxfd)</span><br><span class="line">        eventLoop-&gt;maxfd = fd;</span><br><span class="line"></span><br><span class="line">    return AE_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>比如Redis服务器要接受客户端的请求，就要注册一个监听连接事件，回调函数中会为客户端连接创建一个socket，并注册可读文件事件。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">void initServer() &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Create an event handler for accepting new connections in TCP and Unix</span><br><span class="line">     * domain sockets. */</span><br><span class="line">    // 为 TCP 连接关联连接应答（accept）处理器</span><br><span class="line">    // 用于接受并应答客户端的 connect() 调用</span><br><span class="line">    for (j = 0; j &lt; server.ipfd_count; j++) &#123;</span><br><span class="line">        if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,</span><br><span class="line">            acceptTcpHandler,NULL) == AE_ERR)</span><br><span class="line">            &#123;</span><br><span class="line">                redisPanic(</span><br><span class="line">                    &quot;Unrecoverable error creating server.ipfd file event.&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="redis单线程多路复用io模型实现-事件循环-处理"><a class="header-anchor" href="#redis单线程多路复用io模型实现-事件循环-处理">¶</a>Redis单线程多路复用IO模型实现 - 事件循环（处理）</h2>
-<p>Redis中定义了两种事件：时间事件TimeEvents、文件事件FileEvents：</p>
-<ul>
-<li><code>TimeEvents</code>：一般都是一些定时任务，实际上现在时间事件只应用于服务器启动时注册的<code>serverCron</code>定时任务的执行；</li>
-<li><code>FileEvents</code>：socket文件的IO事件，比如上面的监听连接的事件就是文件事件。</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * 事件处理器的主循环</span><br><span class="line"> */</span><br><span class="line">void aeMain(aeEventLoop *eventLoop) &#123;</span><br><span class="line"></span><br><span class="line">    eventLoop-&gt;stop = 0;</span><br><span class="line"></span><br><span class="line">    while (!eventLoop-&gt;stop) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果有需要在事件处理前执行的函数，那么运行它</span><br><span class="line">        if (eventLoop-&gt;beforesleep != NULL)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        // 开始处理事件</span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 1、看是否有事件到达了执行时间</span><br><span class="line">// 2、如果有，则执行这些事件</span><br><span class="line">/* Process every pending time event, then every pending file event</span><br><span class="line"> * (that may be registered by time event callbacks just processed).</span><br><span class="line"> *</span><br><span class="line"> * 处理所有已到达的时间事件，以及所有已就绪的文件事件。</span><br><span class="line"> *</span><br><span class="line"> * Without special flags the function sleeps until some file event</span><br><span class="line"> * fires, or when the next time event occurs (if any).</span><br><span class="line"> *</span><br><span class="line"> * 如果不传入特殊 flags 的话，那么函数睡眠直到文件事件就绪，</span><br><span class="line"> * 或者下个时间事件到达（如果有的话）。</span><br><span class="line"> *</span><br><span class="line"> * If flags is 0, the function does nothing and returns.</span><br><span class="line"> * 如果 flags 为 0 ，那么函数不作动作，直接返回。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_ALL_EVENTS set, all the kind of events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_ALL_EVENTS ，所有类型的事件都会被处理。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_FILE_EVENTS set, file events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_FILE_EVENTS ，那么处理文件事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_TIME_EVENTS set, time events are processed.</span><br><span class="line"> * 如果 flags 包含 AE_TIME_EVENTS ，那么处理时间事件。</span><br><span class="line"> *</span><br><span class="line"> * if flags has AE_DONT_WAIT set the function returns ASAP until all</span><br><span class="line"> * the events that&apos;s possible to process without to wait are processed.</span><br><span class="line"> * 如果 flags 包含 AE_DONT_WAIT ，</span><br><span class="line"> * 那么函数在处理完所有不许阻塞的事件之后，即刻返回。</span><br><span class="line"> *</span><br><span class="line"> * The function returns the number of events processed. </span><br><span class="line"> * 函数的返回值为已处理事件的数量</span><br><span class="line"> */</span><br><span class="line">int aeProcessEvents(aeEventLoop *eventLoop, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    int processed = 0, numevents;</span><br><span class="line"></span><br><span class="line">    /* Nothing to do? return ASAP */</span><br><span class="line">    if (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) return 0;</span><br><span class="line"></span><br><span class="line">    /* Note that we want call select() even if there are no</span><br><span class="line">     * file events to process as long as we want to process time</span><br><span class="line">     * events, in order to sleep until the next time event is ready</span><br><span class="line">     * to fire.</span><br><span class="line">     */</span><br><span class="line">    if (eventLoop-&gt;maxfd != -1 ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        int j;</span><br><span class="line">        aeTimeEvent *shortest = NULL;</span><br><span class="line">        struct timeval tv, *tvp;</span><br><span class="line"></span><br><span class="line">        // 获取最近的时间事件</span><br><span class="line">        if (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            shortest = aeSearchNearestTimer(eventLoop);</span><br><span class="line">        if (shortest) &#123;</span><br><span class="line">            // 如果时间事件存在的话</span><br><span class="line">            // 那么根据最近可执行时间事件和现在时间的时间差来决定文件事件的阻塞时间</span><br><span class="line">            long now_sec, now_ms;</span><br><span class="line"></span><br><span class="line">            /* Calculate the time missing for the nearest</span><br><span class="line">             * timer to fire. */</span><br><span class="line">            // 计算距今最近的时间事件还要多久才能达到</span><br><span class="line">            // 并将该时间距保存在 tv 结构中</span><br><span class="line">            aeGetTime(&amp;now_sec, &amp;now_ms);</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">            tvp-&gt;tv_sec = shortest-&gt;when_sec - now_sec;</span><br><span class="line">            if (shortest-&gt;when_ms &lt; now_ms) &#123;</span><br><span class="line">                tvp-&gt;tv_usec = ((shortest-&gt;when_ms+1000) - now_ms)*1000;</span><br><span class="line">                tvp-&gt;tv_sec --;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                tvp-&gt;tv_usec = (shortest-&gt;when_ms - now_ms)*1000;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            // 时间差小于 0 ，说明事件已经可以执行了，将秒和毫秒设为 0 （不阻塞）</span><br><span class="line">            if (tvp-&gt;tv_sec &lt; 0) tvp-&gt;tv_sec = 0;</span><br><span class="line">            if (tvp-&gt;tv_usec &lt; 0) tvp-&gt;tv_usec = 0;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            </span><br><span class="line">            // 执行到这一步，说明没有时间事件</span><br><span class="line">            // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span><br><span class="line"></span><br><span class="line">            /* If we have to check for events but need to return</span><br><span class="line">             * ASAP because of AE_DONT_WAIT we need to set the timeout</span><br><span class="line">             * to zero */</span><br><span class="line">            if (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                // 设置文件事件不阻塞</span><br><span class="line">                tv.tv_sec = tv.tv_usec = 0;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                /* Otherwise we can block */</span><br><span class="line">                // 文件事件可以阻塞直到有事件到达为止</span><br><span class="line">                tvp = NULL; /* wait forever */</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 处理文件事件，阻塞时间由 tvp 决定</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line">        for (j = 0; j &lt; numevents; j++) &#123;</span><br><span class="line">            // 从已就绪数组中获取事件</span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line"></span><br><span class="line">            int mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            int fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            int rfired = 0;</span><br><span class="line"></span><br><span class="line">           /* note the fe-&gt;mask &amp; mask &amp; ... code: maybe an already processed</span><br><span class="line">             * event removed an element that fired and we still didn&apos;t</span><br><span class="line">             * processed, so we check if the event is still valid. */</span><br><span class="line">            // 读事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                // rfired 确保读/写事件只能执行其中一个</span><br><span class="line">                rfired = 1;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line">            // 写事件</span><br><span class="line">            if (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                if (!rfired || fe-&gt;wfileProc != fe-&gt;rfileProc)</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop,fd,fe-&gt;clientData,mask);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Check time events */</span><br><span class="line">    // 执行时间事件</span><br><span class="line">    if (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line"></span><br><span class="line">    return processed; /* return the number of processed file/time events */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
           
         
@@ -3737,6 +3127,221 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
 
 
     
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/3e0c4ce6.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/3e0c4ce6.html" itemprop="url">Spring 总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T13:09:11+08:00">
+                2019-09-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
+                    <span itemprop="name">技术点总结</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  844 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  3 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>Spring 如何加载注解</h1>
+<p>很多注解本身只是提供了一个标识，要实现注解所表示的功能，必然还会有一个扫描器扫描这个注解，然后将必须的Bean注入到Spring容器内，而且很多时候会<strong>为被注解的对象生成一个动态代理</strong>，以实现日志记录、接口幂等、限流等功能。<br>
+要自己实现一个注解，关键是如何扫描及如何生成代理并注入到Spring容器这两个步骤，具体的实现可以参考<code>MapperScannerConfigurer</code>，大体逻辑是：</p>
+<ol>
+<li>在Spring容器加载完毕后，再对指定包下的类进行一次扫描；</li>
+<li></li>
+</ol>
+<h1>Spring 三级缓存</h1>
+<h2 id="spring-中产生循环依赖的三种情况"><a class="header-anchor" href="#spring-中产生循环依赖的三种情况">¶</a>Spring 中产生循环依赖的三种情况</h2>
+<ol>
+<li>构造器注入循环依赖 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class A &#123;</span><br><span class="line">    public A(B b) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">@Service</span><br><span class="line">public class B &#123;</span><br><span class="line">    public B(A a) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>构造器注入构成的循环依赖，此种循环依赖方式是无法解决的，只能抛出 BeanCurrentlyInCreationException 异常表示循环依赖。<br>
+不能解决的原因是：Spring 解决循环依赖的原理是实例化 Bean 后先把引用存到一个 Map 中，之后初始化成员变量时，可以直接从这个 Map 中取。但是构造器注入相当于<strong>实例化和初始化是同时进行的</strong>，因此无法解决。</p>
+<ol>
+<li>
+<p>singleton 模式 field 属性注入循环依赖</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class A &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private B b;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">@Service</span><br><span class="line">public class B &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private A a;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>prototype 模式 field 属性注入循环依赖</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)</span><br><span class="line">@Service</span><br><span class="line">public class A &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private B b;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)</span><br><span class="line">@Service</span><br><span class="line">public class B &#123;</span><br><span class="line">    @Autowired</span><br><span class="line">    private A a;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="spring-创建-bean-的流程"><a class="header-anchor" href="#spring-创建-bean-的流程">¶</a>Spring 创建 Bean 的流程</h2>
+<ol>
+<li>createBeanInstance：实例化，其实也就是调用对象的构造方法实例化对象</li>
+<li>populateBean：填充属性，这一步主要是对 bean 的依赖属性进行注入(@Autowired)</li>
+<li>initializeBean：回到一些形如 initMethod、InitializingBean 等方法</li>
+</ol>
+<p>其中，循环依赖可能发生在第一步和第二步，其中第一步是因为构造方法中可能会需要传入其他 Bean。</p>
+<h2 id="spring-三级缓存如何解决循环依赖"><a class="header-anchor" href="#spring-三级缓存如何解决循环依赖">¶</a>Spring 三级缓存如何解决循环依赖</h2>
+<h3 id="缓存生效时间"><a class="header-anchor" href="#缓存生效时间">¶</a>缓存生效时间</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry &#123;</span><br><span class="line"></span><br><span class="line">    // 用于存放完全初始化好的 bean，从该缓存中取出的 bean 可以直接使用</span><br><span class="line">	/** Cache of singleton objects: bean name --&gt; bean instance */</span><br><span class="line">	private final Map&lt;String, Object&gt; singletonObjects = new ConcurrentHashMap&lt;String, Object&gt;(256);</span><br><span class="line"></span><br><span class="line">    // 提前曝光的单例对象的cache，存放原始的 bean 对象（尚未填充属性），用于解决循环依赖</span><br><span class="line">	/** Cache of early singleton objects: bean name --&gt; bean instance */</span><br><span class="line">	private final Map&lt;String, Object&gt; earlySingletonObjects = new HashMap&lt;String, Object&gt;(16);</span><br><span class="line">	</span><br><span class="line">	// 单例对象工厂的cache，存放 bean 工厂对象，用于解决循环依赖</span><br><span class="line">	/** Cache of singleton factories: bean name --&gt; ObjectFactory */</span><br><span class="line">    private final Map&lt;String, ObjectFactory&lt;?&gt;&gt; singletonFactories = new HashMap&lt;String, ObjectFactory&lt;?&gt;&gt;(16);</span><br></pre></td></tr></table></figure>
+<h3 id="获取单例-bean-的过程"><a class="header-anchor" href="#获取单例-bean-的过程">¶</a>获取单例 Bean 的过程</h3>
+<p><code>org.springframework.beans.factory.support.DefaultSingletonBeanRegistry#getSingleton(java.lang.String)</code></p>
+<ol>
+<li>先从一级缓存 singletonObjects 中去获取，如果获取到就直接 return。</li>
+<li>如果获取不到或者对象正在创建中（isSingletonCurrentlyInCreation()），那就再从二级缓存 earlySingletonObjects 中获取，如果获取到就直接 return。</li>
+<li>如果还是获取不到，且允许 singletonFactories（allowEarlyReference=true）通过 getObject()获取。就从三级缓存 singletonFactory.getObject()获取，如果获取到了就从 singletonFactories 中移除，并且放进 earlySingletonObjects，其实也就是从三级缓存移动到了二级缓存。</li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
   </section>
 
   
@@ -3787,7 +3392,7 @@ Spring Cloud 常常被拿来和 Dubbo 比较，实际上 Dubbo 只实现了服�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">138</span>
+                  <span class="site-state-item-count">137</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
