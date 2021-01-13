@@ -266,6 +266,1678 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/60ef81a3.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/60ef81a3.html" itemprop="url">ZooKeeper 的应用</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T18:52:36+08:00">
+                2019-07-29
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/ZooKeeper/" itemprop="url" rel="index">
+                    <span itemprop="name">ZooKeeper</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2.1k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  7 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h1>命名服务</h1>
+<p>把服务器名、资源名记录到zk里。<br>
+<img src="https://tallate.top/imgs/ZooKeeper/ZooKeeper%E5%91%BD%E5%90%8D%E6%9C%8D%E5%8A%A1.png" alt="ZooKeeper命名服务" title="ZooKeeper命名服务"><br>
+通过调用Zookeeper节点创建的API接口就可以创建一个顺序节点，并且在API返回值中会返回这个节点的完整名字，利用此特性，可以生成全局ID，其步骤如下</p>
+<ol>
+<li>客户端根据任务类型，在指定类型的任务下通过调用接口创建一个顺序节点，如&quot;job-&quot;。</li>
+<li>创建完成后，会返回一个完整的节点名，如&quot;job-00000001&quot;。</li>
+<li>客户端拼接type类型和返回值后，就可以作为全局唯一ID了，如&quot;type2-job-00000001&quot;。</li>
+</ol>
+<h1>配置管理</h1>
+<p>程序分布式的部署在不同的机器上，将程序的配置信息放在zk的znode下，当有配置发生改变时，也就是znode发生变化时，可以通过改变zk中某个目录节点的内容，利用watcher通知给各个客户端从而更改配置。</p>
+<h1>集群管理</h1>
+<p>Zookeeper的两大特性：</p>
+<ul>
+<li>客户端如果对Zookeeper的数据节点注册Watcher监听，那么当该数据及诶单内容或是其子节点列表发生变更时，Zookeeper服务器就会向订阅的客户端发送变更通知。</li>
+<li>对在Zookeeper上创建的临时节点，一旦客户端与服务器之间的会话失效，那么临时节点也会被自动删除。</li>
+</ul>
+<p>利用其两大特性，可以实现集群机器存活监控系统，若监控系统在<code>/clusterServers</code>节点上注册一个Watcher监听，那么但凡进行动态添加机器的操作，就会在/clusterServers节点下创建一个临时节点：<code>/clusterServers/[Hostname]</code>，这样，监控系统就能够实时监测机器的变动情况。</p>
+<h1>Master选举</h1>
+<p>集群需要有一个Master，比如MySQL中需要有一个Master来负责写请求。ZooKeeper的强一致性可以保证这样的Master是唯一的。<br>
+集群中的每个节点可以定时在一个命名空间内创建节点，但只有一个客户端能创建成功，此时其成为Master。</p>
+<h1>分布式锁</h1>
+<p>分布式锁用于控制分布式系统之间同步访问共享资源的一种方式，可以保证不同系统访问一个或一组资源时的一致性，主要分为排它锁和共享锁。</p>
+<h2 id="排他锁"><a class="header-anchor" href="#排他锁">¶</a>排他锁</h2>
+<p><img src="https://tallate.top/imgs/ZooKeeper/%E6%8E%92%E4%BB%96%E9%94%81.png" alt="排他锁" title="排他锁"></p>
+<ul>
+<li>获取锁，在需要获取排它锁时，所有客户端通过调用接口，在/exclusive_lock节点下创建临时子节点/exclusive_lock/lock。Zookeeper可以保证只有一个客户端能够创建成功，没有成功的客户端需要注册/exclusive_lock节点监听。</li>
+<li>释放锁，当获取锁的客户端宕机或者正常完成业务逻辑都会导致临时节点的删除，此时，所有在/exclusive_lock节点上注册监听的客户端都会收到通知，可以重新发起分布式锁获取。</li>
+</ul>
+<h2 id="共享锁"><a class="header-anchor" href="#共享锁">¶</a>共享锁</h2>
+<p>共享锁又称为读锁，若事务T1对数据对象O1加上共享锁，那么当前事务只能对O1进行读取操作，其他事务也只能对这个数据对象加共享锁，直到该数据对象上的所有共享锁都被释放。<br>
+<img src="https://tallate.top/imgs/ZooKeeper/%E5%85%B1%E4%BA%AB%E9%94%81.png" alt="共享锁" title="共享锁"></p>
+<h3 id="获取锁"><a class="header-anchor" href="#获取锁">¶</a>获取锁</h3>
+<p>在需要获取共享锁时，所有客户端都会到/shared_lock下面创建一个临时顺序节点，如果是读请求，那么就创建例如/shared_lock/host1-R-00000001的节点，如果是写请求，那么就创建例如/shared_lock/host2-W-00000002的节点。</p>
+<h3 id="判断读写顺序"><a class="header-anchor" href="#判断读写顺序">¶</a>判断读写顺序</h3>
+<p>不同事务可以同时对一个数据对象进行读写操作，而更新操作必须在当前没有任何事务进行读写情况下进行，通过Zookeeper来确定分布式读写顺序，大致分为四步。</p>
+<ol>
+<li>创建完节点后，获取/shared_lock节点下所有子节点，并对该节点变更注册监听。</li>
+<li>确定自己的节点序号在所有子节点中的顺序。</li>
+<li>对于读请求：若没有比自己序号小的子节点或所有比自己序号小的子节点都是读请求，那么表明自己已经成功获取到共享锁，同时开始执行读取逻辑，若有写请求，则需要等待。对于写请求：若自己不是序号最小的子节点，那么需要等待。</li>
+<li>接收到Watcher通知后，重复步骤1。</li>
+</ol>
+<h3 id="释放锁"><a class="header-anchor" href="#释放锁">¶</a>释放锁</h3>
+<p>其释放锁的流程与独占锁一致。</p>
+<h3 id="惊群现象"><a class="header-anchor" href="#惊群现象">¶</a>惊群现象</h3>
+<p>上述共享锁的实现方案，可以满足一般分布式集群竞争锁的需求，但是如果机器规模扩大会出现一些问题，下面着重分析判断读写顺序的步骤3。</p>
+<p>针对如上图所示的情况进行分析</p>
+<ol>
+<li>host1首先进行读操作，完成后将节点/shared_lock/host1-R-00000001删除。</li>
+<li>余下4台机器均收到这个节点移除的通知，然后重新从/shared_lock节点上获取一份新的子节点列表。</li>
+<li>每台机器判断自己的读写顺序，其中host2检测到自己序号最小，于是进行写操作，余下的机器则继续等待。</li>
+<li>继续…</li>
+</ol>
+<p>可以看到，host1客户端在移除自己的共享锁后，Zookeeper发送了子节点更变Watcher通知给所有机器，然而除了给host2产生影响外，对其他机器没有任何作用。大量的Watcher通知和子节点列表获取两个操作会重复运行，这样会造成系能鞥影响和网络开销，更为严重的是，如果同一时间有多个节点对应的客户端完成事务或事务中断引起节点小时，Zookeeper服务器就会在短时间内向其他所有客户端发送大量的事件通知，这就是所谓的<strong>羊群效应（惊群效应）</strong>。</p>
+<p>可以有如下改动来避免羊群效应。</p>
+<ol>
+<li>客户端调用create接口常见类似于<code>/shared_lock/[Hostname]-请求类型-序号</code>的临时顺序节点。</li>
+<li>客户端调用getChildren接口获取所有已经创建的子节点列表（不注册任何Watcher）。</li>
+<li>如果无法获取共享锁，就调用exist接口来对比自己小的节点注册Watcher。对于读请求：向比自己序号小的最后一个写请求节点注册Watcher监听。对于写请求：向比自己序号小的最后一个节点注册Watcher监听。</li>
+<li>等待Watcher通知，继续进入步骤2。</li>
+</ol>
+<p>此方案改动主要在于：每个锁竞争者，只需要关注/shared_lock节点下序号比自己小的那个节点是否存在即可。</p>
+<h1>分布式队列（FIFO先入先出）</h1>
+<p>先进入队列的请求操作先完成后，才会开始处理后面的请求。FIFO队列就类似于全写的共享模型，所有客户端都会到/queue_fifo这个节点下创建一个临时节点，如/queue_fifo/host1-00000001。<br>
+<img src="https://tallate.top/imgs/ZooKeeper/%E5%88%86%E5%B8%83%E5%BC%8F%E9%98%9F%E5%88%97.png" alt="分布式队列" title="分布式队列"><br>
+创建完节点后，按照如下步骤执行。</p>
+<ol>
+<li>通过调用getChildren接口来获取/queue_fifo节点的所有子节点，即获取队列中所有的元素。</li>
+<li>确定自己的节点序号在所有子节点中的顺序。</li>
+<li>如果自己的序号不是最小，那么需要等待，同时向比自己序号小的最后一个节点注册Watcher监听。</li>
+<li>接收到Watcher通知后，重复步骤1。</li>
+</ol>
+<h1>分布式屏障</h1>
+<p>最终的合并计算需要基于很多并行计算的子结果来进行，开始时，/queue_barrier节点已经默认存在，并且将结点数据内容赋值为数字n来代表Barrier值，之后，所有客户端都会到/queue_barrier节点下创建一个临时节点，例如/queue_barrier/host1。<br>
+<img src="https://tallate.top/imgs/ZooKeeper/%E5%88%86%E5%B8%83%E5%BC%8F%E5%B1%8F%E9%9A%9C.png" alt="分布式屏障" title="分布式屏障"></p>
+<p>创建完节点后，按照如下步骤执行。</p>
+<ol>
+<li>通过调用getData接口获取/queue_barrier节点的数据内容，如10。</li>
+<li>通过调用getChildren接口获取/queue_barrier节点下的所有子节点，同时注册对子节点变更的Watcher监听。</li>
+<li>统计子节点的个数。</li>
+<li>如果子节点个数还不足10个，那么需要等待。</li>
+<li>接受到Wacher通知后，重复步骤3。</li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/4ea5471b.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/4ea5471b.html" itemprop="url">ZooKeeper 的使用</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T18:52:36+08:00">
+                2019-07-29
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/ZooKeeper/" itemprop="url" rel="index">
+                    <span itemprop="name">ZooKeeper</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  5.1k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  20 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>就 ZooKeeper 来说，只明白原理是不够的，因为实际场景非常多，在不同场景下 ZooKeeper 几乎都有不同的应用模式，不过幸运的是 ZooKeeper 已经有一个比较完善的客户端 Curator，在生产环境下几乎不需要投入太多人力就可以解决大部分集群协调问题。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/4ea5471b.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/73038da0.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/73038da0.html" itemprop="url">ZooKeeper 原理总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T18:51:58+08:00">
+                2019-07-29
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/ZooKeeper/" itemprop="url" rel="index">
+                    <span itemprop="name">ZooKeeper</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  11.9k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  48 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>ZooKeeper 是分布式的、开源的分布式应用程序协调服务，原本是 Hadoop、HBase 的一个重要组件。它为分布式应用提供一致性服务的软件，包括：配置维护、域名服务、分布式同步、组服务等。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/73038da0.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/cc7a2f74.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/cc7a2f74.html" itemprop="url">ZooKeeper 的替代品</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T16:53:54+08:00">
+                2019-07-29
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/ZooKeeper/" itemprop="url" rel="index">
+                    <span itemprop="name">ZooKeeper</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  95 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  1 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>只要是具备 CP（CAP 取 CP）特点的分布式 KV 系统，原则上都可以作为 ZooKeeper 的替代品，但是选择时仍然要考虑设计原理上的差异、落地方案的成熟程度及业务场景实际所需。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/cc7a2f74.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/afefe620.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/afefe620.html" itemprop="url">ZooKeeper 源码分析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-29T16:50:12+08:00">
+                2019-07-29
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/ZooKeeper/" itemprop="url" rel="index">
+                    <span itemprop="name">ZooKeeper</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  2k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  8 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="连接建立和会话管理"><a class="header-anchor" href="#连接建立和会话管理">¶</a>连接建立和会话管理</h2>
+<p>ZooKeeper的连接与会话就是客户端通过实例化ZooKeeper对象来实现客户端与服务器创建并保持TCP连接的过程。</p>
+<h2 id="watcher"><a class="header-anchor" href="#watcher">¶</a>Watcher</h2>
+<h2 id="数据存储"><a class="header-anchor" href="#数据存储">¶</a>数据存储</h2>
+<h2 id="leader-选举"><a class="header-anchor" href="#leader-选举">¶</a>Leader 选举</h2>
+<h3 id="选举相关概念"><a class="header-anchor" href="#选举相关概念">¶</a>选举相关概念</h3>
+<ul>
+<li>服务器 ID<br>
+编号越大在选择算法中的权重越大。比如有三台服务器，编号分别是 1、2、3，其中 3 的那台权重最大。</li>
+<li>数据 ID<br>
+服务器中存放的最大数据 ID。值越大说明数据越新，在选举算法中数据越新权重越大。</li>
+<li>逻辑时钟<br>
+或者叫投票的次数，同一轮投票过程中的逻辑时钟值是相同的。每投完一次票这个数据就会增加，然后与接收到的其它服务器返回的投票信息中的数值相比，根据不同的值做出不同的判断。</li>
+<li>选举状态<br>
+LOOKING，竞选状态。<br>
+FOLLOWING，随从状态，同步 leader 状态，参与投票。<br>
+OBSERVING，观察状态,同步 leader 状态，不参与投票。<br>
+LEADING，领导者状态。</li>
+</ul>
+<h3 id="zk-集群选举概述"><a class="header-anchor" href="#zk-集群选举概述">¶</a>zk 集群选举概述</h3>
+<p>配置多个实例共同构成一个集群对外提供服务以达到水平扩展的目的，每个服务器上的数据是相同的，每一个服务器均可以对外提供读和写的服务，这点和 redis 是相同的，即对客户端来讲每个服务器都是平等的。<br>
+<img src="https://tallate.top/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/zk%E9%9B%86%E7%BE%A4%E9%80%89%E4%B8%BE%E6%A6%82%E8%BF%B0.jpg" alt="zk集群选举概述" title="zk集群选举概述"><br>
+zookeeper 提供了三种集群选举方式：</p>
+<ul>
+<li>LeaderElection</li>
+<li>AuthFastLeaderElection</li>
+<li>FastLeaderElection</li>
+</ul>
+<p>默认的算法是 FastLeaderElection，所以这里主要分析它的选举机制。</p>
+<h3 id="quorumpeer"><a class="header-anchor" href="#quorumpeer">¶</a>QuorumPeer</h3>
+<p>主要看这个类，只有 LOOKING 状态才会去执行选举算法。每个服务器在启动时都会选择自己做为领导，然后将投票信息发送出去，循环一直到选举出领导为止。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">public void run() &#123;</span><br><span class="line">        //.......</span><br><span class="line">        try &#123;</span><br><span class="line">            while (running) &#123;</span><br><span class="line">                switch (getPeerState()) &#123;</span><br><span class="line">                case LOOKING:</span><br><span class="line">                    if (Boolean.getBoolean(&quot;readonlymode.enabled&quot;)) &#123;</span><br><span class="line">                        //...</span><br><span class="line">                        try &#123;</span><br><span class="line">                           //投票给自己...</span><br><span class="line">                            setCurrentVote(makeLEStrategy().lookForLeader());</span><br><span class="line">                        &#125; catch (Exception e) &#123;</span><br><span class="line">                            //...</span><br><span class="line">                        &#125; finally &#123;</span><br><span class="line">                            //...</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125; else &#123;</span><br><span class="line">                        try &#123;</span><br><span class="line">                           //...</span><br><span class="line">                            setCurrentVote(makeLEStrategy().lookForLeader());</span><br><span class="line">                        &#125; catch (Exception e) &#123;</span><br><span class="line">                            //...</span><br><span class="line">                        &#125;                        </span><br><span class="line">                    &#125;</span><br><span class="line">                    break;</span><br><span class="line">                case OBSERVING:</span><br><span class="line">                    //...</span><br><span class="line">                    break;</span><br><span class="line">                case FOLLOWING:</span><br><span class="line">                    //...</span><br><span class="line">                    break;</span><br><span class="line">                case LEADING:</span><br><span class="line">                    //...</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">            &#125;</span><br><span class="line">        &#125; finally &#123;</span><br><span class="line">            //...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h3 id="fastleaderelection"><a class="header-anchor" href="#fastleaderelection">¶</a>FastLeaderElection</h3>
+<p>它是 zookeeper 默认提供的选举算法，核心方法如下。可以与本文上面的流程图对照。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br></pre></td><td class="code"><pre><span class="line">public Vote lookForLeader() throws InterruptedException &#123;</span><br><span class="line">        //...</span><br><span class="line">        try &#123;</span><br><span class="line">            HashMap&lt;Long, Vote&gt; recvset = new HashMap&lt;Long, Vote&gt;();</span><br><span class="line">            HashMap&lt;Long, Vote&gt; outofelection = new HashMap&lt;Long, Vote&gt;();</span><br><span class="line">            int notTimeout = finalizeWait;</span><br><span class="line">            synchronized(this)&#123;</span><br><span class="line">                //给自己投票</span><br><span class="line">                logicalclock.incrementAndGet();</span><br><span class="line">                updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());</span><br><span class="line">            &#125;</span><br><span class="line">            //将投票信息发送给集群中的每个服务器</span><br><span class="line">            sendNotifications();</span><br><span class="line">            //循环，如果是竞选状态一直到选举出结果</span><br><span class="line">            while ((self.getPeerState() == ServerState.LOOKING) &amp;&amp;</span><br><span class="line">                    (!stop))&#123;</span><br><span class="line"></span><br><span class="line">                Notification n = recvqueue.poll(notTimeout,</span><br><span class="line">                        TimeUnit.MILLISECONDS);</span><br><span class="line">                //没有收到投票信息</span><br><span class="line">                if(n == null)&#123;</span><br><span class="line">                    if(manager.haveDelivered())&#123;</span><br><span class="line">                        sendNotifications();</span><br><span class="line">                    &#125; else &#123;</span><br><span class="line">                        manager.connectAll();</span><br><span class="line">                    &#125;</span><br><span class="line">                    //...</span><br><span class="line">                &#125; </span><br><span class="line">                //收到投票信息</span><br><span class="line">                else if (self.getCurrentAndNextConfigVoters().contains(n.sid)) &#123;</span><br><span class="line"></span><br><span class="line">                    switch (n.state) &#123;</span><br><span class="line">                    case LOOKING:</span><br><span class="line"></span><br><span class="line">                        // 判断投票是否过时，如果过时就清除之前已经接收到的信息                      </span><br><span class="line">                        if (n.electionEpoch &gt; logicalclock.get()) &#123;</span><br><span class="line">                            logicalclock.set(n.electionEpoch);</span><br><span class="line">                            recvset.clear();</span><br><span class="line">                            //更新投票信息</span><br><span class="line">                            if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,</span><br><span class="line">                                    getInitId(), getInitLastLoggedZxid(), getPeerEpoch())) &#123;</span><br><span class="line">                                updateProposal(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                            &#125; else &#123;</span><br><span class="line">                                updateProposal(getInitId(),</span><br><span class="line">                                        getInitLastLoggedZxid(),</span><br><span class="line">                                        getPeerEpoch());</span><br><span class="line">                            &#125;</span><br><span class="line">                            //发送投票信息</span><br><span class="line">                            sendNotifications();</span><br><span class="line">                        &#125; else if (n.electionEpoch &lt; logicalclock.get()) &#123;</span><br><span class="line">                            //忽略</span><br><span class="line">                            break;</span><br><span class="line">                        &#125; else if (totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,</span><br><span class="line">                                proposedLeader, proposedZxid, proposedEpoch)) &#123;</span><br><span class="line">                            //更新投票信息</span><br><span class="line">                            updateProposal(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                            sendNotifications();</span><br><span class="line">                        &#125;                     </span><br><span class="line">                        recvset.put(n.sid, new Vote(n.leader, n.zxid, n.electionEpoch, n.peerEpoch));</span><br><span class="line">                        //判断是否投票结束</span><br><span class="line">                        if (termPredicate(recvset,</span><br><span class="line">                                new Vote(proposedLeader, proposedZxid,</span><br><span class="line">                                        logicalclock.get(), proposedEpoch))) &#123;</span><br><span class="line">                            // Verify if there is any change in the proposed leader</span><br><span class="line">                            while((n = recvqueue.poll(finalizeWait,</span><br><span class="line">                                    TimeUnit.MILLISECONDS)) != null)&#123;</span><br><span class="line">                                if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,</span><br><span class="line">                                        proposedLeader, proposedZxid, proposedEpoch))&#123;</span><br><span class="line">                                    recvqueue.put(n);</span><br><span class="line">                                    break;</span><br><span class="line">                                &#125;</span><br><span class="line">                            &#125;</span><br><span class="line"></span><br><span class="line">                            if (n == null) &#123;</span><br><span class="line">                                self.setPeerState((proposedLeader == self.getId()) ?</span><br><span class="line">                                        ServerState.LEADING: learningState());</span><br><span class="line">                                Vote endVote = new Vote(proposedLeader,</span><br><span class="line">                                        proposedZxid, proposedEpoch);</span><br><span class="line">                                leaveInstance(endVote);</span><br><span class="line">                                return endVote;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                        break;</span><br><span class="line">                    case OBSERVING:</span><br><span class="line">                        //忽略</span><br><span class="line">                        break;</span><br><span class="line">                    case FOLLOWING:</span><br><span class="line">                    case LEADING:</span><br><span class="line">                        //如果是同一轮投票</span><br><span class="line">                        if(n.electionEpoch == logicalclock.get())&#123;</span><br><span class="line">                            recvset.put(n.sid, new Vote(n.leader, n.zxid, n.electionEpoch, n.peerEpoch));</span><br><span class="line">                            //判断是否投票结束</span><br><span class="line">                            if(termPredicate(recvset, new Vote(n.leader,</span><br><span class="line">                                            n.zxid, n.electionEpoch, n.peerEpoch, n.state))</span><br><span class="line">                                            &amp;&amp; checkLeader(outofelection, n.leader, n.electionEpoch)) &#123;</span><br><span class="line">                                self.setPeerState((n.leader == self.getId()) ?</span><br><span class="line">                                        ServerState.LEADING: learningState());</span><br><span class="line">                                Vote endVote = new Vote(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                                leaveInstance(endVote);</span><br><span class="line">                                return endVote;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                        //记录投票已经完成</span><br><span class="line">                        outofelection.put(n.sid, new Vote(n.leader, </span><br><span class="line">                                IGNOREVALUE, IGNOREVALUE, n.peerEpoch, n.state));</span><br><span class="line">                        if (termPredicate(outofelection, new Vote(n.leader,</span><br><span class="line">                                IGNOREVALUE, IGNOREVALUE, n.peerEpoch, n.state))</span><br><span class="line">                                &amp;&amp; checkLeader(outofelection, n.leader, IGNOREVALUE)) &#123;</span><br><span class="line">                            synchronized(this)&#123;</span><br><span class="line">                                logicalclock.set(n.electionEpoch);</span><br><span class="line">                                self.setPeerState((n.leader == self.getId()) ?</span><br><span class="line">                                        ServerState.LEADING: learningState());</span><br><span class="line">                            &#125;</span><br><span class="line">                            Vote endVote = new Vote(n.leader, n.zxid, n.peerEpoch);</span><br><span class="line">                            leaveInstance(endVote);</span><br><span class="line">                            return endVote;</span><br><span class="line">                        &#125;</span><br><span class="line">                        break;</span><br><span class="line">                    default:</span><br><span class="line">                        //忽略</span><br><span class="line">                        break;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; else &#123;</span><br><span class="line">                    LOG.warn(&quot;Ignoring notification from non-cluster member &quot; + n.sid);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            return null;</span><br><span class="line">        &#125; finally &#123;</span><br><span class="line">            //...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>判断是否已经胜出<br>
+默认是采用投票数大于半数则胜出的逻辑。</li>
+</ul>
+<h3 id="选举消息内容"><a class="header-anchor" href="#选举消息内容">¶</a>选举消息内容</h3>
+<p>在投票完成后，需要将投票信息发送给集群中的所有服务器，它包含如下内容。</p>
+<ul>
+<li>服务器 ID</li>
+<li>数据 ID</li>
+<li>逻辑时钟</li>
+<li>选举状态</li>
+</ul>
+<h3 id="选举流程简述"><a class="header-anchor" href="#选举流程简述">¶</a>选举流程简述</h3>
+<p>目前有 5 台服务器，每台服务器均没有数据，它们的编号分别是 1,2,3,4,5,按编号依次启动，它们的选择举过程如下：</p>
+<ul>
+<li>服务器 1 启动，给自己投票，然后发投票信息，由于其它机器还没有启动所以它收不到反馈信息，服务器 1 的状态一直属于 Looking。</li>
+<li>服务器 2 启动，给自己投票，同时与之前启动的服务器 1 交换结果，由于服务器 2 的编号大所以服务器 2 胜出，但此时投票数没有大于半数，所以两个服务器的状态依然是 LOOKING。</li>
+<li>服务器 3 启动，给自己投票，同时与之前启动的服务器 1,2 交换信息，由于服务器 3 的编号最大所以服务器 3 胜出，此时投票数正好大于半数，所以服务器 3 成为领导者，服务器 1,2 成为小弟。</li>
+<li>服务器 4 启动，给自己投票，同时与之前启动的服务器 1,2,3 交换信息，尽管服务器 4 的编号大，但之前服务器 3 已经胜出，所以服务器 4 只能成为小弟。</li>
+<li>服务器 5 启动，后面的逻辑同服务器 4 成为小弟。</li>
+</ul>
+<h3 id="选举流程"><a class="header-anchor" href="#选举流程">¶</a>选举流程</h3>
+<p>描述 Leader 选择过程中的状态变化，这是假设全部实例中均没有数据，假设服务器启动顺序分别为：A,B,C。<br>
+<img src="https://tallate.top/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/%E9%80%89%E4%B8%BE%E6%B5%81%E7%A8%8B%E5%9B%BE.jpg" alt="选举流程图" title="选举流程图"><br>
+<img src="https://tallate.top/imgs/ZooKeeper%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/%E9%80%89%E4%B8%BE%E7%8A%B6%E6%80%81%E5%9B%BE.jpg" alt="选举状态图" title="选举状态图"></p>
+<h3 id="如果规模为-5-的集群只起来其中的-3-台服务器-这时会进行选举吗"><a class="header-anchor" href="#如果规模为-5-的集群只起来其中的-3-台服务器-这时会进行选举吗">¶</a>如果规模为 5 的集群只起来其中的 3 台服务器，这时会进行选举吗</h3>
+<p>不会，ZooKeeper 更倾向于保持一致性，如果配置中的部分服务器不可用，那么整个集群都是不可用的。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/6072597.html" target="_blank" rel="noopener">【分布式】Zookeeper 系统模型</a></li>
+</ol>
+<h3 id="zookeeper-服务器的启动流程"><a class="header-anchor" href="#zookeeper-服务器的启动流程">¶</a>ZooKeeper 服务器的启动流程</h3>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/6105276.html" target="_blank" rel="noopener">【分布式】Zookeeper 服务端启动</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6139266.html" target="_blank" rel="noopener">【分布式】Zookeeper 的服务器角色</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6514897.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（一）</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6515105.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（二）之 ZooKeeperServer</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6516805.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（三）之 LeaderZooKeeperServer</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6517058.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（四）之 FollowerZooKeeperServer</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6517945.html" target="_blank" rel="noopener">【Zookeeper】源码分析之服务器（五）之 ObserverZooKeeperServer</a></li>
+</ol>
+<h3 id="zookeeper-客户端"><a class="header-anchor" href="#zookeeper-客户端">¶</a>ZooKeeper 客户端</h3>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/6098255.html" target="_blank" rel="noopener">【分布式】Zookeeper 客户端</a></li>
+</ol>
+<h3 id="watcher-v2"><a class="header-anchor" href="#watcher-v2">¶</a>Watcher</h3>
+<ol>
+<li><a href="https://blog.csdn.net/hohoo1990/article/details/78617336" target="_blank" rel="noopener">zookeeper 中 Watcher 通知机制的一点理解</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6286827.html" target="_blank" rel="noopener">【Zookeeper】源码分析之 Watcher 机制（一）</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6288709.html" target="_blank" rel="noopener">【Zookeeper】源码分析之 Watcher 机制（二）之 WatchManager</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6291004.html" target="_blank" rel="noopener">【Zookeeper】源码分析之 Watcher 机制（三）之 ZooKeeper</a></li>
+</ol>
+<h3 id="leader-选举-v2"><a class="header-anchor" href="#leader-选举-v2">¶</a>Leader 选举</h3>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/6107600.html" target="_blank" rel="noopener">【分布式】Zookeeper 的 Leader 选举</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6494290.html" target="_blank" rel="noopener">【Zookeeper】源码分析之 Leader 选举（一）</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6508185.html" target="_blank" rel="noopener">【Zookeeper】源码分析之 Leader 选举（二）之 FastLeaderElection</a></li>
+</ol>
+<h3 id="持久化"><a class="header-anchor" href="#持久化">¶</a>持久化</h3>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/6179118.html" target="_blank" rel="noopener">【分布式】Zookeeper 数据与存储</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6279956.html" target="_blank" rel="noopener">【Zookeeper】源码分析之持久化（一）之 FileTxnLog</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6285014.html" target="_blank" rel="noopener">【Zookeeper】源码分析之持久化（二）之 FileSnap</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6285703.html" target="_blank" rel="noopener">【Zookeeper】源码分析之持久化（三）之 FileTxnSnapLog</a></li>
+</ol>
+<h3 id="通信-通信协议-序列化-会话-请求处理"><a class="header-anchor" href="#通信-通信协议-序列化-会话-请求处理">¶</a>通信（通信协议、序列化、会话、请求处理）</h3>
+<ol>
+<li><a href="http://www.cnblogs.com/leesf456/p/6091208.html" target="_blank" rel="noopener">【分布式】Zookeeper 序列化及通信协议</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6278853.html" target="_blank" rel="noopener">【Zookeeper】源码分析之序列化</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6103870.html" target="_blank" rel="noopener">【分布式】Zookeeper 会话</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6140503.html" target="_blank" rel="noopener">【分布式】Zookeeper 请求处理</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6410793.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（一）</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6412843.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（二）之 PrepRequestProcessor</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6438411.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（三）之 SyncRequestProcessor</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6472496.html" target="_blank" rel="noopener">【Zookeeper】源码分析之请求处理链（四）之 FinalRequestProcessor</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6477815.html" target="_blank" rel="noopener">【Zookeeper】源码分析之网络通信（一）</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6484780.html" target="_blank" rel="noopener">【Zookeeper】源码分析之网络通信（二）之 NIOServerCnxn</a></li>
+<li><a href="http://www.cnblogs.com/leesf456/p/6486454.html" target="_blank" rel="noopener">【Zookeeper】源码分析之网络通信（三）之 NettyServerCnxn</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/32289fde.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/32289fde.html" itemprop="url">Linux 环境下制作启动盘</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-25T23:25:30+08:00">
+                2019-07-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.1k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  4 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>最近有点迷 ARPG，但是自己的 T470P 上只有一个 Ubuntu 系统，所以买了一个 2422 的固态往上面装个 Win10，Linux 下构建启动盘还是蛮多坑的，下面记录一下操作流程，免得以后忘了。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/32289fde.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/158d8ca5.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/158d8ca5.html" itemprop="url">Linux 三剑客-sed 使用总结</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-25T21:43:48+08:00">
+                2019-07-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.1k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  4 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h2 id="为什么要使用-sed"><a class="header-anchor" href="#为什么要使用-sed">¶</a>为什么要使用 sed</h2>
+<p>sed 全名叫 stream editor，流编辑器（也叫行编辑器），其处理文本的方式为一行一行的，不同于 vi 等全屏编辑器；主要用途为通过匹配一个或多个正则表达式来对文本进行处理，实现过滤和转换文本。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/158d8ca5.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/da3bc81f.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/da3bc81f.html" itemprop="url">Linux环境运维命令</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-22T22:18:28+08:00">
+                2019-07-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  626 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  2 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h1>sar</h1>
+<p>Collect, report, or save system activity information.<br>
+根据要统计的信息类型的不同，输出格式也不同。</p>
+<h2 id="统计cpu利用率"><a class="header-anchor" href="#统计cpu利用率">¶</a>统计CPU利用率</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 查看全天</span><br><span class="line">sar -p</span><br><span class="line"># 每隔1秒统计一次，统计10次</span><br><span class="line">sar -u 1 10</span><br></pre></td></tr></table></figure>
+<p>CPU统计信息输出格式：</p>
+<ul>
+<li>CPU<br>
+all表示统计信息为所有 CPU 的平均值。</li>
+<li>%user<br>
+显示在用户级别(application)运行使用 CPU 总时间的百分比。</li>
+<li>%nice<br>
+显示在用户级别，用于nice操作，所占用 CPU 总时间的百分比。</li>
+<li>%system<br>
+在核心级别(kernel)运行所使用 CPU 总时间的百分比。</li>
+<li>%iowait<br>
+显示用于等待I/O操作占用 CPU 总时间的百分比。</li>
+<li>%steal<br>
+管理程序(hypervisor)为另一个虚拟进程提供服务而等待虚拟 CPU 的百分比。</li>
+<li>%idle<br>
+显示 CPU 空闲时间占用 CPU 总时间的百分比。</li>
+</ul>
+<h2 id="内存利用率"><a class="header-anchor" href="#内存利用率">¶</a>内存利用率</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 查看全天</span><br><span class="line">sar -r</span><br><span class="line"># 每隔1秒统计一次，统计10次</span><br><span class="line">sar -r 1 10</span><br></pre></td></tr></table></figure>
+<p>内存统计信息输出格式</p>
+<ul>
+<li>kbmemfree<br>
+这个值和free命令中的free值基本一致，所以它不包括buffer和cache的空间。</li>
+<li>kbmemused<br>
+这个值和free命令中的used值基本一致，所以它包括buffer和cache的空间。</li>
+<li>%memused<br>
+这个值是kbmemused和内存总量(不包括swap)的一个百分比。</li>
+<li>kbbuffers和kbcached<br>
+这两个值就是free命令中的buffer和cache。</li>
+<li>kbcommit<br>
+保证当前系统所需要的内存，即为了确保不溢出而需要的内存(RAM+swap)。</li>
+<li>%commit<br>
+这个值是kbcommit与内存总量(包括swap)的一个百分比。</li>
+</ul>
+<h2 id="磁盘io"><a class="header-anchor" href="#磁盘io">¶</a>磁盘IO</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 查看全天</span><br><span class="line">sar -d</span><br><span class="line"># 每隔1秒统计一次，统计10次</span><br><span class="line">sar -d 1 10</span><br></pre></td></tr></table></figure>
+<p>IO信息输出格式</p>
+<ul>
+<li>await<br>
+表示平均每次设备I/O操作的等待时间（以毫秒为单位）。</li>
+<li>svctm<br>
+表示平均每次设备I/O操作的服务时间（以毫秒为单位）。</li>
+<li>%util<br>
+表示一秒中有百分之几的时间用于I/O操作。</li>
+</ul>
+<h2 id="网络流量"><a class="header-anchor" href="#网络流量">¶</a>网络流量</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 查看全天</span><br><span class="line">sar -n DEV</span><br><span class="line"># 每个1秒统计一次，统计10次</span><br><span class="line">sar -n DEV 1 10</span><br></pre></td></tr></table></figure>
+<p>流量信息输出格式：</p>
+<ul>
+<li>IFACE<br>
+就是网络设备的名称。</li>
+<li>rxpck/s<br>
+每秒钟接收到的包数目。</li>
+<li>txpck/s<br>
+每秒钟发送出去的包数目。</li>
+<li>rxkB/s<br>
+每秒钟接收到的字节数。</li>
+<li>txkB/s<br>
+每秒钟发送出去的字节数。</li>
+<li>rxcmp/s<br>
+每秒钟接收到的压缩包数目。</li>
+<li>txcmp/s<br>
+每秒钟发送出去的压缩包数目。</li>
+<li>rxmcst/s<br>
+每秒钟接收到的多播包的包数目。</li>
+</ul>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b10d1916.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -688,1761 +2360,11 @@ Expires/Cache-Control 控制浏览器是否直接从浏览器缓存取数据还�
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/1bd01bc3.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/1bd01bc3.html" itemprop="url">网络协议之 TCP 总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  13 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>TCP、HTTP 几乎是 TCP/IP 协议栈中最实用的两个协议，特别是在 Web 开发中。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/1bd01bc3.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b791cedc.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/b791cedc.html" itemprop="url">微服务核心技术总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/微服务/" itemprop="url" rel="index">
-                    <span itemprop="name">微服务</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.8k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  15 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>虚拟化技术将一台服务器虚拟出多个虚拟机来提供服务。<br>
-虚拟化技术包括计算虚拟化（服务器虚拟化）、存储虚拟化、网络虚拟化等。<br>
-在实际讲解虚拟化之前，我们需要先解释一下隔离技术，在隔离的基础上我们才能任意粒度、自由地分配资源。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/b791cedc.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fe9473bf.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/fe9473bf.html" itemprop="url">微服务中的网络相关组件</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/微服务/" itemprop="url" rel="index">
-                    <span itemprop="name">微服务</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.1k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  5 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="网关-zuul"><a class="header-anchor" href="#网关-zuul">¶</a>网关 - Zuul</h2>
-<h3 id="filter"><a class="header-anchor" href="#filter">¶</a>Filter</h3>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Zuul%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Zuul组件结构" title="Zuul组件结构"><br>
-Zuul 基于 Netty 开发，使用 filters 包含了核心业务逻辑，Filter 是使用 Groovy 写的，主要是为了提供动态编译加载的能力，filters 主要包含了三类：</p>
-<ul>
-<li>Inbound Filters execute before routing to the origin and can be used for things like authentication, dynamic routing, rate limiting, DDoS protection, metrics and decorating the request.</li>
-<li>Endpoint Filters can be used to return static responses, otherwise the built-in <code>ProxyEndpoint</code> filter will route the request to the origin.</li>
-<li>Outbound Filters execute after getting the response from the origin and can be used for metrics, decorating the response to the user or adding custom headers.</li>
-<li>Async<br>
-Filter 可以被同步执行或异步执行。<br>
-如果 Filter 没有做太重的工作，可以通过继承<code>HttpInboundSyncFilter</code>或<code>HttpOutboundSyncFilter</code>来实现一种同步 Filter，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>Routes.groovy</code>；<br>
-反之，如果需要从其他服务、缓存获取数据，或做一些复杂的计算工作，则最好继承<code>HttpInboundFilter</code>或<code>HttpOutboundFilter</code>，例子见<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul 源码</a>中的<code>SampleServiceFilter.groovy</code>。</li>
-</ul>
-<h4 id="filter属性"><a class="header-anchor" href="#filter属性">¶</a>Filter属性</h4>
-<p>Type: most often defines the stage during the routing flow when the Filter will be applied (although it can be any custom string)<br>
-Async: define if the filter is sync or async, generally meaning do you need to make an external call or just doing work on-box<br>
-Execution Order: applied within the Type, defines the order of execution across multiple Filters<br>
-Criteria: the conditions required in order for the Filter to be executed<br>
-Action: the action to be executed if the Criteria is met</p>
-<h4 id="其他的一些例子"><a class="header-anchor" href="#其他的一些例子">¶</a>其他的一些例子</h4>
-<p>这些例子是<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">zuul-sample</a>中的代码。</p>
-<ul>
-<li>DebugRequest - look for a query param to add extra debug logging for a request</li>
-<li>Healthcheck - simple static endpoint filter that returns 200, if everything is bootstrapped correctly</li>
-<li>ZuulResponseFilter - add informational headers to provide extra details on routing, request execution, status and error cause</li>
-<li>GZipResponseFilter - can be enabled to gzip outbound responses</li>
-<li>SurgicalDebugFilter - can be enabled to route specific requests to different hosts for debugging</li>
-</ul>
-<h3 id="缓存请求体"><a class="header-anchor" href="#缓存请求体">¶</a>缓存请求体</h3>
-<p>默认情况下 Zuul 不会缓存请求体，因为 Filter 一般用到请求头就够了，但是如果需要在 inbound 中用到请求头或在 outbound 中用到响应头，则需要明确指定 Zuul 缓存，可以重写 Filter 的<code>needsBodyBuffered()</code>：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">boolean needsBodyBuffered(HttpResponseMessage input) &#123;</span><br><span class="line">    return true</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="网络协议"><a class="header-anchor" href="#网络协议">¶</a>网络协议</h3>
-<p>Zuul 支持修改暴露服务时使用的协议，使用方法见 sample 项目中的<code>SampleServerStartup</code>。</p>
-<h3 id="其他功能"><a class="header-anchor" href="#其他功能">¶</a>其他功能</h3>
-<p><a href="https://github.com/Netflix/zuul/wiki/Core-Features" target="_blank" rel="noopener">Core Features</a></p>
-<h3 id="push-messaging"><a class="header-anchor" href="#push-messaging">¶</a>Push Messaging</h3>
-<p>Push Messaging 机制可以支持从 Server 端推送消息到 Client 端，支持两种协议：<code>WebSockets</code> 和 <code>Server Sent Events (SSE)</code>。<br>
-<a href="https://github.com/Netflix/zuul/wiki/Push-Messaging" target="_blank" rel="noopener">Push Messaging</a><br>
-TODO</p>
-<h2 id="负载均衡-ribbon"><a class="header-anchor" href="#负载均衡-ribbon">¶</a>负载均衡 - Ribbon</h2>
-<h3 id="使用"><a class="header-anchor" href="#使用">¶</a>使用</h3>
-<p>原生 API 如何使用见：<a href="https://github.com/Netflix/ribbon/wiki/Getting-Started" target="_blank" rel="noopener">Netflix / ribbon - Getting Started</a><br>
-如果是搭配 Spring Boot，可以参考 Spring Could 文档。</p>
-<h3 id="组件结构及实现"><a class="header-anchor" href="#组件结构及实现">¶</a>组件结构及实现</h3>
-<h4 id="rule"><a class="header-anchor" href="#rule">¶</a>Rule</h4>
-<p>a logic component to determine which server to return from a list</p>
-<ul>
-<li>RoundRobinRule<br>
-简单的轮询策略</li>
-<li>AvailabilityFilteringRule<br>
-这个 Rule 会跳过那些疑似“电路跳闸”或并发连接数已经很高的服务器。<br>
-比如客户端的最后 3 次连接失败，客户端会认为该服务实例已经出现了类似“电路跳闸”的问题而导致无法提供服务，于是在接下来的 30 秒内均保持这种状态，如果之后还是连接失败，这个等待时间会指数增长（1min、2min、4min…）。</li>
-<li>WeightedResponseTimeRule<br>
-每个 Server 会根据其平均响应时间计算出一个权重，响应时间越长、比重越小，该 Rule 选择 Server 时会根据该权重来计算概率。</li>
-</ul>
-<h4 id="ping"><a class="header-anchor" href="#ping">¶</a>Ping</h4>
-<p>a component running in background to ensure liveness of servers</p>
-<h4 id="serverlist"><a class="header-anchor" href="#serverlist">¶</a>ServerList</h4>
-<p>this can be static or dynamic. If it is dynamic (as used by <code>DynamicServerListLoadBalancer</code>), a background thread will refresh and filter the list at certain interval</p>
-<ul>
-<li>静态的 Server 列表<br>
-可以在程序里写一个静态列表，将该列表设置到<code>BaseLoadBalancer.setServerList()</code>中。</li>
-<li>ConfigurationBasedServerList<br>
-默认的 ServerList 实现，可以通过 <code>Archaius ConfigurationManager</code>来设置 Server 列表。</li>
-<li>DiscoveryEnabledNIWSServerList<br>
-可以通过 Eureka Client 获取服务器列表，服务器集群必须通过 VipAddress 来定义：  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br></pre></td></tr></table></figure>
-</li>
-</ul>
-<h4 id="serverlistfilter"><a class="header-anchor" href="#serverlistfilter">¶</a>ServerListFilter</h4>
-<p>ServerListFilter 是<code>DynamicServerListLoadBalancer</code>的组件，用于过滤从<code>ServerList</code>返回的服务器列表，现在有两种实现：</p>
-<ul>
-<li>
-<p>ZoneAffinityServerListFilter<br>
-过滤掉不在同一个 zone 内的服务器，除非 zone 内没有可用的服务器，这个 Filter 可以通过设置如下属性来启用（假设客户端名为 myclient、客户端的属性空间为 ribbon）：</p>
-  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">myclient.ribbon.EnableZoneAffinity=true</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>ServerListSubsetFilter<br>
-可以保证客户端只能看到<code>ServerList</code>返回的全体服务器的一个固定子集，如果有服务器可用性较弱，则可以定期用新服务器替换老服务器。可以通过设置以下属性启用该Filter：</p>
-  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">myClient.ribbon.NIWSServerListClassName=com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList </span><br><span class="line"># the server must register itself with Eureka server with VipAddress &quot;myservice&quot;</span><br><span class="line">myClient.ribbon.DeploymentContextBasedVipAddresses=myservice</span><br><span class="line">myClient.ribbon.NIWSServerListFilterClassName=com.netflix.loadbalancer.ServerListSubsetFilter</span><br><span class="line"># only show client 5 servers. default is 20.</span><br><span class="line">myClient.ribbon.ServerListSubsetFilter.size=5</span><br></pre></td></tr></table></figure>
-</li>
-</ul>
-<h3 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h3>
-<p>com.netflix.loadbalancer.DynamicServerListLoadBalancer#updateListOfServers<br>
-com.netflix.loadbalancer.ServerList#getUpdatedListOfServers<br>
-com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList#obtainServersViaDiscovery<br>
-TODO</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<h3 id="常见实现"><a class="header-anchor" href="#常见实现">¶</a>常见实现</h3>
-<ol>
-<li><a href="https://github.com/Netflix/zuul/blob/master/zuul-sample/src/main/java/com/netflix/zuul/sample/SampleServerStartup.java" target="_blank" rel="noopener">Netflix/zuul</a></li>
-<li><a href="https://github.com/Netflix/ribbon" target="_blank" rel="noopener">Netflix/ribbon</a></li>
-<li><a href="https://github.com/Netflix/Turbine" target="_blank" rel="noopener">Netflix / Turbine</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/72161861.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/72161861.html" itemprop="url">Eureka原理分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T20:27:43+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/微服务/" itemprop="url" rel="index">
-                    <span itemprop="name">微服务</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  1.9k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  8 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h2 id="eureka-的目标"><a class="header-anchor" href="#eureka-的目标">¶</a>Eureka 的目标</h2>
-<p>原来：负载均衡器会根据配好的 IP 和主机名来进行负载均衡，但是对 AWS cloud 这样体量的系统来说，因为服务实例宕机恢复十分频繁，所以负载均衡器还会有一个更复杂的注册 / 注销服务的机制。<br>
-现在：Eureka 在中间层提供一种负载均衡的可能。</p>
-<h2 id="eureka-vs-zookeeper"><a class="header-anchor" href="#eureka-vs-zookeeper">¶</a>Eureka VS ZooKeeper</h2>
-<ul>
-<li>Eureka 能提供 REST 接口来动态调整配置、renewals、expiration、cancel 等；</li>
-<li>Eureka 倾向于高可用，而不是 ZooKeeper 的高一致性。</li>
-<li>Eureka 可以集成到应用中，ZooKeeper 只能作为一个外部组件提供服务，这会增加复杂性、增加系统崩溃的几率。</li>
-</ul>
-<h2 id="组成部分"><a class="header-anchor" href="#组成部分">¶</a>组成部分</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E7%BB%84%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="Eureka组件结构" title="Eureka组件结构"></p>
-<ul>
-<li>负载均衡：Eureka Client 提供最简单的轮询<strong>负载均衡</strong>策略，可以封装 Eureka 并根据更多的因素（流量、资源使用、异常发生频次等）来提供一种更好的弹性伸缩特性。</li>
-<li>分区：每个 Region 有一个 Eureka 集群用于处理该区域服务失败的情况，各 Region 之间是不会互相通信的。</li>
-<li>服务注册到 Eureka Server 后每 30 秒发送一次<strong>心跳（heartbeats）<strong>来刷新</strong>租约（lease）</strong>，如果网络出现分区或者 Eureka 宕机了，这种心跳自然会停止，如果达到了<strong>Renews threshold</strong>（即 Server 期望在每分钟中收到的心跳次数，需要考虑是否禁用服务器的自注册、Server/Client 数量等，暂时取默认值 85%就好），Eureka Server 就会将其从服务注册表中移除。</li>
-<li>服务注册信息会自动同步到整个 Eureka Server 集群，这也意味着它们是对等的 P2P 集群。</li>
-<li>集成到业务服务中的 Eureka Client 可以查询服务注册信息（默认每 30 秒一次）来定位服务及进行远程调用。</li>
-</ul>
-<h2 id="服务状态机"><a class="header-anchor" href="#服务状态机">¶</a>服务状态机</h2>
-<p><img src="https://tallate.top/imgs/%E5%BE%AE%E6%9C%8D%E5%8A%A1/Eureka%E5%AE%9E%E4%BE%8B%E7%8A%B6%E6%80%81%E6%9C%BA.png" alt="Eureka实例状态机" title="Eureka实例状态机"></p>
-<ul>
-<li>STARTING：启动中的状态，应用可以在这个阶段做一些初始化工作</li>
-<li>UP：可以正常进行通信；</li>
-<li>DOWN：心跳停了，一般是宕机了或者网络出现了分区</li>
-<li>OUT_OF_SERVICE：因为某些特殊原因无法提供服务，比如 Elasticsearch 因为没有达到最小可用分片数，或者由于蓝绿发布的需要，新版本如果发布后有问题可以直接将实例状态置为 OUT_OF_SERVICE 来达到回滚的目的。</li>
-<li>UNKNOWN：WTF？</li>
-</ul>
-<h2 id="client-与-server-间的交互"><a class="header-anchor" href="#client-与-server-间的交互">¶</a>Client 与 Server 间的交互</h2>
-<h3 id="register"><a class="header-anchor" href="#register">¶</a>Register</h3>
-<p>Eureka Client 将信息注册到 Eureka Server，注册过程发生在第一次心跳时（在 30 秒后）。</p>
-<h3 id="unregister"><a class="header-anchor" href="#unregister">¶</a>Unregister</h3>
-<p>正常情况下，Client 必须显式调用 Unregister 来释放自己的注册信息，除非是由于&quot;unclean termination&quot;而导致心跳丢失超过 3 次。</p>
-<h3 id="renew"><a class="header-anchor" href="#renew">¶</a>Renew</h3>
-<p>客户端每30秒通过发送一次心跳（heartbeats）来续约（renewal），心跳告知Eureka Server本实例仍然存活，如果Server在90秒内没有收到续约请求，它将从服务注册表中移除该实例。</p>
-<h3 id="fetch-registry"><a class="header-anchor" href="#fetch-registry">¶</a>Fetch Registry</h3>
-<p>Eureka clients fetches the registry information from the server and csort_bufferhes it locally. After that, the clients use that information to find other services. This information is updated periodically (every 30 seconds) by getting the delta updates between the last fetch cycle and the current one. The delta information is held longer (for about 3 mins) in the server, hence the delta fetches may return the same instances again. The Eureka client automatically handles the duplicate information.</p>
-<p>After getting the deltas, Eureka client reconciles the information with the server by comparing the instance counts returned by the server and if the information does not match for some reason, the whole registry information is fetched again. Eureka server caches the compressed payload of the deltas, whole registry and also per application as well as the uncompressed information of the same. The payload also supports both JSON/XML formats. Eureka client gets the information in compressed JSON format using jersey apache client.</p>
-<h3 id="cancel"><a class="header-anchor" href="#cancel">¶</a>Cancel</h3>
-<p>Eureka client sends a cancel request to Eureka server on shutdown. This removes the instance from the server’s instance registry thereby effectively taking the instance out of traffic.</p>
-<p>This is done when the Eureka client shuts down and the application should make sure to call the following during its shutdown.<br>
-DiscoveryManager.getInstance().shutdownComponent()</p>
-<h3 id="time-lag"><a class="header-anchor" href="#time-lag">¶</a>Time Lag</h3>
-<p>All operations from Eureka client may take some time to reflect in the Eureka servers and subsequently in other Eureka clients. This is because of the caching of the payload on the eureka server which is refreshed periodically to reflect new information. Eureka clients also fetch deltas periodically. Hence, it may take up to 2 mins for changes to propagate to all Eureka clients.</p>
-<h3 id="communication-mechanism"><a class="header-anchor" href="#communication-mechanism">¶</a>Communication mechanism</h3>
-<p>Eureka Client默认使用Jersey发送基于Jackson封装的JSON数据包给Eureka Server。</p>
-<h3 id="通信协议"><a class="header-anchor" href="#通信协议">¶</a>通信协议</h3>
-<p>Eureka 不限制通信协议，Thrift、HTTP(S)等均可。</p>
-<h2 id="高可用"><a class="header-anchor" href="#高可用">¶</a>高可用</h2>
-<p>Eureka Client 的高可用设计：</p>
-<ul>
-<li>Client 中有<strong>服务注册表的缓存</strong>，即使所有 Server 都挂掉了，Client 还是能继续工作。</li>
-<li>刚开始，Eureka Client 会尝试与同一 <strong>zone</strong>（可视为同一局域网）中的 Eureka Server 交互，如果交互出现问题或同一 zone 中没有可用的 Eureka Server，则它将转向其他 zone。</li>
-</ul>
-<p>Eureka Server 的高可用设计：</p>
-<ul>
-<li>启动 Server 时<strong>从邻居节点获取注册信息</strong>，一个不行换另一个，直到获取成功，如果从邻居节点均无法获取到注册信息，则它会等待几分钟（默认 5 分钟）让 Client 注册它们的信息<br>
-Server 之间获取服务注册信息的机制和 Client 从 Server 获取的一样。<br>
-获取成功后，Server 会设置<code>Renewal Threshold</code>并开始接收 Client 的心跳；</li>
-<li>保护模式：如果<code>Renews(last min)</code>（上一分钟内收到的心跳次数）达到了<code>Renews threshold</code>（Server 期望在每分钟中收到的心跳次数，一般是 3），或者过去 15 分钟内的统计数据小于<code>eureka.server.renewalPercentThreshold</code>（renews / renews threshold 的比值，默认为 0.85，当在 15 分钟内微服务心跳数低于 85%，则 Server 会进入自我保护状态，在这种情况下 Server 不会删除注册信息），则进入<strong>保护模式</strong>，自我保护状态其实是为了防止突发网络不稳定或断电时微服务心跳数剧减，导致微服务注册信息被大量删除的情况。<br>
-在保护模式下，Client 可能从 Server 得到已经不可用的 IP（服务器已不存在或因某些原因无法响应），因此 Client 必须保证这种情况下的弹性高可用，比如快速地超时并重试其他服务器。</li>
-<li>退出保护模式：在保护模式下，Eureka Server 会停止移除服务注册信息，直到满足如下条件中的任意之一：
-<ol>
-<li>心跳<code>Renews</code>达到了<code>Renews threshold</code>；</li>
-<li>保护模式被禁用，设置<code>eureka.server.enableSelfPreservation=false</code>。</li>
-</ol>
-</li>
-<li>孤儿 Server：当发生网络分区，一些 Eureka Server 可能会成为<code>orphaned server</code>，一些 Client 会注册到这些 Server 上，导致一些 Client 能看到这些注册信息而其他的一些则不能。<br>
-当网络恢复后，Server 的 P2P 集群能正常地交互，注册信息会被自动同步到所有 Server 上。</li>
-</ul>
-<h2 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h2>
-<p>比如在测试环境中出现：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY&apos;RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span><br></pre></td></tr></table></figure>
-<p>解决办法：</p>
-<ul>
-<li>在生产上可以开自注册，部署两个 server</li>
-<li>在本机器上测试的时候，可以把比值调低，比如 0.49</li>
-<li>或者简单粗暴把自我保护模式关闭：eureka.server.enableSelfPreservation=false</li>
-</ul>
-<h2 id="eureka-配置"><a class="header-anchor" href="#eureka-配置">¶</a>Eureka 配置</h2>
-<p>配置：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Configuring-Eureka" target="_blank" rel="noopener">Configuring Eureka</a><br>
-Eureka Server 开放的 REST 接口提供动态配置功能：<br>
-<a href="https://github.com/Netflix/eureka/wiki/Eureka-REST-operations" target="_blank" rel="noopener">Eureka REST operations</a></p>
-<h3 id="添加自定义元数据"><a class="header-anchor" href="#添加自定义元数据">¶</a>添加自定义元数据</h3>
-<p>静态设置：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eureka.metadata.mykey=myvalue</span><br></pre></td></tr></table></figure>
-<p>设置后，相当于将<code>mykey:myvalue</code>添加到 eureka 的<code>metadata map</code>中。<br>
-动态设置：<br>
-需要提供一个自定义的</p>
-<p>获取：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">String myValue = instanceInfo.getMetadata().get(&quot;myKey&quot;);</span><br></pre></td></tr></table></figure>
-<h2 id="源码"><a class="header-anchor" href="#源码">¶</a>源码</h2>
-<h3 id="原生客户端的执行过程"><a class="header-anchor" href="#原生客户端的执行过程">¶</a>原生客户端的执行过程</h3>
-<p>EurekaClient</p>
-<h3 id="通过-di-依赖注入-使用-eurekaclient"><a class="header-anchor" href="#通过-di-依赖注入-使用-eurekaclient">¶</a>通过 DI（依赖注入）使用 EurekaClient</h3>
-<p>ExampleEurekaGovernatedService</p>
-<h3 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h3>
-<p>DefaultEurekaClientConfig extends EurekaClientConfig<br>
-EurekaServerConfig extends DefaultEurekaServerConfig<br>
-CloudInstanceConfig extends PropertiesInstanceConfig<br>
-MyDataCenterInstanceConfig extends PropertiesInstanceConfig</p>
-<p>To dynamically do this, you will need to first provide your own custom implementation of the <code>EurekaInstanceConfig</code> interface. You can then overload the public Map&lt;String, String&gt; getMetadataMap() method to return a metadata map that contains the desired metadata values. See <code>PropertiesInstanceConfig</code> for an example implementation that provides the configuration based system above.</p>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://github.com/Netflix/eureka" target="_blank" rel="noopener">Netflix/eureka</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/10511d14.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/10511d14.html" itemprop="url">Linux 脚本基础</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-21T10:18:28+08:00">
-                2019-07-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3.3k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  14 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>记录一些平时看到或用过的 shell 脚本技巧和代码片段。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/10511d14.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/9acacb00.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/9acacb00.html" itemprop="url">Kubernetes</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
-                2019-07-20
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Docker/" itemprop="url" rel="index">
-                    <span itemprop="name">Docker</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  2.2k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  9 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="kubectl-的安装"><a class="header-anchor" href="#kubectl-的安装">¶</a>kubectl 的安装</h2>
-<p><a href="https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl-on-macos" target="_blank" rel="noopener">Install and Set Up kubectl</a></p>
-<h2 id="kubernetes-含义"><a class="header-anchor" href="#kubernetes-含义">¶</a>kubernetes 含义</h2>
-<h3 id="kubernetes-master"><a class="header-anchor" href="#kubernetes-master">¶</a>Kubernetes Master</h3>
-<p>Kubernetes Master 主要负责管理集群，它会协调集群内的所有活动，包括：scheduling applications, maintaining applications’ desired state, scaling applications, and rolling out new updates。<br>
-Master 实际上是三个进程的集合，它们运行在集群的一个 Master Node 上，这三个进程包括：</p>
-<ul>
-<li><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/" target="_blank" rel="noopener">kube-apiserver</a>：提供<a href="https://kubernetes.io/docs/concepts/overview/kubernetes-api/" target="_blank" rel="noopener">REST-API</a>来操作 Kubernetes Objects，包括 pods、services、replicationcontrollers 等，并可用于控制集群状态。</li>
-<li><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/" target="_blank" rel="noopener">kube-controller-manager</a>：通过 apiserver 监听集群状态并做状态转移操作。</li>
-<li><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/" target="_blank" rel="noopener">kube-scheduler</a>：scheduler 可以根据集群的拓扑结构、性能、容量等动态分配资源。</li>
-</ul>
-<h3 id="node"><a class="header-anchor" href="#node">¶</a>Node</h3>
-<p>Node 是一台虚拟机或物理电脑，在集群中作为 Worker。Master 管理 Cluster，而 Node 则管理应用。<br>
-每个 Node 都有一个 Kubelet，是管理 Node 的媒介，且负责与 Kubernetes Master 进行交互。<br>
-每个 Node 还需要有工具来处理容器操作，比如 Docker 或 rkt。<br>
-一个生产环境的 cluster 必须由至少 3 个 Node 组成。</p>
-<h4 id="kubelet"><a class="header-anchor" href="#kubelet">¶</a><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/" target="_blank" rel="noopener">kubelet</a></h4>
-<p>节点代理，负责和 Kubernetes Master 交互：</p>
-<ul>
-<li>向 apiserver 注册节点</li>
-<li>其他云计算指定逻辑。</li>
-</ul>
-<h4 id="kube-proxy"><a class="header-anchor" href="#kube-proxy">¶</a><a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/" target="_blank" rel="noopener">kube-proxy</a></h4>
-<p>运行于每个 Node 上的一个网络代理，可以执行简单的 TCP、UDP、SCTP 流转发或提供多后端进程的负载均衡。<br>
-相当于在主机和 Cluster 之间创建了一个连接，让我们能直接访问 API。</p>
-<h3 id="pod"><a class="header-anchor" href="#pod">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/" target="_blank" rel="noopener">Pod</a></h3>
-<p>一个或多个应用容器集合的抽象，并且包含一些共享资源，包括：</p>
-<ul>
-<li>共享存储，如 Volumes；</li>
-<li>网络连接，每个 Pod 具有 Cluster 中唯一的一个 IP 地址；</li>
-<li>运行每个容器所必须的信息，比如容器镜像的版本、端口等。</li>
-</ul>
-<p>Pod 建模了一种“logical host”，可以同时运行多种不同的容器。<br>
-当 Pod 所处的 Node 挂了，<code>ReplicaSet</code>会动态地创建新 Pod 来使得 Cluster 回到原来的状态。</p>
-<h3 id="service"><a class="header-anchor" href="#service">¶</a><a href="https://kubernetes.io/docs/concepts/services-networking/service/" target="_blank" rel="noopener">Service</a></h3>
-<p>Service 定义了 Pod 的逻辑集合及其访问规则，虽然每个 Pod 都有一个唯一的 IP 地址（Cluster 范围内），但是如果没有 Service 的话这些 IP 也是没法暴露到 Cluster 外的，可以通过指定 ServiceSpec 中的<code>type</code>来指定暴露服务的方式：</p>
-<ul>
-<li>ClusterIP (default) - Exposes the Service on an internal IP in the cluster. This type makes the Service only reachable from within the cluster.</li>
-<li>NodePort - Exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a Service accessible from outside the cluster using <code>&lt;NodeIP&gt;:&lt;NodePort&gt;</code>. Superset of ClusterIP.</li>
-<li>LoadBalancer - Creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service. Superset of NodePort.</li>
-<li>ExternalName - Exposes the Service using an arbitrary name (specified by <code>externalName</code> in the spec) by returning a CNAME record with the name. No proxy is used. This type requires v1.7 or higher of <code>kube-dns</code>.</li>
-</ul>
-<h3 id="volumes"><a class="header-anchor" href="#volumes">¶</a><a href="https://kubernetes.io/docs/concepts/storage/volumes/" target="_blank" rel="noopener">Volumes</a></h3>
-<h3 id="namespaces"><a class="header-anchor" href="#namespaces">¶</a><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/" target="_blank" rel="noopener">Namespaces</a></h3>
-<h3 id="deployments"><a class="header-anchor" href="#deployments">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">Deployments</a></h3>
-<p>负责创建和更新应用实例，创建 Deployment 后，Master 会持续监听并在各 Node 中调度应用实例，一旦有实例挂掉或被删掉，Deployment controller 就会用 Cluster 中另一 Node 上的实例取代之。</p>
-<ul>
-<li>searched for a suitable node where an instance of the application could be run (we have only 1 available node)</li>
-<li>scheduled the application to run on that Node</li>
-<li>configured the cluster to reschedule the instance on a new Node when needed</li>
-</ul>
-<h3 id="daemonset"><a class="header-anchor" href="#daemonset">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/" target="_blank" rel="noopener">DaemonSet</a></h3>
-<h3 id="statefulsets"><a class="header-anchor" href="#statefulsets">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/" target="_blank" rel="noopener">StatefulSets</a></h3>
-<h3 id="replicaset"><a class="header-anchor" href="#replicaset">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/" target="_blank" rel="noopener">ReplicaSet</a></h3>
-<h3 id="jobs"><a class="header-anchor" href="#jobs">¶</a><a href="https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/" target="_blank" rel="noopener">Jobs</a></h3>
-<h2 id="kubernetes-使用"><a class="header-anchor" href="#kubernetes-使用">¶</a>kubernetes 使用</h2>
-<p>可以采用<code>kubectl</code>命令来和 Cluster 交互，<code>kubectl</code>最常用的操作只有如下 4 种：</p>
-<ul>
-<li>kubectl get - list resources</li>
-<li>kubectl describe - show detailed information about a resource</li>
-<li>kubectl logs - print the logs from a container in a pod</li>
-<li>kubectl exec - execute a command on a container in a pod</li>
-</ul>
-<h3 id="创建cluster"><a class="header-anchor" href="#创建cluster">¶</a>创建Cluster</h3>
-<p>例子中使用<code>minikube</code>创建 Cluster，然后使用<code>kubectl</code>来和创建的 Cluster 交互：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">minikube version</span><br><span class="line"># 启动一个Cluster</span><br><span class="line">minikube start</span><br><span class="line"># 查看客户端（kubectl的版本）和服务端（Kubernetes的版本）的版本</span><br><span class="line">kubectl version</span><br><span class="line"># Cluster的详细信息</span><br><span class="line">kubectl cluster-info</span><br><span class="line"># 获取Cluster内的Node列表</span><br><span class="line">kubectl get nodes</span><br></pre></td></tr></table></figure>
-<ol>
-<li>创建部署单元（Deployment）</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 创建Deploymnet</span><br><span class="line">kubectl create deployment kubernetes-bootcamp --image=gcr.io/google-samples/kubernetes-bootcamp:v1</span><br><span class="line"># 查看Deployment</span><br><span class="line">kubectl get deployments</span><br><span class="line"></span><br><span class="line"># 查看Pod</span><br><span class="line">kubectl get pods</span><br><span class="line"># 查看Pod内Container的属性，比如使用的是什么镜像</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
-<h3 id="访问"><a class="header-anchor" href="#访问">¶</a>访问</h3>
-<ol>
-<li>使用 proxy 访问 Service 和 Pod</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 创建proxy实例</span><br><span class="line">kubectl proxy</span><br><span class="line"># 创建proxy后可以在另一个终端调用REST API来查看Cluster信息</span><br><span class="line">curl http://localhost:8001/version</span><br><span class="line"># 查看Pod的名字</span><br><span class="line">export POD_NAME=$(kubectl get pods -o go-template --template &apos;&#123;&#123;range .items&#125;&#125;&#123;&#123;.metadata.name&#125;&#125;&#123;&#123;&quot;\n&quot;&#125;&#125;&#123;&#123;end&#125;&#125;&apos;)</span><br><span class="line">echo Name of the Pod: $POD_NAME</span><br><span class="line"># 可以通过proxy直接访问Pod</span><br><span class="line">curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/</span><br></pre></td></tr></table></figure>
-<ol>
-<li>查看日志</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 所有应用发送给STDOUT的信息都会成为Pod容器的日志</span><br><span class="line">kubectl logs $POD_NAME</span><br></pre></td></tr></table></figure>
-<ol>
-<li>使用 exec 命令访问 Pod</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 查看Pod内的环境变量</span><br><span class="line">kubectl exec $POD_NAME env</span><br><span class="line"># 在Pod中一个容器内启动一个bash会话，相当于登入了该容器</span><br><span class="line">kubectl exec -ti $POD_NAME bash</span><br></pre></td></tr></table></figure>
-<h3 id="service-v2"><a class="header-anchor" href="#service-v2">¶</a>Service</h3>
-<ol>
-<li>创建 Service</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 查看Service</span><br><span class="line">kubectl get services</span><br><span class="line"># 创建一个新的Service并暴露端口（type=NodePort可以用于占用一个Node上的端口来暴露服务）</span><br><span class="line">kubectl expose deployment/kubernetes-bootcamp --type=&quot;NodePort&quot; --port 8080</span><br><span class="line"># 查看Service信息</span><br><span class="line">kubectl describe services/kubernetes-bootcamp</span><br></pre></td></tr></table></figure>
-<ol>
-<li>Deployment 与 Service</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 8080其实是集群内的一个逻辑端口，可以通过以下命令获取Node上暴露的端口</span><br><span class="line">export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template=&apos;&#123;&#123;(index .spec.ports 0).nodePort&#125;&#125;&apos;)</span><br><span class="line"># 然后我们可以通过curl访问Node上的端口来确认Service已经被暴露到了Cluster外</span><br><span class="line">echo NODE_PORT=$NODE_PORT</span><br><span class="line"></span><br><span class="line"># Deployment会自动为Pod创建一个label，可以通过如下命令来查看</span><br><span class="line">kubectl describe deployment</span><br><span class="line"># 通过label查看Pod列表和Service列表</span><br><span class="line">kubectl get pods -l run=kubernetes-bootcamp</span><br><span class="line">kubectl get services -l run=kubernetes-bootcamp</span><br></pre></td></tr></table></figure>
-<ol>
-<li>Service 中的 Pod</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 先获取Pod的名字</span><br><span class="line">export POD_NAME=$(kubectl get pods -o go-template --template &apos;&#123;&#123;range .items&#125;&#125;&#123;&#123;.metadata.name&#125;&#125;&#123;&#123;&quot;\n&quot;&#125;&#125;&#123;&#123;end&#125;&#125;&apos;)</span><br><span class="line">echo Name of the Pod: $POD_NAME</span><br><span class="line"># 通过label命令可以设置一个新的label</span><br><span class="line">kubectl label pod $POD_NAME app=v1</span><br><span class="line"># 之后可以使用describe 命令来查看这些label，也可以使用label来查询Pod</span><br><span class="line">kubectl describe pods $POD_NAME</span><br><span class="line">kubectl get pods -l app=v1</span><br></pre></td></tr></table></figure>
-<ol>
-<li>删除 Service</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 删除一个Service</span><br><span class="line">kubectl delete service -l run=kubernetes-bootcamp</span><br><span class="line"># 查看服务列表，该服务已经被删除</span><br><span class="line">kubectl get services</span><br><span class="line"># curl端口确认不再暴露服务</span><br><span class="line">curl $(minikube ip):$NODE_PORT</span><br><span class="line"># 我们可以在Pod中运行curl来确定应用仍运行于Pod中</span><br><span class="line">kubectl exec -ti $POD_NAME curl localhost:8080</span><br><span class="line"># 如果需要终止应用，则需要同时删除Deployment</span><br></pre></td></tr></table></figure>
-<h3 id="app-扩展"><a class="header-anchor" href="#app-扩展">¶</a>app 扩展</h3>
-<p><img src="https://tallate.top/imgs/Kubernetes/scaling.svg" alt="scaling" title="scaling"><br>
-上图来自<a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/scale/scale-intro/" target="_blank" rel="noopener">官网教程</a>，Scaling 即修改 Deployment 中的 Pod 数。</p>
-<ol>
-<li>扩展 ReplicaSet（Scale Up）</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># 先看下部署了几个Pod</span><br><span class="line">kubectl get deployments</span><br><span class="line"># 查看Deployment创建的ReplicaSet，ReplicaSet名的格式为[DEPLOYMENT-NAME]-[RANDOM-STRING]</span><br><span class="line">kubectl get rs</span><br><span class="line"># 将Deployment扩展为4个复制</span><br><span class="line">kubectl scale deployments/kubernetes-bootcamp --replicas=4</span><br><span class="line"># 查看Deployment及其中的Pod</span><br><span class="line">kubectl get deployments</span><br><span class="line">kubectl get pods -o wide</span><br><span class="line"># 查看Deployment的时间日志</span><br><span class="line">kubectl describe deployments/kubernetes-bootcamp</span><br></pre></td></tr></table></figure>
-<ol>
-<li>Load Balancing</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 使用一个NODE_PORT环境变量来保存Node暴露的端口</span><br><span class="line">export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template=&apos;&#123;&#123;(index .spec.ports 0).nodePort&#125;&#125;&apos;)</span><br><span class="line">echo NODE_PORT=$NODE_PORT</span><br><span class="line"># curl访问多次，会发现请求被负载均衡到了不同的Pod上</span><br><span class="line">curl $(minikube ip):$NODE_PORT</span><br></pre></td></tr></table></figure>
-<ol>
-<li>缩小（Scale Down）</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 再运行一次scale命令来缩小ReplicaSet</span><br><span class="line">kubectl scale deployments/kubernetes-bootcamp --replicas=2</span><br><span class="line"># 查看伸缩结果</span><br><span class="line">kubectl get deployments</span><br><span class="line">kubectl get pods -o wide</span><br></pre></td></tr></table></figure>
-<h3 id="滚动更新-rolling-update"><a class="header-anchor" href="#滚动更新-rolling-update">¶</a>滚动更新（Rolling Update）</h3>
-<ol>
-<li>更新应用版本</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 先看看Cluster里有啥</span><br><span class="line">kubectl get deployments</span><br><span class="line">kubectl get pods</span><br><span class="line"># 查看应用当前使用的镜像版本</span><br><span class="line">kubectl describe pods</span><br><span class="line"># 使用set image命令设置应用的镜像版本</span><br><span class="line">kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=jocatalin/kubernetes-bootcamp:v2</span><br><span class="line"># 可以通过Pod查看应用的更新过程</span><br><span class="line">kubectl get pods</span><br></pre></td></tr></table></figure>
-<ol>
-<li>验证更新</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 确认应用正在运行中</span><br><span class="line">kubectl describe services/kubernetes-bootcamp</span><br><span class="line"># 用一个NODE_PORT环境变量保存Node暴露的端口，然后用curl确认暴露的服务可以使用</span><br><span class="line">export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template=&apos;&#123;&#123;(index .spec.ports 0).nodePort&#125;&#125;&apos;)</span><br><span class="line">echo NODE_PORT=$NODE_PORT</span><br><span class="line">curl $(minikube ip):$NODE_PORT</span><br><span class="line"># 更新同样可以使用rollout status命令来确认</span><br><span class="line">kubectl rollout status deployments/kubernetes-bootcamp</span><br><span class="line"># 查看应用当前使用的镜像的版本</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
-<ol>
-<li>回滚（Rollback）</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 设置镜像进行更新，但是这个镜像的v10版本是不存在的，因此会引起更新失败</span><br><span class="line">kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=gcr.io/google-samples/kubernetes-bootcamp:v10</span><br><span class="line"># 查看Deployment的当前状态，会发现某些Pod运行不正常</span><br><span class="line">kubectl get deployments</span><br><span class="line"># 查看Pod状态，describe能提供更多信息</span><br><span class="line">kubectl get pods</span><br><span class="line">kubectl describe pods</span><br><span class="line"># 发现问题，可以使用rollout undo命令来回滚，rollout命令会复原deployment到上一已知状态。实际上所有更新操作都是版本化的，并且每次更新都可以回滚到之前的任意版本</span><br><span class="line">kubectl rollout undo deployments/kubernetes-bootcamp</span><br><span class="line"># 接下来再查看Pod的状态可以发现所有的Pod都已经恢复运行了</span><br><span class="line">kubectl get pods</span><br><span class="line">kubectl describe pods</span><br></pre></td></tr></table></figure>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://kubernetes.io/docs/tutorials/" target="_blank" rel="noopener">Tutorials</a><br>
-<a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/" target="_blank" rel="noopener">Learn Kubernetes Basics</a><br>
-<a href="https://kubernetes.io/docs/tutorials/configuration/configure-redis-using-configmap/" target="_blank" rel="noopener">Configuring Redis using a ConfigMap</a><br>
-使用 k8s 搭建 Redis 集群<br>
-<a href="https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/" target="_blank" rel="noopener">Exposing an External IP Address to Access an Application in a Cluster</a><br>
-如何使用 k8s 搭建一个无状态服务<br>
-<a href="https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/" target="_blank" rel="noopener">StatefulSet Basics</a><br>
-如何使用 k8s 搭建一个有状态服务<br>
-<a href="https://kubernetes.io/docs/tutorials/clusters/apparmor/" target="_blank" rel="noopener">AppArmor</a><br>
-<a href="https://kubernetes.io/docs/tutorials/services/source-ip/" target="_blank" rel="noopener">Using Source IP</a><br>
-<a href="linux.com/tutorials/set-cicd-pipeline-kubernetes-part-1-overview/">CICD</a><br>
-<a href="https://www.linux.com/tutorials/set-cicd-pipeline-jenkins-pod-kubernetes-part-2/" target="_blank" rel="noopener">https://www.linux.com/tutorials/set-cicd-pipeline-jenkins-pod-kubernetes-part-2/</a><br>
-<a href="https://www.linux.com/tutorials/run-and-scale-distributed-crossword-puzzle-app-cicd-kubernetes-part-3/" target="_blank" rel="noopener">https://www.linux.com/tutorials/run-and-scale-distributed-crossword-puzzle-app-cicd-kubernetes-part-3/</a><br>
-<a href="https://www.linux.com/tutorials/set-cicd-distributed-crossword-puzzle-app-kubernetes-part-4/" target="_blank" rel="noopener">https://www.linux.com/tutorials/set-cicd-distributed-crossword-puzzle-app-kubernetes-part-4/</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/59c58f8f.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/59c58f8f.html" itemprop="url">Linux 三剑客-cut、awk 使用总结</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T20:34:48+08:00">
-                2019-07-20
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  3k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  13 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>在 awk、sed、cut 三个命令中，awk 是功能最强大的，基本能实现所有字符串操作，平时常用于较复杂的日志分析，不过比起别的命令来也会相对复杂一点。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/59c58f8f.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e8597381.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e8597381.html" itemprop="url">网络架构梳理</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-07-20T14:01:28+08:00">
-                2019-07-20
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术点总结/" itemprop="url" rel="index">
-                    <span itemprop="name">技术点总结</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  6k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  21 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>不懂很多网络概念，在一些开会、对接场合出了很多洋相，趁机好好补补。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/e8597381.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/10/"><i class="fa fa-angle-left"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><span class="page-number current">11</span><a class="page-number" href="/page/12/">12</a><span class="space">&hellip;</span><a class="page-number" href="/page/14/">14</a><a class="extend next" rel="next" href="/page/12/"><i class="fa fa-angle-right"></i></a>
+    <a class="extend prev" rel="prev" href="/page/10/"><i class="fa fa-angle-left"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><span class="page-number current">11</span><a class="page-number" href="/page/12/">12</a><span class="space">&hellip;</span><a class="page-number" href="/page/15/">15</a><a class="extend next" rel="next" href="/page/12/"><i class="fa fa-angle-right"></i></a>
   </nav>
 
 
@@ -2488,7 +2410,7 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">137</span>
+                  <span class="site-state-item-count">145</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -2510,7 +2432,7 @@ Master 实际上是三个进程的集合，它们运行在集群的一个 Master
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">72</span>
+                  <span class="site-state-item-count">73</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
