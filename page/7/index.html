@@ -266,424 +266,6 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/edd4cfac.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/edd4cfac.html" itemprop="url">Redis 复制</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
-                2019-09-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/缓存/" itemprop="url" rel="index">
-                    <span itemprop="name">缓存</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  8.2k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  32 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <a id="more"></a>
-<h2 id="使用主从复制"><a class="header-anchor" href="#使用主从复制">¶</a>使用主从复制</h2>
-<ol>
-<li>
-<p>运行 Master<br>
-调整 Master 内存中保存的缓冲积压部分（replication backlog），以便执行部分重同步。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 缓冲区越大，可断开连接再重连执行部分重同步的时间越长，缓冲区会在每次连接时分配。</span><br><span class="line">repl-backlog-size 1mb</span><br><span class="line">repl-backlog-ttl 3600</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>运行 Slave<br>
-先在配置文件中设置 Master 和 logfile 路径再运行</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">slaveof 172.16.205.141 6379</span><br><span class="line">logfile &quot;/usr/redis/log/slave.log&quot;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>级联复制（从从复制）<br>
-之前是所有 Slave 连到一个 Master 上，这是一种中心化的办法，对 Master 的负担较大，事实上我们完全可以不全部连到 Master 上，而是 Master-&gt;Slave1-&gt;Slave2 这样传递。<br>
-实现级联复制也较简单，只用修改 Slave2 配置文件的<code>slaveof</code>属性即可。</p>
-</li>
-<li>
-<p>Master write，Slave read<br>
-通过程序（客户端）实现数据的读写分离，即在程序中判断请求是读是写，让 Master 负责处理写请求，Slave 负责处理读请求；通过扩展 Slave 处理更多的并发请求，减轻 Master 端的负载。</p>
-</li>
-</ol>
-<h3 id="只读-slave"><a class="header-anchor" href="#只读-slave">¶</a>只读 Slave</h3>
-<p>Redis2.6 之后，Redis 支持只读模式，可以使用<code>slave-read-only</code>配置来控制这个行为。<br>
-只读模式下的 slave 将会拒绝所有写入命令，因此实践中不可能由于某种出错而将数据写入 slave 。但这并不意味着该特性旨在将一个 slave 实例暴露到 Internet ，或者更广泛地说，将之暴露在存在不可信客户端的网络，因为像 DEBUG 或者 CONFIG 这样的管理员命令仍在启用。但是，在 redis.conf 文件中使用 rename-command 指令可以禁用上述管理员命令以提高只读实例的安全性。</p>
-<h2 id="同步复制和异步复制"><a class="header-anchor" href="#同步复制和异步复制">¶</a>同步复制和异步复制</h2>
-<p>Redis 使用默认的<strong>异步复制</strong>，其特点是低延迟和高性能，不会影响 Redis 主线程的响应效率。</p>
-<ul>
-<li>Redis 复制在 master 侧是非阻塞的。这意味着 master 在一个或多个 slave 进行初次同步或者是部分重同步时，可以继续处理查询请求。</li>
-<li>复制在 slave 侧大部分也是非阻塞的。当 slave 进行初次同步时，它可以使用旧数据集处理查询请求，假设你在 redis.conf 中配置了让 Redis 这样做的话。否则，你可以配置如果复制流断开， Redis slave 会返回一个 error 给客户端。但是，在初次同步之后，旧数据集必须被删除，同时加载新的数据集。 slave 在这个短暂的时间窗口内（如果数据集很大，会持续较长时间），会阻塞到来的连接请求。自 Redis 4.0 开始，可以配置 Redis 使删除旧数据集的操作在另一个不同的线程中进行，但是，加载新数据集的操作依然需要在主线程中进行并且会阻塞 slave 。</li>
-</ul>
-<blockquote>
-<p>Redis 虽然声称是单线程模型，但是很多功能仍然是采用多线程实现的。</p>
-</blockquote>
-<h2 id="什么时候触发复制"><a class="header-anchor" href="#什么时候触发复制">¶</a>什么时候触发复制</h2>
-<ul>
-<li>当一个 Master 和一个 Slave 实例连接正常时，Master 通过向 Slave 发送命令流来<strong>增量同步</strong>自身数据集的改变情况，包括客户端的写入、key 的过期等；</li>
-<li>Master 与 Slave 之间因为网络问题或宕机，之后 Slave 重新连上 Master 时会尝试进行<strong>部分重同步</strong>，即只获取在断开连接期间内丢失的命令流；<br>
-为此，slave 会记住旧 master 的旧 <strong>replication ID</strong> 和<strong>复制偏移量</strong>，因此即使询问旧的 replication ID，其也可以将部分复制缓冲提供给连接的 slave 。</li>
-<li>当无法进行部分重同步时，Slave 会请求进行全量重同步。Master 需要创建所有数据的快照，将之发送给 Slave，之后在数据集发生更改时持续发送命令流到 Slave。</li>
-</ul>
-<h2 id="主从复制原理"><a class="header-anchor" href="#主从复制原理">¶</a>主从复制原理</h2>
-<p>当用户往 Master 端写入数据时，通过<code>Redis Sync</code>机制将数据文件发送至 Slave，Slave 也会执行相同的操作确保数据一致。</p>
-<ol>
-<li>同一个 Master 可以拥有多个 Slaves。Master 下的 Slave 还可以接受同一架构中其它 Slave 的链接与同步请求，实现数据的<strong>级联复制</strong>，即 Master-&gt;Slave-&gt;Slave 模式；<br>
-<code>repl-diskless-sync-delay</code>参数可以延迟启动数据传输，目的可以在第一个 slave 就绪后，等待更多的 slave 就绪。<br>
-<strong>主从复制最好配置成级联复制，因为这样更容易解决单点问题，避免Master承受过大的复制压力</strong>。</li>
-<li>Master 以<strong>非阻塞</strong>的方式同步数据至 slave，这将意味着 Master 会继续处理一个或多个 slave 的读写请求；</li>
-<li>Slave 端同步数据也可以修改为非阻塞的方式，当 slave 在执行新的同步时，它仍可以用旧的数据信息来提供查询；否则，当 slave 与 master 失去联系时，slave 会返回一个错误给客户端；</li>
-<li>主从复制可以做到<strong>读写分离</strong>，保证了可扩展性，即多个 slave 专门提供只读查询与数据的冗余，Master 端专门提供写操作；</li>
-<li>通过配置禁用 Master 数据持久化机制，将其数据持久化操作交给 Slaves 完成，避免在 Master 中要有独立的进程来完成此操作。</li>
-<li>Redis 主从复制的性能问题，为了主从复制的速度和连接的稳定性，Slave 和 Master 最好在同一个局域网内。</li>
-</ol>
-<p>标识同步进程：</p>
-<ol>
-<li>每个 Master 都有一个<code>Replication ID</code>：这是一个较大的伪随机字符串，标记了一个给定的数据集。</li>
-<li>每个 Master 持有一个偏移量<code>offset</code>，Master 将自己产生的复制流发送给 slave 时，发送多少个字节的数据，自身的偏移量就会增加多少，目的是当有新的操作修改自己的数据集时，它可以以此更新 Slave 的状态。即使没有 Slave 连接到 Master，offset 也会自增，所以基本上每一对 <code>&lt;Replication ID, offset&gt;</code> 都会标识一个 Master 数据集的确切版本。</li>
-<li>Slave 也维护了一个复制偏移量<code>offset</code>，代表从库同步的字节数，从库每收到主节点传来的 N 个字节数据时，从库的 offset 增加 N。<br>
-Master 和 Slave 的<code>offset</code>总是不断增大，这也是判断主从数据是否同步的标志，若主从的 offset 相同则表示数据同步量，不通则表示数据不同步。</li>
-</ol>
-<p>复制积压缓冲区<br>
-主节点(master)响应写命令时，不但会把命名发送给从节点，还会写入复制积压缓冲区，用于复制命令丢失的数据补救。<br>
-Slave 连接中断时主节点仍然可以响应命令，但因复制连接中断命令无法发送给 Slave。之后，当 Slave 重启并触发部分复制时，Master 可以将复制积压缓冲区的内容同步给 Slave，从而提高复制效率；</p>
-<p>部分重同步过程：</p>
-<ol>
-<li>当 Slave 连接到 Master，发送一个<code>PSYNC</code>命令表明自己记录的旧的 Master <code>Replication ID</code>和它们至今为止处理的偏移量<code>offset</code>；</li>
-<li>Master 仅发送 Slave 所需的增量部分的命令流，即上次同步偏移量<code>offset</code>之后执行的写命令；</li>
-<li>但是如果 master 的缓冲区中没有足够的命令积压缓冲记录，或者如果 slave 引用了不再知道的历史记录（replication ID），则会转而进行一个全量重同步：在这种情况下， slave 会得到一个完整的数据集副本，从头开始。</li>
-</ol>
-<p>全量同步（完整重同步）：</p>
-<ol>
-<li>Slave 向 Master 发送<code>PSYNC</code>命令；</li>
-<li>Master 执行<code>BGSAVE</code>命令，开启一个后台进程用于生成一个 RDB 文件；</li>
-<li>同时它开始缓冲所有从客户端接收到的新的写入命令；</li>
-<li>当后台保存完成时， master 将数据集文件传输给 slave， slave 将之保存在磁盘上，然后加载文件到内存；</li>
-<li>再然后 master 会将所有缓冲的写命令发给 slave，这个过程以指令流的形式完成并且和 Redis 协议本身的格式相同。</li>
-</ol>
-<blockquote>
-<p>可以通过<code>telnet</code>连接到 Redis 服务器上然后发送<code>SYNC</code>命令来模拟这个过程，但是因为<code>SYNC</code>功能有限（比如不支持部分重同步），现在的版本用<code>PSYNC</code>作为代替。<br>
-正常情况下，全量同步会先在磁盘上创建一个 RDB 文件，传输时将其加载进内存，然后 Slave 对此进行数据的同步，如果磁盘性能很低，这个过程压力会比较大，<code>Redis 2.8.18</code>之后支持直接传输 RDB 文件，可以使用<code>repl-diskless-sync</code>配置参数配置。</p>
-</blockquote>
-<p>全量同步完成以后，在此后的时间里主从维护着心跳检查来确认对方是否在线，每隔一段时间（默认 10 秒，通过<code>repl-ping-slave-period</code>参数指定）主节点向从节点发送 PING 命令判断从节点是否在线，而从节点每秒 1 次向主节点发送 REPLCONF ACK 命令，命令格式为：<code>REPLCONF ACK {offset}</code>，其中 offset 指的是从节点保存的复制偏移量，作用是：</p>
-<ol>
-<li>向主节点报告自己复制进度，主节点会对比复制偏移量向从节点发送未同步的命令；</li>
-<li>判断主节点是否在线。</li>
-</ol>
-<h3 id="主从复制执行过程-slave怎么与master建立连接"><a class="header-anchor" href="#主从复制执行过程-slave怎么与master建立连接">¶</a>主从复制执行过程 - Slave怎么与Master建立连接</h3>
-<p><img src="https://tallate.top/imgs/Redis/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6.png" alt="主从复制" title="主从复制"><br>
-1、Slave Redis实例上配置<code>slaveof xxx</code>，表示将成为另一台Redis实例的从服务器，启动 Slave时，需要设置当前节点的Master信息，并开始主从同步过程；<br>
-代码位置：<code>replication.c/slaveofCommand()</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 进入连接状态（重点）</span><br><span class="line">server.repl_state = REDIS_REPL_CONNECT;</span><br><span class="line">server.master_repl_offset = 0;</span><br><span class="line">server.repl_down_since = 0;</span><br></pre></td></tr></table></figure>
-<p>2、上边设置复制信息成功后，Redis服务器会有一个cron任务（<code>serverCron</code>）定时判断需要进行同步操作，向Master建立连接，也就是一个握手的过程；<br>
-代码位置：<code>replication.c/replicationCron()</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (server.repl_state == REPL_STATE_CONNECT) &#123;</span><br><span class="line">   if (connectWithMaster() == C_OK) &#123;</span><br><span class="line">       serverLog(LL_NOTICE,&quot;MASTER &lt;-&gt; SLAVE sync started&quot;);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>serverCron是Redis的主事件循环，负责超多的任务，包括过期key处理、rehash、备份RDB文件、AOF重写等等。</p>
-</blockquote>
-<p>3、确定连接后，接下来，cron任务里还有比较关键的一项是确定复制方案，<br>
-会先向 Master 发送一个 PSYNC Command，Master会返回复制方案，也就是下面的全量、增量及不支持这3种情况：<br>
-代码位置：<code>replication.c/syncWithMaster()</code><br>
-<code>replication.c/slaveTryPartialResynchronization()</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 向主服务器发送 PSYNC 命令</span><br><span class="line">reply = sendSynchronousCommand(fd,&quot;PSYNC&quot;,psync_runid,psync_offset,NULL);</span><br><span class="line"></span><br><span class="line">// 全量复制</span><br><span class="line">if (!strncmp(reply,&quot;+FULLRESYNC&quot;,11)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 增量复制</span><br><span class="line">if (!strncmp(reply,&quot;+CONTINUE&quot;,9)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 错误，目前master不支持PSYNC</span><br><span class="line">if (strncmp(reply,&quot;-ERR&quot;,4)) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>注意PSYNC命令的两个参数：</p>
-<ul>
-<li>主库的runID：每个Redis实例启动时都会自动生成的一个随机ID，用来唯一标识这个实例。<br>
-当从库和主库第一次复制时，因为不知道主库的runID，因此会将runID设为&quot;?&quot;。</li>
-<li>复制进度offset：设为-1表示第一次复制。</li>
-</ul>
-<p>4、Master接收到命令后需要判断需要全量同步还是部分同步<br>
-这部分代码在<code>replication.c/syncCommand()</code>中，接下来我们再讨论主节点如何判断同步方式及同步的流程。</p>
-<h3 id="主从复制执行过程-master如何处理psync命令"><a class="header-anchor" href="#主从复制执行过程-master如何处理psync命令">¶</a>主从复制执行过程 - Master如何处理PSYNC命令</h3>
-<p>1、无论是第一次连接还是重新连接，Master 都会启动一个后台进程（fork），将<strong>数据快照</strong>保存到数据文件中，同时 Master 会记录<strong>所有修改数据的命令</strong>并缓存在数据文件中（持久化），Master会将文件内容加载到内存中，等之后回传给Slave（复制）；<br>
-2、Master端与Slave端完成握手后，需要判断是需要进行全量还是增量复制（也就是上面的返回<code>+FULLRESYNC</code>还是<code>+CONTINUE</code><br>
-处理Slave的<code>PSYNC</code>命令的代码位置：<code>replication.c/syncCommand()</code><br>
-判断是否需要执行全量复制的代码位置：<code>replication.c/masterTryPartialResynchronization()</code><br>
-判断执行<strong>全量复制</strong>的条件如下代码所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">// 检查 master id 是否和 runid 一致，只有一致的情况下才考虑执行psync</span><br><span class="line">if (strcasecmp(master_runid, server.runid)) &#123;</span><br><span class="line">    /* Run id &quot;?&quot; is used by slaves that want to force a full resync. */</span><br><span class="line">    // 从服务器提供的 run id 和服务器的 run id 不一致</span><br><span class="line">    if (master_runid[0] != &apos;?&apos;) &#123;</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Partial resynchronization not accepted: &quot;</span><br><span class="line">            &quot;Runid mismatch (Client asked for runid &apos;%s&apos;, my runid is &apos;%s&apos;)&quot;,</span><br><span class="line">            master_runid, server.runid);</span><br><span class="line">    // 从服务器提供的 run id 为 &apos;?&apos; ，表示强制 FULL RESYNC</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Full resync requested by slave.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    // 需要 full resync</span><br><span class="line">    goto need_full_resync;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 判断当前Slave带来的offset在Master的backlog中是否还能找到，找不到则执行全量复制</span><br><span class="line">if (getLongLongFromObjectOrReply(c,c-&gt;argv[2],&amp;psync_offset,NULL) !=</span><br><span class="line">       REDIS_OK) goto need_full_resync;</span><br><span class="line"></span><br><span class="line">// 如果没有backlog</span><br><span class="line">if (!server.repl_backlog ||</span><br><span class="line">    // 或者 psync_offset 小于 server.repl_backlog_off</span><br><span class="line">    // （想要恢复的那部分数据已经被覆盖）</span><br><span class="line">    psync_offset &lt; server.repl_backlog_off ||</span><br><span class="line">    // psync offset 大于 backlog 所保存的数据的偏移量</span><br><span class="line">    psync_offset &gt; (server.repl_backlog_off + server.repl_backlog_histlen))</span><br><span class="line">&#123;</span><br><span class="line">    // 执行 FULL RESYNC</span><br><span class="line">    redisLog(REDIS_NOTICE,</span><br><span class="line">        &quot;Unable to partial resync with the slave for lack of backlog (Slave request was: %lld).&quot;, psync_offset);</span><br><span class="line">    if (psync_offset &gt; server.master_repl_offset) &#123;</span><br><span class="line">        redisLog(REDIS_WARNING,</span><br><span class="line">            &quot;Warning: slave tried to PSYNC with an offset that is greater than the master replication offset.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    goto need_full_resync;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>3、如果是部分复制<br>
-Master会向Slave发送 backlog 中从 offset 到 backlog 尾部之间的数据<br>
-代码：<code>replication.c/addReplyReplicationBacklog()</code><br>
-部分复制在3.0版本和之后的版本中的实现有比较大的差异。<br>
-在3.0时，部分复制发生在Slave向Master发送PSYNC命令时。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line">void syncCommand(redisClient *c) &#123;</span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">    if (!strcasecmp(c-&gt;argv[0]-&gt;ptr,&quot;psync&quot;)) &#123;</span><br><span class="line">        // 尝试进行 PSYNC</span><br><span class="line">        if (masterTryPartialResynchronization(c) == REDIS_OK) &#123;</span><br><span class="line">            // 可执行 PSYNC</span><br><span class="line">            server.stat_sync_partial_ok++;</span><br><span class="line">            return; /* No full resync needed, return. */</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            // 不可执行 PSYNC</span><br><span class="line">            char *master_runid = c-&gt;argv[1]-&gt;ptr;</span><br><span class="line">            </span><br><span class="line">            /* Increment stats for failed PSYNCs, but only if the</span><br><span class="line">             * runid is not &quot;?&quot;, as this is used by slaves to force a full</span><br><span class="line">             * resync on purpose when they are not albe to partially</span><br><span class="line">             * resync. */</span><br><span class="line">            if (master_runid[0] != &apos;?&apos;) server.stat_sync_partial_err++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int masterTryPartialResynchronization(redisClient *c) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* If we reached this point, we are able to perform a partial resync:</span><br><span class="line">     * 程序运行到这里，说明可以执行 partial resync</span><br><span class="line">     *</span><br><span class="line">     * 1) Set client state to make it a slave.</span><br><span class="line">     *    将客户端状态设为 salve  </span><br><span class="line">     *</span><br><span class="line">     * 2) Inform the client we can continue with +CONTINUE</span><br><span class="line">     *    向 slave 发送 +CONTINUE ，表示 partial resync 的请求被接受</span><br><span class="line">     *</span><br><span class="line">     * 3) Send the backlog data (from the offset to the end) to the slave. </span><br><span class="line">     *    发送 backlog 中，客户端所需要的数据</span><br><span class="line">     */</span><br><span class="line">    c-&gt;flags |= REDIS_SLAVE;</span><br><span class="line">    c-&gt;replstate = REDIS_REPL_ONLINE;</span><br><span class="line">    c-&gt;repl_ack_time = server.unixtime;</span><br><span class="line">    listAddNodeTail(server.slaves,c);</span><br><span class="line">    /* We can&apos;t use the connection buffers since they are used to accumulate</span><br><span class="line">     * new commands at this stage. But we are sure the socket send buffer is</span><br><span class="line">     * emtpy so this write will never fail actually. */</span><br><span class="line">    // 向从服务器发送一个同步 +CONTINUE ，表示 PSYNC 可以执行</span><br><span class="line">    buflen = snprintf(buf,sizeof(buf),&quot;+CONTINUE\r\n&quot;);</span><br><span class="line">    if (write(c-&gt;fd,buf,buflen) != buflen) &#123;</span><br><span class="line">        freeClientAsync(c);</span><br><span class="line">        return REDIS_OK;</span><br><span class="line">    &#125;</span><br><span class="line">    // 发送 backlog 中的内容（也即是从服务器缺失的那些内容）到从服务器</span><br><span class="line">    psync_len = addReplyReplicationBacklog(c,psync_offset);</span><br><span class="line">    redisLog(REDIS_NOTICE,</span><br><span class="line">        &quot;Partial resynchronization request accepted. Sending %lld bytes of backlog starting from offset %lld.&quot;, psync_len, psync_offset);</span><br><span class="line">        </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>3.0后，在每次命令执行完之后，还会触发命令传播：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">void processInputBufferAndReplicate(client *c) &#123;</span><br><span class="line">    // 处理命令然后广播命令</span><br><span class="line">    // if this is a slave, we just process the commands</span><br><span class="line">    if (!(c-&gt;flags &amp; CLIENT_MASTER)) &#123;</span><br><span class="line">        processInputBuffer(c);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        /* If the client is a master we need to compute the difference</span><br><span class="line">         * between the applied offset before and after processing the buffer,</span><br><span class="line">         * to understand how much of the replication stream was actually</span><br><span class="line">         * applied to the master state: this quantity, and its corresponding</span><br><span class="line">         * part of the replication stream, will be propagated to the</span><br><span class="line">         * sub-replicas and to the replication backlog. */</span><br><span class="line">        size_t prev_offset = c-&gt;reploff;</span><br><span class="line">        processInputBuffer(c);</span><br><span class="line">        // applied is how much of the replication stream was actually applied to the master state</span><br><span class="line">        size_t applied = c-&gt;reploff - prev_offset;</span><br><span class="line">        if (applied) &#123;</span><br><span class="line"></span><br><span class="line">            replicationFeedSlavesFromMasterStream(server.slaves,</span><br><span class="line">                    c-&gt;pending_querybuf, applied);</span><br><span class="line">            sdsrange(c-&gt;pending_querybuf,applied,-1);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>所谓命令传播，就是当Master节点每处理完一个命令都会把命令广播给所有的子节点，而每个子节点接收到Master的广播过来的命令后，会在处理完之后继续广播给自己的子节点。<br>
-命令传播也是异步的操作，即Master节点处理完客户端的命令之后会立马向客户端返回结果，而不会一直等待所有的子节点都确认完成操作后再返回以保证Redis高效的性能。<br>
-4、什么时候会改为采用全量复制<br>
-上面的增量复制中，我们看到Redis实际上是将repl_backlog中的内容复制给了Slave，backlog是一块内存缓冲区（默认大小为1M），每次处理完命令之后，先写入缓冲区repl_backlog, 然后再发送给Slave。<br>
-如果一个Slave断连了一段时间，重启后Master可以将这块缓冲区内的内容复制给Slave，但是如果断连的时间比较长，也有可能会触发全量复制，因为缓冲区能保存的命令有限，只能至多保存的命令长度为repl_backlog_length，如果某个子节点落后当前最新命令的长度大于了repl_backlog_length，那么就会触发全量复制。<br>
-5、如果是全量复制<br>
-这种情况下，Master并不会直接将RDB文件传给Slave，而是先发给Slave<code>+FULLRESYNC</code>，；<br>
-代码：<code>replication.c/masterTryPartialResynchronization()</code>的末尾<br>
-什么时候Master会将RDB文件传给Slave呢？如果当前已经有可用的RDB文件，则直接将RDB文件传输给Slave；如果当前RDB正在备份过程中，Master会在每次RDB文件备份完毕后执行一次传输任务。<br>
-<code>replication.c/syncCommand()</code>末尾Master判断RDB当前的备份状态，设置标识表示当前RDB文件是否可用于复制，如果可以复制则会在之后的主事件循环中触发文件的发送：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">void syncCommand(redisClient *c) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Here we need to check if there is a background saving operation</span><br><span class="line">     * in progress, or if it is required to start one */</span><br><span class="line">    // 检查是否有 BGSAVE 在执行</span><br><span class="line">    if (server.rdb_child_pid != -1) &#123;</span><br><span class="line">        /* Ok a background save is in progress. Let&apos;s check if it is a good</span><br><span class="line">         * one for replication, i.e. if there is another slave that is</span><br><span class="line">         * registering differences since the server forked to save */</span><br><span class="line">        redisClient *slave;</span><br><span class="line">        listNode *ln;</span><br><span class="line">        listIter li;</span><br><span class="line"></span><br><span class="line">        // 如果有至少一个 slave 在等待这个 BGSAVE 完成</span><br><span class="line">        // 那么说明正在进行的 BGSAVE 所产生的 RDB 也可以为其他 slave 所用</span><br><span class="line">        listRewind(server.slaves,&amp;li);</span><br><span class="line">        while((ln = listNext(&amp;li))) &#123;</span><br><span class="line">            slave = ln-&gt;value;</span><br><span class="line">            if (slave-&gt;replstate == REDIS_REPL_WAIT_BGSAVE_END) break;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        if (ln) &#123;</span><br><span class="line">            /* Perfect, the server is already registering differences for</span><br><span class="line">             * another slave. Set the right state, and copy the buffer. */</span><br><span class="line">            // 幸运的情况，可以使用目前 BGSAVE 所生成的 RDB</span><br><span class="line">            copyClientOutputBuffer(c,slave);</span><br><span class="line">            // 设置复制状态</span><br><span class="line">            c-&gt;replstate = REDIS_REPL_WAIT_BGSAVE_END;</span><br><span class="line">            redisLog(REDIS_NOTICE,&quot;Waiting for end of BGSAVE for SYNC&quot;);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            /* No way, we need to wait for the next BGSAVE in order to</span><br><span class="line">             * register differences */</span><br><span class="line">            // 不好运的情况，必须等待下个 BGSAVE</span><br><span class="line">            c-&gt;replstate = REDIS_REPL_WAIT_BGSAVE_START;</span><br><span class="line">            redisLog(REDIS_NOTICE,&quot;Waiting for next BGSAVE for SYNC&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        /* Ok we don&apos;t have a BGSAVE in progress, let&apos;s start one */</span><br><span class="line">        // 没有 BGSAVE 在进行，开始一个新的 BGSAVE</span><br><span class="line">        redisLog(REDIS_NOTICE,&quot;Starting BGSAVE for SYNC&quot;);</span><br><span class="line">        if (rdbSaveBackground(server.rdb_filename) != REDIS_OK) &#123;</span><br><span class="line">            redisLog(REDIS_NOTICE,&quot;Replication failed, can&apos;t BGSAVE&quot;);</span><br><span class="line">            addReplyError(c,&quot;Unable to perform background save&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line">        // 设置状态</span><br><span class="line">        c-&gt;replstate = REDIS_REPL_WAIT_BGSAVE_END;</span><br><span class="line">        /* Flush the script cache for the new slave. */</span><br><span class="line">        // 因为新 slave 进入，刷新复制脚本缓存</span><br><span class="line">        replicationScriptCacheFlush();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>主事件循环中发RDB文件的代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Check if a background saving or AOF rewrite in progress terminated. */</span><br><span class="line">    // 检查 BGSAVE 或者 BGREWRITEAOF 是否已经执行完毕</span><br><span class="line">    if (server.rdb_child_pid != -1 || server.aof_child_pid != -1) &#123;</span><br><span class="line">        int statloc;</span><br><span class="line">        pid_t pid;</span><br><span class="line"></span><br><span class="line">        // 接收子进程发来的信号，非阻塞</span><br><span class="line">        if ((pid = wait3(&amp;statloc,WNOHANG,NULL)) != 0) &#123;</span><br><span class="line">            int exitcode = WEXITSTATUS(statloc);</span><br><span class="line">            int bysignal = 0;</span><br><span class="line">            </span><br><span class="line">            if (WIFSIGNALED(statloc)) bysignal = WTERMSIG(statloc);</span><br><span class="line"></span><br><span class="line">            // BGSAVE 执行完毕</span><br><span class="line">            if (pid == server.rdb_child_pid) &#123;</span><br><span class="line">                backgroundSaveDoneHandler(exitcode,bysignal);</span><br><span class="line"></span><br><span class="line">            // BGREWRITEAOF 执行完毕</span><br><span class="line">            &#125; else if (pid == server.aof_child_pid) &#123;</span><br><span class="line">                backgroundRewriteDoneHandler(exitcode,bysignal);</span><br><span class="line"></span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                redisLog(REDIS_WARNING,</span><br><span class="line">                    &quot;Warning, detected child with unmatched pid: %ld&quot;,</span><br><span class="line">                    (long)pid);</span><br><span class="line">            &#125;</span><br><span class="line">            updateDictResizePolicy();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>接下来的调用包括：<br>
-<code>replication.c/backgroundSaveDoneHandler()</code><br>
-<code>replication.c/updateSlavesWaitingBgsave()</code><br>
-<code>replication.c/sendBulkToSlave()</code></p>
-<p>全量同步的大致流程如此，主要分为以下几步：</p>
-<ol>
-<li>Master节点开启子进程进行RDB文件生成</li>
-<li>Master节点将RDB文件发送给Slave节点</li>
-<li>Slave节点清空内存中的所有数据并删除之前的RDB文件</li>
-<li>Slave节点使用从Master接收的RDB文件恢复数据到内存中</li>
-</ol>
-<p>需要注意的是，这个过程中的每一步都是耗时的IO操作，所以大部分时候Redis都是尽可能采用增量复制，而不是全量复制。<br>
-下面再来讨论Master如何发送及Slave如何接收这份数据。</p>
-<h3 id="主从复制执行过程-master如何发送及slave如何接收复制数据"><a class="header-anchor" href="#主从复制执行过程-master如何发送及slave如何接收复制数据">¶</a>主从复制执行过程 - Master如何发送及Slave如何接收复制数据</h3>
-<p>1、如果是全量复制<br>
-Slave和Master刚开始握手完毕后，会注册一个<code>readSyncBulkPayload</code>处理器，用于读取从Master发送过来的RDB文件。<br>
-2、Slave 将数据文件保存到磁盘上，然后再加载到内存中；<br>
-从库接收到RDB文件后，会<strong>先清空当前数据库，然后加载RDB文件</strong>，这是因为从库在开始和主库同步前可能保存了其他数据，为了避免之前数据的影响，从库需要先把当前数据库清空。<br>
-3、同步过程中主库产生的新数据也要同步给从库<br>
-主库同步数据给从库的过程中，主库不会被阻塞，仍然可以正常接收请求（否则Redis服务不就中断了？），但是这些请求中的写操作并没有记录到刚刚生成的RDB文件中，为了保证主从库的数据一致性，主库会在内存中用专门的<strong>replication buffer（代码中对应</strong>repl_backlog_buffer**）**记录RDB文件生成后收到的所有写操作。<br>
-<code>repl_backlog_buffer</code>是一个环形缓冲区，主库会记录自己写到的位置，而从库则会记录自己已经读到的位置，可以使用<code>repl_backlog_size</code>来配置这个缓冲区的大小，如果配得过小，可能会导致增量复制阶段从库复制进度赶不上主库，进而导致从库重新进行全量复制。<br>
-在Master端定义的offset是<code>master_repl_offset</code>，在Slave端定义的offset是<code>slave_repl_offset</code>，正常情况下这两个偏移量是基本相等的。<br>
-增量同步期间，从库在发送psync的同时，会把自己当前的slave_repl_offset发给主库，主库判断自己的master_repl_offset和slave_repl_offset之间的差距，如果断连了，master_repl_offset可能会超过slave_repl_offset，那么将这超过的部分发给slave就可以恢复同步了。</p>
-<h2 id="主从复制存在的问题"><a class="header-anchor" href="#主从复制存在的问题">¶</a>主从复制存在的问题</h2>
-<h3 id="主从库间网络断了怎么办？"><a class="header-anchor" href="#主从库间网络断了怎么办？">¶</a>主从库间网络断了怎么办？</h3>
-<p>Redis2.8之前，如果主从同步过程中出现了网络闪断，那么主从是会重新进行一次全量复制的，开销非常大。<br>
-Redis2.8之后，网络闪断后，主从会采取<strong>增量复制</strong>，将闪断期间的命令发给从库。</p>
-<h3 id="宕机恢复"><a class="header-anchor" href="#宕机恢复">¶</a>宕机恢复</h3>
-<p>因为 slave 顶多只负责处理读请求，slave 挂掉不会造成数据丢失的问题。<br>
-slave 宕机的情况下，应该要求客户端具有一定的熔断恢复能力，并且能在重启后快速恢复：</p>
-<ol>
-<li>恢复正常后重新连接；</li>
-<li>Master 收到 Slave 的连接后，第一次同步时，主节点做一次 bgsave，并同时将后续修改操作记录到内存 buffer；</li>
-<li>Master 将其完整的 rdb 数据文件全量发送给 Slave；</li>
-<li>Slave 接收完成后将 rdb 镜像文件加载到内存，加载完成后，再通知 Master 将期间修改的操作记录同步到 Slave 节点进行重放就完成了同步过程；</li>
-<li>如果 Master 同时收到多个 Slave 发来的同步请求，Master 只会在后台启动一个进程保存数据文件，然后将其发送给所有的 Slave，确保 Slave 正常。</li>
-</ol>
-<p>主从复制无法应对 Master 挂掉的情况，实际上这种方案只能尽量保证数据不会丢失，不能保证服务的高可用性，为此，需要引入 Redis 的 Sentinel 机制。</p>
-<p>客户端可以使用 <code>WAIT</code> 命令来请求同步复制某些特定的数据。但是，WAIT 命令只能确保在其他 Redis 实例中有指定数量的已确认的副本：在故障转移期间，由于不同原因的故障转移或是由于 Redis 持久性的实际配置，故障转移期间确认的写入操作可能仍然会丢失。</p>
-<h3 id="是否可以关闭持久化"><a class="header-anchor" href="#是否可以关闭持久化">¶</a>是否可以关闭持久化</h3>
-<p>作为复制方案中的一环，可以考虑关闭 Master 或 Slave 的持久化功能，但是并不建议关掉它们，因为：</p>
-<ul>
-<li>如果关闭 Master 的持久化：重启（重启功能可以由一些只能运维工具来保证，比如 K8S）的 Master 将从一个空数据集开始，如果一个 Slave 试图与它同步，那么这个 Slave 也会被清空。</li>
-<li>如果关闭 Slave 的持久化：重启的 Slave 需要从 Master 全量同步数据。</li>
-</ul>
-<p>正如前所述，关闭了持久化并配置了自动重启的 Master 是危险的——会导致整个集群的数据全部被清空。<br>
-如果 Sentinel 集群用于需要高可用的场景、且 Master 被关闭掉了持久化功能，也是非常危险的：</p>
-<ul>
-<li>如果重启比较慢，Sentinel 的故障迁移机制重新选主，一个 Slave 会上升为 Master；</li>
-<li>如果重启得足够快，Sentinel 没有探测到故障，此时 Master 数据被清空了，而 Slave 仍从 Master 同步数据，这将引起上边提到的故障模式——数据将丢失。</li>
-</ul>
-<p>因此，如果考虑磁盘性能过慢会导致延迟、关掉了持久化，那么自动重启进程这项应该被禁用。</p>
-<h3 id="如何保证主从数据的一致性-数据丢失窗口的存在"><a class="header-anchor" href="#如何保证主从数据的一致性-数据丢失窗口的存在">¶</a>如何保证主从数据的一致性 - 数据丢失窗口的存在</h3>
-<p>由于 Redis 使用<strong>异步复制</strong>，无法保证Slave和Master的实时一致性，因此总会有一个<strong>数据丢失窗口</strong>。<br>
-那在什么情况下，从库会滞后执行同步命令呢？</p>
-<ol>
-<li>一方面，主从库间的网络可能会有传输延迟，所以从库不能及时地收到主库发送的命令，从库上执行同步命令的时间就会被延后。</li>
-<li>另一方面，即使从库及时收到了主库的命令，但是，也可能会因为正在处理其它复杂度高的命令（例如集合操作命令）而阻塞。此时，从库需要处理完当前的命令，才能执行主库发送的命令操作，这就会造成主从数据不一致。而在主库命令被滞后处理的这段时间内，主库本身可能又执行了新的写操作。这样一来，主从库间的数据不一致程度就会进一步加剧。</li>
-</ol>
-<p>因为异步复制的本质，Redis主从复制无法完全避免数据的丢失，除了尽量保证网络连接状况良好外，还可以写一些监控程序来监控主从库间的复制进度，原理是实时给Redis实例发<code>info replication</code>命令得到<code>master_repl_offset</code>和<code>slave_repl_offset</code>这两个进度信息，计算这二者的差值即可得到主从复制进度的实时程度，如果某个从库进度差值大于我们预设的一个阈值，我们可以让客户端不再和这个从库连接进行数据读取，从而减少读到不一致数据的情况。</p>
-<blockquote>
-<p>这个阈值当然不能设置得过低，否则可能导致所有从库都连不上了。</p>
-</blockquote>
-<p>既然无法避免，那么只能退一步、控制影响范围了，Redis 可以保证：</p>
-<ol>
-<li>Redis slave 每秒钟都会 ping master，确认已处理的复制流的数量。</li>
-<li>Redis master 会记得上一次从每个 slave 都收到 ping 的时间。</li>
-<li>用户可以配置一个最小的 slave 数量，使得它滞后 &lt;= 最大秒数。</li>
-<li>如果至少有 N 个 slave ，并且滞后小于 M 秒，则写入将被接受。如果条件不满足，master 将会回复一个 error 并且写入将不被接受。</li>
-</ol>
-<p>这些条件是通过<code>min-slaves-to-write</code>和<code>min-slaves-max-lag</code>这两个配置来实现的：</p>
-<ul>
-<li><code>min-slaves-to-write</code>：最少有n个slave的连接还是健康的情况下才能提供服务，至于怎么判断连接是否健康，需要看下面一个配置；</li>
-<li><code>min-slaves-max-lag</code>：判断连接健康的最大延迟时间，slave每次PING Master时Master都会记录该Slave 最后一次PING的时间，如果最后一次PING成功的时间距今比较长了，就说明该Slave的连接状态很有可能已经出问题了。</li>
-</ul>
-<p>对于给定的写入来说，虽然不能保证绝对实时的一致性，但至少数据丢失的时间窗限制在给定的秒数内。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"># It is possible for a master to stop accepting writes if there are less than</span><br><span class="line"># N slaves connected, having a lag less or equal than M seconds.</span><br><span class="line">#</span><br><span class="line"># The N slaves need to be in &quot;online&quot; state.</span><br><span class="line">#</span><br><span class="line"># The lag in seconds, that must be &lt;= the specified value, is calculated from</span><br><span class="line"># the last ping received from the slave, that is usually sent every second.</span><br><span class="line">#</span><br><span class="line"># This option does not GUARANTEES that N replicas will accept the write, but</span><br><span class="line"># will limit the window of exposure for lost writes in case not enough slaves</span><br><span class="line"># are available, to the specified number of seconds.</span><br><span class="line">#</span><br><span class="line"># For example to require at least 3 slaves with a lag &lt;= 10 seconds use:</span><br><span class="line">#</span><br><span class="line"># min-slaves-to-write 3</span><br><span class="line"># min-slaves-max-lag 10</span><br><span class="line">#</span><br><span class="line"># Setting one or the other to 0 disables the feature.</span><br><span class="line">#</span><br><span class="line"># By default min-slaves-to-write is set to 0 (feature disabled) and</span><br><span class="line"># min-slaves-max-lag is set to 10.</span><br><span class="line"></span><br><span class="line">min-slaves-to-write &lt;slave 数量&gt;</span><br><span class="line">min-slaves-max-lag &lt;秒数&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="过期的-key-问题"><a class="header-anchor" href="#过期的-key-问题">¶</a>过期的 key 问题</h3>
-<p>由于复制的异步特性，对 key 设置过期时间和写入操作很容易导致 race condition 及导致数据集不一致，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(1) sadd x 1</span><br><span class="line">(2) expire x 100</span><br><span class="line">(3) sadd x 2</span><br></pre></td></tr></table></figure>
-<p>在 Master 上，命令(3)是在过期前执行的，而 Slave 上可能因为延后导致命令(3)执行前 x 就已经过期了，此时 x 是没有过期时间的（ttl x 得到-1 表示不过期），这就导致了数据的不一致。</p>
-<blockquote>
-<p>set 命令不会出现这个问题，因为 set 会将过期时间给覆盖成-1。当然情况比较复杂，也有可能是我没有想到。</p>
-</blockquote>
-<p>为了保证针对过期的 key 的复制能够正确工作，Redis 提供如下保证：</p>
-<ol>
-<li>slave 不会让 key 过期，而是等待 master 让 key 过期。当一个 master 让一个 key 到期（或由于 LRU 算法将之驱逐）时，它会合成一个 DEL 命令并传输到所有的 slave。一旦一个 slave 被提升为一个 master ，它将开始独立地过期 key，而不需要任何旧 master 的帮助。</li>
-<li>但是，由于这是 master 驱动的 key 过期行为，master 无法及时提供 DEL 命令，所以有时候 slave 的内存中仍然可能存在在逻辑上已经过期的 key 。为了处理这个问题，slave 使用它的逻辑时钟以报告只有在不违反数据集的一致性的读取操作（从主机的新命令到达）中才存在 key。用这种方法，slave 避免报告逻辑过期的 key 仍然存在。在实际应用中，使用 slave 程序进行缩放的 HTML 碎片缓存，将避免返回已经比期望的时间更早的数据项。</li>
-<li>在 Lua 脚本执行期间，不执行任何 key 过期操作。当一个 Lua 脚本运行时，从概念上讲，master 中的时间是被冻结的，这样脚本运行的时候，一个给定的键要么存在要么不存在。这可以防止 key 在脚本中间过期，保证将相同的脚本发送到 slave ，从而在二者的数据集中产生相同的效果。</li>
-</ol>
-<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
-<h3 id="aof日志更全-为什么主从同步不使用aof而是rdb呢？"><a class="header-anchor" href="#aof日志更全-为什么主从同步不使用aof而是rdb呢？">¶</a>AOF日志更全，为什么主从同步不使用AOF而是RDB呢？</h3>
-<p>网络传输效率：RDB直接存储数据，而不是命令，数据量更小，传输更快。<br>
-恢复效率：因为使用AOF恢复数据库的话是需要将AOF中记录的命令再执行一次的，这个效率远不如直接将RDB中的数据直接加载到内存里。</p>
-<h3 id="主从切换过程中-客户端能正常进行请求吗？"><a class="header-anchor" href="#主从切换过程中-客户端能正常进行请求吗？">¶</a>主从切换过程中，客户端能正常进行请求吗？</h3>
-<p>主库故障后从库仍能正常接收读请求，但主库挂掉了所以无法处理写请求。</p>
-<h3 id="如果实现应用程序不感知服务器的中断？"><a class="header-anchor" href="#如果实现应用程序不感知服务器的中断？">¶</a>如果实现应用程序不感知服务器的中断？</h3>
-<ol>
-<li>客户端可以缓存写请求，因为使用Redis的场景同步写请求比较少，且一般都不会在应用程序的关键路径上，所以在不能立刻执行写请求的情况下，客户端完全可以先把请求缓存起来，给应用程序返回一个确认即可。</li>
-<li>另外，主从切换后，客户端要能及时和新主库重新建立连接。</li>
-</ol>
-<h3 id="主从数据发生不一致怎么办？"><a class="header-anchor" href="#主从数据发生不一致怎么办？">¶</a>主从数据发生不一致怎么办？</h3>
-<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
-<ol>
-<li><a href="https://www.cnblogs.com/hongmoshui/p/10594639.html" target="_blank" rel="noopener">Redis复制实现原理</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/102859170" target="_blank" rel="noopener">Redis集群——主从复制数据同步</a></li>
-</ol>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/fb6b62e.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2031,6 +1613,383 @@ Redis-Client 在操作的时候，会产生具有不同事件类型的 socket，
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d368c702.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/d368c702.html" itemprop="url">Redis高可用方案Sentinel</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-22T12:21:48+08:00">
+                2019-09-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/缓存/" itemprop="url" rel="index">
+                    <span itemprop="name">缓存</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  6.3k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  24 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <a id="more"></a>
+<h2 id="操作"><a class="header-anchor" href="#操作">¶</a>操作</h2>
+<ol>
+<li>
+<p>Master<br>
+TODO</p>
+</li>
+<li>
+<p>Slave</p>
+</li>
+<li>
+<p>Sentinel</p>
+</li>
+<li>
+<p>获取集群信息</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 info Sentinel</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>获取 master 节点地址</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="客户端如何连接sentinel集群"><a class="header-anchor" href="#客户端如何连接sentinel集群">¶</a>客户端如何连接Sentinel集群</h2>
+<p><img src="https://tallate.top/imgs/Redis/Sentinel.png" alt="Sentinel" title="Sentinel"><br>
+在 Sentinel 模式下，客户端不是直接连接服务器的，而是先访问 Sentinel 拿到集群信息再尝试连接 Master。当 Master 发生故障时，客户端会重新向 Sentinel 要地址，并自动完成节点切换。</p>
+<ul>
+<li>Master 和 Slave 的配置和之前并无区别；</li>
+<li>Sentinel 相当于对 Master 的代理，Sentinel 可以通过发布订阅功能获取到 Slave 和其他 Sentinel 的信息。</li>
+</ul>
+<blockquote>
+<p>其实 Sentinel 的内核与其他形式的 Redis 服务器基本一致，只是支持的命令不同、负责的任务也不同。</p>
+</blockquote>
+<p>同理，客户端也可以通过pubsub功能来订阅集群中的其他信息，关键事件如下：<br>
+<img src="https://tallate.top/imgs/Redis/RedisSentinel%E4%BA%8B%E4%BB%B6.jpg" alt="RedisSentinel事件" title="RedisSentinel事件"></p>
+<h2 id="sentinel-执行原理"><a class="header-anchor" href="#sentinel-执行原理">¶</a>Sentinel 执行原理</h2>
+<p><img src="https://tallate.top/imgs/Redis/Sentinel%E7%9A%84%E4%B8%BB%E8%A6%81%E4%BB%BB%E5%8A%A1.jpg" alt="Sentinel的主要任务" title="Sentinel的主要任务"><br>
+在Sentinel的主事件循环中可以看到它每100毫秒执行的定时任务：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Run the Sentinel timer if we are in sentinel mode. */</span><br><span class="line">    // 如果服务器运行在 sentinel 模式下，那么执行 SENTINEL 的主函数</span><br><span class="line">    run_with_period(100) &#123;</span><br><span class="line">        if (server.sentinel_mode) sentinelTimer();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="实例状态探测"><a class="header-anchor" href="#实例状态探测">¶</a>实例状态探测</h3>
+<ul>
+<li>每个 Sentinel 以每秒钟一次的频率向它所知的主服务器、从服务器以及其他 Sentinel 实例发送一个 <code>PING 命令</code>。<br>
+如果一个实例（instance）距离最后一次有效回复 <code>PING</code> 命令的时间超过 <code>down-after-milliseconds</code> 选项所指定的值， 那么这个实例会被 Sentinel 标记为<strong>主观下线</strong>。 一个有效回复可以是： +PONG 、 -LOADING 或者 -MASTERDOWN。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br></pre></td><td class="code"><pre><span class="line">void sentinelHandleDictOfRedisInstances(dict *instances) &#123;</span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">    // 遍历多个实例，这些实例可以是多个主服务器、多个从服务器或者多个 sentinel</span><br><span class="line">    di = dictGetIterator(instances);</span><br><span class="line">    while((de = dictNext(di)) != NULL) &#123;</span><br><span class="line"></span><br><span class="line">        // 取出实例对应的实例结构</span><br><span class="line">        sentinelRedisInstance *ri = dictGetVal(de);</span><br><span class="line"></span><br><span class="line">        // 执行调度操作</span><br><span class="line">        sentinelHandleRedisInstance(ri);</span><br><span class="line"></span><br><span class="line">        // 如果被遍历的是主服务器，那么递归地遍历该主服务器的所有从服务器</span><br><span class="line">        // 以及所有 sentinel</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">            // 所有从服务器</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;slaves);</span><br><span class="line"></span><br><span class="line">            // 所有 sentinel</span><br><span class="line">            sentinelHandleDictOfRedisInstances(ri-&gt;sentinels);</span><br><span class="line"></span><br><span class="line">            // 对已下线主服务器（ri）的故障迁移已经完成</span><br><span class="line">            // ri 的所有从服务器都已经同步到新主服务器</span><br><span class="line">            if (ri-&gt;failover_state == SENTINEL_FAILOVER_STATE_UPDATE_CONFIG) &#123;</span><br><span class="line">                // 已选出新的主服务器</span><br><span class="line">                switch_to_promoted = ri;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    /* ========== MONITORING HALF ============ */</span><br><span class="line">    /* ==========     监控操作    =========*/</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    /* 对所有类型实例进行处理 */</span><br><span class="line"></span><br><span class="line">    // 如果有需要的话，创建连向实例的网络连接</span><br><span class="line">    sentinelReconnectInstance(ri);</span><br><span class="line"></span><br><span class="line">    // 根据情况，向实例发送 PING、 INFO 或者 PUBLISH 命令</span><br><span class="line">    sentinelSendPeriodicCommands(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 根据时间和实例类型等情况，向实例发送命令，比如 INFO 、PING 和 PUBLISH</span><br><span class="line">// 虽然函数的名字包含 Ping ，但命令并不只发送 PING 命令</span><br><span class="line">/* Send periodic PING, INFO, and PUBLISH to the Hello channel to</span><br><span class="line"> * the specified master or slave instance. */</span><br><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    mstime_t now = mstime();</span><br><span class="line">    mstime_t info_period, ping_period;</span><br><span class="line">    int retval;</span><br><span class="line"></span><br><span class="line">    /* Return ASAP if we have already a PING or INFO already pending, or</span><br><span class="line">     * in the case the instance is not properly connected. */</span><br><span class="line">    // 函数不能在网络连接未创建时执行</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_DISCONNECTED) return;</span><br><span class="line"></span><br><span class="line">    /* For INFO, PING, PUBLISH that are not critical commands to send we</span><br><span class="line">     * also have a limit of SENTINEL_MAX_PENDING_COMMANDS. We don&apos;t</span><br><span class="line">     * want to use a lot of memory just because a link is not working</span><br><span class="line">     * properly (note that anyway there is a redundant protection about this,</span><br><span class="line">     * that is, the link will be disconnected and reconnected if a long</span><br><span class="line">     * timeout condition is detected. */</span><br><span class="line">    // 为了避免 sentinel 在实例处于不正常状态时，发送过多命令</span><br><span class="line">    // sentinel 只在待发送命令的数量未超过 SENTINEL_MAX_PENDING_COMMANDS 常量时</span><br><span class="line">    // 才进行命令发送</span><br><span class="line">    if (ri-&gt;pending_commands &gt;= SENTINEL_MAX_PENDING_COMMANDS) return;</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* We ping instances every time the last received pong is older than</span><br><span class="line">     * the configured &apos;down-after-milliseconds&apos; time, but every second</span><br><span class="line">     * anyway if &apos;down-after-milliseconds&apos; is greater than 1 second. */</span><br><span class="line">    ping_period = ri-&gt;down_after_period;</span><br><span class="line">    if (ping_period &gt; SENTINEL_PING_PERIOD) ping_period = SENTINEL_PING_PERIOD;</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pong_time) &gt; ping_period) &#123;</span><br><span class="line">        /* Send PING to all the three kinds of instances. */</span><br><span class="line">        sentinelSendPing(ri);</span><br><span class="line">    &#125; else if ((now - ri-&gt;last_pub_time) &gt; SENTINEL_PUBLISH_PERIOD) &#123;</span><br><span class="line">        /* PUBLISH hello messages to all the three kinds of instances. */</span><br><span class="line">        sentinelSendHello(ri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="从主观下线到客观下线"><a class="header-anchor" href="#从主观下线到客观下线">¶</a>从主观下线到客观下线</h3>
+<ul>
+<li>如果一个主服务器被标记为<strong>主观下线</strong>， 那么正在监视这个主服务器的所有 Sentinel 要以每秒一次的频率确认主服务器的确进入了主观下线状态。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line"></span><br><span class="line">    /* We don&apos;t proceed with the acting half if we are in TILT mode.</span><br><span class="line">     * TILT happens when we find something odd with the time, like a</span><br><span class="line">     * sudden change in the clock. */</span><br><span class="line">    // 如果 Sentinel 处于 TILT 模式，那么不执行故障检测。</span><br><span class="line">    if (sentinel.tilt) &#123;</span><br><span class="line"></span><br><span class="line">        // 如果 TILI 模式未解除，那么不执行动作</span><br><span class="line">        if (mstime()-sentinel.tilt_start_time &lt; SENTINEL_TILT_PERIOD) return;</span><br><span class="line"></span><br><span class="line">        // 时间已过，退出 TILT 模式</span><br><span class="line">        sentinel.tilt = 0;</span><br><span class="line">        sentinelEvent(REDIS_WARNING,&quot;-tilt&quot;,NULL,&quot;#tilt mode exited&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* Every kind of instance */</span><br><span class="line">    // 检查给定实例是否进入 SDOWN 状态</span><br><span class="line">    sentinelCheckSubjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* Is this instance down from our point of view? */</span><br><span class="line">// 检查实例是否已下线（从本 Sentinel 的角度来看）</span><br><span class="line">void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Update the SDOWN flag. We believe the instance is SDOWN if:</span><br><span class="line">     *</span><br><span class="line">     * 更新 SDOWN 标识。如果以下条件被满足，那么 Sentinel 认为实例已下线：</span><br><span class="line">     *</span><br><span class="line">     * 1) It is not replying.</span><br><span class="line">     *    它没有回应命令</span><br><span class="line">     * 2) We believe it is a master, it reports to be a slave for enough time</span><br><span class="line">     *    to meet the down_after_period, plus enough time to get two times</span><br><span class="line">     *    INFO report from the instance. </span><br><span class="line">     *    Sentinel 认为实例是主服务器，这个服务器向 Sentinel 报告它将成为从服务器，</span><br><span class="line">     *    但在超过给定时限之后，服务器仍然没有完成这一角色转换。</span><br><span class="line">     */</span><br><span class="line">    if (elapsed &gt; ri-&gt;down_after_period ||</span><br><span class="line">        (ri-&gt;flags &amp; SRI_MASTER &amp;&amp;</span><br><span class="line">         ri-&gt;role_reported == SRI_SLAVE &amp;&amp;</span><br><span class="line">         mstime() - ri-&gt;role_reported_time &gt;</span><br><span class="line">          (ri-&gt;down_after_period+SENTINEL_INFO_PERIOD*2)))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Is subjectively down */</span><br><span class="line">        if ((ri-&gt;flags &amp; SRI_S_DOWN) == 0) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;+sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 记录进入 SDOWN 状态的时间</span><br><span class="line">            ri-&gt;s_down_since_time = mstime();</span><br><span class="line">            // 打开 SDOWN 标志</span><br><span class="line">            ri-&gt;flags |= SRI_S_DOWN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 移除（可能有的） SDOWN 状态</span><br><span class="line">        /* Is subjectively up */</span><br><span class="line">        if (ri-&gt;flags &amp; SRI_S_DOWN) &#123;</span><br><span class="line">            // 发送事件</span><br><span class="line">            sentinelEvent(REDIS_WARNING,&quot;-sdown&quot;,ri,&quot;%@&quot;);</span><br><span class="line">            // 移除相关标志</span><br><span class="line">            ri-&gt;flags &amp;= ~(SRI_S_DOWN|SRI_SCRIPT_KILL_SENT);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果有足够数量的 Sentinel （至少要达到配置文件指定的数量）在指定的时间范围内同意这一判断， 那么这个主服务器被标记为<strong>客观下线</strong>。<br>
+这个数量是可以配置的，即<strong>quorum</strong>的数量。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">/* Perform scheduled operations for the specified Redis instance. */</span><br><span class="line">// 对给定的实例执行定期操作</span><br><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line">    </span><br><span class="line">    ...这里省略SDOWN检测代码</span><br><span class="line"></span><br><span class="line">    /* Only masters */</span><br><span class="line">    /* 对主服务器进行处理 */</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">        // 判断 master 是否进入 ODOWN 状态</span><br><span class="line">        sentinelCheckObjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">        // 如果主服务器进入了 ODOWN 状态，那么开始一次故障转移操作</span><br><span class="line">        if (sentinelStartFailoverIfNeeded(ri))</span><br><span class="line">            // 强制向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">            // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">            sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_ASK_FORCED);</span><br><span class="line"></span><br><span class="line">        // 执行故障转移</span><br><span class="line">        sentinelFailoverStateMachine(ri);</span><br><span class="line"></span><br><span class="line">        // 如果有需要的话，向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">        // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">        // 这一句是对那些没有进入 if(sentinelStartFailoverIfNeeded(ri)) &#123; /* ... */ &#125;</span><br><span class="line">        // 语句的主服务器使用的</span><br><span class="line">        sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_NO_FLAGS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>在一般情况下， 每个 Sentinel 会以每 10 秒一次的频率向它已知的所有主服务器和从服务器发送 <code>INFO 命令</code>。 当一个主服务器被 Sentinel 标记为客观下线时， Sentinel 向下线主服务器的所有从服务器发送 INFO 命令的频率会从 10 秒一次改为每秒一次。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">void sentinelSendPeriodicCommands(sentinelRedisInstance *ri) &#123;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* If this is a slave of a master in O_DOWN condition we start sending</span><br><span class="line">     * it INFO every second, instead of the usual SENTINEL_INFO_PERIOD</span><br><span class="line">     * period. In this state we want to closely monitor slaves in case they</span><br><span class="line">     * are turned into masters by another Sentinel, or by the sysadmin. */</span><br><span class="line">    // 对于从服务器来说， sentinel 默认每 SENTINEL_INFO_PERIOD 秒向它发送一次 INFO 命令</span><br><span class="line">    // 但是，当从服务器的主服务器处于 SDOWN 状态，或者正在执行故障转移时</span><br><span class="line">    // 为了更快速地捕捉从服务器的变动， sentinel 会将发送 INFO 命令的频率该为每秒一次</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SLAVE) &amp;&amp;</span><br><span class="line">        (ri-&gt;master-&gt;flags &amp; (SRI_O_DOWN|SRI_FAILOVER_IN_PROGRESS))) &#123;</span><br><span class="line">        info_period = 1000;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        info_period = SENTINEL_INFO_PERIOD;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    // 实例不是 Sentinel （主服务器或者从服务器）</span><br><span class="line">    // 并且以下条件的其中一个成立：</span><br><span class="line">    // 1）SENTINEL 未收到过这个服务器的 INFO 命令回复</span><br><span class="line">    // 2）距离上一次该实例回复 INFO 命令已经超过 info_period 间隔</span><br><span class="line">    // 那么向实例发送 INFO 命令</span><br><span class="line">    if ((ri-&gt;flags &amp; SRI_SENTINEL) == 0 &amp;&amp;</span><br><span class="line">        (ri-&gt;info_refresh == 0 ||</span><br><span class="line">        (now - ri-&gt;info_refresh) &gt; info_period))</span><br><span class="line">    &#123;</span><br><span class="line">        /* Send INFO to masters and slaves, not sentinels. */</span><br><span class="line">        retval = redisAsyncCommand(ri-&gt;cc,</span><br><span class="line">            sentinelInfoReplyCallback, NULL, &quot;INFO&quot;);</span><br><span class="line">        if (retval == REDIS_OK) ri-&gt;pending_commands++;</span><br><span class="line">    &#125; else if</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意上边发请求时使用的回调函数<code>sentinelInfoReplyCallback</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 处理 INFO 命令的回复</span><br><span class="line">void sentinelInfoReplyCallback(redisAsyncContext *c, void *reply, void *privdata) &#123;</span><br><span class="line">    sentinelRedisInstance *ri = c-&gt;data;</span><br><span class="line">    redisReply *r;</span><br><span class="line"></span><br><span class="line">    if (ri) ri-&gt;pending_commands--;</span><br><span class="line">    if (!reply || !ri) return;</span><br><span class="line">    r = reply;</span><br><span class="line"></span><br><span class="line">    if (r-&gt;type == REDIS_REPLY_STRING) &#123;</span><br><span class="line">        // 解析info命令的响应数据</span><br><span class="line">        sentinelRefreshInstanceInfo(ri,r-&gt;str);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>当没有足够数量的 Sentinel 同意主服务器已经下线，主服务器的客观下线状态就会被移除。<br>
+当主服务器重新向 Sentinel 的 PING 命令返回有效回复时，主服务器的主观下线状态就会被移除。</li>
+</ul>
+<h3 id="故障转移-选举-sentinel-leader"><a class="header-anchor" href="#故障转移-选举-sentinel-leader">¶</a>故障转移 - 选举 Sentinel Leader</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">void sentinelHandleRedisInstance(sentinelRedisInstance *ri) &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* ============== ACTING HALF ============= */</span><br><span class="line">    /* ==============  故障检测   ============= */</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    /* Only masters */</span><br><span class="line">    /* 对主服务器进行处理 */</span><br><span class="line">    if (ri-&gt;flags &amp; SRI_MASTER) &#123;</span><br><span class="line"></span><br><span class="line">        // 判断 master 是否进入 ODOWN 状态</span><br><span class="line">        sentinelCheckObjectivelyDown(ri);</span><br><span class="line"></span><br><span class="line">        // 如果主服务器进入了 ODOWN 状态，那么开始一次故障转移操作</span><br><span class="line">        if (sentinelStartFailoverIfNeeded(ri))</span><br><span class="line">            // 强制向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">            // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">            sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_ASK_FORCED);</span><br><span class="line"></span><br><span class="line">        // 执行故障转移</span><br><span class="line">        sentinelFailoverStateMachine(ri);</span><br><span class="line"></span><br><span class="line">        // 如果有需要的话，向其他 Sentinel 发送 SENTINEL is-master-down-by-addr 命令</span><br><span class="line">        // 刷新其他 Sentinel 关于主服务器的状态</span><br><span class="line">        // 这一句是对那些没有进入 if(sentinelStartFailoverIfNeeded(ri)) &#123; /* ... */ &#125;</span><br><span class="line">        // 语句的主服务器使用的</span><br><span class="line">        sentinelAskMasterStateToOtherSentinels(ri,SENTINEL_NO_FLAGS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="状态感知-info"><a class="header-anchor" href="#状态感知-info">¶</a>状态感知（info）</h2>
+<p>Sentinel服务器只需配置Master的地址，其他Slave的信息是通过定时（10秒）向Master发送info命令来获取的，info命令返回的信息中，包含了主从拓扑关系，其中包括每个slave的地址和端口号。有了这些信息后，哨兵就会记住这些节点的拓扑信息，在后续发生故障时，选择合适的slave节点进行故障恢复。<br>
+哨兵除了向master发送info之外，还会向每个master节点特殊的<code>pubsub</code>中发送master当前的状态信息和哨兵自身的信息，其他哨兵节点通过订阅这个pubsub，就可以拿到每个哨兵发来的信息。这么做的目的主要有2个：</p>
+<ul>
+<li>哨兵节点可以发现其他哨兵的加入，进而方便多个哨兵节点通信，为后续共同协商提供基础</li>
+<li>与其他哨兵节点交换master的状态信息，为后续判断master是否故障提供依据</li>
+</ul>
+<h2 id="心跳检测-ping"><a class="header-anchor" href="#心跳检测-ping">¶</a>心跳检测（ping）</h2>
+<p>故障发生时，需要立即启动故障恢复机制，那么Sentinel怎么及时地知道哪些节点发生故障了呢？这主要是通过向所有其他节点发送<code>PING命令</code>来实现的。<br>
+每个哨兵节点每隔1秒向master、slave、其他哨兵节点发送ping命令，如果对方能在指定时间内响应，说明节点健康存活。如果未在规定时间内（可配置）响应，那么该哨兵节点认为此节点<strong>主观下线</strong>。</p>
+<blockquote>
+<p>至于Sentinel怎么知道其他节点的地址，其实就是通过前面提到的info命令来感知的。</p>
+</blockquote>
+<h2 id="主观下线和客观下线"><a class="header-anchor" href="#主观下线和客观下线">¶</a>主观下线和客观下线</h2>
+<ul>
+<li>主观下线（Subjectively Down， 简称 SDOWN）<br>
+主观下线指的是单个 Sentinel 实例对服务器做出的下线判断。<br>
+如果一个服务器没有在 <code>master-down-after-milliseconds</code> 选项所指定的时间内， 对向它发送 <code>PING 命令</code>的 Sentinel 返回一个有效回复（有效回复只有+PONG、-LOADING 错误或 -MASTERDOWN 错误）， 那么 Sentinel 就会将这个服务器标记为主观下线。</li>
+</ul>
+<blockquote>
+<p>注意是在<code>master-down-after-milliseconds</code>时间内一直返回无效回复。</p>
+</blockquote>
+<ul>
+<li>客观下线（Objectively Down， 简称 ODOWN）<br>
+客观下线指的是多个 Sentinel 实例在对同一个 Master 做出 SDOWN 判断， 并且通过 SENTINEL <code>is-master-down-by-addr</code> 命令互相交流之后，得出的服务器下线判断。 （一个 Sentinel 可以通过向另一个 Sentinel 发送 SENTINEL is-master-down-by-addr 命令来询问对方是否认为给定的服务器已下线。）<br>
+从主观下线切换到客观下线并不是通过较严格的投票算法，而是采用了<strong>流言协议（gossip protocol）</strong>：只要 Sentinel 在给定时间内从其他 Sentinel 接收到足够数量的 Master 下线通知，那么 Sentinel 就会执行状态的切换；如果之后其他 Sentinel 不再报告 Master 已下线，则客观下线状态就会被移除。<br>
+只要一个 Sentinel 发现某个 Master 进入客观下线状态，之后就会进入<strong>故障迁移</strong>阶段，选举出一个 Sentinel 对失效的 Master 执行自动故障迁移操作。</li>
+</ul>
+<blockquote>
+<p>客观下线只适用于 Master，对 Slave 或 Sentinel 则不会达到客观下线状态。</p>
+</blockquote>
+<h2 id="故障迁移-master-挂掉-sentinel选举新master"><a class="header-anchor" href="#故障迁移-master-挂掉-sentinel选举新master">¶</a>故障迁移（Master 挂掉，Sentinel选举新Master）</h2>
+<p>单纯的主从架构并不能挽救 Master 挂掉的情况，因此引入了 Sentinel 集群。Sentinel 会不断地检查集群主服务器和从服务器是否运作正常，并在超过 n 个 Sentinel 同意后判断主节点失效（配置<code>sentinel monitor mymaster 127.0.0.1 6379 2</code>表示这个n=2），不过要注意，无论设置多少个 Sentinel 同意才能判断一个服务器失效， 一个 Sentinel 都需要获得系统中多数 Sentinel 的支持， 才能发起一次自动故障迁移。</p>
+<ul>
+<li>当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；</li>
+<li>当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
+</ul>
+<p>故障转移主要分为Sentinel选举和故障转移（Master替换）两个步骤，Sentinel选主流程如下：</p>
+<ul>
+<li>Sentinel发现主服务器已经进入客观下线状态。</li>
+<li>利用<code>Raft leader election</code>算法选举 Sentinel 中的 Leader，对我们的当前 epoch 进行自增， 并尝试在这个epoch中当选，之后，所有 Sentinel 都以更高的 epoch 为准，并主动用更新的 epoch 代替自己的配置。</li>
+<li>如果当选失败， 那么在设定的故障迁移超时时间的两倍之后，重新尝试当选。 如果当选成功， 那么执行Slave的选主。</li>
+</ul>
+<h3 id="slave选举"><a class="header-anchor" href="#slave选举">¶</a>Slave选举</h3>
+<p>Slave选举的规则如下：</p>
+<ul>
+<li>在失效主服务器属下的从服务器当中， 那些被标记为主观下线、已断线、或者最后一次回复 PING 命令的时间大于五秒钟的从服务器都会被淘汰。</li>
+<li>在失效主服务器属下的从服务器当中， 那些与失效主服务器连接断开的时长超过 down-after 选项指定的时长十倍的从服务器都会被淘汰。</li>
+<li>在经历了以上两轮淘汰之后剩下来的从服务器中， 我们选出复制偏移量（replication offset）最大的那个从服务器作为新的主服务器； 如果复制偏移量不可用， 或者从服务器的复制偏移量相同， 那么带有最小运行 ID 的那个从服务器成为新的主服务器。</li>
+</ul>
+<p>也就是说，多个Slave的优先级按照：slave-priority配置 &gt; 数据完整性 &gt; runid较小者进行选择。</p>
+<p>之后所有Sentinel要进行投票选出一个Leader：<br>
+<img src="https://tallate.top/imgs/Redis/RedisSentinel%E6%8A%95%E7%A5%A8.jpg" alt="RedisSentinel投票" title="RedisSentinel投票"></p>
+<p>选出Leader后，Leader需要从现有的Slave中选出</p>
+<h3 id="故障转移"><a class="header-anchor" href="#故障转移">¶</a>故障转移</h3>
+<p>提升新的Master的流程如下：</p>
+<ul>
+<li>向被选中的从服务器发送 SLAVEOF NO ONE 命令，让它转变为主服务器。</li>
+<li>通过发布与订阅功能， 将更新后的配置传播给所有其他 Sentinel ， 其他 Sentinel 对它们自己的配置进行更新。</li>
+<li>向已下线主服务器的从服务器发送 SLAVEOF 命令， 让它们去复制新的主服务器。</li>
+<li>当所有从服务器都已经开始复制新的主服务器时， 领头 Sentinel 终止这次故障迁移操作。</li>
+</ul>
+<p>客户端感知新master流程如下：<br>
+哨兵在故障切换完成之后，会向自身节点的指定pubsub中写入一条信息，客户端可以订阅这个pubsub来感知master的变化通知。我们的客户端也可以通过在哨兵节点主动查询当前最新的master，来拿到最新的master地址。<br>
+另外，哨兵还提供了“钩子”机制，我们也可以在哨兵配置文件中配置一些脚本逻辑，在故障切换完成时，触发“钩子”逻辑，通知客户端发生了切换，让客户端重新在哨兵上获取最新的master地址。<br>
+一般来说，推荐采用第一种方式进行处理，很多客户端SDK中已经集成好了从哨兵节点获取最新master的方法，我们直接使用即可。</p>
+<h2 id="sentinel-选举的安全性"><a class="header-anchor" href="#sentinel-选举的安全性">¶</a>Sentinel 选举的安全性</h2>
+<p>配置安全性：</p>
+<ul>
+<li>每当一个 Redis 实例被重新配置（reconfigured） —— 无论是被设置成主服务器、从服务器、又或者被设置成其他主服务器的从服务器 —— Sentinel 都会向被重新配置的实例发送一个 CONFIG REWRITE 命令， 从而确保这些配置会持久化在硬盘里。完成重新配置之后，从服务器会去复制正确的主服务器。</li>
+<li>Sentinel 的状态会被持久化到 Sentinel 配置文件里，当 Sentinel 接收到新配置或 Leader Sentinel 为 Master 创建一个新配置时，这些配置都会与<code>epoch</code>一起被保存到磁盘；</li>
+</ul>
+<p>故障自动迁移的一致性：</p>
+<ul>
+<li>Raft 算法保证在一个 epoch 里只有一个 Leader Sentinel 产生，减少了脑裂的风险；</li>
+<li>Sentinel 集群总是以更高的 epoch 为准，因为发生<code>网络分区（network partition）</code>时可能会有 Sentinel 包含老的配置，而当这个 Sentinel 服务器接收到其他 Sentinel 的版本更新配置时就会进行更新。</li>
+<li>发生网络分区并且某些 Sentinel 仍在采用老的配置时，如果有客户端连接到这些 Sentinel 上，最终可能就会将请求转发到非 Master 服务器上，造成数据不一致。因此，应该使用 <code>min-slaves-to-write</code> 选项， 让主服务器在连接的从实例少于给定数量时停止执行写操作， 与此同时， 应该在每个运行 Redis 主服务器或从服务器的机器上运行 Redis Sentinel 进程。</li>
+</ul>
+<h2 id="sentinel-故障迁移的实时性"><a class="header-anchor" href="#sentinel-故障迁移的实时性">¶</a>Sentinel 故障迁移的实时性</h2>
+<p>故障迁移虽然能提供主从切换来保证挂掉的Master能被其他Slave顶替上来，但是这个顶替过程大概需要多长时间呢？具体又是哪些步骤会比较耗时？</p>
+<ol>
+<li>判断Master下线<br>
+Sentinel会PING Master，如果距离上次PING成功的时间超过了<code>master-down-after-milliseconds</code>时间，则表示主观下线了。<br>
+将Master标记为SDOWN后，这个Sentinel会通过发事件消息来通知其他Sentinel。</li>
+</ol>
+<blockquote>
+<p>Cluster中是通过gossip协议来通知其他节点的。</p>
+</blockquote>
+<ol>
+<li>
+<p>重新选主</p>
+</li>
+<li>
+<p>Slave提升</p>
+</li>
+</ol>
+<p>这个实时性的讨论并不是纯粹的极客行为，因为切换要多长时间是评估我们服务可用性的重要指标，并且提供后续优化的指导方向。</p>
+<h2 id="tilt-模式"><a class="header-anchor" href="#tilt-模式">¶</a>TILT 模式</h2>
+<p>TILT 模式是一种特殊的保护模式，Sentinel 每隔 100ms 会向实例发一次<code>PING</code>命令，并将上一次 PING 成功的时间和当前时间比对，从而知道与该实例有多长时间没有进行任何成功通讯：</p>
+<ul>
+<li>如果两次调用时间之间的差距为负值， 或者非常大（超过 2 秒钟）， 那么 Sentinel 进入 TILT 模式。</li>
+<li>如果 Sentinel 已经进入 TILT 模式， 那么 Sentinel 延迟退出 TILT 模式的时间。</li>
+</ul>
+<blockquote>
+<p>Sentinel严重依赖计算机的时间功能，一旦计算机的时间功能出现故障， 或者计算机非常忙碌， 又或者进程因为某些原因而被阻塞时， Sentinel 可能也会跟着出现故障。</p>
+</blockquote>
+<p>进入 TILT 模式后，Sentinel 仍然会继续监视所有目标，但是：</p>
+<ul>
+<li>它不再执行任何操作，比如故障转移。</li>
+<li>当有实例向这个 Sentinel 发送 SENTINEL <code>is-master-down-by-addr</code> 命令时， Sentinel 返回负值： 因为这个 Sentinel 所进行的下线判断已经不再准确。</li>
+</ul>
+<p>TILT 相当于降级，如果 Sentinel 可以在 TILT 模式下正常维持 30s，那么 Sentinel 会退出 TILT 模式。</p>
+<h2 id="busy-状态"><a class="header-anchor" href="#busy-状态">¶</a>BUSY 状态</h2>
+<p>当 Lus 脚本执行时间超过阈值，Redis 会返回<code>BUSY</code>错误，当出现这种情况时， Sentinel 在尝试执行故障转移操作之前， 会先向服务器发送一个 <code>SCRIPT KILL</code> 命令， 如果服务器正在执行的是一个只读脚本的话， 那么这个脚本就会被杀死， 服务器就会回到正常状态。</p>
+<h2 id="脑裂"><a class="header-anchor" href="#脑裂">¶</a>脑裂</h2>
+<p>虽然Sentinel利用Raft选举不会发生脑裂，但是在一些极端的情况下还是有可能会发生脑裂的，比如：</p>
+<ol>
+<li>原Master不能提供服务了，但是它本身并没有挂掉；</li>
+<li>Sentinel发现连不上Master，于是判定客观下线，并发起主从切换；</li>
+<li>原Master和新Master同时给Client提供服务，发生脑裂。</li>
+</ol>
+<p>这种脑裂并不会影响可用性，但是却破坏了数据的一致性，甚至会导致数据丢失：在Sentinel重连上原Master后，会将其归入到新Master的Slave，这时脑裂期间的数据就会被从新Master上复制过来的数据覆盖掉了，导致数据的丢失。</p>
+<p>脑裂的解决办法主要是以下两个配置参数：</p>
+<ul>
+<li>min-slaves-to-write：这个配置项设置了主库能进行数据同步的最少从库数量；</li>
+<li>min-slaves-max-lag：这个配置项设置了主从库间进行数据复制时，从库给主库发送 ACK 消息的最大延迟（以秒为单位）。</li>
+</ul>
+<h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
+<h3 id="5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？"><a class="header-anchor" href="#5个哨兵的集群-quorum设置为2-在运行过程中-有3个实例都发生了故障-这时主库也发生了故障-还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？">¶</a>5个哨兵的集群，quorum设置为2，在运行过程中，有3个实例都发生了故障，这时主库也发生了故障，还能正确判断主库的客观下线吗？还能执行主从的自动切换吗？</h3>
+<p>判断客户端下线是可以的，因为判断ODOWN的条件是有不少于quorum数量的Sentinel同意即可。<br>
+不可执行主从切换，因为一个哨兵要执行主从切换，得获得半数以上哨兵的投票同意，也就是3个哨兵。</p>
+<h3 id="哨兵实例是不是越多越好？"><a class="header-anchor" href="#哨兵实例是不是越多越好？">¶</a>哨兵实例是不是越多越好？</h3>
+<p>哨兵实例越多，误判率越低，但是判断主库下线和选举Leader时实例要拿到的赞成票也越多，主从切换花费的时间也相对会更多。<br>
+如果客户端对Redis的响应时间有要求，则很有可能会报警。</p>
+<h3 id="调大down-after-milliseconds对减少误判是不是有好处？"><a class="header-anchor" href="#调大down-after-milliseconds对减少误判是不是有好处？">¶</a>调大down-after-milliseconds对减少误判是不是有好处？</h3>
+<p>这个值的作用是：判断距离上次PING成功的时间超过了这个值，就标记实例主观下线。<br>
+调大的话Sentinel需要更长的时间才能判断集群出问题了，也即影响到Redis的可用性。</p>
+<h2 id="参考"><a class="header-anchor" href="#参考">¶</a>参考</h2>
+<ol>
+<li><a href="http://redisdoc.com/topic/sentinel.html" target="_blank" rel="noopener">Sentinel</a></li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/f1a5dd67.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -2918,6 +2877,183 @@ quicklist 是 ziplist 和 linkedlist 的混合体，它将 linkedlist 按段切�
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e913f4bd.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/e913f4bd.html" itemprop="url">JVM 与动态内存管理</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T15:26:49+08:00">
+                2019-09-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  21.2k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  77 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>在 Java 体系中，提到并发就不得不提到 JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/e913f4bd.html#more" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://tallate.github.io/b27f4a82.html">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -3680,183 +3816,6 @@ oracle官网对1.8垃圾回收改进的描述。</li>
 </ol>
 
           
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/e913f4bd.html">
-
-    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="tallate">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Tallate">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/e913f4bd.html" itemprop="url">JVM 与动态内存管理</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-09-21T15:26:49+08:00">
-                2019-09-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">Java</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-            <div class="post-wordcount">
-              
-                
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-file-word-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">字数统计&#58;</span>
-                
-                <span title="字数统计">
-                  21.2k 字
-                </span>
-              
-
-              
-                <span class="post-meta-divider">|</span>
-              
-
-              
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-clock-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
-                
-                <span title="阅读时长">
-                  77 分钟
-                </span>
-              
-            </div>
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>在 Java 体系中，提到并发就不得不提到 JMM，因为所有并发安全都是围绕内存来展开的，可以说不懂内存结构就不懂并发。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/e913f4bd.html#more" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
         
       
     </div>
