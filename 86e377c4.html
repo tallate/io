@@ -87,10 +87,12 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="对ES源码的阅读记录。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2021-01-12T15:43:56.836Z">
+<meta property="og:image" content="https://tallate.top/imgs/ES/%E5%A4%9A%E8%8A%82%E7%82%B9%E5%A4%9A%E5%88%86%E7%89%87%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:updated_time" content="2021-01-21T03:58:07.516Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES原理总结">
 <meta name="twitter:description" content="对ES源码的阅读记录。">
+<meta name="twitter:image" content="https://tallate.top/imgs/ES/%E5%A4%9A%E8%8A%82%E7%82%B9%E5%A4%9A%E5%88%86%E7%89%87%E6%A8%A1%E5%9E%8B.png">
 
 
 
@@ -358,7 +360,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  907 字
+                  1.2k 字
                 </span>
               
 
@@ -374,7 +376,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  3 分钟
+                  4 分钟
                 </span>
               
             </div>
@@ -442,16 +444,27 @@ ES通过推迟选举来解决这个问题，只要当前主节点不挂掉就不
 <h1>写入（POST、PUT、DELETE）流程</h1>
 <h2 id="文档操作类型"><a class="header-anchor" href="#文档操作类型">¶</a>文档操作类型</h2>
 <p>文档操作分为单个的（Index）和批量的（Bulk），它们最终都会被统一封装为批量操作请求（BulkRequest）。</p>
-<h2 id="写入流程"><a class="header-anchor" href="#写入流程">¶</a>写入流程</h2>
-<p>由上边对ES数据模型的讨论可知，ES文档的写入必须是先成功写入到主分片，然后才能复制到相关的副分片。</p>
+<h2 id="文档写入流程"><a class="header-anchor" href="#文档写入流程">¶</a>文档写入流程</h2>
+<p>由上边对ES数据模型的讨论可知，ES文档的写入必须是先成功写入到主分片，然后才能复制到相关的副分片。<br>
+<img src="https://tallate.top/imgs/ES/%E5%A4%9A%E8%8A%82%E7%82%B9%E5%A4%9A%E5%88%86%E7%89%87%E6%A8%A1%E5%9E%8B.png" alt="多节点多分片模型" title="多节点多分片模型"></p>
 <ol>
-<li>如果请求打到了非主分片所在的节点，请求会被路由到主分片所在的点；</li>
+<li>先根据_routing规则选择发给哪个shard（分片）；<br>
+优先使用IndexRequest中的设置，其次使用mapping中的配置，如果都没有则使用_id作为路由参数；</li>
+<li>从集群的meta中找出该shard的primary节点，此时，如果请求打到了非primary shard所在的节点，请求会被路由到primary shard所在的节点；</li>
+<li>请求接着发送给primary shard；</li>
+<li>primary shard执行成功后再发送给多个replica shard；</li>
+<li>请求在多个replica shard上执行成功并返回给primary shard后，写入执行成功，返回结果给客户端。</li>
 </ol>
-<p>当写入请求发送到其中一台服务器后，这台服务器接收请求</p>
-<h2 id="近实时性"><a class="header-anchor" href="#近实时性">¶</a>近实时性</h2>
-<h2 id="可靠性"><a class="header-anchor" href="#可靠性">¶</a>可靠性</h2>
+<h2 id="refresh和flush-实时性和可靠性之间的权衡"><a class="header-anchor" href="#refresh和flush-实时性和可靠性之间的权衡">¶</a>refresh和flush - 实时性和可靠性之间的权衡</h2>
+<h3 id="近实时性"><a class="header-anchor" href="#近实时性">¶</a>近实时性</h3>
+<p>ES中数据写入后并不能被马上查到，而是必须先执行refresh，默认是1s，最快可到100ms。</p>
+<h3 id="可靠性"><a class="header-anchor" href="#可靠性">¶</a>可靠性</h3>
 <p>搜索系统对可靠性要求都不高，一般数据的可靠性通过将原始数据存储在另一个存储系统来保证，当搜索系统的数据发生丢失时，再从其他存储系统导一份数据过来重新rebuild就可以了。<br>
-ES中的可靠性问题主要存在于写入缓存的数据什么时候刷到磁盘上，这可以通过设置TransLog的Flush频率来控制，要么是按请求，每次请求都Flush；要么是按时间，每隔一段时间Flush一次。一般为了性能考虑，会设置为每隔5秒或者1分钟Flush一次，Flush间隔时间越长，可靠性就会越低。</p>
+ES采用多副本模型，可以避免单机发生故障时丢失数据，但是ES同时为了提升读写性能，一般是每隔一段时间才会把Lucene的Segment flush到磁盘实现持久化，这样减少了磁盘IO，但是数据未flush期间，如果发生了宕机就很容易导致数据的丢失。对于这个问题，ES中的解决方法类似数据库中的CommitLog，ES中引入了一个TransLog。<br>
+可以通过设置TransLog的Flush频率来控制写入缓存的数据什么时候刷到磁盘上，要么是按请求，每次请求都Flush；要么是按时间，每隔一段时间Flush一次。一般为了性能考虑，会设置为每隔5秒或者1分钟Flush一次，Flush间隔时间越长，可靠性就会越低。</p>
+<h3 id="es的刷盘流程"><a class="header-anchor" href="#es的刷盘流程">¶</a>ES的刷盘流程</h3>
+<p>之前我们已经讨论了数据如何定位到某个node、某个shard。<br>
+在每个shard上，数据会先写入Lucene，此时数据还在内存里，接着去写TransLog，。</p>
 <h1>GET流程</h1>
 <h2 id="实时性"><a class="header-anchor" href="#实时性">¶</a>实时性</h2>
 <p>Elasticsearch中的GET请求也能保证是实时的，因为GET请求会直接读内存中尚未Flush到磁盘的TransLog。<br>
@@ -638,7 +651,7 @@ ES中的可靠性问题主要存在于写入缓存的数据什么时候刷到磁
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES集群的启动</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">1.1.</span> <span class="nav-text">¶节点的启动</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">选举主节点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">数据模型</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">写入（POST、PUT、DELETE）流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档操作类型"><span class="nav-number">4.1.</span> <span class="nav-text">¶文档操作类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#写入流程"><span class="nav-number">4.2.</span> <span class="nav-text">¶写入流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#近实时性"><span class="nav-number">4.3.</span> <span class="nav-text">¶近实时性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可靠性"><span class="nav-number">4.4.</span> <span class="nav-text">¶可靠性</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">GET流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#实时性"><span class="nav-number">5.1.</span> <span class="nav-text">¶实时性</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">Search流程</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES集群的启动</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">1.1.</span> <span class="nav-text">¶节点的启动</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">选举主节点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">数据模型</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">写入（POST、PUT、DELETE）流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档操作类型"><span class="nav-number">4.1.</span> <span class="nav-text">¶文档操作类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档写入流程"><span class="nav-number">4.2.</span> <span class="nav-text">¶文档写入流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#refresh和flush-实时性和可靠性之间的权衡"><span class="nav-number">4.3.</span> <span class="nav-text">¶refresh和flush - 实时性和可靠性之间的权衡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#近实时性"><span class="nav-number">4.3.1.</span> <span class="nav-text">¶近实时性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#可靠性"><span class="nav-number">4.3.2.</span> <span class="nav-text">¶可靠性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#es的刷盘流程"><span class="nav-number">4.3.3.</span> <span class="nav-text">¶ES的刷盘流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">GET流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#实时性"><span class="nav-number">5.1.</span> <span class="nav-text">¶实时性</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">Search流程</span></a></li></ol></div>
             
 
           </div>
