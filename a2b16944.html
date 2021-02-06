@@ -89,7 +89,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://tallate.top/imgs/Redis/Redis%E4%B8%ADbgsave%E6%9C%BA%E5%88%B6%E7%9A%84COW.jpg">
 <meta property="og:image" content="https://tallate.top/imgs/Redis/AOF%E9%87%8D%E5%86%99%E8%BF%87%E7%A8%8B.png">
-<meta property="og:updated_time" content="2020-12-19T11:58:32.364Z">
+<meta property="og:updated_time" content="2021-01-30T08:47:55.718Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Redis 持久化">
 <meta name="twitter:description" content="Redis 为了达到最快的读写速度将数据都读到内存中，并通过异步的方式将数据写入磁盘。所以 redis 具有快速和数据持久化的特征。如果不将数据放在内存中，磁盘 I/O 速度为严重影响 redis 的性能。在内存越来越便宜的今天，redis 将会越来越受欢迎。 如果设置了最大使用的内存，则数据已有记录数达到内存限值后不能继续插入新值。 不过 Redis 也提供了持久化的选项。">
@@ -361,7 +361,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.2k 字
+                  3.5k 字
                 </span>
               
 
@@ -377,7 +377,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  12 分钟
+                  13 分钟
                 </span>
               
             </div>
@@ -499,6 +499,21 @@ AOF重写使用的是新的一个<strong>重写日志</strong>而不是原来的
 <h2 id="生产中如何设计持久化方案"><a class="header-anchor" href="#生产中如何设计持久化方案">¶</a>生产中如何设计持久化方案</h2>
 <p>bgsave 做镜像全量持久化，aof 做增量持久化。<br>
 因为 bgsave 会耗费较长时间，不够实时，在停机的时候会导致大量丢失数据，所以需要 aof 来配合使用。在 redis 实例重启时，优先使用 aof 来恢复内存的状态，如果没有 aof 日志，就会使用 rdb 文件来恢复。</p>
+<h3 id="rdb配置"><a class="header-anchor" href="#rdb配置">¶</a>RDB配置</h3>
+<p>RDB生成策略用默认的也差不多，也可以根据实际需求设置保存的时机。<br>
+比如希望RDB最多丢一分钟的数据，则尽量每分钟生成一个快照，而且生成RDB文件比较耗费资源，可以设置有10000条数据变化则生成RDB：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">save 60 10000</span><br></pre></td></tr></table></figure>
+<h3 id="aof"><a class="header-anchor" href="#aof">¶</a>AOF</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">fsync</span><br><span class="line">everysec</span><br><span class="line"># 当前AOF大小膨胀到超过上次100%，则重写</span><br><span class="line">auto-aof-rewrite-percentage 100</span><br><span class="line"># 如果业务量大可以稍微调大些</span><br><span class="line">auto-aof-rewrite-min-size 64mb</span><br></pre></td></tr></table></figure>
+<h3 id="数据备份"><a class="header-anchor" href="#数据备份">¶</a>数据备份</h3>
+<p>RDB适合作为冷备。</p>
+<ol>
+<li>写crontab定时调度脚本做数据备份；</li>
+<li>每小时copy一份rdb的备份到一个目录中去，仅仅保留最近48小时的备份；</li>
+<li>每天都保留一份当日的rdb备份，到一个目录中去，仅仅保留最近1个月的备份；</li>
+<li>每次copy备份的时候，都把太旧的备份删除；</li>
+<li>每天晚上将当前服务器上所有的数据备份，发送一份到远程的云服务器上。</li>
+</ol>
 <h2 id="qa"><a class="header-anchor" href="#qa">¶</a>QA</h2>
 <h3 id="如果一个系统大部分redis操作都是写-比如写读比例是8-2-使用rdb快照备份会有什么隐患？"><a class="header-anchor" href="#如果一个系统大部分redis操作都是写-比如写读比例是8-2-使用rdb快照备份会有什么隐患？">¶</a>如果一个系统大部分Redis操作都是写（比如写读比例是8:2），使用RDB快照备份会有什么隐患？</h3>
 <p>因为大部分操作都是写入，那么由于COW机制，大部分内存页都会拷贝一份，导致内存浪费；如果机器内存不够，Redis引发OOM又很有可能会被Linux系统kill掉；如果引入Swap来扩容内存，由于内存页面的交换又会极大影响Redis性能。<br>
@@ -632,7 +647,7 @@ AOF重写使用的是新的一个<strong>重写日志</strong>而不是原来的
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">144</span>
+                  <span class="site-state-item-count">142</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -643,7 +658,7 @@ AOF重写使用的是新的一个<strong>重写日志</strong>而不是原来的
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">21</span>
+                  <span class="site-state-item-count">22</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -689,7 +704,7 @@ AOF重写使用的是新的一个<strong>重写日志</strong>而不是原来的
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#file-snap-shotting-rdb半持久化模式"><span class="nav-number">1.</span> <span class="nav-text">¶file snap shotting（RDB半持久化模式）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#特点"><span class="nav-number">1.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#开启"><span class="nav-number">1.2.</span> <span class="nav-text">¶开启</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令"><span class="nav-number">1.3.</span> <span class="nav-text">¶命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bgsave-过程"><span class="nav-number">1.4.</span> <span class="nav-text">¶bgsave 过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#写时复制-cow"><span class="nav-number">1.5.</span> <span class="nav-text">¶写时复制（COW）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题"><span class="nav-number">1.6.</span> <span class="nav-text">¶问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#append-only-file-全持久化模式-aof"><span class="nav-number">2.</span> <span class="nav-text">¶Append-only file（全持久化模式 / AOF）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#特点-v2"><span class="nav-number">2.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#开启-v2"><span class="nav-number">2.2.</span> <span class="nav-text">¶开启</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过程"><span class="nav-number">2.3.</span> <span class="nav-text">¶过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof日志的重写"><span class="nav-number">2.4.</span> <span class="nav-text">¶AOF日志的重写</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令-v2"><span class="nav-number">2.5.</span> <span class="nav-text">¶命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题-v2"><span class="nav-number">2.6.</span> <span class="nav-text">¶问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#宕机恢复"><span class="nav-number">3.</span> <span class="nav-text">¶宕机恢复</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件压缩"><span class="nav-number">4.</span> <span class="nav-text">¶文件压缩</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#生产中如何设计持久化方案"><span class="nav-number">5.</span> <span class="nav-text">¶生产中如何设计持久化方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">6.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如果一个系统大部分redis操作都是写-比如写读比例是8-2-使用rdb快照备份会有什么隐患？"><span class="nav-number">6.1.</span> <span class="nav-text">¶如果一个系统大部分Redis操作都是写（比如写读比例是8:2），使用RDB快照备份会有什么隐患？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof重写过程中有没有潜在的阻塞风险？"><span class="nav-number">6.2.</span> <span class="nav-text">¶AOF重写过程中有没有潜在的阻塞风险？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof重写为什么不共享aof本身的日志？"><span class="nav-number">6.3.</span> <span class="nav-text">¶AOF重写为什么不共享AOF本身的日志？</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#file-snap-shotting-rdb半持久化模式"><span class="nav-number">1.</span> <span class="nav-text">¶file snap shotting（RDB半持久化模式）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#特点"><span class="nav-number">1.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#开启"><span class="nav-number">1.2.</span> <span class="nav-text">¶开启</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令"><span class="nav-number">1.3.</span> <span class="nav-text">¶命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bgsave-过程"><span class="nav-number">1.4.</span> <span class="nav-text">¶bgsave 过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#写时复制-cow"><span class="nav-number">1.5.</span> <span class="nav-text">¶写时复制（COW）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题"><span class="nav-number">1.6.</span> <span class="nav-text">¶问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#append-only-file-全持久化模式-aof"><span class="nav-number">2.</span> <span class="nav-text">¶Append-only file（全持久化模式 / AOF）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#特点-v2"><span class="nav-number">2.1.</span> <span class="nav-text">¶特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#开启-v2"><span class="nav-number">2.2.</span> <span class="nav-text">¶开启</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过程"><span class="nav-number">2.3.</span> <span class="nav-text">¶过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof日志的重写"><span class="nav-number">2.4.</span> <span class="nav-text">¶AOF日志的重写</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令-v2"><span class="nav-number">2.5.</span> <span class="nav-text">¶命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题-v2"><span class="nav-number">2.6.</span> <span class="nav-text">¶问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#宕机恢复"><span class="nav-number">3.</span> <span class="nav-text">¶宕机恢复</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件压缩"><span class="nav-number">4.</span> <span class="nav-text">¶文件压缩</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#生产中如何设计持久化方案"><span class="nav-number">5.</span> <span class="nav-text">¶生产中如何设计持久化方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#rdb配置"><span class="nav-number">5.1.</span> <span class="nav-text">¶RDB配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof"><span class="nav-number">5.2.</span> <span class="nav-text">¶AOF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据备份"><span class="nav-number">5.3.</span> <span class="nav-text">¶数据备份</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#qa"><span class="nav-number">6.</span> <span class="nav-text">¶QA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如果一个系统大部分redis操作都是写-比如写读比例是8-2-使用rdb快照备份会有什么隐患？"><span class="nav-number">6.1.</span> <span class="nav-text">¶如果一个系统大部分Redis操作都是写（比如写读比例是8:2），使用RDB快照备份会有什么隐患？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof重写过程中有没有潜在的阻塞风险？"><span class="nav-number">6.2.</span> <span class="nav-text">¶AOF重写过程中有没有潜在的阻塞风险？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#aof重写为什么不共享aof本身的日志？"><span class="nav-number">6.3.</span> <span class="nav-text">¶AOF重写为什么不共享AOF本身的日志？</span></a></li></ol></li></ol></div>
             
 
           </div>

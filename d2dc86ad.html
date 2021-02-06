@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.3" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png?v=5.1.3">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.3" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="IM,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="记录一下IM系统的相关设计原理，但是目标是总结原理，不会牵扯太多代码，因为IM要写得实用非常复杂，自己随便写个demo又一点用处都没有。">
+<meta name="keywords" content="IM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IM系统原理总结">
+<meta property="og:url" content="https://tallate.github.io/d2dc86ad.html">
+<meta property="og:site_name" content="Tallate">
+<meta property="og:description" content="记录一下IM系统的相关设计原理，但是目标是总结原理，不会牵扯太多代码，因为IM要写得实用非常复杂，自己随便写个demo又一点用处都没有。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://tallate.top/imgs/%E5%AE%9E%E6%97%B6%E5%8D%8F%E4%BD%9C/confluence.jpeg">
+<meta property="og:image" content="https://tallate.top/imgs/%E5%AE%9E%E6%97%B6%E5%8D%8F%E4%BD%9C/OT%E5%AE%9E%E4%BE%8B.jpg">
+<meta property="og:updated_time" content="2021-01-31T14:41:31.839Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="IM系统原理总结">
+<meta name="twitter:description" content="记录一下IM系统的相关设计原理，但是目标是总结原理，不会牵扯太多代码，因为IM要写得实用非常复杂，自己随便写个demo又一点用处都没有。">
+<meta name="twitter:image" content="https://tallate.top/imgs/%E5%AE%9E%E6%97%B6%E5%8D%8F%E4%BD%9C/confluence.jpeg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.3',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://tallate.github.io/d2dc86ad.html">
+
+
+
+
+
+
+
+  <title>IM系统原理总结 | Tallate</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Tallate</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">不乱于心，不困于情，不畏将来，不念过往</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+
+      <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://tallate.github.io/d2dc86ad.html">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="tallate">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Tallate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">IM系统原理总结</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-01-30T19:01:50+08:00">
+                2021-01-30
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/设计/" itemprop="url" rel="index">
+                    <span itemprop="name">设计</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i> 浏览
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>次
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.4k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  5 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>记录一下IM系统的相关设计原理，但是目标是总结原理，不会牵扯太多代码，因为IM要写得实用非常复杂，自己随便写个demo又一点用处都没有。</p>
+<a id="more"></a>
+<h1>消息系统</h1>
+<h2 id="读写扩散"><a class="header-anchor" href="#读写扩散">¶</a>读写扩散</h2>
+<p>钉钉IM的主要挑战是万人群，发一条消息需要群里的数万人同时收到，并且在节日等时间流量激增。<br>
+为了应对这种情况，IM从写扩散模型改为了读扩散模型。</p>
+<p>读写扩散技术方案对比<br>
+1、写扩散技术<br>
+优点:</p>
+<ul>
+<li>整体架构简洁，方案简单，维护用户同步队列实现数据同步机制。</li>
+<li>无论是单聊还是群聊等会话消息，写入用户维度同步队列，集中获取同步数据。</li>
+<li>推和拉情况下，存储模型和数据处理简单，且天然支持个性化数据。</li>
+</ul>
+<p>缺点:</p>
+<ul>
+<li>群会话消息，天然存在 1:N 写入扩散比，存储压力 N 倍压力，在线用户收到消息延迟<br>
+增大。</li>
+<li>多个群内消息队列混合在同步队列，无优先级处理能力，无法针对互动群等做隔离。</li>
+</ul>
+<p>2、读扩散技术<br>
+优点:</p>
+<ul>
+<li>降低写扩散 N 倍的 DB 存储压力，减少下行在线用户端到端扩散的 RT 时间。</li>
+<li>提升消息上行集群整体的吞吐量，用户体验更流畅。</li>
+<li>端到端实现会话级别的同步优先级队列，实现差异化服务。</li>
+</ul>
+<p>缺点:</p>
+<ul>
+<li>整体架构偏复杂，需要维护每个动态会话消息同步队列，端侧需要实时感知新增的动态<br>
+同步队列。</li>
+<li>客户端冷启动需要分散读取多个会话消息同步队列数据，对于存储会带来读 QPS 压力。</li>
+</ul>
+<p>3、读写扩散混合模式<br>
+核心在于架构的演进推进“读写扩散混合模式“落地，结合两者的优点进行云端一体化数据同<br>
+步技术，覆盖几千万互动群用户，保证整体峰值上行消息以及用户在群内端到端延迟体验，<br>
+做到一条上行消息 500ms 以内到达群内其他用户端侧，让整体用户体验提升明显，群内强<br>
+互动成为可能。</p>
+<h1>协同编辑</h1>
+<p>两个人同时编辑一个文档，如果写的是同一个地方，保存时应该用谁编辑的内容？怎么解决这个冲突问题是协同编辑的主要问题。<br>
+现在可用的方案主要有5种：编辑锁、GNU diff-patch、Myer’s diff-patch、Operational Transformation（OT）和分布式 Operational Transformation。<br>
+业界大部分人使用的都是OT，包括Google Docs、石墨文档和腾讯文档。</p>
+<h2 id="编辑锁"><a class="header-anchor" href="#编辑锁">¶</a>编辑锁</h2>
+<p>一个用户编辑时需要进行加锁，被锁住期间，其他用户无法同时编辑。<br>
+优点：实现简单。<br>
+缺点：体验差。</p>
+<h2 id="gnu-diff-patch"><a class="header-anchor" href="#gnu-diff-patch">¶</a>GNU diff-patch</h2>
+<p>diff-patch应用在Git中，类似Linux中的diff和patch命令，diff计算两个文档不相同的行，patch将两个文档合并。<br>
+优点：实现较简单。<br>
+缺点：按行检测冲突，粒度比较大，可能会导致过多的冲突，像在git中只要同一行有冲突都是需要人手动来处理的。<br>
+实现：GIT、Confluence<br>
+<img src="https://tallate.top/imgs/%E5%AE%9E%E6%97%B6%E5%8D%8F%E4%BD%9C/confluence.jpeg" alt="confluence" title="confluence"></p>
+<h2 id="myer-s-diff-patch"><a class="header-anchor" href="#myer-s-diff-patch">¶</a>Myer’s diff-patch</h2>
+<p>属于另一种diff-patch算法，这种算法的冲突检测粒度是字符而不是行，因此可以检测出同一行内增加、修改、删除了多少内容。<br>
+优点：相对 GNU diff-patch，可以避免像“就在行末加个空格都冲突了？”这种情况。<br>
+缺点：在某些情况下会丢字符。</p>
+<h2 id="ot-operational-transformation"><a class="header-anchor" href="#ot-operational-transformation">¶</a>OT（Operational Transformation）</h2>
+<p>OT分为O和T两个过程。</p>
+<ul>
+<li>O指的是将文档编辑抽象为retain(n)、insert(str)、delete(str)三种操作；</li>
+<li>T指的是对操作进行转换，使得两个线程的操作流合并后“就像只有一个线程执行了操作”。</li>
+</ul>
+<h3 id="ot例子"><a class="header-anchor" href="#ot例子">¶</a>OT例子</h3>
+<p><img src="https://tallate.top/imgs/%E5%AE%9E%E6%97%B6%E5%8D%8F%E4%BD%9C/OT%E5%AE%9E%E4%BE%8B.jpg" alt="OT实例" title="OT实例"><br>
+如上图所示，两个人A和B同时编辑文档<code>abc</code>，A在位置0插入字符<code>x</code>，B删除了第三个字符<code>c</code>。<br>
+OT系统会将操作同步对其他用户：</p>
+<ul>
+<li>A的操作同步给B后，经过Transformation过程变成<code>ins(0. &quot;x&quot;)</code>。</li>
+<li>B的操作同步给A后，变成<code>del(3, &quot;c&quot;)</code>。</li>
+</ul>
+<p>实现流程主要有3个：</p>
+<ol>
+<li>每个用户的操作能够实时同步给其他用户，为了实现实时性，每个用户需要和服务器维护一个长连接，以实现服务端向客户端推送消息；</li>
+<li>operation：用户的输入会生成operation（相当于每输入一点文字就自动执行一次<code>git commit &amp; git push</code>）；<br>
+客户端会将operation提交给服务器，再由服务器广播给所有的客户端。</li>
+<li>transformation：停留在编辑页面的客户端会接收到服务器推送的消息，并执行合并操作（类似<code>git rebase</code>）。</li>
+</ol>
+<h3 id="ot的分布式化"><a class="header-anchor" href="#ot的分布式化">¶</a>OT的分布式化</h3>
+<p>OT在</p>
+<h3 id="ot的实现-changesets"><a class="header-anchor" href="#ot的实现-changesets">¶</a>OT的实现 - changesets</h3>
+<p>changesets是一个OT基础库，但它本身仅包含客户端的实现，即实现操作怎么表达为retain、insert和delete三种操作（Operational），还有接收到其他端的操作序列后怎么转换（Transformation）。</p>
+<h3 id="ot的实现-sharejs"><a class="header-anchor" href="#ot的实现-sharejs">¶</a>OT的实现 - shareJS</h3>
+<p>shareJS是一个较完整的OT实现，包含前后端，</p>
+<h1>参考</h1>
+<h2 id="im"><a class="header-anchor" href="#im">¶</a>IM</h2>
+<ol>
+<li><a href="https://www.infoq.cn/article/J4m6a2I66MziISJVzFEe" target="_blank" rel="noopener">钉钉企业级 IM 存储架构创新之道</a></li>
+<li><a href="http://www.52im.net/thread-2848-1-1.html" target="_blank" rel="noopener">阿里钉钉技术分享：企业级IM王者——钉钉在后端架构上的过人之处</a></li>
+</ol>
+<h2 id="协同文档"><a class="header-anchor" href="#协同文档">¶</a>协同文档</h2>
+<ol>
+<li><a href="https://www.cnblogs.com/guolintao/p/7783009.html" target="_blank" rel="noopener">快速构建一个简单的单页vue应用</a></li>
+<li><a href="https://fex.baidu.com/blog/2014/04/realtime-collaboration/" target="_blank" rel="noopener">实时协同编辑的实现</a></li>
+<li><a href="https://github.com/marcelklehr/changesets" target="_blank" rel="noopener">marcelklehr / changesets</a></li>
+<li><a href="https://github.com/share/sharedb" target="_blank" rel="noopener">share / sharedb</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/IM/" rel="tag"># IM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/14bfa738.html" rel="next" title="热点数据发现">
+                <i class="fa fa-chevron-left"></i> 热点数据发现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/d4fdac34.html" rel="prev" title="关于DDD">
+                关于DDD <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div id="gitalk-container"></div>
+
+  
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">tallate</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">142</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">73</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          <div class="links-of-author motion-element">
+            
+          </div>
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">消息系统</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#读写扩散"><span class="nav-number">1.1.</span> <span class="nav-text">¶读写扩散</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">协同编辑</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#编辑锁"><span class="nav-number">2.1.</span> <span class="nav-text">¶编辑锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#gnu-diff-patch"><span class="nav-number">2.2.</span> <span class="nav-text">¶GNU diff-patch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#myer-s-diff-patch"><span class="nav-number">2.3.</span> <span class="nav-text">¶Myer’s diff-patch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ot-operational-transformation"><span class="nav-number">2.4.</span> <span class="nav-text">¶OT（Operational Transformation）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ot例子"><span class="nav-number">2.4.1.</span> <span class="nav-text">¶OT例子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ot的分布式化"><span class="nav-number">2.4.2.</span> <span class="nav-text">¶OT的分布式化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ot的实现-changesets"><span class="nav-number">2.4.3.</span> <span class="nav-text">¶OT的实现 - changesets</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ot的实现-sharejs"><span class="nav-number">2.4.4.</span> <span class="nav-text">¶OT的实现 - shareJS</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#im"><span class="nav-number">3.1.</span> <span class="nav-text">¶IM</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#协同文档"><span class="nav-number">3.2.</span> <span class="nav-text">¶协同文档</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">tallate</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.3</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i> 访问人数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i> 访问总量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.3"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.3"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.3"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.3"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.3"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+  <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+   <script type="text/javascript">
+        var gitalk = new Gitalk({
+          clientID: '72bdd1c9479eb0679788',
+          clientSecret: '62c9c0cb45aadb1478ca66cfc3c69c9623f50290',
+          repo: 'tallate.github.io',
+          owner: 'tallate',
+          admin: ['tallate'],
+          id: location.pathname,
+          distractionFreeMode: 'true'
+        })
+        gitalk.render('gitalk-container')           
+       </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+
+</body>
+</html>
