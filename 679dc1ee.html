@@ -79,24 +79,24 @@
 
 
 
-<meta name="description" content="Buffer Pool ¶Buffer Pool 配置  innodb_buffer_pool_size：Buffer Pool 占用的总内存空间大小，单位是字节。 innodb_buffer_pool_instances：访问 Buffer Pool 中的各种链表的时候都是需要加锁的，如果 Buffer Pool 特别大，且并发访问频率较高的情况下，会发生大量竞争，因此可以分配多个独立的小的">
+<meta name="description" content="MySQL中的Cache和Buffer负责记录数据缓存，以提供更高的吞吐率。">
 <meta name="keywords" content="MySQL">
 <meta property="og:type" content="article">
 <meta property="og:title" content="MySQL 中的 CacheBuffer">
 <meta property="og:url" content="https://tallate.github.io/679dc1ee.html">
 <meta property="og:site_name" content="Tallate">
-<meta property="og:description" content="Buffer Pool ¶Buffer Pool 配置  innodb_buffer_pool_size：Buffer Pool 占用的总内存空间大小，单位是字节。 innodb_buffer_pool_instances：访问 Buffer Pool 中的各种链表的时候都是需要加锁的，如果 Buffer Pool 特别大，且并发访问频率较高的情况下，会发生大量竞争，因此可以分配多个独立的小的">
+<meta property="og:description" content="MySQL中的Cache和Buffer负责记录数据缓存，以提供更高的吞吐率。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e2a5de8f2?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
+<meta property="og:image" content="https://tallate.top/imgs/MySQL/bufferpool%E7%BB%93%E6%9E%84.png">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e2b9d6dd1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e300173c1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e2ec4572a?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e2a3fffa3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
-<meta property="og:updated_time" content="2020-12-20T11:26:46.864Z">
+<meta property="og:updated_time" content="2021-02-10T10:28:56.493Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MySQL 中的 CacheBuffer">
-<meta name="twitter:description" content="Buffer Pool ¶Buffer Pool 配置  innodb_buffer_pool_size：Buffer Pool 占用的总内存空间大小，单位是字节。 innodb_buffer_pool_instances：访问 Buffer Pool 中的各种链表的时候都是需要加锁的，如果 Buffer Pool 特别大，且并发访问频率较高的情况下，会发生大量竞争，因此可以分配多个独立的小的">
-<meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e2a5de8f2?imageView2/0/w/1280/h/960/format/webp/ignore-error/1">
+<meta name="twitter:description" content="MySQL中的Cache和Buffer负责记录数据缓存，以提供更高的吞吐率。">
+<meta name="twitter:image" content="https://tallate.top/imgs/MySQL/bufferpool%E7%BB%93%E6%9E%84.png">
 
 
 
@@ -401,8 +401,32 @@
       
 
       
-        <a id="more"></a>
+        <p>MySQL中的Cache和Buffer负责记录数据缓存，以提供更高的吞吐率。</p>
+<a id="more"></a>
 <h1>Buffer Pool</h1>
+<h2 id="buffer-pool-的作用原理"><a class="header-anchor" href="#buffer-pool-的作用原理">¶</a>Buffer Pool 的作用原理</h2>
+<h3 id="加载磁盘页面到-buffer-pool"><a class="header-anchor" href="#加载磁盘页面到-buffer-pool">¶</a>加载磁盘页面到 Buffer Pool</h3>
+<p>当我们需要访问某页中的数据时，需要将该页加载到 Buffer Pool 内。<br>
+InnoDB 中还存在两种特殊情况：</p>
+<ul>
+<li>预读<br>
+预先将以后可能用到的页面加载到 Buffer Pool，根据加载方式还细分为<strong>线性预读</strong>和<strong>随机预读</strong>：<br>
+线性预读：如果顺序访问了某个区（extent）的页面超过<code>innodb_read_ahead_threshold</code>这个系统变量的值，就会触发一次异步读取下一个区中全部的页面到 Buffer Pool 的请求，注意异步读取意味着从磁盘中加载这些被预读的页面并不会影响到当前工作线程的正常执行。<br>
+随机预读：如果 Buffer Pool 中已经缓存了某个区的 13 个连续的页面，不论这些页面是不是顺序读取的，都会触发一次异步读取本区中所有其的页面到 Buffer Pool 的请求。<br>
+如果预读的页面很常用，则可以极大地提高语句的执行效率，而如果并不常用的话，反而会将 LRU 链表尾部的缓存页被迅速淘汰掉，导致缓存命中率降低。</li>
+<li>全表扫描<br>
+全表扫描会导致大量页统统被加载到 Buffer Pool 内，这些页一般被使用到的频率也不高（全表扫描的执行频率不会太高），导致大大降低缓存命中率。</li>
+</ul>
+<h3 id="刷新脏页到磁盘"><a class="header-anchor" href="#刷新脏页到磁盘">¶</a>刷新脏页到磁盘</h3>
+<p>后台有专门的线程每隔一段时间负责把脏页刷新到磁盘，这样可以不影响用户线程处理正常的请求。</p>
+<ul>
+<li>从<strong>LRU 链表</strong>的冷数据中刷新一部分页面到磁盘。<br>
+后台线程会定时从 LRU 链表尾部开始扫描一些页面，扫描的页面数量可以通过系统变量<code>innodb_lru_scan_depth</code>来指定，如果从里边儿发现脏页，会把它们刷新到磁盘。这种刷新页面的方式被称之为<code>BUF_FLUSH_LRU</code>。</li>
+<li>从<strong>flush 链表</strong>中刷新一部分页面到磁盘。<br>
+后台线程也会定时从 flush 链表中刷新一部分页面到磁盘，刷新的速率取决于当时系统是不是很繁忙。这种刷新页面的方式被称之为<code>BUF_FLUSH_LIST</code>。</li>
+<li>同步刷新<br>
+有时候后台线程刷新脏页的进度比较慢，导致用户线程在准备加载一个磁盘页到 Buffer Pool 时没有可用的缓存页，这时就会尝试看看 LRU 链表尾部有没有可以直接释放掉的未修改页面，如果没有的话会不得不将 LRU 链表尾部的一个脏页同步刷新到磁盘（和磁盘交互是很慢的，这会降低处理用户请求的速度）。这种刷新单个页面到磁盘中的刷新方式被称之为<code>BUF_FLUSH_SINGLE_PAGE</code>。</li>
+</ul>
 <h2 id="buffer-pool-配置"><a class="header-anchor" href="#buffer-pool-配置">¶</a>Buffer Pool 配置</h2>
 <ul>
 <li><code>innodb_buffer_pool_size</code>：Buffer Pool 占用的总内存空间大小，单位是字节。</li>
@@ -410,7 +434,7 @@
 每个实例占用的内存空间为：<code>innodb_buffer_pool_size/innodb_buffer_pool_instances</code>。<br>
 注意当<code>innodb_buffer_pool_size</code>的值小于 1G 的时候设置多个实例是无效的，InnoDB 会默认把 <code>innodb_buffer_pool_instances</code> 的值修改为 1。</li>
 <li><code>innodb_buffer_pool_chunk_size</code>：出于对运行时可以方便调整 Buffer Pool 大小的考虑，每个 Buffer Pool 实例都是由若干 chunk 组成的。<br>
-<img src="https://user-gold-cdn.xitu.io/2019/3/2/1693e86e2a5de8f2?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt=""></li>
+<img src="https://tallate.top/imgs/MySQL/bufferpool%E7%BB%93%E6%9E%84.png" alt="bufferpool结构" title="bufferpool结构"></li>
 </ul>
 <p>注意：</p>
 <ul>
@@ -450,30 +474,6 @@
 <li>I/O cur：现在正在读取的磁盘页数量。</li>
 <li>I/O unzip sum：最近 50s 解压的页面数量。</li>
 <li>I/O unzip cur：正在解压的页面数量。</li>
-</ul>
-<h2 id="buffer-pool-的组成"><a class="header-anchor" href="#buffer-pool-的组成">¶</a>Buffer Pool 的组成</h2>
-<h2 id="buffer-pool-的作用原理"><a class="header-anchor" href="#buffer-pool-的作用原理">¶</a>Buffer Pool 的作用原理</h2>
-<h3 id="加载磁盘页面到-buffer-pool"><a class="header-anchor" href="#加载磁盘页面到-buffer-pool">¶</a>加载磁盘页面到 Buffer Pool</h3>
-<p>当我们需要访问某页中的数据时，需要将该页加载到 Buffer Pool 内。<br>
-InnoDB 中还存在两种特殊情况：</p>
-<ul>
-<li>预读<br>
-预先将以后可能用到的页面加载到 Buffer Pool，根据加载方式还细分为线性预读和随机预读：<br>
-线性预读：如果顺序访问了某个区（extent）的页面超过<code>innodb_read_ahead_threshold</code>这个系统变量的值，就会触发一次异步读取下一个区中全部的页面到 Buffer Pool 的请求，注意异步读取意味着从磁盘中加载这些被预读的页面并不会影响到当前工作线程的正常执行。<br>
-随机预读：如果 Buffer Pool 中已经缓存了某个区的 13 个连续的页面，不论这些页面是不是顺序读取的，都会触发一次异步读取本区中所有其的页面到 Buffer Pool 的请求。<br>
-如果预读的页面很常用，则可以极大地提高语句的执行效率，而如果并不常用的话，反而会将 LRU 链表尾部的缓存页被迅速淘汰掉，导致缓存命中率降低。</li>
-<li>全表扫描<br>
-全表扫描会导致大量页统统被加载到 Buffer Pool 内，这些页一般被使用到的频率也不高（全表扫描的执行频率不会太高），导致大大降低缓存命中率。</li>
-</ul>
-<h3 id="刷新脏页到磁盘"><a class="header-anchor" href="#刷新脏页到磁盘">¶</a>刷新脏页到磁盘</h3>
-<p>后台有专门的线程每隔一段时间负责把脏页刷新到磁盘，这样可以不影响用户线程处理正常的请求。</p>
-<ul>
-<li>从<strong>LRU 链表</strong>的冷数据中刷新一部分页面到磁盘。<br>
-后台线程会定时从 LRU 链表尾部开始扫描一些页面，扫描的页面数量可以通过系统变量<code>innodb_lru_scan_depth</code>来指定，如果从里边儿发现脏页，会把它们刷新到磁盘。这种刷新页面的方式被称之为<code>BUF_FLUSH_LRU</code>。</li>
-<li>从<strong>flush 链表</strong>中刷新一部分页面到磁盘。<br>
-后台线程也会定时从 flush 链表中刷新一部分页面到磁盘，刷新的速率取决于当时系统是不是很繁忙。这种刷新页面的方式被称之为<code>BUF_FLUSH_LIST</code>。</li>
-<li>同步刷新<br>
-有时候后台线程刷新脏页的进度比较慢，导致用户线程在准备加载一个磁盘页到 Buffer Pool 时没有可用的缓存页，这时就会尝试看看 LRU 链表尾部有没有可以直接释放掉的未修改页面，如果没有的话会不得不将 LRU 链表尾部的一个脏页同步刷新到磁盘（和磁盘交互是很慢的，这会降低处理用户请求的速度）。这种刷新单个页面到磁盘中的刷新方式被称之为<code>BUF_FLUSH_SINGLE_PAGE</code>。</li>
 </ul>
 <h2 id="buffer-pool-内部组成"><a class="header-anchor" href="#buffer-pool-内部组成">¶</a>Buffer Pool 内部组成</h2>
 <p>Buffer Pool 的基础组成部分是<strong>缓存页</strong>，大小和磁盘上的默认页大小一致都是 16KB，每一个缓存页都对应一个<strong>控制块</strong>。<br>
@@ -596,8 +596,8 @@ change buffer 使用的是 buffer pool 里的内存。</li>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/4eb3381c.html" rel="next" title="分布式锁">
-                <i class="fa fa-chevron-left"></i> 分布式锁
+              <a href="/37173fb7.html" rel="next" title="MyBatis 原理">
+                <i class="fa fa-chevron-left"></i> MyBatis 原理
               </a>
             
           </div>
@@ -606,8 +606,8 @@ change buffer 使用的是 buffer pool 里的内存。</li>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/37173fb7.html" rel="prev" title="MyBatis 原理">
-                MyBatis 原理 <i class="fa fa-chevron-right"></i>
+              <a href="/1e6a7cbc.html" rel="prev" title="海量数据处理方法">
+                海量数据处理方法 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -690,7 +690,7 @@ change buffer 使用的是 buffer pool 里的内存。</li>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">142</span>
+                  <span class="site-state-item-count">143</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -747,7 +747,7 @@ change buffer 使用的是 buffer pool 里的内存。</li>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">Buffer Pool</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-配置"><span class="nav-number">1.1.</span> <span class="nav-text">¶Buffer Pool 配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查看-buffer-pool-状态"><span class="nav-number">1.2.</span> <span class="nav-text">¶查看 Buffer Pool 状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-的组成"><span class="nav-number">1.3.</span> <span class="nav-text">¶Buffer Pool 的组成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-的作用原理"><span class="nav-number">1.4.</span> <span class="nav-text">¶Buffer Pool 的作用原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#加载磁盘页面到-buffer-pool"><span class="nav-number">1.4.1.</span> <span class="nav-text">¶加载磁盘页面到 Buffer Pool</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#刷新脏页到磁盘"><span class="nav-number">1.4.2.</span> <span class="nav-text">¶刷新脏页到磁盘</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-内部组成"><span class="nav-number">1.5.</span> <span class="nav-text">¶Buffer Pool 内部组成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#free-链表管理"><span class="nav-number">1.6.</span> <span class="nav-text">¶free 链表管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存页的哈希表"><span class="nav-number">1.7.</span> <span class="nav-text">¶缓存页的哈希表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#flush-链表管理"><span class="nav-number">1.8.</span> <span class="nav-text">¶flush 链表管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lru-链表管理"><span class="nav-number">1.9.</span> <span class="nav-text">¶LRU 链表管理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">Change Buffer</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用-change-buffer-的条件"><span class="nav-number">2.1.</span> <span class="nav-text">¶使用 change buffer 的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用建议"><span class="nav-number">2.2.</span> <span class="nav-text">¶使用建议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redo-log-和-change-buffer-之间的区别"><span class="nav-number">2.3.</span> <span class="nav-text">¶redo log 和 change buffer 之间的区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#例子"><span class="nav-number">2.4.</span> <span class="nav-text">¶例子</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么唯一索引上不能使用change-buffer优化？"><span class="nav-number">3.1.</span> <span class="nav-text">¶为什么唯一索引上不能使用change buffer优化？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#唯一索引会比普通索引更快吗？"><span class="nav-number">3.2.</span> <span class="nav-text">¶唯一索引会比普通索引更快吗？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#某次写入change-buffer后-系统重启了-change-buffer会丢失吗？"><span class="nav-number">3.3.</span> <span class="nav-text">¶某次写入change buffer后，系统重启了，change buffer会丢失吗？</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">Buffer Pool</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-的作用原理"><span class="nav-number">1.1.</span> <span class="nav-text">¶Buffer Pool 的作用原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#加载磁盘页面到-buffer-pool"><span class="nav-number">1.1.1.</span> <span class="nav-text">¶加载磁盘页面到 Buffer Pool</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#刷新脏页到磁盘"><span class="nav-number">1.1.2.</span> <span class="nav-text">¶刷新脏页到磁盘</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-配置"><span class="nav-number">1.2.</span> <span class="nav-text">¶Buffer Pool 配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查看-buffer-pool-状态"><span class="nav-number">1.3.</span> <span class="nav-text">¶查看 Buffer Pool 状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#buffer-pool-内部组成"><span class="nav-number">1.4.</span> <span class="nav-text">¶Buffer Pool 内部组成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#free-链表管理"><span class="nav-number">1.5.</span> <span class="nav-text">¶free 链表管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存页的哈希表"><span class="nav-number">1.6.</span> <span class="nav-text">¶缓存页的哈希表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#flush-链表管理"><span class="nav-number">1.7.</span> <span class="nav-text">¶flush 链表管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lru-链表管理"><span class="nav-number">1.8.</span> <span class="nav-text">¶LRU 链表管理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">Change Buffer</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用-change-buffer-的条件"><span class="nav-number">2.1.</span> <span class="nav-text">¶使用 change buffer 的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用建议"><span class="nav-number">2.2.</span> <span class="nav-text">¶使用建议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redo-log-和-change-buffer-之间的区别"><span class="nav-number">2.3.</span> <span class="nav-text">¶redo log 和 change buffer 之间的区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#例子"><span class="nav-number">2.4.</span> <span class="nav-text">¶例子</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么唯一索引上不能使用change-buffer优化？"><span class="nav-number">3.1.</span> <span class="nav-text">¶为什么唯一索引上不能使用change buffer优化？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#唯一索引会比普通索引更快吗？"><span class="nav-number">3.2.</span> <span class="nav-text">¶唯一索引会比普通索引更快吗？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#某次写入change-buffer后-系统重启了-change-buffer会丢失吗？"><span class="nav-number">3.3.</span> <span class="nav-text">¶某次写入change buffer后，系统重启了，change buffer会丢失吗？</span></a></li></ol></li></ol></div>
             
 
           </div>
