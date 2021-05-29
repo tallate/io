@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="Elasticsearch 是一个实时的分布式搜索和分析引擎。它可以帮助你用前所未有的速度去处理大规模数据。ElasticSearch 是一个基于 Lucene 的搜索服务器。它提供了一个分布式多用户能力的全文搜索引擎，基于 RESTful web 接口。Elasticsearch 是用 Java 开发的，并作为 Apache 许可条款下的开放源码发布，是当前流行的企业级搜索引擎。设计用于云计算中">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2021-01-21T02:44:30.578Z">
+<meta property="og:updated_time" content="2021-05-29T12:35:03.729Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES（一）使用ES">
 <meta name="twitter:description" content="Elasticsearch 是一个实时的分布式搜索和分析引擎。它可以帮助你用前所未有的速度去处理大规模数据。ElasticSearch 是一个基于 Lucene 的搜索服务器。它提供了一个分布式多用户能力的全文搜索引擎，基于 RESTful web 接口。Elasticsearch 是用 Java 开发的，并作为 Apache 许可条款下的开放源码发布，是当前流行的企业级搜索引擎。设计用于云计算中">
@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.2k 字
+                  3.3k 字
                 </span>
               
 
@@ -448,9 +448,12 @@ elasticsearch 默认安装在/usr/share/elasticsearch，日志在/var/log/elasti
 <blockquote>
 <p>ELASTICSEARCH_URL 必须是容器的 IP，不能是 127.0.0.1 或 localhost，如果启动 kibana 的时候 ELASTICSEARCH_URL 写的 localhost:9200 那么 kibana 可以启动，但进入页面就会显示连接不上 elasticsearch。所以就需要进入 es 容器中查看 es 容器 ip（<code>ip addr</code>），然后将 ELASTICSEARCH_URL 改为 es 容器 ip 地址才行。</p>
 </blockquote>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 5601:5601 -e ELASTICSEARCH_URL=http://172.19.0.2:9200 --network network_es kibana:5.6.11</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 5601:5601 -e ELASTICSEARCH_URL=http://172.19.0.1:9200 --network network_es kibana:5.6.11</span><br></pre></td></tr></table></figure>
 <p>如果启动失败，一般是 Elasticsearch 的<code>bootstrap checks</code>没有通过，先找到镜像 ID 然后再查看日志：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker ps -a</span><br><span class="line">docker logs &lt;Container ID&gt;</span><br></pre></td></tr></table></figure>
+<p>如果碰到类似：<code>[blocked by: [FORBIDDEN/12/index read-only / allow delete (api)];</code>这样的异常<br>
+可以运行下面的命令解决：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -XPUT -H &quot;Content-Type: application/json&quot; http://localhost:9204/_all/_settings -d &apos;&#123;&quot;index.blocks.read_only_allow_delete&quot;: null&#125;&apos;</span><br></pre></td></tr></table></figure>
 <p>需要注意的点：</p>
 <ol>
 <li>kibana的版本要和elasticsearch匹配；</li>
@@ -500,6 +503,7 @@ es hard nofile 65536<br>
 export ES_HEAP_SIZE=1g # 默认是 1g，-Xms=-Xmx，且最小值也是 1g<br>
 ./elasticsearch -d -p /etc/esconf/esins1.pid<br>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1. 查看节点情况</span><br><span class="line">    </span><br><span class="line">http://59.110.172.126:9200/_nodes</span><br></pre></td></tr></table></figure></p>
+<h3 id="使用logstash导入数据"><a class="header-anchor" href="#使用logstash导入数据">¶</a>使用logstash导入数据</h3>
 <h2 id="节点配置"><a class="header-anchor" href="#节点配置">¶</a>节点配置</h2>
 <h3 id="分片副本配置"><a class="header-anchor" href="#分片副本配置">¶</a>分片副本配置</h3>
 <ul>
@@ -590,6 +594,10 @@ Elasticsearch 默认使用单播，组播容易受到错误的组播信号影响
 <h3 id="kibana"><a class="header-anchor" href="#kibana">¶</a>Kibana</h3>
 <ol>
 <li><a href="https://www.elastic.co/guide/en/kibana/current/introduction.html" target="_blank" rel="noopener">Kibana Guide</a></li>
+</ol>
+<h3 id="logstash"><a class="header-anchor" href="#logstash">¶</a>logstash</h3>
+<ol>
+<li><a href="https://www.elastic.co/guide/en/logstash/current/index.html" target="_blank" rel="noopener">Logstash Reference</a></li>
 </ol>
 <h3 id="数据迁移"><a class="header-anchor" href="#数据迁移">¶</a>数据迁移</h3>
 <ol>
@@ -731,7 +739,7 @@ Elasticsearch 默认使用单播，组播容易受到错误的组播信号影响
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">143</span>
+                  <span class="site-state-item-count">144</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -742,7 +750,7 @@ Elasticsearch 默认使用单播，组播容易受到错误的组播信号影响
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-count">23</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -753,7 +761,7 @@ Elasticsearch 默认使用单播，组播容易受到错误的组播信号影响
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">73</span>
+                  <span class="site-state-item-count">74</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
@@ -788,7 +796,7 @@ Elasticsearch 默认使用单播，组播容易受到错误的组播信号影响
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#开始使用-es"><span class="nav-number">1.</span> <span class="nav-text">¶开始使用 ES</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用包管理安装"><span class="nav-number">1.1.</span> <span class="nav-text">¶使用包管理安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-docker-运行-elasticsearch"><span class="nav-number">1.2.</span> <span class="nav-text">¶使用 Docker 运行 Elasticsearch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调试debug-es"><span class="nav-number">1.3.</span> <span class="nav-text">¶调试debug ES</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建索引-并为索引分配分片"><span class="nav-number">1.4.</span> <span class="nav-text">¶创建索引，并为索引分配分片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建多个节点-一个主节点及一个副节点备份"><span class="nav-number">1.5.</span> <span class="nav-text">¶创建多个节点，一个主节点及一个副节点备份</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点配置"><span class="nav-number">2.</span> <span class="nav-text">¶节点配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分片副本配置"><span class="nav-number">2.1.</span> <span class="nav-text">¶分片副本配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群监控"><span class="nav-number">2.2.</span> <span class="nav-text">¶集群监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群状态监控"><span class="nav-number">2.3.</span> <span class="nav-text">¶集群状态监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster"><span class="nav-number">2.4.</span> <span class="nav-text">¶Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#node"><span class="nav-number">2.5.</span> <span class="nav-text">¶Node</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#paths"><span class="nav-number">2.6.</span> <span class="nav-text">¶Paths</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#memory"><span class="nav-number">2.7.</span> <span class="nav-text">¶Memory</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#network"><span class="nav-number">2.8.</span> <span class="nav-text">¶Network</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#discovery"><span class="nav-number">2.9.</span> <span class="nav-text">¶Discovery</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群恢复"><span class="nav-number">2.10.</span> <span class="nav-text">¶集群恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#various"><span class="nav-number">2.11.</span> <span class="nav-text">¶Various</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#文档及安装"><span class="nav-number">3.1.</span> <span class="nav-text">¶文档及安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#search"><span class="nav-number">3.2.</span> <span class="nav-text">¶Search</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-v2"><span class="nav-number">3.3.</span> <span class="nav-text">¶Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#client"><span class="nav-number">3.4.</span> <span class="nav-text">¶Client</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kibana"><span class="nav-number">3.5.</span> <span class="nav-text">¶Kibana</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据迁移"><span class="nav-number">3.6.</span> <span class="nav-text">¶数据迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置"><span class="nav-number">3.7.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">3.8.</span> <span class="nav-text">¶应用</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#开始使用-es"><span class="nav-number">1.</span> <span class="nav-text">¶开始使用 ES</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用包管理安装"><span class="nav-number">1.1.</span> <span class="nav-text">¶使用包管理安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-docker-运行-elasticsearch"><span class="nav-number">1.2.</span> <span class="nav-text">¶使用 Docker 运行 Elasticsearch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调试debug-es"><span class="nav-number">1.3.</span> <span class="nav-text">¶调试debug ES</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建索引-并为索引分配分片"><span class="nav-number">1.4.</span> <span class="nav-text">¶创建索引，并为索引分配分片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建多个节点-一个主节点及一个副节点备份"><span class="nav-number">1.5.</span> <span class="nav-text">¶创建多个节点，一个主节点及一个副节点备份</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用logstash导入数据"><span class="nav-number">1.6.</span> <span class="nav-text">¶使用logstash导入数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点配置"><span class="nav-number">2.</span> <span class="nav-text">¶节点配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分片副本配置"><span class="nav-number">2.1.</span> <span class="nav-text">¶分片副本配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群监控"><span class="nav-number">2.2.</span> <span class="nav-text">¶集群监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群状态监控"><span class="nav-number">2.3.</span> <span class="nav-text">¶集群状态监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster"><span class="nav-number">2.4.</span> <span class="nav-text">¶Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#node"><span class="nav-number">2.5.</span> <span class="nav-text">¶Node</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#paths"><span class="nav-number">2.6.</span> <span class="nav-text">¶Paths</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#memory"><span class="nav-number">2.7.</span> <span class="nav-text">¶Memory</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#network"><span class="nav-number">2.8.</span> <span class="nav-text">¶Network</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#discovery"><span class="nav-number">2.9.</span> <span class="nav-text">¶Discovery</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群恢复"><span class="nav-number">2.10.</span> <span class="nav-text">¶集群恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#various"><span class="nav-number">2.11.</span> <span class="nav-text">¶Various</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">¶参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#文档及安装"><span class="nav-number">3.1.</span> <span class="nav-text">¶文档及安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#search"><span class="nav-number">3.2.</span> <span class="nav-text">¶Search</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-v2"><span class="nav-number">3.3.</span> <span class="nav-text">¶Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#client"><span class="nav-number">3.4.</span> <span class="nav-text">¶Client</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kibana"><span class="nav-number">3.5.</span> <span class="nav-text">¶Kibana</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#logstash"><span class="nav-number">3.6.</span> <span class="nav-text">¶logstash</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据迁移"><span class="nav-number">3.7.</span> <span class="nav-text">¶数据迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置"><span class="nav-number">3.8.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">3.9.</span> <span class="nav-text">¶应用</span></a></li></ol></li></ol></div>
             
 
           </div>
