@@ -82,7 +82,7 @@
 <meta name="description" content="对ES源码的阅读记录。">
 <meta name="keywords" content="ElasticSearch">
 <meta property="og:type" content="article">
-<meta property="og:title" content="ES集群原理">
+<meta property="og:title" content="ES（五）集群原理">
 <meta property="og:url" content="https://tallate.github.io/86e377c4.html">
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="对ES源码的阅读记录。">
@@ -91,9 +91,9 @@
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B92.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/MySQL%E4%B8%8EES%E5%90%8C%E6%AD%A5%E7%9A%84%E4%B8%80%E7%A7%8D%E6%9E%B6%E6%9E%84.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.png">
-<meta property="og:updated_time" content="2021-02-01T04:07:38.527Z">
+<meta property="og:updated_time" content="2021-05-30T16:02:52.835Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="ES集群原理">
+<meta name="twitter:title" content="ES（五）集群原理">
 <meta name="twitter:description" content="对ES源码的阅读记录。">
 <meta name="twitter:image" content="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B91.png">
 
@@ -133,7 +133,7 @@
 
 
 
-  <title>ES集群原理 | Tallate</title>
+  <title>ES（五）集群原理 | Tallate</title>
   
 
 
@@ -292,7 +292,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">ES集群原理</h1>
+          <h1 class="post-title" itemprop="name headline">ES（五）集群原理</h1>
         
 
         <div class="post-meta">
@@ -363,7 +363,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  5.7k 字
+                  6.3k 字
                 </span>
               
 
@@ -379,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  20 分钟
+                  22 分钟
                 </span>
               
             </div>
@@ -405,7 +405,7 @@
 <h1>ES调试环境的搭建</h1>
 <p>ES调试环境的初始化见我的另一篇文档：<br>
 <a href="https://tallate.github.io/c395b48b.html#%E8%B0%83%E8%AF%95debug-es">https://tallate.github.io/c395b48b.html#调试debug-es</a></p>
-<h1>分布式概念（Distribution）</h1>
+<h1>ES的分布式概念</h1>
 <h2 id="集群-cluster"><a class="header-anchor" href="#集群-cluster">¶</a>集群 - Cluster</h2>
 <p>一个集群就是由一个或多个节点组织在一起，它们共同持有全部的数据。<br>
 一个集群有一个唯一的名字标识 <code>cluster.name</code> ，其节点只能通过指定某个集群的名字，来加入这个集群，默认情况下，ES会自动发现<strong>同一网段</strong>内的节点，自动组成集群，当然也可以手动配置集群内节点的地址（<code>discovery.zen.ping.unicast.hosts</code>）。<br>
@@ -414,16 +414,54 @@
 <li>对内，有一个主节点负责管理集群状态，包括管理分片的状态和副本的状态，以及节点的发现和删除；</li>
 <li>对外，没有主节点，第一个接收请求的节点作为<strong>协调节点</strong>。</li>
 </ul>
+<h3 id="集群监控"><a class="header-anchor" href="#集群监控">¶</a>集群监控</h3>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 测试环境es集群状态查看</span><br><span class="line">curl http://ip:9219/_cluster/health</span><br></pre></td></tr></table></figure>
+<p>Elasticsearch 的集群监控信息中包含了许多的统计数据，其中最为重要的一项就是 集群健康 ， 它在 status 字段中展示为：</p>
+<ul>
+<li>green：所有的主分片和副本分片都正常运行</li>
+<li>yellow：所有的主分片都正常运行，但不是所有的副本分片都正常运行，比如刚创建时没有被分配到任何节点</li>
+<li>red：有主分片没能正常运行</li>
+</ul>
+<blockquote>
+<p>比如服务器磁盘容量超过85%时创建了一个新的索引</p>
+</blockquote>
+<h3 id="集群状态监控"><a class="header-anchor" href="#集群状态监控">¶</a>集群状态监控</h3>
+<ul>
+<li>集群状态<br>
+<code>http://localhost:9200/_cluster/state</code><br>
+主要看集群节点信息、其中哪个是主节点。</li>
+<li>集群统计<br>
+<code>http://localhost:9200/_cluster/stats</code><br>
+集群中有几个节点、多少文档、多少索引等。</li>
+<li>集群任务管理<br>
+<code>http://localhost:9200/_tasks</code></li>
+<li>节点信息<br>
+<code>http://localhost:9200/_nodes</code></li>
+<li>活跃线程信息<br>
+<code>http://localhost:9200/_nodes/hot_threads</code></li>
+</ul>
 <h2 id="节点-node"><a class="header-anchor" href="#节点-node">¶</a>节点 - Node</h2>
 <p>一个节点是集群中的一个服务器，即一个 Elasticsearch 实例。<br>
 作为集群的一部分，它存储数据，参与集群的索引和搜索功能。</p>
-<h2 id="主节点-master"><a class="header-anchor" href="#主节点-master">¶</a>主节点 - Master</h2>
+<h2 id="主节点-master-eligible-和-master"><a class="header-anchor" href="#主节点-master-eligible-和-master">¶</a>主节点 - Master-eligible 和 Master</h2>
+<p>每个节点启动后，默认就是一个Master eligible节点。</p>
+<blockquote>
+<p>可以设置node.master: false禁止，即设置成false后就无法成为主节点了。</p>
+</blockquote>
+<p>Master-eligible节点可以参加选主流程，成为Master节点。</p>
+<ul>
+<li>当第一个节点启动时候，它会将自己选举成Master节点。</li>
+<li>每个节点上都保存了集群状态，但只有Master节点才能修改集群的<strong>状态信息</strong>（为保持一致性因此只有Master节点才能修改）</li>
+</ul>
+<blockquote>
+<p>集群状态信息包括：所有节点信息、索引及其相关的Mapping和Setting信息、分片的路由信息。</p>
+</blockquote>
 <p>当一个节点被选举成为主节点时，它将负责管理集群范围内的所有变更，例如增加、删除索引，或者增加、删除节点等。<br>
-主节点并不需要全权负责涉及到文档级别的变更和搜索等操作（这和ES中协调节点的概念有关），所以当集群只拥有一个主节点的情况下，即使流量增加它也不会成为瓶颈。</p>
-<h2 id="协调节点和数据节点"><a class="header-anchor" href="#协调节点和数据节点">¶</a>协调节点和数据节点</h2>
+<strong>主节点并不需要全权负责涉及到文档级别的变更和搜索等操作（这和ES中协调节点的概念有关），所以当集群只拥有一个主节点的情况下，即使流量增加它也不会成为瓶颈。</strong></p>
+<h2 id="协调节点coordinating-node和数据节点data-node"><a class="header-anchor" href="#协调节点coordinating-node和数据节点data-node">¶</a>协调节点Coordinating Node和数据节点Data Node</h2>
 <p>协调节点并不是物理意义上的一个节点，而是指ES集群中第一个接收请求的节点，这个节点需要负责将请求路由到数据节点执行对应的操作，如果是Search请求，协调节点还需要对结果进行合并排序分页等操作。</p>
 <h2 id="分片-shard"><a class="header-anchor" href="#分片-shard">¶</a>分片 - Shard</h2>
-<p>一个 分片 是一个底层的 工作单元 ，它仅保存了 <strong>全部数据中的一部分</strong>，是一个 Lucene 的实例，所以它本身就是一个完整的搜索引擎。<br>
+<p>一个 分片 是一个底层的 工作单元 ，它仅保存了 <strong>全部数据中的一部分</strong>，是一个 <strong>Lucene 实例</strong>，所以它本身就是一个完整的搜索引擎。<br>
 一个索引可以被划分成多个分片，创建索引时可指定分片数量，默认是 5。<br>
 每个分片是一个 Lucene 实例，它本身也是一个功能完善并且独立的“索引”，这个“索引” 可以被放置到集群中的任何节点上。<br>
 分片是 ES 中集群管理的最小单位，在此基础上，ES 允许：</p>
@@ -439,13 +477,34 @@
 <li>集群（2 个节点）5 个分片：一个节点 3 片，另一个节点 2 片，可以并行查找，同时单节点磁盘占用量 &lt;60%，索引最大存储上限为 200G。</li>
 <li>集群（5 个节点）5 个分片：每个节点包含一个分片，单节点磁盘占用量 20%，索引最大存储上限为 500G。</li>
 </ol>
-<p>分片数可以在创建索引时指定：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -XPUT &apos;localhost:9200/test&apos; -d `&#123;&quot;settings&quot;: &#123;&quot;number_of_shards&quot;: 3&#125;&#125;`</span><br></pre></td></tr></table></figure>
-<p>至于是否有最佳实践，我认为还是得根据实际场景来说话，比如就简单搭建一个开发环境来说，单节点（单分片或多分片）足够，当然，因为没有荣誉，硬件故障时会有数据丢失风险。</p>
-<h2 id="副本-replica"><a class="header-anchor" href="#副本-replica">¶</a>副本 - Replica</h2>
+<h3 id="分片数设置"><a class="header-anchor" href="#分片数设置">¶</a>分片数设置</h3>
+<p>分片数的设置需要提前做好容量规划，不要过大也不要过小：</p>
+<ul>
+<li>如果分片数过小<br>
+会导致后续无法通过增加节点来实现水平扩展</li>
+</ul>
+<blockquote>
+<p>主分片无法动态增加<br>
+如果要做数据迁移，也会因为单个分片数据量太大，导致数据重新分配耗时</p>
+</blockquote>
+<ul>
+<li>如果分片数过大<br>
+影响搜索结果的相关性打分，影响统计结果的准确性<br>
+单个节点上分片过多，会导致资源浪费，同时也会影响性能</li>
+</ul>
+<blockquote>
+<p>7.0开始，ES默认分片数改成了1，不会造成over-sharding问题</p>
+</blockquote>
+<p>分片数可以在创建索引时指定，也可以在运行时修改：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">PUT /test</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;number_of_shards&quot;: 3,</span><br><span class="line">        &quot;number_of_replicas&quot;: 1</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="主分片和副分片"><a class="header-anchor" href="#主分片和副分片">¶</a>主分片和副分片</h3>
+<p>一个分片可以是 主分片 或者 副本分片。<br>
+索引内任意一个文档都归属于一个主分片，所以<strong>主分片的数目决定着索引能够保存的最大数据量，在索引建立的时候就已经确定了主分片数</strong>，但是副本分片数可以随时修改。<br>
+一个副本分片只是一个主分片的拷贝。副本分片作为硬件故障时保护数据不丢失的冗余备份，并为搜索和返回文档等读操作提供服务。</p>
+<h3 id="副本-replica"><a class="header-anchor" href="#副本-replica">¶</a>副本 - Replica</h3>
 <p>Elasticsearch 允许创建分片的一份或多份拷贝（默认复制 1 份），这些拷贝叫做副本。<br>
-在分片/节点失败的情况下，复制提供了高可用性。<br>
-因为搜索可以在所有的复制上并行运行，复制可以扩展你的搜索量/吞吐量<br>
+在分片/节点失败的情况下，复制提供了<strong>高可用性</strong>。<br>
+因为搜索可以在所有的复制上并行运行，复制可以<strong>扩展你的搜索量/吞吐量</strong><br>
 复制分片不与相同的主分片置于同一节点上，否则失去备份的意义。<br>
 默认情况下，每个索引会有10个shard，5个primary shard，每个primary shard会有一个replica shard，即5个replica shard，最小的高可用配置是2台服务器（节点），其中每个节点上有5个shard，如果其中一个节点宕机了，因为还有一台机器，因此数据并不会丢失，另一个节点仍可以响应搜索请求。<br>
 可以在创建索引的时候指定：</p>
@@ -455,13 +514,9 @@
 <li>每个索引可以被分成多个分片。</li>
 <li>一个索引也可以被复制 0 次（即没有复制） 或多次。</li>
 <li>一旦复制了，每个索引就有了主分片（作为复制源的分片）和复制分片（主分片的拷贝）。</li>
-<li>分片和复制的数量可以在索引创建的时候指定。在索引创建之后，可以在任何时候动态地改变复制的数量，但是不能再改变分片的数量。</li>
+<li>分片和复制的数量可以在索引创建的时候指定。在索引创建之后，<strong>可以在任何时候动态地改变复制的数量</strong>，但是不能再改变分片的数量。</li>
 </ol>
 <p>至于 ES 集群中如何分配分片与备份，都是 ES 内部维护管理的，对用户完全透明。</p>
-<h2 id="主分片和副分片"><a class="header-anchor" href="#主分片和副分片">¶</a>主分片和副分片</h2>
-<p>一个分片可以是 主分片 或者 副本分片。<br>
-索引内任意一个文档都归属于一个主分片，所以主分片的数目决定着索引能够保存的最大数据量，在索引建立的时候就已经确定了主分片数，但是副本分片数可以随时修改。<br>
-一个副本分片只是一个主分片的拷贝。副本分片作为硬件故障时保护数据不丢失的冗余备份，并为搜索和返回文档等读操作提供服务。</p>
 <h2 id="索引-index"><a class="header-anchor" href="#索引-index">¶</a>索引（Index）</h2>
 <p>索引实际上是指向一个或者多个物理 分片 的 <strong>逻辑命名空间</strong>。<br>
 所以说一个节点包含多个分片没有问题，但是一个节点包含多个索引是不对的，因为索引包含的分片可以存在于多个节点内，且可以在后期添加。</p>
@@ -907,7 +962,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">144</span>
+                  <span class="site-state-item-count">145</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -964,7 +1019,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES调试环境的搭建</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">分布式概念（Distribution）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#集群-cluster"><span class="nav-number">2.1.</span> <span class="nav-text">¶集群 - Cluster</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点-node"><span class="nav-number">2.2.</span> <span class="nav-text">¶节点 - Node</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主节点-master"><span class="nav-number">2.3.</span> <span class="nav-text">¶主节点 - Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#协调节点和数据节点"><span class="nav-number">2.4.</span> <span class="nav-text">¶协调节点和数据节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分片-shard"><span class="nav-number">2.5.</span> <span class="nav-text">¶分片 - Shard</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#副本-replica"><span class="nav-number">2.6.</span> <span class="nav-text">¶副本 - Replica</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主分片和副分片"><span class="nav-number">2.7.</span> <span class="nav-text">¶主分片和副分片</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-index"><span class="nav-number">2.8.</span> <span class="nav-text">¶索引（Index）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#recovery"><span class="nav-number">2.9.</span> <span class="nav-text">¶Recovery</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#gateway"><span class="nav-number">2.10.</span> <span class="nav-text">¶Gateway</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#transport"><span class="nav-number">2.11.</span> <span class="nav-text">¶Transport</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">ES集群的启动源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">3.1.</span> <span class="nav-text">¶节点的启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#keepalive"><span class="nav-number">3.2.</span> <span class="nav-text">¶keepalive</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点关闭"><span class="nav-number">3.3.</span> <span class="nav-text">¶节点关闭</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">选举主节点源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#选举相关概念"><span class="nav-number">4.1.</span> <span class="nav-text">¶选举相关概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置"><span class="nav-number">4.2.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#本地节点实例的创建"><span class="nav-number">4.3.</span> <span class="nav-text">¶本地节点实例的创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选主流程"><span class="nav-number">4.4.</span> <span class="nav-text">¶选主流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选举临时-master"><span class="nav-number">4.5.</span> <span class="nav-text">¶选举临时 Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-mastercandidates-选主"><span class="nav-number">4.6.</span> <span class="nav-text">¶从 masterCandidates 选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-activemasters-列表中选主"><span class="nav-number">4.7.</span> <span class="nav-text">¶从 activeMasters 列表中选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#收集投票进行统计"><span class="nav-number">4.8.</span> <span class="nav-text">¶收集投票进行统计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#加入集群"><span class="nav-number">4.9.</span> <span class="nav-text">¶加入集群</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">脑裂问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#发生脑裂的原因"><span class="nav-number">5.1.</span> <span class="nav-text">¶发生脑裂的原因</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决办法"><span class="nav-number">5.2.</span> <span class="nav-text">¶解决办法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">集群扩容</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#es扩容限制"><span class="nav-number">6.1.</span> <span class="nav-text">¶ES扩容限制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置节点"><span class="nav-number">6.2.</span> <span class="nav-text">¶配置节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#水平扩容"><span class="nav-number">6.3.</span> <span class="nav-text">¶水平扩容</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">数据迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#mysql-与-es-同步"><span class="nav-number">7.1.</span> <span class="nav-text">¶MySQL 与 ES 同步</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么要同步-mysql-和-es"><span class="nav-number">7.1.1.</span> <span class="nav-text">¶为什么要同步 MySQL 和 ES</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#注意事项"><span class="nav-number">7.1.2.</span> <span class="nav-text">¶注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一种架构方案"><span class="nav-number">7.1.3.</span> <span class="nav-text">¶一种架构方案</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#kafka"><span class="nav-number">7.1.3.1.</span> <span class="nav-text">¶Kafka</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#data-transformation"><span class="nav-number">7.1.3.2.</span> <span class="nav-text">¶Data Transformation</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es"><span class="nav-number">7.1.3.3.</span> <span class="nav-text">¶ES</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es-缺点"><span class="nav-number">7.1.3.4.</span> <span class="nav-text">¶ES 缺点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#下一步"><span class="nav-number">7.1.3.5.</span> <span class="nav-text">¶下一步</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">8.</span> <span class="nav-text">故障转移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#同机多节点"><span class="nav-number">8.1.</span> <span class="nav-text">¶同机多节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#不同机器多节点"><span class="nav-number">8.2.</span> <span class="nav-text">¶不同机器多节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障转移机制"><span class="nav-number">8.3.</span> <span class="nav-text">¶故障转移机制</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES调试环境的搭建</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">ES的分布式概念</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#集群-cluster"><span class="nav-number">2.1.</span> <span class="nav-text">¶集群 - Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群监控"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶集群监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群状态监控"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶集群状态监控</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点-node"><span class="nav-number">2.2.</span> <span class="nav-text">¶节点 - Node</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主节点-master-eligible-和-master"><span class="nav-number">2.3.</span> <span class="nav-text">¶主节点 - Master-eligible 和 Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#协调节点coordinating-node和数据节点data-node"><span class="nav-number">2.4.</span> <span class="nav-text">¶协调节点Coordinating Node和数据节点Data Node</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分片-shard"><span class="nav-number">2.5.</span> <span class="nav-text">¶分片 - Shard</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分片数设置"><span class="nav-number">2.5.1.</span> <span class="nav-text">¶分片数设置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主分片和副分片"><span class="nav-number">2.5.2.</span> <span class="nav-text">¶主分片和副分片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#副本-replica"><span class="nav-number">2.5.3.</span> <span class="nav-text">¶副本 - Replica</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-index"><span class="nav-number">2.6.</span> <span class="nav-text">¶索引（Index）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#recovery"><span class="nav-number">2.7.</span> <span class="nav-text">¶Recovery</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#gateway"><span class="nav-number">2.8.</span> <span class="nav-text">¶Gateway</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#transport"><span class="nav-number">2.9.</span> <span class="nav-text">¶Transport</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">ES集群的启动源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">3.1.</span> <span class="nav-text">¶节点的启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#keepalive"><span class="nav-number">3.2.</span> <span class="nav-text">¶keepalive</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点关闭"><span class="nav-number">3.3.</span> <span class="nav-text">¶节点关闭</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">选举主节点源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#选举相关概念"><span class="nav-number">4.1.</span> <span class="nav-text">¶选举相关概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置"><span class="nav-number">4.2.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#本地节点实例的创建"><span class="nav-number">4.3.</span> <span class="nav-text">¶本地节点实例的创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选主流程"><span class="nav-number">4.4.</span> <span class="nav-text">¶选主流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选举临时-master"><span class="nav-number">4.5.</span> <span class="nav-text">¶选举临时 Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-mastercandidates-选主"><span class="nav-number">4.6.</span> <span class="nav-text">¶从 masterCandidates 选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-activemasters-列表中选主"><span class="nav-number">4.7.</span> <span class="nav-text">¶从 activeMasters 列表中选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#收集投票进行统计"><span class="nav-number">4.8.</span> <span class="nav-text">¶收集投票进行统计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#加入集群"><span class="nav-number">4.9.</span> <span class="nav-text">¶加入集群</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">脑裂问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#发生脑裂的原因"><span class="nav-number">5.1.</span> <span class="nav-text">¶发生脑裂的原因</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决办法"><span class="nav-number">5.2.</span> <span class="nav-text">¶解决办法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">集群扩容</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#es扩容限制"><span class="nav-number">6.1.</span> <span class="nav-text">¶ES扩容限制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置节点"><span class="nav-number">6.2.</span> <span class="nav-text">¶配置节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#水平扩容"><span class="nav-number">6.3.</span> <span class="nav-text">¶水平扩容</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">数据迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#mysql-与-es-同步"><span class="nav-number">7.1.</span> <span class="nav-text">¶MySQL 与 ES 同步</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么要同步-mysql-和-es"><span class="nav-number">7.1.1.</span> <span class="nav-text">¶为什么要同步 MySQL 和 ES</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#注意事项"><span class="nav-number">7.1.2.</span> <span class="nav-text">¶注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一种架构方案"><span class="nav-number">7.1.3.</span> <span class="nav-text">¶一种架构方案</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#kafka"><span class="nav-number">7.1.3.1.</span> <span class="nav-text">¶Kafka</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#data-transformation"><span class="nav-number">7.1.3.2.</span> <span class="nav-text">¶Data Transformation</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es"><span class="nav-number">7.1.3.3.</span> <span class="nav-text">¶ES</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es-缺点"><span class="nav-number">7.1.3.4.</span> <span class="nav-text">¶ES 缺点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#下一步"><span class="nav-number">7.1.3.5.</span> <span class="nav-text">¶下一步</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">8.</span> <span class="nav-text">故障转移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#同机多节点"><span class="nav-number">8.1.</span> <span class="nav-text">¶同机多节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#不同机器多节点"><span class="nav-number">8.2.</span> <span class="nav-text">¶不同机器多节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障转移机制"><span class="nav-number">8.3.</span> <span class="nav-text">¶故障转移机制</span></a></li></ol></li></ol></div>
             
 
           </div>

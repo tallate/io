@@ -82,7 +82,7 @@
 <meta name="description" content="先分析ES中的搜索原理，然后总结ES中的搜索方法，主要包括轻量查询、请求体查询。">
 <meta name="keywords" content="ElasticSearch">
 <meta property="og:type" content="article">
-<meta property="og:title" content="ES 分布式搜索">
+<meta property="og:title" content="ES（四）分布式搜索">
 <meta property="og:url" content="https://tallate.github.io/1c3259ad.html">
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="先分析ES中的搜索原理，然后总结ES中的搜索方法，主要包括轻量查询、请求体查询。">
@@ -90,9 +90,9 @@
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E5%8F%96%E5%9B%9E%E9%98%B6%E6%AE%B5.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84%E7%B4%A2%E5%BC%95%E5%92%8C%E6%90%9C%E7%B4%A2.png">
-<meta property="og:updated_time" content="2021-02-03T18:25:50.678Z">
+<meta property="og:updated_time" content="2021-06-01T17:23:54.978Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="ES 分布式搜索">
+<meta name="twitter:title" content="ES（四）分布式搜索">
 <meta name="twitter:description" content="先分析ES中的搜索原理，然后总结ES中的搜索方法，主要包括轻量查询、请求体查询。">
 <meta name="twitter:image" content="https://tallate.top/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png">
 
@@ -132,7 +132,7 @@
 
 
 
-  <title>ES 分布式搜索 | Tallate</title>
+  <title>ES（四）分布式搜索 | Tallate</title>
   
 
 
@@ -291,7 +291,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">ES 分布式搜索</h1>
+          <h1 class="post-title" itemprop="name headline">ES（四）分布式搜索</h1>
         
 
         <div class="post-meta">
@@ -362,7 +362,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  11.3k 字
+                  9.6k 字
                 </span>
               
 
@@ -378,7 +378,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  44 分钟
+                  37 分钟
                 </span>
               
             </div>
@@ -460,28 +460,64 @@ ES的一个概念</p>
 <p>缺省的搜索类型是 <code>query_then_fetch</code> 。 在某些情况下，你可能想明确设置 <code>search_type</code> 为 <code>dfs_query_then_fetch</code> 来改善相关性精确度：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?search_type=dfs_query_then_fetch</span><br></pre></td></tr></table></figure>
 <p>搜索类型 <code>dfs_query_then_fetch</code> 有预查询阶段，这个阶段可以从所有相关分片获取词频来计算全局词频。</p>
-<h2 id="游标查询-scroll"><a class="header-anchor" href="#游标查询-scroll">¶</a>游标查询 Scroll</h2>
-<p><code>scroll</code> 查询 可以用来对 Elasticsearch 有效地执行大批量的文档查询，而又不用付出深度分页那种代价。<br>
-游标查询允许我们 先做查询初始化，然后再批量地拉取结果。 这有点儿像传统数据库中的 <code>cursor</code> 。<br>
-游标查询会取某个时间点的快照数据。 查询初始化之后索引上的任何变化会被它忽略。 它通过保存旧的数据文件来实现这个特性，结果就像保留初始化时的索引 <code>视图</code> 一样。<br>
-深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。 游标查询用字段 <code>_doc</code> 来排序。 这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果。<br>
-启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间。 游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间。 这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m // 保持游标查询窗口一分钟。</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], // 关键字 _doc 是最有效的排序顺序。</span><br><span class="line">    &quot;size&quot;:  1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个查询的返回结果包括一个字段 <code>_scroll_id</code>， 它是一个 base64 编码的长字符串。现在我们能传递字段 <code>_scroll_id</code> 到 <code>_search/scroll</code> 查询接口获取下一批结果：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, // 注意再次设置游标查询过期时间为一分钟。</span><br><span class="line">    &quot;scroll_id&quot; : &quot;cXVlcnlUaGVuRmV0Y2g7NTsxMDk5NDpkUmpiR2FjOFNhNnlCM1ZDMWpWYnRROzEwOTk1OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MTA5OTM6ZFJqYkdhYzhTYTZ5QjNWQzFqVmJ0UTsxMTE5MDpBVUtwN2lxc1FLZV8yRGVjWlI2QUVBOzEwOTk2OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MDs=&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个游标查询返回的下一批结果。 尽管我们指定字段 size 的值为 1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 <code>size * number_of_primary_shards</code>。<br>
-当没有更多结果返回的时候，我们就处理完所有匹配的文档了。</p>
-<h1>搜索 - 轻量查询（Query-string）</h1>
+<h2 id="相关性"><a class="header-anchor" href="#相关性">¶</a>相关性</h2>
+<p>搜索的相关性算分描述了一个文档和查询语句匹配的程度，ES会对每个匹配查询条件的结果进行算分 _score<br>
+打分的本质是排序，需要把最符合用户需求的文档排在前面<br>
+ES 5之前，默认的相关性算分采用TF-IDF算法，现在采用BM 25算法。</p>
+<p>有以下指标可以用于衡量结果的相关性，即结果是否满足用户的期望：</p>
+<ul>
+<li>Precision（查准率）<br>
+尽可能返回较少的无关文档</li>
+<li>Recall(查全率/召回率)<br>
+尽量返回较多的相关文档<br>
+体现在用户能否查到自己想要的数据</li>
+<li>Ranking（排序）</li>
+</ul>
+<h3 id="tf-idf"><a class="header-anchor" href="#tf-idf">¶</a>TF-IDF</h3>
+<p>TF（词频Term Frequency）表示检索词在一篇文档中出现的频率</p>
+<ul>
+<li>度量一条查询语句和结果文档相关性的简单方法：将搜索中每一个词的TF进行相加</li>
+<li>停用词（Stop Word）对贡献相关度几乎没有用处，不应该考虑他们的TF。</li>
+</ul>
+<p>IDF（逆文档频率Inverse Document Frequency）<br>
+即log(全部文档数/检索词出现过的文档总数)</p>
+<p>TF-IDF本质上就是将TF求和变成了加权求和=TF(word) * IDF(word)</p>
+<h3 id="bm-25"><a class="header-anchor" href="#bm-25">¶</a>BM 25</h3>
+<p>和经典的TF-IDF相比，当TF无限增加时，BM 25算分。</p>
+<h1>搜索 - 轻量查询（Query-string） - 在URL中使用查询参数</h1>
 <p>当在单一的索引下进行搜索的时候，Elasticsearch 转发请求到索引的每个分片中，可以是主分片也可以是副本分片，然后从每个分片中收集结果。多索引搜索恰好也是用相同的方式工作的——只是会涉及到更多的分片。<br>
 搜索一个索引有五个主分片和搜索五个索引各有一个分片准确来所说是等价的，因为索引只是一种逻辑结构，实际上处理请求的是分片。<br>
-搜索有两种形式：Query-string 和请求体查询。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">HEAD /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">GET /megacorp/employee/_search?q=last_name:Smith</span><br><span class="line">GET /megacorp/employee/_search?q=+first_name:Jane last_name:Smith</span><br><span class="line">GET /_search?q=mary</span><br><span class="line">GET /_search?q=+name:(mary john) +date:&gt;2014-09-10 +(aggregations geo)</span><br><span class="line">GET /_search 在所有的索引中搜索所有的类型（无条件）</span><br><span class="line">/gb/_search 在 gb 索引中搜索所有的类型（指定索引）</span><br><span class="line">/gb,us/_search 在 gb 和 us 索引中搜索所有的文档（指定多个索引）</span><br><span class="line">/g*,u*/_search 在任何以 g 或者 u 开头的索引中搜索所有的类型（通配符）</span><br><span class="line">/gb/user/_search 在 gb 索引中搜索 user 类型（指定类型）</span><br><span class="line">/gb,us/user,tweet/_search 在 gb 和 us 索引中搜索 user 和 tweet 类型（指定多个类型）</span><br><span class="line">/_all/user,tweet/_search 在所有的索引中搜索 user 和 tweet 类型（指定多个类型但不限制索引）</span><br></pre></td></tr></table></figure>
+搜索有两种形式：Query-string（URI） 和请求体查询。</p>
+<h2 id="uri查询的方式"><a class="header-anchor" href="#uri查询的方式">¶</a>URI查询的方式</h2>
+<ul>
+<li>q<br>
+指定查询语句</li>
+<li>df<br>
+默认字段，不指定时，会对所有字段进行查询</li>
+<li>sort<br>
+排序</li>
+<li>from, size<br>
+分页参数</li>
+<li>profile<br>
+可以用于查看查询是如何被执行的</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">HEAD /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line"># 用q指定查询条件</span><br><span class="line">GET /megacorp/employee/_search?q=last_name:Smith</span><br><span class="line">GET /megacorp/employee/_search?q=+first_name:Jane last_name:Smith</span><br><span class="line">GET /_search?q=mary</span><br><span class="line">GET /_search?q=+name:(mary john) +date:&gt;2014-09-10 +(aggregations geo)</span><br><span class="line">GET /_search 在所有的索引中搜索所有的类型（无条件）</span><br><span class="line">/gb/_search 在 gb 索引中搜索所有的类型（指定索引）</span><br><span class="line">/gb,us/_search 在 gb 和 us 索引中搜索所有的文档（指定多个索引）</span><br><span class="line">/g*,u*/_search 在任何以 g 或者 u 开头的索引中搜索所有的类型（通配符）</span><br><span class="line">/gb/user/_search 在 gb 索引中搜索 user 类型（指定类型）</span><br><span class="line">/gb,us/user,tweet/_search 在 gb 和 us 索引中搜索 user 和 tweet 类型（指定多个类型）</span><br><span class="line">/_all/user,tweet/_search 在所有的索引中搜索 user 和 tweet 类型（指定多个类型但不限制索引）</span><br></pre></td></tr></table></figure>
+<p>可以在请求体中指定profile参数为true来展示查询的过程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">get /doc/_search?q=name:a</span><br><span class="line">&#123;</span><br><span class="line">  &quot;profile&quot;: &quot;true&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="查询条件"><a class="header-anchor" href="#查询条件">¶</a>查询条件</h2>
 <ul>
 <li>其中 ‘_search’ 表示搜索，默认返回 10 条结果；</li>
 <li>查询本身赋值给了参数 q，查询链接会被 URL 编码，所以可读性会比较差；</li>
 <li>“last_name:Smith&quot;表示 last_name 字段中包含 Smith 的文档，”+last_name:Smith&quot;表示必须与查询条件匹配，&quot;-last_name:Smith&quot;表示一定不与查询条件匹配；<br>
 至于多个条件存在的情况下，其实不会发生矛盾，&quot;+first_name:Jane -first_name:Jane&quot;可以看成先查出 first_name 包含&quot;Jane&quot;的，再过滤掉；</li>
+<li>区间查询<br>
+可以用区间表示：<br>
+<code>q=year:{2019 TO 2018}</code><br>
+<code>q=year:[* TO 2018]</code><br>
+也可以用算数符号来表示：<br>
+<code>q=year:&gt;2010</code><br>
+<code>q=year:(&gt;2010 &amp;&amp; &lt;=2018)</code><br>
+<code>q=year:(+&gt;2010 +&lt;=2018)</code></li>
 </ul>
 <h2 id="隐含字段"><a class="header-anchor" href="#隐含字段">¶</a>隐含字段</h2>
 <p>当对文档进行索引时，Elasticsearch 取出所有字段的值拼接成一个大的字符串，作为 <code>_all</code> 字段进行索引。</p>
@@ -512,33 +548,57 @@ from：显示应该跳过的初始结果数量，默认是 0</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match&quot; : &#123;</span><br><span class="line">            &quot;last_name&quot; : &quot;Smith&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>查询表达式主要有两种结构：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        ARGUMENT: VALUE,</span><br><span class="line">        ARGUMENT: VALUE,...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        FIELD_NAME: &#123;</span><br><span class="line">            ARGUMENT: VALUE,</span><br><span class="line">            ARGUMENT: VALUE,...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="检索"><a class="header-anchor" href="#检索">¶</a>检索</h2>
-<ul>
-<li>match_all：简单的匹配所有文档，往往和 filter 搭配；</li>
-<li>match：如果你在一个全文字段上使用 match 查询，在执行查询前，它将用正确的分析器去分析查询字符串；<br>
-如果在一个精确值的字段上使用它， 例如数字、日期、布尔或者一个 not_analyzed 字符串字段，那么它将会精确匹配给定的值；</li>
-<li>multi_match：多个字段的 match；</li>
-<li>filter：不评分查询，实际上是给了每个查询出的文档一个默认的中性评价 1，并且<strong>过滤结果将会被缓存</strong>；</li>
-<li>range（范围查询）：查询找出那些落在指定区间内的数字或者时间，gt 大于、gte 大于等于、lt 小于、lte 小于等于；</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;bool&quot;: &#123;</span><br><span class="line">            &quot;must&quot;: &#123;</span><br><span class="line">                &quot;match&quot; : &#123;</span><br><span class="line">                    &quot;last_name&quot; : &quot;smith&quot; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;range&quot; : &#123;</span><br><span class="line">                    &quot;age&quot; : &#123; &quot;gt&quot; : 30 &#125; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="term"><a class="header-anchor" href="#term">¶</a>term</h2>
 <ul>
 <li>term：精确值 匹配，这些精确值可能是数字、时间、布尔或者那些 not_analyzed 的字符串，注意<strong>term 不会对输入的文本进行分析</strong>，这样和索引过的目标字符串比较很有可能出现明明看起来一样却匹配不上的现象（比如&quot;Jane&quot;被分析后变成&quot;jane&quot;，term 查询时使用&quot;Jane&quot;进行精确匹配当然匹配不上了！）；</li>
 <li>terms：同样是精确值匹配，但可以指定一个数组进行匹配；</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;term&quot; : &#123;&quot;first_name&quot;: &quot;jane&quot;&#125;&#125;</span><br><span class="line">&#123; &quot;terms&quot;: &#123; &quot;tag&quot;: [ &quot;search&quot;, &quot;full_text&quot;, &quot;nosql&quot; ] &#125;&#125;</span><br></pre></td></tr></table></figure>
 <ul>
-<li>exists 和 missing：指定字段有值或无值，但后来的版本中废弃了 missing，因为可以通过 must_not+exists 来实现类似的效果</li>
+<li>keyword严格匹配<br>
+keyword类型字段可以精确匹配：</li>
 </ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;exists&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GET /products/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;term&quot;: &#123;</span><br><span class="line">      &quot;productId.keyword&quot;: &#123;</span><br><span class="line">        &quot;value&quot;: &quot;123&quot;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="复合查询"><a class="header-anchor" href="#复合查询">¶</a>复合查询</h2>
+<p>constant_score查询可以将Query转换成Filter，不再计算相关性，且Filter可以有效利用缓存。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">GET /products/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;explain&quot;: true,</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;constant_score&quot;: &#123;</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;term&quot;: &#123;</span><br><span class="line">          &quot;productId.keyword&quot;: &quot;123&quot;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>将一个不变的常量评分（即 1）应用于所有匹配的文档。经常用于你只需要执行一个 filter 而没有其它查询的情况下，如果使用 bool 查询_score 值将总是为 0：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;constant_score&quot;: &#123;</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">            &quot;term&quot;: &#123; &quot;category&quot;: &quot;ebooks&quot; &#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <ul>
 <li>bool：复合语句，可以组合其他语句比如 must 必须匹配、must_not 必须不匹配、should 如果满足则增加_score 否则无影响、filter 用来排除文档不评分，特别的，如果没有 must 语句，那么至少需要能够匹配其中的一条 should 语句。但，如果存在至少一条 must 语句，则对 should 语句的匹配没有要求；每一个子查询都独自地计算文档的相关性得分。一旦他们的得分被计算出来， bool 查询就将这些得分进行合并并且返回一个代表整个布尔操作的得分。（虽说是布尔操作，但是结果分数其实是<code>[0, 1]</code>范围内的小数）</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">        &quot;must&quot;: &#123; &quot;match&quot;: &#123; &quot;title&quot;: &quot;how to make millions&quot; &#125;&#125;,</span><br><span class="line">        &quot;must_not&quot;: &#123; &quot;match&quot;: &#123; &quot;tag&quot;: &quot;spam&quot; &#125;&#125;,</span><br><span class="line">        &quot;should&quot;: [</span><br><span class="line">            &#123; &quot;match&quot;: &#123; &quot;tag&quot;: &quot;starred&quot; &#125;&#125;</span><br><span class="line">        ],</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">          &quot;range&quot;: &#123; &quot;date&quot;: &#123; &quot;gte&quot;: &quot;2014-01-01&quot; &#125;&#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="全文查询"><a class="header-anchor" href="#全文查询">¶</a>全文查询</h2>
+<p>全文查询的特点：</p>
 <ul>
-<li>constant_score：将一个不变的常量评分（即 1）应用于所有匹配的文档。经常用于你只需要执行一个 filter 而没有其它查询的情况下，如果使用 bool 查询_score 值将总是为 0：</li>
+<li>
+<p>索引和搜索时都会进行分词，查询字符串先传递到一个合适的分词器，然后生成一个供查询的词项列表；</p>
+</li>
+<li>
+<p>查询的时候，先会对输入的查询进行分词，然后每个词项逐个进行底层的查询，最终将结果进行合并，并为每个文档生成一个算分。<br>
+比如查询”Hello World“，会查到包括”Hello“或”World“的所有结果。</p>
+</li>
+<li>
+<p>match_all：简单的匹配所有文档，往往和 filter 搭配；</p>
+</li>
+<li>
+<p>match：如果你在一个全文字段上使用 match 查询，在执行查询前，它将用正确的分析器去分析查询字符串；<br>
+如果在一个精确值的字段上使用它， 例如数字、日期、布尔或者一个 not_analyzed 字符串字段，那么它将会精确匹配给定的值；</p>
+</li>
+<li>
+<p>multi_match：多个字段的 match；</p>
+</li>
 </ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;constant_score&quot;: &#123;</span><br><span class="line">        &quot;filter&quot;: &#123;</span><br><span class="line">            &quot;term&quot;: &#123; &quot;category&quot;: &quot;ebooks&quot; &#125; </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="其他结构化查询语句"><a class="header-anchor" href="#其他结构化查询语句">¶</a>其他结构化查询语句</h2>
+<ul>
+<li>filter：不评分查询，实际上是给了每个查询出的文档一个默认的中性评价 1，并且<strong>过滤结果将会被缓存</strong>；</li>
+<li>range（范围查询）：查询找出那些落在指定区间内的数字或者时间，gt 大于、gte 大于等于、lt 小于、lte 小于等于；</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;bool&quot;: &#123;</span><br><span class="line">            &quot;must&quot;: &#123;</span><br><span class="line">                &quot;match&quot; : &#123;</span><br><span class="line">                    &quot;last_name&quot; : &quot;smith&quot; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;range&quot; : &#123;</span><br><span class="line">                    &quot;age&quot; : &#123; &quot;gt&quot; : 30 &#125; </span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>exists 和 missing：指定字段有值或无值，但后来的版本中废弃了 missing，因为可以通过 must_not+exists 来实现类似的效果</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123; &quot;exists&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;&#125;</span><br></pre></td></tr></table></figure>
 <ul>
 <li>about（全文搜索）<br>
 搜索结果将根据相关性排序。</li>
@@ -596,7 +656,7 @@ Sorting, aggregations, and accessing field values in scripts 需要使用到一�
 <ul>
 <li>sort将目标字段转换为排序所需的格式，date 字段的值表示为自 epoch (January 1, 1970 00:00:00 UTC)以来的毫秒数，通过 sort 字段的值进行返回。</li>
 <li>如果字段是一个数组（多值），可以使用 mode 指定其中 min 、 max 、 avg 或是 sum 进行排序；</li>
-<li>评分的计算方式取决于 <strong>查询类型</strong> 不同的查询语句用于不同的目的： fuzzy 查询会计算与关键词的拼写相似程度，terms 查询会计算 找到的内容与关键词组成部分匹配的百分比，但是通常我们说的 relevance 是我们用来计算全文本字段的值相对于全文本检索词相似程度的算法，Elasticsearch 的相似度算法 被定义为检索词频率/反向文档频率（TF/IDF），包括以下内容：
+<li>评分的计算方式取决于 <strong>查询类型</strong> 不同的查询语句用于不同的目的： fuzzy 查询会计算与关键词的拼写相似程度，terms 查询会计算 找到的内容与关键词组成部分匹配的百分比，但是通常我们说的 relevance 是我们用来计算全文本字段的值相对于全文本检索词相似程度的算法，Elasticsearch 的相似度算法 被定义为<strong>检索词频率/反向文档频率（TF/IDF）</strong>，包括以下内容：
 <ul>
 <li>检索词频率<br>
 　　检索词在该字段出现的频率？出现频率越高，相关性也越高。 字段中出现过 5 次要比只出现过 1 次的相关性高。</li>
@@ -615,103 +675,22 @@ Sorting, aggregations, and accessing field values in scripts 需要使用到一�
 <li>可以在查询参数中加入 explain 参数解释排序结果</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?explain </span><br><span class="line">&#123;</span><br><span class="line">   &quot;query&quot; : &#123; &quot;match&quot; : &#123; &quot;tweet&quot; : &quot;honeymoon&quot; &#125;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="scroll查询-游标"><a class="header-anchor" href="#scroll查询-游标">¶</a>Scroll查询（游标）</h2>
-<p>游标查询允许我们先做查询初始化（一些查询类型可能包含初始化，可以使用 search_type 指定），然后再批量地拉取结果，能避免深度分页那种代价。深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。游标查询用字段 _doc 来排序，这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果（每个分片排序，但整体不排序，而由客户端决定）。<br>
-游标查询会取某个时间点的快照数据，查询初始化之后索引上的任何变化会被它忽略，启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间，游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间；字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 size * number_of_primary_shards 。：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m </span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], </span><br><span class="line">    &quot;size&quot;: 1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。<br>
-这个查询的返回结果包括一个字段 _scroll_id<code>， 它是一个base64编码的长字符串 (((&quot;scroll_id&quot;))) 。 现在我们能传递字段</code>_scroll_id 到 _search/scroll 查询接口获取下一批结果（注意游标查询每次返回一个新字段 _scroll_id，每次我们做下一次游标查询， 我们必须把前一次查询返回的字段 _scroll_id 传递进去。 当没有更多的结果返回的时候，我们就处理完所有匹配的文档了），并且可以重新刷新过期时间为 1 分钟：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, </span><br><span class="line">    &quot;scroll_id&quot; : &quot;很长的编码串&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="游标查询-scroll"><a class="header-anchor" href="#游标查询-scroll">¶</a>游标查询 Scroll</h2>
+<p><code>scroll</code> 查询 可以用来对 Elasticsearch 有效地执行大批量的文档查询，而又不用付出深度分页那种代价。<br>
+游标查询允许我们 先做查询初始化，然后再批量地拉取结果。 这有点儿像传统数据库中的 <code>cursor</code> 。<br>
+游标查询会取某个时间点的快照数据。 查询初始化之后索引上的任何变化会被它忽略。 它通过保存旧的数据文件来实现这个特性，结果就像保留初始化时的索引 <code>视图</code> 一样。<br>
+深度分页的代价根源是结果集全局排序，如果去掉全局排序的特性的话查询结果的成本就会很低。 游标查询用字段 <code>_doc</code> 来排序。 这个指令让 Elasticsearch 仅仅从还有结果的分片返回下一批结果。<br>
+启用游标查询可以通过在查询的时候设置参数 scroll 的值为我们期望的游标查询的过期时间。 游标查询的过期时间会在每次做查询的时候刷新，所以这个时间只需要足够处理当前批的结果就可以了，而不是处理查询结果的所有文档的所需时间。 这个过期时间的参数很重要，因为保持这个游标查询窗口需要消耗资源，所以我们期望如果不再需要维护这种资源就该早点儿释放掉。 设置这个超时能够让 Elasticsearch 在稍后空闲的时候自动释放这部分资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /old_index/_search?scroll=1m // 保持游标查询窗口一分钟。</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot;: &#123; &quot;match_all&quot;: &#123;&#125;&#125;,</span><br><span class="line">    &quot;sort&quot; : [&quot;_doc&quot;], // 关键字 _doc 是最有效的排序顺序。</span><br><span class="line">    &quot;size&quot;:  1000</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个查询的返回结果包括一个字段 <code>_scroll_id</code>， 它是一个 base64 编码的长字符串。现在我们能传递字段 <code>_scroll_id</code> 到 <code>_search/scroll</code> 查询接口获取下一批结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, // 注意再次设置游标查询过期时间为一分钟。</span><br><span class="line">    &quot;scroll_id&quot; : &quot;cXVlcnlUaGVuRmV0Y2g7NTsxMDk5NDpkUmpiR2FjOFNhNnlCM1ZDMWpWYnRROzEwOTk1OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MTA5OTM6ZFJqYkdhYzhTYTZ5QjNWQzFqVmJ0UTsxMTE5MDpBVUtwN2lxc1FLZV8yRGVjWlI2QUVBOzEwOTk2OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MDs=&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个游标查询返回的下一批结果。 尽管我们指定字段 size 的值为 1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 <code>size * number_of_primary_shards</code>。<br>
+当没有更多结果返回的时候，我们就处理完所有匹配的文档了。</p>
 <h2 id="实践"><a class="header-anchor" href="#实践">¶</a>实践</h2>
 <h3 id="查询订单昨天的问题订单"><a class="header-anchor" href="#查询订单昨天的问题订单">¶</a>查询订单昨天的问题订单</h3>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">// 查询索引</span><br><span class="line">GET _cat/indices</span><br><span class="line">// 查询昨天的订单中属于异常状态的订单，并取其中的部分字段</span><br><span class="line">GET /mts_reg_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: &#123;</span><br><span class="line">        &quot;match&quot;: &#123;</span><br><span class="line">          &quot;order_status&quot;: &quot;SUSPEND&quot;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">          &quot;create_date&quot;: &#123;</span><br><span class="line">            &quot;gt&quot;: &quot;2020-09-23 00:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 00:00:00&quot;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;],</span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h3 id="多条件查询"><a class="header-anchor" href="#多条件查询">¶</a>多条件查询</h3>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">// 这个语句的特点是must中放置了多个模糊匹配条件</span><br><span class="line">GET /mts_fee_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: [</span><br><span class="line">        &#123;&quot;match&quot;: &#123;&quot;order_status&quot;: &quot;SUSPEND&quot;&#125;&#125;,</span><br><span class="line">        &#123;&quot;match&quot;: &#123;&quot;pay_status&quot;: &quot;PAY_SUCCESS&quot;&#125;&#125;</span><br><span class="line">      ],</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">            &quot;create_date&quot;: &#123; &quot;gt&quot;: &quot;2020-09-23 15:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 15:00:00&quot;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;], </span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h1>分析器</h1>
-<h2 id="分析器和倒排索引"><a class="header-anchor" href="#分析器和倒排索引">¶</a>分析器和倒排索引</h2>
-<p>一个倒排索引由文档中所有不重复词的列表构成，对于其中每个词，有一个包含它的文档列表。建立倒排索引的过程称为<strong>分析</strong>，执行分析过程的程序称为 <strong>分析器</strong>：</p>
-<ol>
-<li>字符过滤器：字符串按顺序通过每个 字符过滤器 。他们的任务是在分词前整理字符串。一个字符过滤器可以用来去掉 HTML，或者将 &amp; 转化成 <code>and</code>。</li>
-<li>分词器：将待索引的内容拆分成单独的 词（我们称它为 <strong>词条</strong> 或 <strong>tokens</strong> ），创建一个包含所有不重复词条的排序列表，然后列出每个词条出现在哪个文档。</li>
-<li>Token 过滤器：删除无用词（a、and、the 等），合并统一大小写后相同的词（Quick 和 quick）、具有相同词根的词（fox 和 foxes），增加同义词（jump 和 leap）等。</li>
-</ol>
-<h2 id="内置分析器"><a class="header-anchor" href="#内置分析器">¶</a>内置分析器</h2>
-<p>“Set the shape to semi-transparent by calling set_trans(5)”</p>
-<ol>
-<li>标准分析器<br>
-标准分析器是 Elasticsearch 默认使用的分析器。它是分析各种语言文本最常用的选择。它根据 Unicode 联盟 定义的 单词边界 划分文本（standard 分词器）。删除绝大部分标点（standard 语汇单元过滤器）。最后将词条小写（lowercase 语汇单元过滤器），stop 语汇单元过滤器是被禁用的，它会删除停用词–对搜索相关性影响不大的常用词，如 a ， the ， and ， is ，如需启用它，你可以通过创建一个基于 standard 分析器的<strong>自定义分析器</strong>并设置 stopwords 参数，可以给分析器提供一个停用词列表，或者告知使用一个基于特定语言的预定义停用词列表。。它会产生：<br>
-set, the, shape, to, semi, transparent, by, calling, set_trans, 5</li>
-<li>简单分析器<br>
-简单分析器在任何不是字母的地方分隔文本，将词条小写。它会产生：<br>
-set, the, shape, to, semi, transparent, by, calling, set, trans</li>
-<li>空格分析器<br>
-空格分析器在空格的地方划分文本。它会产生：<br>
-Set, the, shape, to, semi-transparent, by, calling, set_trans(5)</li>
-<li>语言分析器<br>
-特定语言分析器可用于 很多语言。它们可以考虑指定语言的特点。例如， 英语 分析器附带了一组英语无用词（常用单词，例如 and 或者 the ，它们对相关性没有多少影响），它们会被删除。 由于理解英语语法的规则，这个分词器可以提取英语单词的 词干 。英语 分词器会产生下面的词条（注意看 transparent<code>、</code>calling 和 set_trans 已经变为词根格式）：<br>
-set, shape, semi, transpar, call, set_tran, 5</li>
-</ol>
-<h2 id="常用字符过滤器"><a class="header-anchor" href="#常用字符过滤器">¶</a>常用字符过滤器</h2>
-<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html</a><br>
-字符过滤器用来整理 一个尚未被分词的字符串：</p>
-<ol>
-<li>Html 擦除字符过滤器<br>
-擦除像<p>这样的 HTML 标签，以及将像&amp;Aacute转换为相对应的 Unicode 字符Á。</p></li>
-</ol>
-<h2 id="常用分词器"><a class="header-anchor" href="#常用分词器">¶</a>常用分词器</h2>
-<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html</a><br>
-分词器把字符串分解成单个词条或者词汇单元：</p>
-<ol>
-<li>标准分词器<br>
-把一个字符串根据单词边界分解成单个词条，并且移除掉大部分的标点符号。</li>
-<li>关键词分词器<br>
-完整地输出 接收到的同样的字符串，并不做任何分词。</li>
-<li>空格分词器<br>
-只根据空格分割文本 。</li>
-<li>正则分词器<br>
-根据匹配正则表达式来分割文本。</li>
-</ol>
-<h2 id="常用词单元过滤器"><a class="header-anchor" href="#常用词单元过滤器">¶</a>常用词单元过滤器</h2>
-<p><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html" target="_blank" rel="noopener">https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html</a><br>
-词单元过滤器可以修改、添加或者移除词单元：</p>
-<ol>
-<li>lowercase</li>
-<li>stop</li>
-<li>词干<br>
-把单词 遏制 为 词干。</li>
-<li>ascii_folding<br>
-移除变音符，把一个像 “très” 这样的词转换为 “tres” 。</li>
-<li>ngram 和 edge_ngram<br>
-可以产生 适合用于部分匹配或者自动补全的词单元。</li>
-</ol>
-<h2 id="自定义分析器"><a class="header-anchor" href="#自定义分析器">¶</a>自定义分析器</h2>
-<ul>
-<li>一个分析器可以有<strong>多个过滤器</strong>及<strong>唯一一个分词器</strong>，自定义分析器的格式如下：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;char_filter&quot;: &#123; ... custom character filters ... &#125;,</span><br><span class="line">            &quot;tokenizer&quot;: &#123; ... custom tokenizers ... &#125;,</span><br><span class="line">            &quot;filter&quot;: &#123; ... custom token filters ... &#125;,</span><br><span class="line">            &quot;analyzer&quot;: &#123; ... custom analyzers ... &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>下面创建了一个新的分析器，叫做 es_std ， 并使用预定义的 西班牙语停用词列表：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">PUT /spanish_docs</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;analyzer&quot;: &#123;</span><br><span class="line">                &quot;es_std&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;standard&quot;,</span><br><span class="line">                    &quot;stopwords&quot;: &quot;_spanish_&quot;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>es_std 分析器不是全局的–它仅仅存在于我们定义的 spanish_docs 索引中。 为了使用 analyze API 来对它进行测试，我们必须使用特定的索引名，这会发现停用词 El 已被正确移除：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /spanish_docs/_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;es_std&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;El veloz zorro marrón&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>下面这个分析器除了使用 Html 擦除字符过滤器移除 HTML 部分、标准分词器分词、lowercase 词过滤器将单词转为小写，还使用一个自定义的字符过滤器把<code>&amp;</code>替换为<code>and</code>，一个自定义停词过滤器移除自定义的停止词列表中包含的词：</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;analysis&quot;: &#123;</span><br><span class="line">            &quot;char_filter&quot;: &#123;</span><br><span class="line">                &quot;&amp;_to_and&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;mapping&quot;,</span><br><span class="line">                    &quot;mappings&quot;: [ &quot;&amp;=&gt; and &quot;]</span><br><span class="line">            &#125;&#125;,</span><br><span class="line">            &quot;filter&quot;: &#123;</span><br><span class="line">                &quot;my_stopwords&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;stop&quot;,</span><br><span class="line">                    &quot;stopwords&quot;: [ &quot;the&quot;, &quot;a&quot; ]</span><br><span class="line">            &#125;&#125;,</span><br><span class="line">            &quot;analyzer&quot;: &#123;</span><br><span class="line">                &quot;my_analyzer&quot;: &#123;</span><br><span class="line">                    &quot;type&quot;: &quot;custom&quot;,</span><br><span class="line">                    &quot;char_filter&quot;: [ &quot;html_strip&quot;, &quot;&amp;_to_and&quot; ],</span><br><span class="line">                    &quot;tokenizer&quot;: &quot;standard&quot;,</span><br><span class="line">                    &quot;filter&quot;: [ &quot;lowercase&quot;, &quot;my_stopwords&quot; ]</span><br><span class="line">            &#125;&#125;</span><br><span class="line">&#125;&#125;&#125;</span><br></pre></td></tr></table></figure>
-<p>调用下面的接口来测试：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /my_index/_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;my_analyzer&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;The quick &amp; brown fox&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个分析器现在是没有多大用处的，除非我们告诉 Elasticsearch在哪里用上它。我们可以像下面这样把这个分析器应用在一个 string 字段上：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">PUT /my_index/_mapping/my_type</span><br><span class="line">&#123;</span><br><span class="line">    &quot;properties&quot;: &#123;</span><br><span class="line">        &quot;title&quot;: &#123;</span><br><span class="line">            &quot;type&quot;: &quot;string&quot;,</span><br><span class="line">            &quot;analyzer&quot;: &quot;my_analyzer&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="分析器使用时机"><a class="header-anchor" href="#分析器使用时机">¶</a>分析器使用时机</h2>
-<ol>
-<li><strong>索引</strong>一个文档时，它的<strong>全文域</strong>（包括自动给出的**_all**）被分析成词条以用来创建倒排索引。<br>
-具体的，当 Elasticsearch 在你的文档中检测到一个新的字符串域 ，它会自动设置其为一个全文 字符串 域，使用 <strong>标准</strong> 分析器对它进行分析。</li>
-<li>还有在全文域搜索的时候，需要将查询字符串通过 相同的分析过程 ，以保证我们搜索的词条格式与索引中的词条格式一致（当查询一个精确值域时不会分析）。</li>
-<li>或者直接使用以下链接测试分析器： <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_analyze</span><br><span class="line">&#123;</span><br><span class="line">  &quot;analyzer&quot;: &quot;standard&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Text to analyze&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<p>结果中的每个 token 都代表一个实际存储到索引中的词条， position 指明词条在原始文本中出现的位置。 start_offset 和 end_offset 指明字符在原始字符串中的位置。</p>
 <h1>Search源码流程</h1>
 <p>GET请求只能查询单个文档，通过_index、_type、_id三元组来确定唯一文档。<br>
 而Search在查到匹配的文档之后，还需要将从多个分片上得到的结果组合成单个排序列表，这个过程在协调节点上执行，被称为<code>query then fetch</code>。</p>
@@ -877,8 +856,8 @@ TODO</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/e0007243.html" rel="next" title="ES索引和文档存储">
-                <i class="fa fa-chevron-left"></i> ES索引和文档存储
+              <a href="/e43d540f.html" rel="next" title="使用 Arthas 排查线上问题">
+                <i class="fa fa-chevron-left"></i> 使用 Arthas 排查线上问题
               </a>
             
           </div>
@@ -887,8 +866,8 @@ TODO</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/226416.html" rel="prev" title="使用 jq 解析 json 数据">
-                使用 jq 解析 json 数据 <i class="fa fa-chevron-right"></i>
+              <a href="/e0007243.html" rel="prev" title="ES（二）索引和文档存储">
+                ES（二）索引和文档存储 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -971,7 +950,7 @@ TODO</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">144</span>
+                  <span class="site-state-item-count">145</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1028,7 +1007,7 @@ TODO</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分布式搜索原理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#查询阶段-query"><span class="nav-number">1.1.</span> <span class="nav-text">¶查询阶段（query）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#取回阶段-fetch"><span class="nav-number">1.2.</span> <span class="nav-text">¶取回阶段（fetch）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#深分页问题-deep-pagination"><span class="nav-number">1.3.</span> <span class="nav-text">¶深分页问题（Deep Pagination）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#偏好"><span class="nav-number">1.4.</span> <span class="nav-text">¶偏好</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时"><span class="nav-number">1.5.</span> <span class="nav-text">¶超时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由"><span class="nav-number">1.6.</span> <span class="nav-text">¶路由</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索类型"><span class="nav-number">1.7.</span> <span class="nav-text">¶搜索类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#游标查询-scroll"><span class="nav-number">1.8.</span> <span class="nav-text">¶游标查询 Scroll</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">搜索 - 轻量查询（Query-string）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#查询条件"><span class="nav-number">2.1.</span> <span class="nav-text">¶查询条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#隐含字段"><span class="nav-number">2.2.</span> <span class="nav-text">¶隐含字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的优点"><span class="nav-number">2.3.</span> <span class="nav-text">¶Query-string 的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的缺点"><span class="nav-number">2.4.</span> <span class="nav-text">¶Query-string 的缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">2.5.</span> <span class="nav-text">¶搜索返回字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页"><span class="nav-number">2.6.</span> <span class="nav-text">¶分页</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">请求体查询（查询表达式）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#检索"><span class="nav-number">3.1.</span> <span class="nav-text">¶检索</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#聚合"><span class="nav-number">3.2.</span> <span class="nav-text">¶聚合</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#argument-一些特殊的参数"><span class="nav-number">3.3.</span> <span class="nav-text">¶ARGUMENT 一些特殊的参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#doc-values-fielddata-正排索引"><span class="nav-number">3.4.</span> <span class="nav-text">¶Doc Values（fielddata 正排索引）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#验证查询是否合法"><span class="nav-number">3.5.</span> <span class="nav-text">¶验证查询是否合法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排序与相关性"><span class="nav-number">3.6.</span> <span class="nav-text">¶排序与相关性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#scroll查询-游标"><span class="nav-number">3.7.</span> <span class="nav-text">¶Scroll查询（游标）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实践"><span class="nav-number">3.8.</span> <span class="nav-text">¶实践</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询订单昨天的问题订单"><span class="nav-number">3.8.1.</span> <span class="nav-text">¶查询订单昨天的问题订单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多条件查询"><span class="nav-number">3.8.2.</span> <span class="nav-text">¶多条件查询</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">分析器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分析器和倒排索引"><span class="nav-number">4.1.</span> <span class="nav-text">¶分析器和倒排索引</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内置分析器"><span class="nav-number">4.2.</span> <span class="nav-text">¶内置分析器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常用字符过滤器"><span class="nav-number">4.3.</span> <span class="nav-text">¶常用字符过滤器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常用分词器"><span class="nav-number">4.4.</span> <span class="nav-text">¶常用分词器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常用词单元过滤器"><span class="nav-number">4.5.</span> <span class="nav-text">¶常用词单元过滤器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#自定义分析器"><span class="nav-number">4.6.</span> <span class="nav-text">¶自定义分析器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分析器使用时机"><span class="nav-number">4.7.</span> <span class="nav-text">¶分析器使用时机</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">Search源码流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立索引和搜索的过程-单机视角"><span class="nav-number">5.1.</span> <span class="nav-text">¶建立索引和搜索的过程（单机视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#建立索引"><span class="nav-number">5.1.1.</span> <span class="nav-text">¶建立索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索"><span class="nav-number">5.1.2.</span> <span class="nav-text">¶执行搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索过程-集群视角"><span class="nav-number">5.2.</span> <span class="nav-text">¶分布式搜索过程（集群视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query流程"><span class="nav-number">5.2.1.</span> <span class="nav-text">¶Query流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fetch阶段"><span class="nav-number">5.2.2.</span> <span class="nav-text">¶Fetch阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索的数据节点流程"><span class="nav-number">5.2.3.</span> <span class="nav-text">¶执行搜索的数据节点流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#相同查询多次执行结果不同"><span class="nav-number">6.1.</span> <span class="nav-text">¶相同查询多次执行结果不同</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档"><span class="nav-number">7.1.</span> <span class="nav-text">¶文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-映射和文档"><span class="nav-number">7.2.</span> <span class="nav-text">¶索引、映射和文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索"><span class="nav-number">7.3.</span> <span class="nav-text">¶搜索</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#集群"><span class="nav-number">7.4.</span> <span class="nav-text">¶集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码"><span class="nav-number">7.5.</span> <span class="nav-text">¶源码</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分布式搜索原理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#查询阶段-query"><span class="nav-number">1.1.</span> <span class="nav-text">¶查询阶段（query）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#取回阶段-fetch"><span class="nav-number">1.2.</span> <span class="nav-text">¶取回阶段（fetch）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#深分页问题-deep-pagination"><span class="nav-number">1.3.</span> <span class="nav-text">¶深分页问题（Deep Pagination）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#偏好"><span class="nav-number">1.4.</span> <span class="nav-text">¶偏好</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时"><span class="nav-number">1.5.</span> <span class="nav-text">¶超时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由"><span class="nav-number">1.6.</span> <span class="nav-text">¶路由</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索类型"><span class="nav-number">1.7.</span> <span class="nav-text">¶搜索类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#相关性"><span class="nav-number">1.8.</span> <span class="nav-text">¶相关性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#tf-idf"><span class="nav-number">1.8.1.</span> <span class="nav-text">¶TF-IDF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bm-25"><span class="nav-number">1.8.2.</span> <span class="nav-text">¶BM 25</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">搜索 - 轻量查询（Query-string） - 在URL中使用查询参数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#uri查询的方式"><span class="nav-number">2.1.</span> <span class="nav-text">¶URI查询的方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询条件"><span class="nav-number">2.2.</span> <span class="nav-text">¶查询条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#隐含字段"><span class="nav-number">2.3.</span> <span class="nav-text">¶隐含字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的优点"><span class="nav-number">2.4.</span> <span class="nav-text">¶Query-string 的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的缺点"><span class="nav-number">2.5.</span> <span class="nav-text">¶Query-string 的缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">2.6.</span> <span class="nav-text">¶搜索返回字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页"><span class="nav-number">2.7.</span> <span class="nav-text">¶分页</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">请求体查询（查询表达式）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#term"><span class="nav-number">3.1.</span> <span class="nav-text">¶term</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#复合查询"><span class="nav-number">3.2.</span> <span class="nav-text">¶复合查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#全文查询"><span class="nav-number">3.3.</span> <span class="nav-text">¶全文查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其他结构化查询语句"><span class="nav-number">3.4.</span> <span class="nav-text">¶其他结构化查询语句</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#聚合"><span class="nav-number">3.5.</span> <span class="nav-text">¶聚合</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#argument-一些特殊的参数"><span class="nav-number">3.6.</span> <span class="nav-text">¶ARGUMENT 一些特殊的参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#doc-values-fielddata-正排索引"><span class="nav-number">3.7.</span> <span class="nav-text">¶Doc Values（fielddata 正排索引）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#验证查询是否合法"><span class="nav-number">3.8.</span> <span class="nav-text">¶验证查询是否合法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排序与相关性"><span class="nav-number">3.9.</span> <span class="nav-text">¶排序与相关性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#游标查询-scroll"><span class="nav-number">3.10.</span> <span class="nav-text">¶游标查询 Scroll</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实践"><span class="nav-number">3.11.</span> <span class="nav-text">¶实践</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询订单昨天的问题订单"><span class="nav-number">3.11.1.</span> <span class="nav-text">¶查询订单昨天的问题订单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多条件查询"><span class="nav-number">3.11.2.</span> <span class="nav-text">¶多条件查询</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">Search源码流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立索引和搜索的过程-单机视角"><span class="nav-number">4.1.</span> <span class="nav-text">¶建立索引和搜索的过程（单机视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#建立索引"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶建立索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶执行搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索过程-集群视角"><span class="nav-number">4.2.</span> <span class="nav-text">¶分布式搜索过程（集群视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query流程"><span class="nav-number">4.2.1.</span> <span class="nav-text">¶Query流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fetch阶段"><span class="nav-number">4.2.2.</span> <span class="nav-text">¶Fetch阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索的数据节点流程"><span class="nav-number">4.2.3.</span> <span class="nav-text">¶执行搜索的数据节点流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#相同查询多次执行结果不同"><span class="nav-number">5.1.</span> <span class="nav-text">¶相同查询多次执行结果不同</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档"><span class="nav-number">6.1.</span> <span class="nav-text">¶文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-映射和文档"><span class="nav-number">6.2.</span> <span class="nav-text">¶索引、映射和文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索"><span class="nav-number">6.3.</span> <span class="nav-text">¶搜索</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#集群"><span class="nav-number">6.4.</span> <span class="nav-text">¶集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码"><span class="nav-number">6.5.</span> <span class="nav-text">¶源码</span></a></li></ol></li></ol></div>
             
 
           </div>
