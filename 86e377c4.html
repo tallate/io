@@ -87,15 +87,16 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="对ES源码的阅读记录。">
 <meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84%E8%84%91%E8%A3%82.png">
+<meta property="og:image" content="https://tallate.top/imgs/ES/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B91.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B92.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/MySQL%E4%B8%8EES%E5%90%8C%E6%AD%A5%E7%9A%84%E4%B8%80%E7%A7%8D%E6%9E%B6%E6%9E%84.png">
-<meta property="og:image" content="https://tallate.top/imgs/ES/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.png">
-<meta property="og:updated_time" content="2021-05-30T16:02:52.835Z">
+<meta property="og:updated_time" content="2021-06-03T17:26:29.046Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES（五）集群原理">
 <meta name="twitter:description" content="对ES源码的阅读记录。">
-<meta name="twitter:image" content="https://tallate.top/imgs/ES/%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B91.png">
+<meta name="twitter:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84%E8%84%91%E8%A3%82.png">
 
 
 
@@ -363,7 +364,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  6.3k 字
+                  5.2k 字
                 </span>
               
 
@@ -379,7 +380,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  22 分钟
+                  18 分钟
                 </span>
               
             </div>
@@ -405,7 +406,7 @@
 <h1>ES调试环境的搭建</h1>
 <p>ES调试环境的初始化见我的另一篇文档：<br>
 <a href="https://tallate.github.io/c395b48b.html#%E8%B0%83%E8%AF%95debug-es">https://tallate.github.io/c395b48b.html#调试debug-es</a></p>
-<h1>ES的分布式概念</h1>
+<h1>ES的分布式原理</h1>
 <h2 id="集群-cluster"><a class="header-anchor" href="#集群-cluster">¶</a>集群 - Cluster</h2>
 <p>一个集群就是由一个或多个节点组织在一起，它们共同持有全部的数据。<br>
 一个集群有一个唯一的名字标识 <code>cluster.name</code> ，其节点只能通过指定某个集群的名字，来加入这个集群，默认情况下，ES会自动发现<strong>同一网段</strong>内的节点，自动组成集群，当然也可以手动配置集群内节点的地址（<code>discovery.zen.ping.unicast.hosts</code>）。<br>
@@ -443,7 +444,7 @@
 <h2 id="节点-node"><a class="header-anchor" href="#节点-node">¶</a>节点 - Node</h2>
 <p>一个节点是集群中的一个服务器，即一个 Elasticsearch 实例。<br>
 作为集群的一部分，它存储数据，参与集群的索引和搜索功能。</p>
-<h2 id="主节点-master-eligible-和-master"><a class="header-anchor" href="#主节点-master-eligible-和-master">¶</a>主节点 - Master-eligible 和 Master</h2>
+<h3 id="主节点-master-eligible-和-master-和-选举"><a class="header-anchor" href="#主节点-master-eligible-和-master-和-选举">¶</a>主节点 - Master-eligible 和 Master 和 选举</h3>
 <p>每个节点启动后，默认就是一个Master eligible节点。</p>
 <blockquote>
 <p>可以设置node.master: false禁止，即设置成false后就无法成为主节点了。</p>
@@ -456,207 +457,65 @@
 <blockquote>
 <p>集群状态信息包括：所有节点信息、索引及其相关的Mapping和Setting信息、分片的路由信息。</p>
 </blockquote>
+<p>Master-eligible选主流程：</p>
+<ul>
+<li>Master-eligible会互相Ping对方，Node Id低的会成为被选举的节点；</li>
+<li>其他节点会加入集群，但是不承担Master节点的角色；</li>
+<li>一旦发现被选中的主节点丢失，就会选举出新的Master节点。</li>
+</ul>
 <p>当一个节点被选举成为主节点时，它将负责管理集群范围内的所有变更，例如增加、删除索引，或者增加、删除节点等。<br>
 <strong>主节点并不需要全权负责涉及到文档级别的变更和搜索等操作（这和ES中协调节点的概念有关），所以当集群只拥有一个主节点的情况下，即使流量增加它也不会成为瓶颈。</strong></p>
-<h2 id="协调节点coordinating-node和数据节点data-node"><a class="header-anchor" href="#协调节点coordinating-node和数据节点data-node">¶</a>协调节点Coordinating Node和数据节点Data Node</h2>
+<h3 id="协调节点coordinating-node和数据节点data-node"><a class="header-anchor" href="#协调节点coordinating-node和数据节点data-node">¶</a>协调节点Coordinating Node和数据节点Data Node</h3>
 <p>协调节点并不是物理意义上的一个节点，而是指ES集群中第一个接收请求的节点，这个节点需要负责将请求路由到数据节点执行对应的操作，如果是Search请求，协调节点还需要对结果进行合并排序分页等操作。</p>
-<h2 id="分片-shard"><a class="header-anchor" href="#分片-shard">¶</a>分片 - Shard</h2>
-<p>一个 分片 是一个底层的 工作单元 ，它仅保存了 <strong>全部数据中的一部分</strong>，是一个 <strong>Lucene 实例</strong>，所以它本身就是一个完整的搜索引擎。<br>
-一个索引可以被划分成多个分片，创建索引时可指定分片数量，默认是 5。<br>
-每个分片是一个 Lucene 实例，它本身也是一个功能完善并且独立的“索引”，这个“索引” 可以被放置到集群中的任何节点上。<br>
-分片是 ES 中集群管理的最小单位，在此基础上，ES 允许：</p>
-<ul>
-<li>允许你水平分割/扩展你的内容容量</li>
-<li>允许你在分片（位于多个节点上）之上进行分布式的、并行的操作，进而提高性能/吞吐量</li>
-</ul>
-<p>分片类似 DB 里的分库分表，是为了解决数据量很大查询效率低下的问题，同时突破单节点磁盘限制。<br>
-集群的配置非常灵活，比如对于一个需要占据 100G 磁盘空间的索引，5 个分片每个分片大小 20G，假设单节点磁盘上限 100G，可以有以下几种方案：</p>
-<ol>
-<li>单节点一个分片：单次只能在 100G 数据里查询一条数据，磁盘占用率 100%。</li>
-<li>单节点 5 个分片：每个分片存储 20G 数据，可以 5 个任务并行查询，磁盘占用率 100%，索引大小上限 100G，无法再插入新数据。</li>
-<li>集群（2 个节点）5 个分片：一个节点 3 片，另一个节点 2 片，可以并行查找，同时单节点磁盘占用量 &lt;60%，索引最大存储上限为 200G。</li>
-<li>集群（5 个节点）5 个分片：每个节点包含一个分片，单节点磁盘占用量 20%，索引最大存储上限为 500G。</li>
-</ol>
-<h3 id="分片数设置"><a class="header-anchor" href="#分片数设置">¶</a>分片数设置</h3>
-<p>分片数的设置需要提前做好容量规划，不要过大也不要过小：</p>
-<ul>
-<li>如果分片数过小<br>
-会导致后续无法通过增加节点来实现水平扩展</li>
-</ul>
-<blockquote>
-<p>主分片无法动态增加<br>
-如果要做数据迁移，也会因为单个分片数据量太大，导致数据重新分配耗时</p>
-</blockquote>
-<ul>
-<li>如果分片数过大<br>
-影响搜索结果的相关性打分，影响统计结果的准确性<br>
-单个节点上分片过多，会导致资源浪费，同时也会影响性能</li>
-</ul>
-<blockquote>
-<p>7.0开始，ES默认分片数改成了1，不会造成over-sharding问题</p>
-</blockquote>
-<p>分片数可以在创建索引时指定，也可以在运行时修改：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">PUT /test</span><br><span class="line">&#123;</span><br><span class="line">    &quot;settings&quot;: &#123;</span><br><span class="line">        &quot;number_of_shards&quot;: 3,</span><br><span class="line">        &quot;number_of_replicas&quot;: 1</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="主分片和副分片"><a class="header-anchor" href="#主分片和副分片">¶</a>主分片和副分片</h3>
-<p>一个分片可以是 主分片 或者 副本分片。<br>
-索引内任意一个文档都归属于一个主分片，所以<strong>主分片的数目决定着索引能够保存的最大数据量，在索引建立的时候就已经确定了主分片数</strong>，但是副本分片数可以随时修改。<br>
-一个副本分片只是一个主分片的拷贝。副本分片作为硬件故障时保护数据不丢失的冗余备份，并为搜索和返回文档等读操作提供服务。</p>
-<h3 id="副本-replica"><a class="header-anchor" href="#副本-replica">¶</a>副本 - Replica</h3>
-<p>Elasticsearch 允许创建分片的一份或多份拷贝（默认复制 1 份），这些拷贝叫做副本。<br>
-在分片/节点失败的情况下，复制提供了<strong>高可用性</strong>。<br>
-因为搜索可以在所有的复制上并行运行，复制可以<strong>扩展你的搜索量/吞吐量</strong><br>
-复制分片不与相同的主分片置于同一节点上，否则失去备份的意义。<br>
-默认情况下，每个索引会有10个shard，5个primary shard，每个primary shard会有一个replica shard，即5个replica shard，最小的高可用配置是2台服务器（节点），其中每个节点上有5个shard，如果其中一个节点宕机了，因为还有一台机器，因此数据并不会丢失，另一个节点仍可以响应搜索请求。<br>
-可以在创建索引的时候指定：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -XPUT &apos;localhost:9200/test&apos; -d `&#123;&quot;settings&quot;: &#123;&quot;number_of_replicas&quot;: 2&#125;&#125;`</span><br></pre></td></tr></table></figure>
-<p>总而言之：</p>
-<ol>
-<li>每个索引可以被分成多个分片。</li>
-<li>一个索引也可以被复制 0 次（即没有复制） 或多次。</li>
-<li>一旦复制了，每个索引就有了主分片（作为复制源的分片）和复制分片（主分片的拷贝）。</li>
-<li>分片和复制的数量可以在索引创建的时候指定。在索引创建之后，<strong>可以在任何时候动态地改变复制的数量</strong>，但是不能再改变分片的数量。</li>
-</ol>
-<p>至于 ES 集群中如何分配分片与备份，都是 ES 内部维护管理的，对用户完全透明。</p>
-<h2 id="索引-index"><a class="header-anchor" href="#索引-index">¶</a>索引（Index）</h2>
-<p>索引实际上是指向一个或者多个物理 分片 的 <strong>逻辑命名空间</strong>。<br>
-所以说一个节点包含多个分片没有问题，但是一个节点包含多个索引是不对的，因为索引包含的分片可以存在于多个节点内，且可以在后期添加。</p>
-<h2 id="recovery"><a class="header-anchor" href="#recovery">¶</a>Recovery</h2>
-<p>ES在有节点加入、退出或挂掉的节点重启时会根据机器的负载对索引分片进行重新分配。</p>
-<h2 id="gateway"><a class="header-anchor" href="#gateway">¶</a>Gateway</h2>
-<p>代表ES索引的持久化存储方式，ES默认先将索引数据存放到内存，当内存满了之后再持久化到Gateway，重启时就会从Gateway读取索引数据。<br>
-默认情况下ES以本地文件系统作为Gateway，还有分布式文件系统、Hadoop、HDFS等方式。</p>
-<h2 id="transport"><a class="header-anchor" href="#transport">¶</a>Transport</h2>
-<p>集群内部或集群与客户端的交互方式，默认TCP，也支持HTTP、thrift等。</p>
-<h1>ES集群的启动源码分析</h1>
-<h2 id="节点的启动"><a class="header-anchor" href="#节点的启动">¶</a>节点的启动</h2>
-<p>启动节点前期主要是解析各种参数、检查内部环境（Lucene）等，我主要感兴趣的是初始化完毕后对各子模块的加载过程，子模块的start方法基本就是初始化内部数据、创建线程池、启动线程池等操作。</p>
-<ol>
-<li>入口<br>
-Elasticsearch.main</li>
-<li>初始化<br>
-Bootstrap.init</li>
-<li>检测外部环境<br>
-Bootstrap#setup<br>
-初始化 node 时重写 validateNodeBeforeAcceptingRequests，在其中包含了检查逻辑<br>
--&gt; BootstrapChecks.check</li>
-<li>启动各子模块<br>
-Bootstrap.start<br>
-调各子模块的start来初始化。</li>
-<li>启动集群<br>
-nodeConnectionsService.start()</li>
-<li>启动网络监听<br>
-开始接收客户端的连接请求<br>
-transportService.start()</li>
-<li>启动发现<br>
-discovery.start()</li>
-<li>开始加入集群<br>
-discovery.startInitialJoin()</li>
-</ol>
-<p>节点启动流程大致如上所示，其中重要的几点，这里接下来再展开说说。</p>
-<h2 id="keepalive"><a class="header-anchor" href="#keepalive">¶</a>keepalive</h2>
-<p>唯一的用户线程，作用是保持进程运行。<br>
-Bootstrap#keepAliveThread</p>
-<h2 id="节点关闭"><a class="header-anchor" href="#节点关闭">¶</a>节点关闭</h2>
-<p>Bootstrap#stop<br>
--&gt; IOUtils#close：关闭 node，注意 Node 实现了 Closable<br>
--&gt; Node#close</p>
-<h1>选举主节点源码分析</h1>
-<p>ES选主算法是基于<strong>Bully</strong>算法实现的，Bully算法简单地说就是：</p>
-<ol>
-<li>每个节点都有一个ID；</li>
-<li>每次选出集群内现存最大的ID作为新的Master节点。</li>
-</ol>
-<p>Bully算法存在的问题：</p>
-<ul>
-<li>在ID最大的节点不稳定的场景下会有问题。<br>
-主要是ID最大的节点挂了又重启，会触发集群重复选择该节点为Master。<br>
-ES通过推迟选举来解决这个问题，只要当前主节点不挂掉就不重新选主，但是容易产生脑裂（双主），脑裂问题在ES中是通过“法定得票人数过半”来解决的。</li>
-</ul>
-<p>ES选主的实际算法实现叫做<strong>ZenDiscovery</strong>，其流程如下：</p>
-<h2 id="选举相关概念"><a class="header-anchor" href="#选举相关概念">¶</a>选举相关概念</h2>
-<ul>
-<li>选举（Election）</li>
-<li>主从（主：Leader、Coordinator、Master，从：Follower、Slave）</li>
-<li>分布式哈希表（DHT）</li>
-<li>多数派（法定人数、Quorum）</li>
-<li>分区和脑裂：集群中出现双主或多主。</li>
-<li>Bully 算法</li>
-<li>Paxos 算法</li>
-</ul>
-<h2 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h2>
-<ul>
-<li>node.master：决定当前节点是否具备 Master 资格</li>
-<li>discovery.zen.minimum_master_nodes</li>
-<li>discovery.zen.ignore_non_master_pings</li>
-</ul>
-<h2 id="本地节点实例的创建"><a class="header-anchor" href="#本地节点实例的创建">¶</a>本地节点实例的创建</h2>
-<p>管理节点配置<br>
-Node#localNodeFactory</p>
-<h2 id="选主流程"><a class="header-anchor" href="#选主流程">¶</a>选主流程</h2>
-<p>ZenDiscovery 的选主流程如下：</p>
-<ol>
-<li>每个节点计算最小的已知节点 ID，该节点为临时 Master，向该节点发送领导投票；</li>
-<li>如果一个节点收到足够多的票数，并且该节点也为自己投票，那么它将扮演领导者的角色，开始发布集群状态。</li>
-</ol>
-<h2 id="选举临时-master"><a class="header-anchor" href="#选举临时-master">¶</a>选举临时 Master</h2>
-<p>Node#start<br>
--&gt; ZenDiscovery#startInitialJoin<br>
--&gt; ZenDiscovery#JoinThreadControl#startNewThreadIfNotRunning<br>
--&gt; threadPool.generic().execute：使用 generic 线程池执行选主流程<br>
--&gt; ZenDiscovery#innerJoinCluster：加入集群<br>
--&gt; ZenDiscovery#findMaster：查找当前集群的活跃 Master，或者从候选者中选择新的 Master<br>
--&gt; ZenDiscovery#pingAndWait：ping 一下所有节点（除了本节点），获取 pingResponses<br>
--&gt; 构建<strong>activeMasters</strong>列表，将每个节点所认为的当前 Master 节点加入 activeMasters 列表<br>
--&gt; 构建<strong>masterCandidates</strong>列表，从 pingResponses 列表中去掉不具备 Master 资格的节点<br>
--&gt; 如果 activeMasters 为空，则从 masterCandidates 中选举，否则从 activeMasters 中选择最合适的作为 Master</p>
-<h2 id="从-mastercandidates-选主"><a class="header-anchor" href="#从-mastercandidates-选主">¶</a>从 masterCandidates 选主</h2>
-<p>activeMasters 为空一般发生在集群刚启动或大规模重启的情况下。</p>
-<p>ZenDiscovery#findMaster<br>
--&gt; ElectMasterService#hasEnoughCandidates：当前候选人数是否达到法定人数，若未达到则直接令选举失败<br>
--&gt; ElectMasterService#electMaster：当候选者达到法定人数后，从中选出一个作为 Master，选择前需要先用自定义比较函数进行排序<br>
--&gt; MasterCandidate.compare 自定义的排序逻辑</p>
-<p>排序条件：</p>
-<ol>
-<li>版本号大的优先；</li>
-<li>具备 Master 资格的优先；</li>
-<li>节点 ID 小的优先。</li>
-</ol>
-<h2 id="从-activemasters-列表中选主"><a class="header-anchor" href="#从-activemasters-列表中选主">¶</a>从 activeMasters 列表中选主</h2>
-<p>此时列表中存储着集群当前活跃的 Master，从这些已知的 Master 节点中选择一个作为选举结果。</p>
-<p>ZenDiscovery#findMaster<br>
--&gt; ElectMasterService#tieBreakActiveMasters：使用自定义比较函数排序后取第一个<br>
--&gt; ElectMasterService#compareNodes</p>
-<p>排序条件：</p>
-<ol>
-<li>具备 Master 资格的优先；</li>
-<li>节点 ID 小的优先。</li>
-</ol>
-<h2 id="收集投票进行统计"><a class="header-anchor" href="#收集投票进行统计">¶</a>收集投票进行统计</h2>
-<p>ZenDiscovery#handleJoinRequest<br>
--&gt; NodeJoinController#handleJoinRequest<br>
--&gt; NodeJoinController.ElectionContext#addIncomingJoin 将收到的连接存储到 NodeJoinController.ElectionContext#joinRequestAccumulator 中</p>
-<p>NodeJoinController.ElectionContext#getPendingMasterJoinsCount：节点检查收到的投票是否足够时，就是检查加入它的连接数是否足够，其中会去掉没有 Master 资格节点的投票</p>
-<h2 id="加入集群"><a class="header-anchor" href="#加入集群">¶</a>加入集群</h2>
-<p>如果按以上逻辑选举出的临时 Master 是本节点：</p>
-<ol>
-<li>等待足够多的具备 Master 资格的节点加入本节点，直到投票达到法定人数，完成选举；</li>
-<li>超时（默认 30 秒且可配置）后还没有满足数量的 join 请求，则选举失败，需要进行新一轮选举；</li>
-<li>成功后发布新的 clusterState。</li>
-</ol>
-<p>ZenDiscovery#innerJoinCluster<br>
-NodeJoinController#waitToBeElectedAsMaster</p>
-<p>如果按以上逻辑选举出的临时 Master 并非本节点：</p>
-<ol>
-<li>不再接受其他节点的 join 请求；</li>
-<li>向 Master 发送 join 请求，并等待回复。超时时间默认为 1 分钟（可配置），如果遇到异常，则默认重试 3 次（可配置）。</li>
-<li>最终当选的 Master 会先发布集群状态，再确认客户的 join 请求，因此，joinElectedMaster 返回代表收到了 join 请求的确认，并且已经收到了集群状态。本步骤检查收到的集群状态中的 Master 节点如果为空，或者当选的 Master 不是之前选择的节点，则重新选举。</li>
-</ol>
-<p>ZenDiscovery#innerJoinCluster<br>
--&gt; ZenDiscovery#joinElectedMaster</p>
-<h1>脑裂问题</h1>
+<h3 id="节点类型配置"><a class="header-anchor" href="#节点类型配置">¶</a>节点类型配置</h3>
+<table>
+<thead>
+<tr>
+<th>节点类型</th>
+<th>配置参数</th>
+<th>默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>master eligible</td>
+<td>node.master</td>
+<td>true</td>
+</tr>
+<tr>
+<td>data</td>
+<td>node.data</td>
+<td>true</td>
+</tr>
+<tr>
+<td>ingest</td>
+<td>node.ingest</td>
+<td>true</td>
+</tr>
+<tr>
+<td>coordinating only</td>
+<td>无</td>
+<td>设置上面三个参数全部为false</td>
+</tr>
+<tr>
+<td>machine learning</td>
+<td><a href="http://node.ml" target="_blank" rel="noopener">node.ml</a></td>
+<td>true（需要enable x-pack）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="脑裂问题及脑裂避免"><a class="header-anchor" href="#脑裂问题及脑裂避免">¶</a>脑裂问题及脑裂避免</h2>
 <p>ES集群是有一个节点作为Master的，它负责集群内的状态同步。<br>
-如果集群内出现了复数个Master，则说明集群发生了脑裂，进而可能导致集群内分片副本数据的不同步。</p>
-<h2 id="发生脑裂的原因"><a class="header-anchor" href="#发生脑裂的原因">¶</a>发生脑裂的原因</h2>
+如果集群内出现了复数个Master，则说明集群发生了脑裂，进而可能导致集群内分片副本数据的不同步。<br>
+当出现网路分区时，一个节点（或多个）和其他节点无法连接，这时可能发生脑裂问题。<br>
+<img src="https://tallate.top/imgs/ES/ES%E7%9A%84%E8%84%91%E8%A3%82.png" alt="ES的脑裂" title="ES的脑裂"><br>
+如上图所示，node1和其他节点的网络断开：</p>
+<ul>
+<li>node2和node3会重新选举Master</li>
+<li>node1自己还是作为Master，组成一个集群，同时更新Cluster State</li>
+<li>此时出现了2个Master，维护不同的Cluster State，当网络恢复时，无法选择正确恢复</li>
+</ul>
+<h3 id="发生脑裂的原因"><a class="header-anchor" href="#发生脑裂的原因">¶</a>发生脑裂的原因</h3>
 <ol>
 <li>网络分区<br>
 因为是在内网通信，出现网络通信问题的可能性较小，可以看下脑裂发生时的内网流量情况；</li>
@@ -664,12 +523,31 @@ NodeJoinController#waitToBeElectedAsMaster</p>
 一般Master节点也会作为data节点提供服务，当它处理数据请求的负载较大时，可能会导致该ES实例停止响应，并重新选举Master；<br>
 较大规模的内存回收操作也能造成ES进程失去响应。</li>
 </ol>
-<h2 id="解决办法"><a class="header-anchor" href="#解决办法">¶</a>解决办法</h2>
+<h3 id="脑裂避免"><a class="header-anchor" href="#脑裂避免">¶</a>脑裂避免</h3>
 <p>1、将Master和Data节点分离<br>
 如果Master节点仅仅负责集群状态管理，则发生负载过高的可能性相对会小一些。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">node.master=true</span><br><span class="line">node.data=false</span><br></pre></td></tr></table></figure>
-<p>2、减缓脑裂</p>
+<p>2、限定一个选举条件，设置quorum（仲裁），只有在Master eligible节点数大于quorum时，才能进行选举<br>
+大多数节点：quorum = (master节点总数 / 2) + 1<br>
+当3个master eligible时，设置discovery.zen.minimum_master_nodes为2，即可避免脑裂</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 探活时间，默认3秒，即Master节点3秒没有应答就认为死掉了</span><br><span class="line"># 增加这个值可以减小误判的可能，但是也会导致Master节点真宕机的情况不能被及时发现</span><br><span class="line">discovery.zen.ping_timeout</span><br><span class="line"># 一个节点需要看到至少有该数量的具有Master节点资格的节点后才能在集群中做操作</span><br><span class="line"># 默认是1</span><br><span class="line">discovery.zen.minimum_master_nodes</span><br></pre></td></tr></table></figure>
+<p>3、从7.0开始，不需要minimum_master_nodes这个配置了<br>
+7.0开始移除了minimum_master_nodes参数，让Elasticsearch自己选择可以形成仲裁的节点<br>
+典型的主节点选举现在只需要很短的时间就可以完成，集群的伸缩变得更安全、更容易，并且可能造成丢失数据的系统配置选项更少了。<br>
+节点更清楚地记录它们的状态，有助于诊断为什么它们不能加入集群或为什么无法选举出主节点。</p>
+<h2 id="故障转移"><a class="header-anchor" href="#故障转移">¶</a>故障转移</h2>
+<h3 id="同机多节点"><a class="header-anchor" href="#同机多节点">¶</a>同机多节点</h3>
+<p>当在同一台机器上启动了第二个节点时，只要它和第一个节点有同样的 <a href="http://cluster.name" target="_blank" rel="noopener">cluster.name</a> 配置，它就会自动发现集群并加入到其中。</p>
+<h3 id="不同机器多节点"><a class="header-anchor" href="#不同机器多节点">¶</a>不同机器多节点</h3>
+<p>在不同机器上启动节点的时候，为了加入到同一集群，你需要配置一个可连接到的单播主机列表，设置其他节点的 ip:port 列表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">discovery.zen.ping.unicast.hosts: [&quot;host1&quot;, &quot;host2&quot;]</span><br></pre></td></tr></table></figure>
+<h3 id="故障转移机制"><a class="header-anchor" href="#故障转移机制">¶</a>故障转移机制</h3>
+<p><img src="https://tallate.top/imgs/ES/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.png" alt="故障转移" title="故障转移"><br>
+所有新近被索引的文档都将会保存在主分片上，然后被并行的复制到对应的副本分片上。这就保证了我们既可以从主分片又可以从副本分片上获得文档，即使主分片不可用了，服务仍然可用。如上图所示。<br>
+如果集群缺失主节点，集群不能正常工作。所以发生的第一件事情就是选举一个新的主节点。但是需要注意的是<strong>集群必须存在且仅存在一个主节点</strong>，否则会出现<strong>脑裂</strong>现象，因此 Elasticsearch 提供了很多参数来避免这个情况。<br>
+如果索引缺失主分片，索引也不能正常工作。 如果此时来检查集群的状况，我们看到的状态将会为 red ：不是所有主分片都在正常工作。在其它节点上存在着这两个主分片的完整副本， 所以新的主节点立即将这些分片在 Node 2 和 Node 3 上对应的副本分片<strong>提升</strong>为主分片， 此时集群的状态将会为 yellow ，因为在创建索引时设置了每个主分片需要对应 2 份副本分片：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">number_of_replicas : 2</span><br></pre></td></tr></table></figure>
+<p>重启节点后，集群可以将缺失的副本分片再次进行分配，如果 Node 1 依然拥有着之前的分片，它将尝试去重用它们，同时仅从主分片复制发生了修改的数据文件。</p>
 <h1>集群扩容</h1>
 <h2 id="es扩容限制"><a class="header-anchor" href="#es扩容限制">¶</a>ES扩容限制</h2>
 <ul>
@@ -825,19 +703,132 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
 </li>
 <li>更完善的生产环境监控</li>
 </ol>
-<h1>故障转移</h1>
-<h2 id="同机多节点"><a class="header-anchor" href="#同机多节点">¶</a>同机多节点</h2>
-<p>当在同一台机器上启动了第二个节点时，只要它和第一个节点有同样的 <a href="http://cluster.name" target="_blank" rel="noopener">cluster.name</a> 配置，它就会自动发现集群并加入到其中。</p>
-<h2 id="不同机器多节点"><a class="header-anchor" href="#不同机器多节点">¶</a>不同机器多节点</h2>
-<p>在不同机器上启动节点的时候，为了加入到同一集群，你需要配置一个可连接到的单播主机列表，设置其他节点的 ip:port 列表：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">discovery.zen.ping.unicast.hosts: [&quot;host1&quot;, &quot;host2&quot;]</span><br></pre></td></tr></table></figure>
-<h2 id="故障转移机制"><a class="header-anchor" href="#故障转移机制">¶</a>故障转移机制</h2>
-<p><img src="https://tallate.top/imgs/ES/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.png" alt="故障转移" title="故障转移"><br>
-所有新近被索引的文档都将会保存在主分片上，然后被并行的复制到对应的副本分片上。这就保证了我们既可以从主分片又可以从副本分片上获得文档，即使主分片不可用了，服务仍然可用。如上图所示。<br>
-如果集群缺失主节点，集群不能正常工作。所以发生的第一件事情就是选举一个新的主节点。但是需要注意的是<strong>集群必须存在且仅存在一个主节点</strong>，否则会出现<strong>脑裂</strong>现象，因此 Elasticsearch 提供了很多参数来避免这个情况。<br>
-如果索引缺失主分片，索引也不能正常工作。 如果此时来检查集群的状况，我们看到的状态将会为 red ：不是所有主分片都在正常工作。在其它节点上存在着这两个主分片的完整副本， 所以新的主节点立即将这些分片在 Node 2 和 Node 3 上对应的副本分片<strong>提升</strong>为主分片， 此时集群的状态将会为 yellow ，因为在创建索引时设置了每个主分片需要对应 2 份副本分片：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">number_of_replicas : 2</span><br></pre></td></tr></table></figure>
-<p>重启节点后，集群可以将缺失的副本分片再次进行分配，如果 Node 1 依然拥有着之前的分片，它将尝试去重用它们，同时仅从主分片复制发生了修改的数据文件。</p>
+<h1>ES集群的启动源码分析</h1>
+<h2 id="节点的启动"><a class="header-anchor" href="#节点的启动">¶</a>节点的启动</h2>
+<p>启动节点前期主要是解析各种参数、检查内部环境（Lucene）等，我主要感兴趣的是初始化完毕后对各子模块的加载过程，子模块的start方法基本就是初始化内部数据、创建线程池、启动线程池等操作。</p>
+<ol>
+<li>入口<br>
+Elasticsearch.main</li>
+<li>初始化<br>
+Bootstrap.init</li>
+<li>检测外部环境<br>
+Bootstrap#setup<br>
+初始化 node 时重写 validateNodeBeforeAcceptingRequests，在其中包含了检查逻辑<br>
+-&gt; BootstrapChecks.check</li>
+<li>启动各子模块<br>
+Bootstrap.start<br>
+调各子模块的start来初始化。</li>
+<li>启动集群<br>
+nodeConnectionsService.start()</li>
+<li>启动网络监听<br>
+开始接收客户端的连接请求<br>
+transportService.start()</li>
+<li>启动发现<br>
+discovery.start()</li>
+<li>开始加入集群<br>
+discovery.startInitialJoin()</li>
+</ol>
+<p>节点启动流程大致如上所示，其中重要的几点，这里接下来再展开说说。</p>
+<h2 id="keepalive"><a class="header-anchor" href="#keepalive">¶</a>keepalive</h2>
+<p>唯一的用户线程，作用是保持进程运行。<br>
+Bootstrap#keepAliveThread</p>
+<h2 id="节点关闭"><a class="header-anchor" href="#节点关闭">¶</a>节点关闭</h2>
+<p>Bootstrap#stop<br>
+-&gt; IOUtils#close：关闭 node，注意 Node 实现了 Closable<br>
+-&gt; Node#close</p>
+<h1>选举主节点源码分析</h1>
+<p>ES选主算法是基于<strong>Bully</strong>算法实现的，Bully算法简单地说就是：</p>
+<ol>
+<li>每个节点都有一个ID；</li>
+<li>每次选出集群内现存最大的ID作为新的Master节点。</li>
+</ol>
+<p>Bully算法存在的问题：</p>
+<ul>
+<li>在ID最大的节点不稳定的场景下会有问题。<br>
+主要是ID最大的节点挂了又重启，会触发集群重复选择该节点为Master。<br>
+ES通过推迟选举来解决这个问题，只要当前主节点不挂掉就不重新选主，但是容易产生脑裂（双主），脑裂问题在ES中是通过“法定得票人数过半”来解决的。</li>
+</ul>
+<p>ES选主的实际算法实现叫做<strong>ZenDiscovery</strong>，其流程如下：</p>
+<h2 id="选举相关概念"><a class="header-anchor" href="#选举相关概念">¶</a>选举相关概念</h2>
+<ul>
+<li>选举（Election）</li>
+<li>主从（主：Leader、Coordinator、Master，从：Follower、Slave）</li>
+<li>分布式哈希表（DHT）</li>
+<li>多数派（法定人数、Quorum）</li>
+<li>分区和脑裂：集群中出现双主或多主。</li>
+<li>Bully 算法</li>
+<li>Paxos 算法</li>
+</ul>
+<h2 id="配置"><a class="header-anchor" href="#配置">¶</a>配置</h2>
+<ul>
+<li>node.master：决定当前节点是否具备 Master 资格</li>
+<li>discovery.zen.minimum_master_nodes</li>
+<li>discovery.zen.ignore_non_master_pings</li>
+</ul>
+<h2 id="本地节点实例的创建"><a class="header-anchor" href="#本地节点实例的创建">¶</a>本地节点实例的创建</h2>
+<p>管理节点配置<br>
+Node#localNodeFactory</p>
+<h2 id="选主流程"><a class="header-anchor" href="#选主流程">¶</a>选主流程</h2>
+<p>ZenDiscovery 的选主流程如下：</p>
+<ol>
+<li>每个节点计算最小的已知节点 ID，该节点为临时 Master，向该节点发送领导投票；</li>
+<li>如果一个节点收到足够多的票数，并且该节点也为自己投票，那么它将扮演领导者的角色，开始发布集群状态。</li>
+</ol>
+<h2 id="选举临时-master"><a class="header-anchor" href="#选举临时-master">¶</a>选举临时 Master</h2>
+<p>Node#start<br>
+-&gt; ZenDiscovery#startInitialJoin<br>
+-&gt; ZenDiscovery#JoinThreadControl#startNewThreadIfNotRunning<br>
+-&gt; threadPool.generic().execute：使用 generic 线程池执行选主流程<br>
+-&gt; ZenDiscovery#innerJoinCluster：加入集群<br>
+-&gt; ZenDiscovery#findMaster：查找当前集群的活跃 Master，或者从候选者中选择新的 Master<br>
+-&gt; ZenDiscovery#pingAndWait：ping 一下所有节点（除了本节点），获取 pingResponses<br>
+-&gt; 构建<strong>activeMasters</strong>列表，将每个节点所认为的当前 Master 节点加入 activeMasters 列表<br>
+-&gt; 构建<strong>masterCandidates</strong>列表，从 pingResponses 列表中去掉不具备 Master 资格的节点<br>
+-&gt; 如果 activeMasters 为空，则从 masterCandidates 中选举，否则从 activeMasters 中选择最合适的作为 Master</p>
+<h2 id="从-mastercandidates-选主"><a class="header-anchor" href="#从-mastercandidates-选主">¶</a>从 masterCandidates 选主</h2>
+<p>activeMasters 为空一般发生在集群刚启动或大规模重启的情况下。</p>
+<p>ZenDiscovery#findMaster<br>
+-&gt; ElectMasterService#hasEnoughCandidates：当前候选人数是否达到法定人数，若未达到则直接令选举失败<br>
+-&gt; ElectMasterService#electMaster：当候选者达到法定人数后，从中选出一个作为 Master，选择前需要先用自定义比较函数进行排序<br>
+-&gt; MasterCandidate.compare 自定义的排序逻辑</p>
+<p>排序条件：</p>
+<ol>
+<li>版本号大的优先；</li>
+<li>具备 Master 资格的优先；</li>
+<li>节点 ID 小的优先。</li>
+</ol>
+<h2 id="从-activemasters-列表中选主"><a class="header-anchor" href="#从-activemasters-列表中选主">¶</a>从 activeMasters 列表中选主</h2>
+<p>此时列表中存储着集群当前活跃的 Master，从这些已知的 Master 节点中选择一个作为选举结果。</p>
+<p>ZenDiscovery#findMaster<br>
+-&gt; ElectMasterService#tieBreakActiveMasters：使用自定义比较函数排序后取第一个<br>
+-&gt; ElectMasterService#compareNodes</p>
+<p>排序条件：</p>
+<ol>
+<li>具备 Master 资格的优先；</li>
+<li>节点 ID 小的优先。</li>
+</ol>
+<h2 id="收集投票进行统计"><a class="header-anchor" href="#收集投票进行统计">¶</a>收集投票进行统计</h2>
+<p>ZenDiscovery#handleJoinRequest<br>
+-&gt; NodeJoinController#handleJoinRequest<br>
+-&gt; NodeJoinController.ElectionContext#addIncomingJoin 将收到的连接存储到 NodeJoinController.ElectionContext#joinRequestAccumulator 中</p>
+<p>NodeJoinController.ElectionContext#getPendingMasterJoinsCount：节点检查收到的投票是否足够时，就是检查加入它的连接数是否足够，其中会去掉没有 Master 资格节点的投票</p>
+<h2 id="加入集群"><a class="header-anchor" href="#加入集群">¶</a>加入集群</h2>
+<p>如果按以上逻辑选举出的临时 Master 是本节点：</p>
+<ol>
+<li>等待足够多的具备 Master 资格的节点加入本节点，直到投票达到法定人数，完成选举；</li>
+<li>超时（默认 30 秒且可配置）后还没有满足数量的 join 请求，则选举失败，需要进行新一轮选举；</li>
+<li>成功后发布新的 clusterState。</li>
+</ol>
+<p>ZenDiscovery#innerJoinCluster<br>
+NodeJoinController#waitToBeElectedAsMaster</p>
+<p>如果按以上逻辑选举出的临时 Master 并非本节点：</p>
+<ol>
+<li>不再接受其他节点的 join 请求；</li>
+<li>向 Master 发送 join 请求，并等待回复。超时时间默认为 1 分钟（可配置），如果遇到异常，则默认重试 3 次（可配置）。</li>
+<li>最终当选的 Master 会先发布集群状态，再确认客户的 join 请求，因此，joinElectedMaster 返回代表收到了 join 请求的确认，并且已经收到了集群状态。本步骤检查收到的集群状态中的 Master 节点如果为空，或者当选的 Master 不是之前选择的节点，则重新选举。</li>
+</ol>
+<p>ZenDiscovery#innerJoinCluster<br>
+-&gt; ZenDiscovery#joinElectedMaster</p>
 
       
     </div>
@@ -962,7 +953,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">145</span>
+                  <span class="site-state-item-count">147</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1019,7 +1010,7 @@ Elasticsearch 是一个 schema-less 的系统，但并不代表 no shema，而�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES调试环境的搭建</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">ES的分布式概念</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#集群-cluster"><span class="nav-number">2.1.</span> <span class="nav-text">¶集群 - Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群监控"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶集群监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群状态监控"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶集群状态监控</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点-node"><span class="nav-number">2.2.</span> <span class="nav-text">¶节点 - Node</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主节点-master-eligible-和-master"><span class="nav-number">2.3.</span> <span class="nav-text">¶主节点 - Master-eligible 和 Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#协调节点coordinating-node和数据节点data-node"><span class="nav-number">2.4.</span> <span class="nav-text">¶协调节点Coordinating Node和数据节点Data Node</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分片-shard"><span class="nav-number">2.5.</span> <span class="nav-text">¶分片 - Shard</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分片数设置"><span class="nav-number">2.5.1.</span> <span class="nav-text">¶分片数设置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主分片和副分片"><span class="nav-number">2.5.2.</span> <span class="nav-text">¶主分片和副分片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#副本-replica"><span class="nav-number">2.5.3.</span> <span class="nav-text">¶副本 - Replica</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-index"><span class="nav-number">2.6.</span> <span class="nav-text">¶索引（Index）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#recovery"><span class="nav-number">2.7.</span> <span class="nav-text">¶Recovery</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#gateway"><span class="nav-number">2.8.</span> <span class="nav-text">¶Gateway</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#transport"><span class="nav-number">2.9.</span> <span class="nav-text">¶Transport</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">ES集群的启动源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">3.1.</span> <span class="nav-text">¶节点的启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#keepalive"><span class="nav-number">3.2.</span> <span class="nav-text">¶keepalive</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点关闭"><span class="nav-number">3.3.</span> <span class="nav-text">¶节点关闭</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">选举主节点源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#选举相关概念"><span class="nav-number">4.1.</span> <span class="nav-text">¶选举相关概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置"><span class="nav-number">4.2.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#本地节点实例的创建"><span class="nav-number">4.3.</span> <span class="nav-text">¶本地节点实例的创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选主流程"><span class="nav-number">4.4.</span> <span class="nav-text">¶选主流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选举临时-master"><span class="nav-number">4.5.</span> <span class="nav-text">¶选举临时 Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-mastercandidates-选主"><span class="nav-number">4.6.</span> <span class="nav-text">¶从 masterCandidates 选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-activemasters-列表中选主"><span class="nav-number">4.7.</span> <span class="nav-text">¶从 activeMasters 列表中选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#收集投票进行统计"><span class="nav-number">4.8.</span> <span class="nav-text">¶收集投票进行统计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#加入集群"><span class="nav-number">4.9.</span> <span class="nav-text">¶加入集群</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">脑裂问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#发生脑裂的原因"><span class="nav-number">5.1.</span> <span class="nav-text">¶发生脑裂的原因</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决办法"><span class="nav-number">5.2.</span> <span class="nav-text">¶解决办法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">集群扩容</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#es扩容限制"><span class="nav-number">6.1.</span> <span class="nav-text">¶ES扩容限制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置节点"><span class="nav-number">6.2.</span> <span class="nav-text">¶配置节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#水平扩容"><span class="nav-number">6.3.</span> <span class="nav-text">¶水平扩容</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">7.</span> <span class="nav-text">数据迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#mysql-与-es-同步"><span class="nav-number">7.1.</span> <span class="nav-text">¶MySQL 与 ES 同步</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么要同步-mysql-和-es"><span class="nav-number">7.1.1.</span> <span class="nav-text">¶为什么要同步 MySQL 和 ES</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#注意事项"><span class="nav-number">7.1.2.</span> <span class="nav-text">¶注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一种架构方案"><span class="nav-number">7.1.3.</span> <span class="nav-text">¶一种架构方案</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#kafka"><span class="nav-number">7.1.3.1.</span> <span class="nav-text">¶Kafka</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#data-transformation"><span class="nav-number">7.1.3.2.</span> <span class="nav-text">¶Data Transformation</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es"><span class="nav-number">7.1.3.3.</span> <span class="nav-text">¶ES</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es-缺点"><span class="nav-number">7.1.3.4.</span> <span class="nav-text">¶ES 缺点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#下一步"><span class="nav-number">7.1.3.5.</span> <span class="nav-text">¶下一步</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">8.</span> <span class="nav-text">故障转移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#同机多节点"><span class="nav-number">8.1.</span> <span class="nav-text">¶同机多节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#不同机器多节点"><span class="nav-number">8.2.</span> <span class="nav-text">¶不同机器多节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障转移机制"><span class="nav-number">8.3.</span> <span class="nav-text">¶故障转移机制</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES调试环境的搭建</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">ES的分布式原理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#集群-cluster"><span class="nav-number">2.1.</span> <span class="nav-text">¶集群 - Cluster</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群监控"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶集群监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群状态监控"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶集群状态监控</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点-node"><span class="nav-number">2.2.</span> <span class="nav-text">¶节点 - Node</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主节点-master-eligible-和-master-和-选举"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶主节点 - Master-eligible 和 Master 和 选举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#协调节点coordinating-node和数据节点data-node"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶协调节点Coordinating Node和数据节点Data Node</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#节点类型配置"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶节点类型配置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#脑裂问题及脑裂避免"><span class="nav-number">2.3.</span> <span class="nav-text">¶脑裂问题及脑裂避免</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#发生脑裂的原因"><span class="nav-number">2.3.1.</span> <span class="nav-text">¶发生脑裂的原因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#脑裂避免"><span class="nav-number">2.3.2.</span> <span class="nav-text">¶脑裂避免</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障转移"><span class="nav-number">2.4.</span> <span class="nav-text">¶故障转移</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#同机多节点"><span class="nav-number">2.4.1.</span> <span class="nav-text">¶同机多节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#不同机器多节点"><span class="nav-number">2.4.2.</span> <span class="nav-text">¶不同机器多节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#故障转移机制"><span class="nav-number">2.4.3.</span> <span class="nav-text">¶故障转移机制</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">集群扩容</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#es扩容限制"><span class="nav-number">3.1.</span> <span class="nav-text">¶ES扩容限制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置节点"><span class="nav-number">3.2.</span> <span class="nav-text">¶配置节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#水平扩容"><span class="nav-number">3.3.</span> <span class="nav-text">¶水平扩容</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">数据迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#mysql-与-es-同步"><span class="nav-number">4.1.</span> <span class="nav-text">¶MySQL 与 ES 同步</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么要同步-mysql-和-es"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶为什么要同步 MySQL 和 ES</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#注意事项"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一种架构方案"><span class="nav-number">4.1.3.</span> <span class="nav-text">¶一种架构方案</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#kafka"><span class="nav-number">4.1.3.1.</span> <span class="nav-text">¶Kafka</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#data-transformation"><span class="nav-number">4.1.3.2.</span> <span class="nav-text">¶Data Transformation</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es"><span class="nav-number">4.1.3.3.</span> <span class="nav-text">¶ES</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#es-缺点"><span class="nav-number">4.1.3.4.</span> <span class="nav-text">¶ES 缺点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#下一步"><span class="nav-number">4.1.3.5.</span> <span class="nav-text">¶下一步</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">ES集群的启动源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点的启动"><span class="nav-number">5.1.</span> <span class="nav-text">¶节点的启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#keepalive"><span class="nav-number">5.2.</span> <span class="nav-text">¶keepalive</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点关闭"><span class="nav-number">5.3.</span> <span class="nav-text">¶节点关闭</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">选举主节点源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#选举相关概念"><span class="nav-number">6.1.</span> <span class="nav-text">¶选举相关概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置"><span class="nav-number">6.2.</span> <span class="nav-text">¶配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#本地节点实例的创建"><span class="nav-number">6.3.</span> <span class="nav-text">¶本地节点实例的创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选主流程"><span class="nav-number">6.4.</span> <span class="nav-text">¶选主流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选举临时-master"><span class="nav-number">6.5.</span> <span class="nav-text">¶选举临时 Master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-mastercandidates-选主"><span class="nav-number">6.6.</span> <span class="nav-text">¶从 masterCandidates 选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#从-activemasters-列表中选主"><span class="nav-number">6.7.</span> <span class="nav-text">¶从 activeMasters 列表中选主</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#收集投票进行统计"><span class="nav-number">6.8.</span> <span class="nav-text">¶收集投票进行统计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#加入集群"><span class="nav-number">6.9.</span> <span class="nav-text">¶加入集群</span></a></li></ol></li></ol></div>
             
 
           </div>
