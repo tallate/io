@@ -87,17 +87,18 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="[x] ES如何保证断电时数据也不会丢失">
 <meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://tallate.top/imgs/ES/%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%96%B0%E5%A2%9E%E3%80%81%E7%B4%A2%E5%BC%95%E3%80%81%E5%88%A0%E9%99%A4.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E5%8F%96%E5%9B%9E%E5%8D%95%E4%B8%AA%E6%96%87%E6%A1%A3.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E5%B1%80%E9%83%A8%E6%9B%B4%E6%96%B0.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%89%B9%E9%87%8F%E8%AF%BB.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%89%B9%E9%87%8F%E6%94%B9.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%95%B0%E6%8D%AE%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B.png">
-<meta property="og:updated_time" content="2021-06-03T19:24:26.342Z">
+<meta property="og:updated_time" content="2021-06-05T14:22:46.006Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES2_2分布式文档存储">
 <meta name="twitter:description" content="[x] ES如何保证断电时数据也不会丢失">
-<meta name="twitter:image" content="https://tallate.top/imgs/ES/%E6%96%B0%E5%A2%9E%E3%80%81%E7%B4%A2%E5%BC%95%E3%80%81%E5%88%A0%E9%99%A4.png">
+<meta name="twitter:image" content="https://tallate.top/imgs/ES/%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png">
 
 
 
@@ -365,7 +366,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  3.8k 字
+                  4.7k 字
                 </span>
               
 
@@ -381,7 +382,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  13 分钟
+                  16 分钟
                 </span>
               
             </div>
@@ -510,6 +511,39 @@ consistency 有三种取值：</p>
 </ol>
 <h2 id="timeout"><a class="header-anchor" href="#timeout">¶</a>timeout</h2>
 <p>如果没有足够的副本分片数，Elasticsearch 会等待，希望更多的分片出现。默认情况下，它最多等待 1 分钟。可以设置 timeout 的值来修改等待时间。</p>
+<h2 id="乐观并发控制"><a class="header-anchor" href="#乐观并发控制">¶</a>乐观并发控制</h2>
+<p>ES中的文档是不可变更的，如果更新一个文档，会将该文档标记为删除，同时增加一个全新的文档，同时文档的version字段+1。</p>
+<p><img src="https://tallate.top/imgs/ES/%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png" alt="并发更新问题" title="并发更新问题"><br>
+如上图所示 Web-2 不知道自己的对象拷贝已经过期，结果执行更新时会认为库存尚充足。<br>
+像这样的变更越频繁，读数据和更新数据的间隙越长，也就越可能丢失变更。<br>
+在数据库领域中，有两种策略通常被用来确保并发更新时变更不会丢失：</p>
+<ul>
+<li>悲观并发控制<br>
+这种方法被关系型数据库广泛使用，它假定有变更冲突可能发生，因此<strong>阻塞访问资源以防止冲突</strong>。 一个典型的例子是读取一行数据之前先将其锁住，确保只有放置锁的线程能够对这行数据进行修改。</li>
+<li>乐观并发控制<br>
+Elasticsearch 中使用的这种方法假定冲突是不可能发生的，并且不会阻塞正在尝试的操作。 然而，<strong>如果源数据在读写当中被修改，更新将会失败</strong>。应用程序接下来将决定该如何解决冲突。 例如，可以重试更新、使用新的数据、或者将相关情况报告给用户。</li>
+</ul>
+<p>Elasticsearch 是分布式的。当文档创建、更新或删除时， 新版本的文档必须复制到集群中的其他节点。Elasticsearch 也是异步和并发的，这意味着这些<strong>复制请求被并行发送，并且到达目的地时也许 顺序是乱的</strong>。 Elasticsearch 需要一种方法确保文档的旧版本不会覆盖新的版本。</p>
+<ol>
+<li>
+<p><s>内部版本号</s><br>
+当我们之前讨论 index ， GET 和 delete 请求时，我们指出每个文档都有一个 _version （版本）号，当文档被修改时版本号递增。 Elasticsearch 使用这个 _version 号来确保变更以正确顺序得到执行。如果旧版本的文档在新版本之后到达，它可以被简单的忽略。<br>
+当我们在更新数据时，需要指定想要修改文档的_version，如果该版本不是当前版本号，我们的请求将会失败。</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT /website/blog/1?version=1 </span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;My first blog entry&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Starting to get the hang of this...&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>内部版本号<br>
+通过version来进行内部版本控制在新版中已经被废除<br>
+改为了if_seq_no + if_primary_term组合的方式来进行并发控制</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT products/_doc/1?if_seq_no=0&amp;if_primary_term=1</span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;iphone&quot;,</span><br><span class="line">  &quot;count&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>外部版本号<br>
+一个常见的设置是使用其它数据库作为主要的数据存储，使用 Elasticsearch 做数据检索，Elasticsearch 提供了一种机制来重用主数据库中已经存在的版本号字段。<br>
+外部版本号的处理方式和我们之前讨论的内部版本号的处理方式有些不同， Elasticsearch 不是检查当前 _version 和请求中指定的版本号是否相同， 而是检查当前 _version 是否 小于 指定的版本号。 如果是则请求成功，外部的版本号作为文档的新 _version 进行存储，这意味着每次请求必须先在主数据库中增加版本号的值，再将新版本的数据索引到 Elasticsearch 中。</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT /website/blog/2?version=5&amp;version_type=external</span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;My first external blog entry&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Starting to get the hang of this...&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
 <h2 id="创建-索引-删除"><a class="header-anchor" href="#创建-索引-删除">¶</a>创建、索引、删除</h2>
 <p>新建、索引和删除 请求都是 写 操作， 必须在主分片上面完成之后才能被复制到相关的副本分片，所以需要：</p>
 <ol>
@@ -628,8 +662,8 @@ consistency 有三种取值：</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/1c3259ad.html" rel="next" title="ES3_1分布式搜索">
-                <i class="fa fa-chevron-left"></i> ES3_1分布式搜索
+              <a href="/e0007243.html" rel="next" title="ES1_2使用索引和文档">
+                <i class="fa fa-chevron-left"></i> ES1_2使用索引和文档
               </a>
             
           </div>
@@ -722,7 +756,7 @@ consistency 有三种取值：</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">148</span>
+                  <span class="site-state-item-count">149</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -779,7 +813,7 @@ consistency 有三种取值：</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分片原理 - Shard</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#主分片和副分片replica"><span class="nav-number">1.1.</span> <span class="nav-text">¶主分片和副分片Replica</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#副分片-副本-replica"><span class="nav-number">1.2.</span> <span class="nav-text">¶副分片（副本） - Replica</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分片数设置"><span class="nav-number">1.3.</span> <span class="nav-text">¶分片数设置</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">分布式文档存储</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#相关配置"><span class="nav-number">2.1.</span> <span class="nav-text">¶相关配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档路由"><span class="nav-number">2.2.</span> <span class="nav-text">¶文档路由</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#文档到分片的映射算法"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶文档到分片的映射算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hash算法"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶hash算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#指定hash字段"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶指定hash字段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分发机制"><span class="nav-number">2.3.</span> <span class="nav-text">¶分发机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#consistency"><span class="nav-number">2.4.</span> <span class="nav-text">¶consistency</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#timeout"><span class="nav-number">2.5.</span> <span class="nav-text">¶timeout</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建-索引-删除"><span class="nav-number">2.6.</span> <span class="nav-text">¶创建、索引、删除</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#取回单个文档"><span class="nav-number">2.7.</span> <span class="nav-text">¶取回单个文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#局部更新"><span class="nav-number">2.8.</span> <span class="nav-text">¶局部更新</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#mget-批量读"><span class="nav-number">2.9.</span> <span class="nav-text">¶mget（批量读）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bulk-批量改"><span class="nav-number">2.10.</span> <span class="nav-text">¶bulk（批量改）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据副本模型"><span class="nav-number">2.11.</span> <span class="nav-text">¶数据副本模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#pacifica-算法"><span class="nav-number">2.11.1.</span> <span class="nav-text">¶PacificA 算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#存储管理-写入"><span class="nav-number">2.11.2.</span> <span class="nav-text">¶存储管理 - 写入</span></a></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分片原理 - Shard</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#主分片和副分片replica"><span class="nav-number">1.1.</span> <span class="nav-text">¶主分片和副分片Replica</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#副分片-副本-replica"><span class="nav-number">1.2.</span> <span class="nav-text">¶副分片（副本） - Replica</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分片数设置"><span class="nav-number">1.3.</span> <span class="nav-text">¶分片数设置</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">分布式文档存储</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#相关配置"><span class="nav-number">2.1.</span> <span class="nav-text">¶相关配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档路由"><span class="nav-number">2.2.</span> <span class="nav-text">¶文档路由</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#文档到分片的映射算法"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶文档到分片的映射算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hash算法"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶hash算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#指定hash字段"><span class="nav-number">2.2.3.</span> <span class="nav-text">¶指定hash字段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分发机制"><span class="nav-number">2.3.</span> <span class="nav-text">¶分发机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#consistency"><span class="nav-number">2.4.</span> <span class="nav-text">¶consistency</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#timeout"><span class="nav-number">2.5.</span> <span class="nav-text">¶timeout</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#乐观并发控制"><span class="nav-number">2.6.</span> <span class="nav-text">¶乐观并发控制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建-索引-删除"><span class="nav-number">2.7.</span> <span class="nav-text">¶创建、索引、删除</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#取回单个文档"><span class="nav-number">2.8.</span> <span class="nav-text">¶取回单个文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#局部更新"><span class="nav-number">2.9.</span> <span class="nav-text">¶局部更新</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#mget-批量读"><span class="nav-number">2.10.</span> <span class="nav-text">¶mget（批量读）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bulk-批量改"><span class="nav-number">2.11.</span> <span class="nav-text">¶bulk（批量改）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据副本模型"><span class="nav-number">2.12.</span> <span class="nav-text">¶数据副本模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#pacifica-算法"><span class="nav-number">2.12.1.</span> <span class="nav-text">¶PacificA 算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#存储管理-写入"><span class="nav-number">2.12.2.</span> <span class="nav-text">¶存储管理 - 写入</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>

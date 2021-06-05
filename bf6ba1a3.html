@@ -88,11 +88,10 @@
 <meta property="og:description" content="写入（POST、PUT、DELETE）流程源码分析 ¶refresh和flush - 实时性和可靠性之间的权衡  ¶近实时性 ES中数据写入后并不能被马上查到，而是必须先执行refresh，默认是1s，最快可到100ms。 ¶可靠性 搜索系统对可靠性要求都不高，一般数据的可靠性通过将原始数据存储在另一个存储系统来保证，当搜索系统的数据发生丢失时，再从其他存储系统导一份数据过来重新rebuild就可">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E5%88%B7%E7%9B%98%E6%B5%81%E7%A8%8B.png">
-<meta property="og:image" content="https://tallate.top/imgs/ES/%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E5%A4%9A%E8%8A%82%E7%82%B9%E5%A4%9A%E5%88%86%E7%89%87%E6%A8%A1%E5%9E%8B.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/ES%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84GET%E6%B5%81%E7%A8%8B.png">
-<meta property="og:updated_time" content="2021-06-03T19:24:26.334Z">
+<meta property="og:updated_time" content="2021-06-05T14:07:32.432Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES2_3文档操作源码分析">
 <meta name="twitter:description" content="写入（POST、PUT、DELETE）流程源码分析 ¶refresh和flush - 实时性和可靠性之间的权衡  ¶近实时性 ES中数据写入后并不能被马上查到，而是必须先执行refresh，默认是1s，最快可到100ms。 ¶可靠性 搜索系统对可靠性要求都不高，一般数据的可靠性通过将原始数据存储在另一个存储系统来保证，当搜索系统的数据发生丢失时，再从其他存储系统导一份数据过来重新rebuild就可">
@@ -364,7 +363,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  5.1k 字
+                  4.4k 字
                 </span>
               
 
@@ -380,7 +379,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  23 分钟
+                  20 分钟
                 </span>
               
             </div>
@@ -441,32 +440,6 @@ ES采用多副本模型，可以避免单机发生故障时丢失数据，但是
 <li>检查版本是否冲突（V1和V2），如果冲突则回退到开始的Update阶段重新执行，否则继续执行Index请求；</li>
 <li>在Index阶段，首先版本+1得到V3，再将文档加入到Lucene中去，Lucene中会删除同id的旧文档，然后再新增文档。写入成功后，将V3更新到versionMap中；</li>
 <li>释放锁。</li>
-</ol>
-<h2 id="乐观并发控制"><a class="header-anchor" href="#乐观并发控制">¶</a>乐观并发控制</h2>
-<p><img src="https://tallate.top/imgs/ES/%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0%E9%97%AE%E9%A2%98.png" alt="并发更新问题" title="并发更新问题"><br>
-如上图所示 Web-2 不知道自己的对象拷贝已经过期，结果执行更新时会认为库存尚充足。<br>
-像这样的变更越频繁，读数据和更新数据的间隙越长，也就越可能丢失变更。<br>
-在数据库领域中，有两种策略通常被用来确保并发更新时变更不会丢失：</p>
-<ul>
-<li>悲观并发控制<br>
-这种方法被关系型数据库广泛使用，它假定有变更冲突可能发生，因此<strong>阻塞访问资源以防止冲突</strong>。 一个典型的例子是读取一行数据之前先将其锁住，确保只有放置锁的线程能够对这行数据进行修改。</li>
-<li>乐观并发控制<br>
-Elasticsearch 中使用的这种方法假定冲突是不可能发生的，并且不会阻塞正在尝试的操作。 然而，<strong>如果源数据在读写当中被修改，更新将会失败</strong>。应用程序接下来将决定该如何解决冲突。 例如，可以重试更新、使用新的数据、或者将相关情况报告给用户。</li>
-</ul>
-<p>Elasticsearch 是分布式的。当文档创建、更新或删除时， 新版本的文档必须复制到集群中的其他节点。Elasticsearch 也是异步和并发的，这意味着这些<strong>复制请求被并行发送，并且到达目的地时也许 顺序是乱的</strong>。 Elasticsearch 需要一种方法确保文档的旧版本不会覆盖新的版本。</p>
-<ol>
-<li>
-<p>内部版本号<br>
-当我们之前讨论 index ， GET 和 delete 请求时，我们指出每个文档都有一个 _version （版本）号，当文档被修改时版本号递增。 Elasticsearch 使用这个 _version 号来确保变更以正确顺序得到执行。如果旧版本的文档在新版本之后到达，它可以被简单的忽略。<br>
-当我们在更新数据时，需要指定想要修改文档的_version，如果该版本不是当前版本号，我们的请求将会失败。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT /website/blog/1?version=1 </span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;My first blog entry&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Starting to get the hang of this...&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li>
-<p>外部版本号<br>
-一个常见的设置是使用其它数据库作为主要的数据存储，使用 Elasticsearch 做数据检索，Elasticsearch 提供了一种机制来重用主数据库中已经存在的版本号字段。<br>
-外部版本号的处理方式和我们之前讨论的内部版本号的处理方式有些不同， Elasticsearch 不是检查当前 _version 和请求中指定的版本号是否相同， 而是检查当前 _version 是否 小于 指定的版本号。 如果是则请求成功，外部的版本号作为文档的新 _version 进行存储，这意味着每次请求必须先在主数据库中增加版本号的值，再将新版本的数据索引到 Elasticsearch 中。</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PUT /website/blog/2?version=5&amp;version_type=external</span><br><span class="line">&#123;</span><br><span class="line">  &quot;title&quot;: &quot;My first external blog entry&quot;,</span><br><span class="line">  &quot;text&quot;: &quot;Starting to get the hang of this...&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
 </ol>
 <h2 id="文档操作类型"><a class="header-anchor" href="#文档操作类型">¶</a>文档操作类型</h2>
 <p>文档操作分为单个的（Index）和批量的（Bulk），它们最终都会被统一封装为批量操作请求（BulkRequest）。</p>
@@ -596,8 +569,8 @@ ES集群中的节点分为<code>协调节点</code>和<code>数据节点</code>�
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/e0007243.html" rel="prev" title="ES1_2使用索引和文档">
-                ES1_2使用索引和文档 <i class="fa fa-chevron-right"></i>
+              <a href="/226416.html" rel="prev" title="使用 jq 解析 json 数据">
+                使用 jq 解析 json 数据 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -680,7 +653,7 @@ ES集群中的节点分为<code>协调节点</code>和<code>数据节点</code>�
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">148</span>
+                  <span class="site-state-item-count">149</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -737,7 +710,7 @@ ES集群中的节点分为<code>协调节点</code>和<code>数据节点</code>�
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">写入（POST、PUT、DELETE）流程源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#refresh和flush-实时性和可靠性之间的权衡"><span class="nav-number">1.1.</span> <span class="nav-text">¶refresh和flush - 实时性和可靠性之间的权衡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#近实时性"><span class="nav-number">1.1.1.</span> <span class="nav-text">¶近实时性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#可靠性"><span class="nav-number">1.1.2.</span> <span class="nav-text">¶可靠性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#es的刷盘流程"><span class="nav-number">1.1.3.</span> <span class="nav-text">¶ES的刷盘流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#es会丢失数据吗？"><span class="nav-number">1.1.4.</span> <span class="nav-text">¶ES会丢失数据吗？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档更新-部分更新"><span class="nav-number">1.2.</span> <span class="nav-text">¶文档更新（部分更新）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#乐观并发控制"><span class="nav-number">1.3.</span> <span class="nav-text">¶乐观并发控制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档操作类型"><span class="nav-number">1.4.</span> <span class="nav-text">¶文档操作类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#请求入口"><span class="nav-number">1.5.</span> <span class="nav-text">¶请求入口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档写入流程"><span class="nav-number">1.6.</span> <span class="nav-text">¶文档写入流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#协调节点处理流程"><span class="nav-number">1.6.1.</span> <span class="nav-text">¶协调节点处理流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主分片节点处理流程"><span class="nav-number">1.6.2.</span> <span class="nav-text">¶主分片节点处理流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#副分片执行"><span class="nav-number">1.6.3.</span> <span class="nav-text">¶副分片执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">GET流程源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#实时性"><span class="nav-number">2.1.</span> <span class="nav-text">¶实时性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#get执行流程"><span class="nav-number">2.2.</span> <span class="nav-text">¶GET执行流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#协调节点执行流程"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶协调节点执行流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据节点执行流程"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶数据节点执行流程</span></a></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">写入（POST、PUT、DELETE）流程源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#refresh和flush-实时性和可靠性之间的权衡"><span class="nav-number">1.1.</span> <span class="nav-text">¶refresh和flush - 实时性和可靠性之间的权衡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#近实时性"><span class="nav-number">1.1.1.</span> <span class="nav-text">¶近实时性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#可靠性"><span class="nav-number">1.1.2.</span> <span class="nav-text">¶可靠性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#es的刷盘流程"><span class="nav-number">1.1.3.</span> <span class="nav-text">¶ES的刷盘流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#es会丢失数据吗？"><span class="nav-number">1.1.4.</span> <span class="nav-text">¶ES会丢失数据吗？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档更新-部分更新"><span class="nav-number">1.2.</span> <span class="nav-text">¶文档更新（部分更新）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档操作类型"><span class="nav-number">1.3.</span> <span class="nav-text">¶文档操作类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#请求入口"><span class="nav-number">1.4.</span> <span class="nav-text">¶请求入口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文档写入流程"><span class="nav-number">1.5.</span> <span class="nav-text">¶文档写入流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#协调节点处理流程"><span class="nav-number">1.5.1.</span> <span class="nav-text">¶协调节点处理流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主分片节点处理流程"><span class="nav-number">1.5.2.</span> <span class="nav-text">¶主分片节点处理流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#副分片执行"><span class="nav-number">1.5.3.</span> <span class="nav-text">¶副分片执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">GET流程源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#实时性"><span class="nav-number">2.1.</span> <span class="nav-text">¶实时性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#get执行流程"><span class="nav-number">2.2.</span> <span class="nav-text">¶GET执行流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#协调节点执行流程"><span class="nav-number">2.2.1.</span> <span class="nav-text">¶协调节点执行流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据节点执行流程"><span class="nav-number">2.2.2.</span> <span class="nav-text">¶数据节点执行流程</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>

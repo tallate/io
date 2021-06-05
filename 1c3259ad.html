@@ -90,7 +90,7 @@
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/%E5%8F%96%E5%9B%9E%E9%98%B6%E6%AE%B5.png">
 <meta property="og:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84%E7%B4%A2%E5%BC%95%E5%92%8C%E6%90%9C%E7%B4%A2.png">
-<meta property="og:updated_time" content="2021-06-03T19:24:26.326Z">
+<meta property="og:updated_time" content="2021-06-05T15:42:21.697Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES3_1分布式搜索">
 <meta name="twitter:description" content="先分析ES中的搜索原理，然后总结ES中的搜索方法，主要包括轻量查询、请求体查询。">
@@ -362,7 +362,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  9.6k 字
+                  10.7k 字
                 </span>
               
 
@@ -378,7 +378,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  37 分钟
+                  42 分钟
                 </span>
               
             </div>
@@ -408,10 +408,11 @@ ES的一个概念</p>
 <p><img src="https://tallate.top/imgs/ES/%E6%9F%A5%E8%AF%A2%E9%98%B6%E6%AE%B5.png" alt="查询阶段" title="查询阶段"></p>
 <ul>
 <li>
-<p>客户端发送一个 search 请求到<strong>协调节点</strong>（也就是 Node 3），协调节点会创建一个大小为 <code>from+size</code> 的<strong>空优先队列</strong>。</p>
+<p>客户端发送一个 search 请求到<strong>协调节点（Coordinating Node）</strong>（也就是 Node 3），协调节点会创建一个大小为 <code>from+size</code> 的<strong>空优先队列</strong>。</p>
 </li>
 <li>
-<p>协调节点将请求广播到索引中每一个分片拷贝（主分片或者副本分片）。</p>
+<p>协调节点将请求广播到索引中每一个分片拷贝（主分片或者副本分片）。<br>
+比如如果集群中有3对主副分配，那么协调节点会从中随机选择3个分片，发送查询请求</p>
 </li>
 <li>
 <p>每个分片在本地执行搜索并构建一个匹配文档的 <strong>优先队列</strong>。<br>
@@ -435,12 +436,13 @@ ES的一个概念</p>
 取决于你的文档的大小，分片的数量和你使用的硬件，给 10,000 到 50,000 的结果文档深分页（ 1,000 到 5,000 页）是完全可行的。但是使用足够大的 from 值，排序过程可能会变得非常沉重，使用大量的 CPU、内存和带宽。因为这个原因，我们强烈建议你不要使用深分页。<br>
 实际上，深分页很少符合人的行为。当 2 到 3 页过去以后，人会停止翻页，并且改变搜索标准。会不知疲倦地一页一页的获取网页直到你的服务崩溃的罪魁祸首一般是机器人或者 web spider。<br>
 如果你确实需要从你的集群取回大量的文档，你可以通过用 <code>scroll</code> 查询禁用排序使这个取回行为更有效率。</p>
-<h2 id="偏好"><a class="header-anchor" href="#偏好">¶</a>偏好</h2>
+<h2 id="偏好-解决bouncing-results问题"><a class="header-anchor" href="#偏好-解决bouncing-results问题">¶</a>偏好 - 解决Bouncing Results问题</h2>
 <p>偏好这个参数 <code>preference</code> 允许 用来控制由哪些分片或节点来处理搜索请求。 它接受像 <code>_primary, _primary_first, _local, _only_node:xyz, _prefer_node:xyz, 和 _shards:2,3</code> 这样的值，在<a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-preference.html" target="_blank" rel="noopener">search Preference</a>有说明。<br>
 偏好字段可以用于解决<strong>Bouncing Results</strong>问题。</p>
 <blockquote>
 <p>Bouncing Results<br>
 想象一下有两个文档有同样值的时间戳字段，搜索结果用 timestamp 字段来排序。 由于搜索请求是在所有有效的分片副本间轮询的，那就有可能发生主分片处理请求时，这两个文档是一种顺序， 而副本分片处理请求时又是另一种顺序。<br>
+特别是数据量不大的情况下会比较明显，如果数据量足够大的时候，结果一般不会出现偏差——只要保证文档均匀分散在各个分片上。<br>
 这就是所谓的 bouncing results 问题: 每次用户刷新页面，搜索结果表现是不同的顺序。 让同一个用户始终使用同一个分片，这样可以避免这种问题， 可以设置 preference 参数为一个特定的任意值比如用户会话 ID 来解决。</p>
 </blockquote>
 <h2 id="超时"><a class="header-anchor" href="#超时">¶</a>超时</h2>
@@ -548,6 +550,8 @@ from：显示应该跳过的初始结果数量，默认是 0</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;query&quot; : &#123;</span><br><span class="line">        &quot;match&quot; : &#123;</span><br><span class="line">            &quot;last_name&quot; : &quot;Smith&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>查询表达式主要有两种结构：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        ARGUMENT: VALUE,</span><br><span class="line">        ARGUMENT: VALUE,...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#123;</span><br><span class="line">    QUERY_NAME: &#123;</span><br><span class="line">        FIELD_NAME: &#123;</span><br><span class="line">            ARGUMENT: VALUE,</span><br><span class="line">            ARGUMENT: VALUE,...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="验证查询是否合法"><a class="header-anchor" href="#验证查询是否合法">¶</a>验证查询是否合法</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_validate/query?explain</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123; ... &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="term"><a class="header-anchor" href="#term">¶</a>term</h2>
 <ul>
 <li>term：精确值 匹配，这些精确值可能是数字、时间、布尔或者那些 not_analyzed 的字符串，注意<strong>term 不会对输入的文本进行分析</strong>，这样和索引过的目标字符串比较很有可能出现明明看起来一样却匹配不上的现象（比如&quot;Jane&quot;被分析后变成&quot;jane&quot;，term 查询时使用&quot;Jane&quot;进行精确匹配当然匹配不上了！）；</li>
@@ -618,15 +622,63 @@ regexp</li>
 最好不要把通配符放在前面，这样会很慢。</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GET mts_sample_order/orders/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;from&quot;: 1,</span><br><span class="line">  &quot;size&quot;: 10,</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;wildcard&quot;: &#123;</span><br><span class="line">      &quot;sample_type_name&quot;: &quot;咽拭子*&quot;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="聚合"><a class="header-anchor" href="#聚合">¶</a>聚合</h2>
+<h2 id="聚合-aggs"><a class="header-anchor" href="#聚合-aggs">¶</a>聚合 - aggs</h2>
+<p>Sorting, aggregations, and accessing field values in scripts 需要使用到一个称为 fielddata（正排索引）的数据结构：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">PUT megacorp/_mapping/employee/</span><br><span class="line">&#123;</span><br><span class="line">  &quot;properties&quot;: &#123;</span><br><span class="line">    &quot;interests&quot;: &#123; </span><br><span class="line">      &quot;type&quot;: &quot;text&quot;,</span><br><span class="line">      &quot;fielddata&quot;: true</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;aggs&quot; : &#123; // 和query同级的关键词</span><br><span class="line">        &quot;all_interests&quot; : &#123; // 自定义聚合名字</span><br><span class="line">            &quot;terms&quot; : &#123; // 聚合的定义：不同的type+body</span><br><span class="line">                &quot;field&quot; : &quot;interests&quot;</span><br><span class="line">             &#125;,</span><br><span class="line">            &quot;aggs&quot; : &#123; // 子聚合查询</span><br><span class="line">                &quot;avg_age&quot; : &#123;</span><br><span class="line">                    &quot;avg&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;,</span><br><span class="line">        &quot;max_salary&quot;: &#123; // 可以包含多个同级的聚合查询</span><br><span class="line">            &quot;max&quot;: &#123; // 求salary字段的最大值</span><br><span class="line">                &quot;field&quot;: &quot;salary&quot;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="聚合作用范围"><a class="header-anchor" href="#聚合作用范围">¶</a>聚合作用范围</h3>
 <ul>
-<li>aggs 聚合<br>
-Sorting, aggregations, and accessing field values in scripts 需要使用到一个称为 fielddata（正排索引）的数据结构：</li>
+<li>ES聚合分析的默认作用范围是query的查询结果集</li>
+<li>ES还支持以下方式改变聚合的作用范围<br>
+Filter<br>
+Post Filter<br>
+Global</li>
 </ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">PUT megacorp/_mapping/employee/</span><br><span class="line">&#123;</span><br><span class="line">  &quot;properties&quot;: &#123;</span><br><span class="line">    &quot;interests&quot;: &#123; </span><br><span class="line">      &quot;type&quot;: &quot;text&quot;,</span><br><span class="line">      &quot;fielddata&quot;: true</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line">&#123;</span><br><span class="line">    &quot;aggs&quot; : &#123;</span><br><span class="line">        &quot;all_interests&quot; : &#123;</span><br><span class="line">            &quot;terms&quot; : &#123; &quot;field&quot; : &quot;interests&quot; &#125;,</span><br><span class="line">            &quot;aggs&quot; : &#123;</span><br><span class="line">                &quot;avg_age&quot; : &#123;</span><br><span class="line">                    &quot;avg&quot; : &#123; &quot;field&quot; : &quot;age&quot; &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="简单聚合"><a class="header-anchor" href="#简单聚合">¶</a>简单聚合</h3>
+<p>单值分析（只输出一个分析结果）：</p>
+<ul>
+<li>min, max, avg, sum</li>
+<li>Cardinality （类似 distinct count）</li>
+</ul>
+<p>多值分析（输出多个分析结果）：</p>
+<ul>
+<li>stats, extended stats</li>
+<li>percentile, percentile rank</li>
+<li>top hits</li>
+</ul>
+<h3 id="bucket"><a class="header-anchor" href="#bucket">¶</a>Bucket</h3>
+<p>按照一定的规则，将文档分配到不同的桶中，从而达到分类的目的。<br>
+Bucket同样支持嵌套。</p>
+<p>常用的Bucket Aggregation函数：</p>
+<ul>
+<li>terms<br>
+按某个字段聚合，结果默认会进行分词<br>
+需要字段打开fielddata才能进行term aggregation<br>
+keyword默认支持doc_values<br>
+text需要在mapping中enable fielddata</li>
+<li>数字类型
+<ul>
+<li>Range</li>
+<li>Histogram</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">POST employees/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;size&quot;: 0,</span><br><span class="line">  &quot;aggs&quot;: &#123;</span><br><span class="line">    &quot;jobs&quot;: &#123;</span><br><span class="line">      &quot;terms&quot;: &#123;</span><br><span class="line">        &quot;field&quot;: &quot;job&quot;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="pipeline"><a class="header-anchor" href="#pipeline">¶</a>Pipeline</h3>
+<p>对聚合分析结果再进行一次聚合分析<br>
+Pipeline的分析结果会输出到原结果中，根据位置的不同，分为两类：</p>
+<ul>
+<li>Sibing：结果和现有分析结果同级<br>
+max, min, avg, sum bucket<br>
+stats, extended status bucket<br>
+percentiles bucket</li>
+<li>Parent：结果内嵌到现有的聚合分析结果之中<br>
+Derivative（求导）<br>
+Cumultive Sum（累计求和）<br>
+Moving Function（滑动窗口）</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">POST employees/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;size&quot;: 0,</span><br><span class="line">  &quot;aggs&quot;: &#123;</span><br><span class="line">    &quot;jobs&quot;: &#123;</span><br><span class="line">      &quot;terms&quot;: &#123;</span><br><span class="line">        &quot;field&quot;: &quot;job.keyword&quot;,</span><br><span class="line">        &quot;size&quot;: 10</span><br><span class="line">      &#125;,</span><br><span class="line">      &quot;aggs&quot;: &#123;</span><br><span class="line">        &quot;avg_salary&quot;: &#123;</span><br><span class="line">          &quot;avg&quot;: &#123;</span><br><span class="line">            &quot;field&quot;: &quot;salary&quot;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;min_salary_by_job&quot;: &#123;</span><br><span class="line">      &quot;min_bucket&quot;: &#123; // min_bucket求之前结果的最小值</span><br><span class="line">        &quot;buckets_path&quot;: &quot;jobs&gt;avg_salary&quot; // buckets_path关键字指定路径</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="argument-一些特殊的参数"><a class="header-anchor" href="#argument-一些特殊的参数">¶</a>ARGUMENT 一些特殊的参数</h2>
 <ul>
-<li>from 和 size（分页）</li>
 <li>preference（偏好）<br>
 用来控制由哪些分片或节点来处理搜索请求。 它接受<a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-preference.html" target="_blank" rel="noopener">像 _primary, _primary_first, _local, _only_node:xyz, _prefer_node:xyz, 和 _shards:2,3 这样的值</a>，但是最有用的值是某些随机字符串，它可以避免 bouncing results 问题（不同分片上排序顺序不同），这样可能发生每次用户刷新页面，搜索结果表现是不同的顺序，所以最好让同一个用户始终使用同一个分片，可以设置 preference 参数为一个特定的任意值比如用户会话 ID 来解决。</li>
 <li>timeout（超时）<br>
@@ -639,19 +691,58 @@ Sorting, aggregations, and accessing field values in scripts 需要使用到一�
 缺省的搜索类型是 query_then_fetch。你可能想明确设置 search_type 为 dfs_query_then_fetch 来改善相关性精确度，搜索类型 dfs_query_then_fetch 有预查询阶段，这个阶段可以从所有相关分片获取词频来计算全局词频。</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?preference=xyzabc123&amp;routing=user_1,user2&amp;search_type=dfs_query_then_fetch</span><br><span class="line">&#123;</span><br><span class="line">  &quot;from&quot;: 0,</span><br><span class="line">  &quot;size&quot;: 5,</span><br><span class="line">  &quot;timeout&quot;: &quot;1s&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="doc-values-fielddata-正排索引"><a class="header-anchor" href="#doc-values-fielddata-正排索引">¶</a>Doc Values（fielddata 正排索引）</h2>
-<p>在搜索的时候，我们能通过搜索关键词快速得到结果集。当排序的时候，我们需要倒排索引里面某个字段值的集合。换句话说，我们需要 <strong>转置</strong> 倒排索引。转置 结构在其他系统中经常被称作 <strong>列存储</strong> 。实质上，它将所有单字段的值存储在单数据列中，这使得对其进行操作是十分高效的，例如排序。</p>
+<h2 id="doc-values-fielddata-正排索引"><a class="header-anchor" href="#doc-values-fielddata-正排索引">¶</a>Doc Values / fielddata - 正排索引</h2>
+<p>在搜索的时候，我们能通过搜索关键词快速得到结果集。当排序的时候，我们需要倒排索引里面某个字段值的集合，此时倒排索引无法发挥作用。换句话说，我们需要 <strong>转置</strong> 倒排索引。转置 结构在其他系统中经常被称作 <strong>列存储</strong> 。实质上，它将所有单字段的值存储在单数据列中，这使得对其进行操作是十分高效的，例如排序。<br>
+ES有2种方法实现：</p>
 <ul>
-<li>Doc Values 是在索引时随同倒排索引一起创建的</li>
-<li>常用于以下场景：<br>
-对一个字段进行排序<br>
-对一个字段进行聚合<br>
-某些过滤，比如地理位置过滤<br>
-某些与字段相关的脚本计算</li>
-<li>当 working set 远小于节点的可用内存，系统会自动将所有的文档值保存在内存中，使得其读写十分高速； 当其远大于可用内存，操作系统会自动把 Doc Values 加载到系统的页缓存中，从而避免了 jvm 堆内存溢出异常。</li>
+<li>Fielddata（可以存储Text类型）</li>
+<li>Doc Values（列式存储，对Text类型无效）</li>
 </ul>
-<h2 id="验证查询是否合法"><a class="header-anchor" href="#验证查询是否合法">¶</a>验证查询是否合法</h2>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_validate/query?explain</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot; : &#123; ... &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Doc Values</th>
+<th>Field data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>何时创建</td>
+<td>索引时，和倒排索引一起创建</td>
+<td>搜索时动态创建</td>
+</tr>
+<tr>
+<td>创建位置</td>
+<td>磁盘文件</td>
+<td>JVM Heap</td>
+</tr>
+<tr>
+<td>优点</td>
+<td>避免大量内存占用</td>
+<td>索引速度快，不占用额外的磁盘空间</td>
+</tr>
+<tr>
+<td>缺点</td>
+<td>降低索引速度，占用额外磁盘空间</td>
+<td>文档过多时，动态创建开销大，占用过多JVM Heap</td>
+</tr>
+<tr>
+<td>缺省值</td>
+<td>ES 2.x 之后</td>
+<td>ES 1.x 及之前</td>
+</tr>
+</tbody>
+</table>
+<p>当 working set 远小于节点的可用内存，系统会自动将所有的文档值保存在内存中，使得其读写十分高速； 当其远大于可用内存，操作系统会自动把 Doc Values 加载到系统的页缓存中，从而避免了 jvm 堆内存溢出异常。</p>
+<h3 id="关闭-doc-values"><a class="header-anchor" href="#关闭-doc-values">¶</a>关闭 Doc Values</h3>
+<p>Doc Value默认是启用的，可以通过Mapping设置关闭</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">PUT test_keyword/_mapping</span><br><span class="line">&#123;</span><br><span class="line">  &quot;properties&quot;: &#123;</span><br><span class="line">    &quot;user_name&quot;: &#123;</span><br><span class="line">      &quot;type&quot;: &quot;keyword&quot;,</span><br><span class="line">      &quot;doc_values&quot;: false</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>关闭有什么好处？增加索引速度、减少磁盘占用空间</li>
+<li>关闭会有什么问题？如果后续需要重新打开，则需要重建索引</li>
+<li>什么时候需要关闭？明确不需要做排序及聚合分析</li>
+</ul>
 <h2 id="排序与相关性"><a class="header-anchor" href="#排序与相关性">¶</a>排序与相关性</h2>
 <ul>
 <li>sort将目标字段转换为排序所需的格式，date 字段的值表示为自 epoch (January 1, 1970 00:00:00 UTC)以来的毫秒数，通过 sort 字段的值进行返回。</li>
@@ -675,7 +766,34 @@ Sorting, aggregations, and accessing field values in scripts 需要使用到一�
 <li>可以在查询参数中加入 explain 参数解释排序结果</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?explain </span><br><span class="line">&#123;</span><br><span class="line">   &quot;query&quot; : &#123; &quot;match&quot; : &#123; &quot;tweet&quot; : &quot;honeymoon&quot; &#125;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="游标查询-scroll"><a class="header-anchor" href="#游标查询-scroll">¶</a>游标查询 Scroll</h2>
+<h2 id="分页-v2"><a class="header-anchor" href="#分页-v2">¶</a>分页</h2>
+<p>几种分页方式及应用场景</p>
+<ul>
+<li>Regular<br>
+平时查询ES只会返回头部的10条数据，一般用于实时获取顶部的部分文档，例如查询最新的订单。</li>
+<li>Scroll<br>
+需要全部文档时，例如导出全部数据</li>
+<li>Pagination<br>
+from + size的方式<br>
+如果需要深度分页，则选用Search After</li>
+</ul>
+<h3 id="from-和-size-分页-search-after"><a class="header-anchor" href="#from-和-size-分页-search-after">¶</a>from 和 size（分页）、Search After</h3>
+<p>ES中的分页是从每个分片上获取from + size条数据，然后协调节点聚合所有结果，再选取前from + size条数据。<br>
+因为是from + size，所以from特别大时会有<strong>深分页问题</strong>。<br>
+解决办法是<strong>Search After</strong>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">POST users/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;size&quot;: 1,</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;match_all&quot;: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;search_after&quot;: [13, &quot;idididid&quot;],</span><br><span class="line">  &quot;sort&quot;: [</span><br><span class="line">    &#123;&quot;age&quot;: &quot;desc&quot;&#125;,</span><br><span class="line">    &#123;&quot;_id&quot;: &quot;asc&quot;&#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>缺点是：</p>
+<ul>
+<li>不支持指定页数（From）</li>
+<li>只能往下翻</li>
+</ul>
+<p>需要指定搜索sort：</p>
+<ul>
+<li>需要保证值是唯一的，可以加入_id保证唯一性</li>
+<li>每次查询使用上一次查询得到的最后一个文档的sort值进行查询（即上边的13和&quot;idididid&quot;）</li>
+</ul>
+<p>Search After会通过唯一排序值定位，将每次要处理的文档数都控制在size个。</p>
+<h3 id="游标查询-scroll"><a class="header-anchor" href="#游标查询-scroll">¶</a>游标查询 Scroll</h3>
 <p><code>scroll</code> 查询 可以用来对 Elasticsearch 有效地执行大批量的文档查询，而又不用付出深度分页那种代价。<br>
 游标查询允许我们 先做查询初始化，然后再批量地拉取结果。 这有点儿像传统数据库中的 <code>cursor</code> 。<br>
 游标查询会取某个时间点的快照数据。 查询初始化之后索引上的任何变化会被它忽略。 它通过保存旧的数据文件来实现这个特性，结果就像保留初始化时的索引 <code>视图</code> 一样。<br>
@@ -686,6 +804,10 @@ Sorting, aggregations, and accessing field values in scripts 需要使用到一�
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GET /_search/scroll</span><br><span class="line">&#123;</span><br><span class="line">    &quot;scroll&quot;: &quot;1m&quot;, // 注意再次设置游标查询过期时间为一分钟。</span><br><span class="line">    &quot;scroll_id&quot; : &quot;cXVlcnlUaGVuRmV0Y2g7NTsxMDk5NDpkUmpiR2FjOFNhNnlCM1ZDMWpWYnRROzEwOTk1OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MTA5OTM6ZFJqYkdhYzhTYTZ5QjNWQzFqVmJ0UTsxMTE5MDpBVUtwN2lxc1FLZV8yRGVjWlI2QUVBOzEwOTk2OmRSamJHYWM4U2E2eUIzVkMxalZidFE7MDs=&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>这个游标查询返回的下一批结果。 尽管我们指定字段 size 的值为 1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为 <code>size * number_of_primary_shards</code>。<br>
 当没有更多结果返回的时候，我们就处理完所有匹配的文档了。</p>
+<p>缺点：</p>
+<ul>
+<li>Scroll会创建一个快照，如果查询期间有新的数据写入以后，无法被查到</li>
+</ul>
 <h2 id="实践"><a class="header-anchor" href="#实践">¶</a>实践</h2>
 <h3 id="查询订单昨天的问题订单"><a class="header-anchor" href="#查询订单昨天的问题订单">¶</a>查询订单昨天的问题订单</h3>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">// 查询索引</span><br><span class="line">GET _cat/indices</span><br><span class="line">// 查询昨天的订单中属于异常状态的订单，并取其中的部分字段</span><br><span class="line">GET /mts_reg_order/_search</span><br><span class="line">&#123;</span><br><span class="line">  &quot;query&quot;: &#123;</span><br><span class="line">    &quot;bool&quot;: &#123;</span><br><span class="line">      &quot;must&quot;: &#123;</span><br><span class="line">        &quot;match&quot;: &#123;</span><br><span class="line">          &quot;order_status&quot;: &quot;SUSPEND&quot;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      &quot;filter&quot;: &#123;</span><br><span class="line">        &quot;range&quot;: &#123;</span><br><span class="line">          &quot;create_date&quot;: &#123;</span><br><span class="line">            &quot;gt&quot;: &quot;2020-09-23 00:00:00&quot;,</span><br><span class="line">            &quot;lt&quot;: &quot;2020-09-24 00:00:00&quot;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;_source&quot;: [&quot;order_id&quot;, &quot;hos_code&quot;],</span><br><span class="line">  &quot;size&quot;: 100</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -856,8 +978,8 @@ TODO</p>
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/7adf5f0a.html" rel="next" title="ES3_2分析器">
-                <i class="fa fa-chevron-left"></i> ES3_2分析器
+              <a href="/e43d540f.html" rel="next" title="使用 Arthas 排查线上问题">
+                <i class="fa fa-chevron-left"></i> 使用 Arthas 排查线上问题
               </a>
             
           </div>
@@ -866,8 +988,8 @@ TODO</p>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/7c45b6f9.html" rel="prev" title="ES2_2分布式文档存储">
-                ES2_2分布式文档存储 <i class="fa fa-chevron-right"></i>
+              <a href="/7adf5f0a.html" rel="prev" title="ES3_2分析器">
+                ES3_2分析器 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -950,7 +1072,7 @@ TODO</p>
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">148</span>
+                  <span class="site-state-item-count">149</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1007,7 +1129,7 @@ TODO</p>
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分布式搜索原理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#查询阶段-query"><span class="nav-number">1.1.</span> <span class="nav-text">¶查询阶段（query）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#取回阶段-fetch"><span class="nav-number">1.2.</span> <span class="nav-text">¶取回阶段（fetch）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#深分页问题-deep-pagination"><span class="nav-number">1.3.</span> <span class="nav-text">¶深分页问题（Deep Pagination）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#偏好"><span class="nav-number">1.4.</span> <span class="nav-text">¶偏好</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时"><span class="nav-number">1.5.</span> <span class="nav-text">¶超时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由"><span class="nav-number">1.6.</span> <span class="nav-text">¶路由</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索类型"><span class="nav-number">1.7.</span> <span class="nav-text">¶搜索类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#相关性"><span class="nav-number">1.8.</span> <span class="nav-text">¶相关性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#tf-idf"><span class="nav-number">1.8.1.</span> <span class="nav-text">¶TF-IDF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bm-25"><span class="nav-number">1.8.2.</span> <span class="nav-text">¶BM 25</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">搜索 - 轻量查询（Query-string） - 在URL中使用查询参数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#uri查询的方式"><span class="nav-number">2.1.</span> <span class="nav-text">¶URI查询的方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询条件"><span class="nav-number">2.2.</span> <span class="nav-text">¶查询条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#隐含字段"><span class="nav-number">2.3.</span> <span class="nav-text">¶隐含字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的优点"><span class="nav-number">2.4.</span> <span class="nav-text">¶Query-string 的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的缺点"><span class="nav-number">2.5.</span> <span class="nav-text">¶Query-string 的缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">2.6.</span> <span class="nav-text">¶搜索返回字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页"><span class="nav-number">2.7.</span> <span class="nav-text">¶分页</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">请求体查询（查询表达式）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#term"><span class="nav-number">3.1.</span> <span class="nav-text">¶term</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#复合查询"><span class="nav-number">3.2.</span> <span class="nav-text">¶复合查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#全文查询"><span class="nav-number">3.3.</span> <span class="nav-text">¶全文查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其他结构化查询语句"><span class="nav-number">3.4.</span> <span class="nav-text">¶其他结构化查询语句</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#聚合"><span class="nav-number">3.5.</span> <span class="nav-text">¶聚合</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#argument-一些特殊的参数"><span class="nav-number">3.6.</span> <span class="nav-text">¶ARGUMENT 一些特殊的参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#doc-values-fielddata-正排索引"><span class="nav-number">3.7.</span> <span class="nav-text">¶Doc Values（fielddata 正排索引）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#验证查询是否合法"><span class="nav-number">3.8.</span> <span class="nav-text">¶验证查询是否合法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排序与相关性"><span class="nav-number">3.9.</span> <span class="nav-text">¶排序与相关性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#游标查询-scroll"><span class="nav-number">3.10.</span> <span class="nav-text">¶游标查询 Scroll</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实践"><span class="nav-number">3.11.</span> <span class="nav-text">¶实践</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询订单昨天的问题订单"><span class="nav-number">3.11.1.</span> <span class="nav-text">¶查询订单昨天的问题订单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多条件查询"><span class="nav-number">3.11.2.</span> <span class="nav-text">¶多条件查询</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">Search源码流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立索引和搜索的过程-单机视角"><span class="nav-number">4.1.</span> <span class="nav-text">¶建立索引和搜索的过程（单机视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#建立索引"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶建立索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶执行搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索过程-集群视角"><span class="nav-number">4.2.</span> <span class="nav-text">¶分布式搜索过程（集群视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query流程"><span class="nav-number">4.2.1.</span> <span class="nav-text">¶Query流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fetch阶段"><span class="nav-number">4.2.2.</span> <span class="nav-text">¶Fetch阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索的数据节点流程"><span class="nav-number">4.2.3.</span> <span class="nav-text">¶执行搜索的数据节点流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#相同查询多次执行结果不同"><span class="nav-number">5.1.</span> <span class="nav-text">¶相同查询多次执行结果不同</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档"><span class="nav-number">6.1.</span> <span class="nav-text">¶文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-映射和文档"><span class="nav-number">6.2.</span> <span class="nav-text">¶索引、映射和文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索"><span class="nav-number">6.3.</span> <span class="nav-text">¶搜索</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#集群"><span class="nav-number">6.4.</span> <span class="nav-text">¶集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码"><span class="nav-number">6.5.</span> <span class="nav-text">¶源码</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">分布式搜索原理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#查询阶段-query"><span class="nav-number">1.1.</span> <span class="nav-text">¶查询阶段（query）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#取回阶段-fetch"><span class="nav-number">1.2.</span> <span class="nav-text">¶取回阶段（fetch）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#深分页问题-deep-pagination"><span class="nav-number">1.3.</span> <span class="nav-text">¶深分页问题（Deep Pagination）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#偏好-解决bouncing-results问题"><span class="nav-number">1.4.</span> <span class="nav-text">¶偏好 - 解决Bouncing Results问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时"><span class="nav-number">1.5.</span> <span class="nav-text">¶超时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由"><span class="nav-number">1.6.</span> <span class="nav-text">¶路由</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索类型"><span class="nav-number">1.7.</span> <span class="nav-text">¶搜索类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#相关性"><span class="nav-number">1.8.</span> <span class="nav-text">¶相关性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#tf-idf"><span class="nav-number">1.8.1.</span> <span class="nav-text">¶TF-IDF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bm-25"><span class="nav-number">1.8.2.</span> <span class="nav-text">¶BM 25</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">搜索 - 轻量查询（Query-string） - 在URL中使用查询参数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#uri查询的方式"><span class="nav-number">2.1.</span> <span class="nav-text">¶URI查询的方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询条件"><span class="nav-number">2.2.</span> <span class="nav-text">¶查询条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#隐含字段"><span class="nav-number">2.3.</span> <span class="nav-text">¶隐含字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的优点"><span class="nav-number">2.4.</span> <span class="nav-text">¶Query-string 的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的缺点"><span class="nav-number">2.5.</span> <span class="nav-text">¶Query-string 的缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">2.6.</span> <span class="nav-text">¶搜索返回字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页"><span class="nav-number">2.7.</span> <span class="nav-text">¶分页</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">3.</span> <span class="nav-text">请求体查询（查询表达式）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#验证查询是否合法"><span class="nav-number">3.1.</span> <span class="nav-text">¶验证查询是否合法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#term"><span class="nav-number">3.2.</span> <span class="nav-text">¶term</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#复合查询"><span class="nav-number">3.3.</span> <span class="nav-text">¶复合查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#全文查询"><span class="nav-number">3.4.</span> <span class="nav-text">¶全文查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其他结构化查询语句"><span class="nav-number">3.5.</span> <span class="nav-text">¶其他结构化查询语句</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#聚合-aggs"><span class="nav-number">3.6.</span> <span class="nav-text">¶聚合 - aggs</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#聚合作用范围"><span class="nav-number">3.6.1.</span> <span class="nav-text">¶聚合作用范围</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#简单聚合"><span class="nav-number">3.6.2.</span> <span class="nav-text">¶简单聚合</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bucket"><span class="nav-number">3.6.3.</span> <span class="nav-text">¶Bucket</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pipeline"><span class="nav-number">3.6.4.</span> <span class="nav-text">¶Pipeline</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#argument-一些特殊的参数"><span class="nav-number">3.7.</span> <span class="nav-text">¶ARGUMENT 一些特殊的参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#doc-values-fielddata-正排索引"><span class="nav-number">3.8.</span> <span class="nav-text">¶Doc Values / fielddata - 正排索引</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#关闭-doc-values"><span class="nav-number">3.8.1.</span> <span class="nav-text">¶关闭 Doc Values</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排序与相关性"><span class="nav-number">3.9.</span> <span class="nav-text">¶排序与相关性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页-v2"><span class="nav-number">3.10.</span> <span class="nav-text">¶分页</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#from-和-size-分页-search-after"><span class="nav-number">3.10.1.</span> <span class="nav-text">¶from 和 size（分页）、Search After</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#游标查询-scroll"><span class="nav-number">3.10.2.</span> <span class="nav-text">¶游标查询 Scroll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实践"><span class="nav-number">3.11.</span> <span class="nav-text">¶实践</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#查询订单昨天的问题订单"><span class="nav-number">3.11.1.</span> <span class="nav-text">¶查询订单昨天的问题订单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多条件查询"><span class="nav-number">3.11.2.</span> <span class="nav-text">¶多条件查询</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">4.</span> <span class="nav-text">Search源码流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立索引和搜索的过程-单机视角"><span class="nav-number">4.1.</span> <span class="nav-text">¶建立索引和搜索的过程（单机视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#建立索引"><span class="nav-number">4.1.1.</span> <span class="nav-text">¶建立索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索"><span class="nav-number">4.1.2.</span> <span class="nav-text">¶执行搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索过程-集群视角"><span class="nav-number">4.2.</span> <span class="nav-text">¶分布式搜索过程（集群视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query流程"><span class="nav-number">4.2.1.</span> <span class="nav-text">¶Query流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fetch阶段"><span class="nav-number">4.2.2.</span> <span class="nav-text">¶Fetch阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索的数据节点流程"><span class="nav-number">4.2.3.</span> <span class="nav-text">¶执行搜索的数据节点流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">5.</span> <span class="nav-text">QA</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#相同查询多次执行结果不同"><span class="nav-number">5.1.</span> <span class="nav-text">¶相同查询多次执行结果不同</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文档"><span class="nav-number">6.1.</span> <span class="nav-text">¶文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引-映射和文档"><span class="nav-number">6.2.</span> <span class="nav-text">¶索引、映射和文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索"><span class="nav-number">6.3.</span> <span class="nav-text">¶搜索</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#集群"><span class="nav-number">6.4.</span> <span class="nav-text">¶集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码"><span class="nav-number">6.5.</span> <span class="nav-text">¶源码</span></a></li></ol></li></ol></div>
             
 
           </div>
