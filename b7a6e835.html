@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  1.3k 字
+                  1.4k 字
                 </span>
               
 
@@ -397,41 +397,14 @@
       
         <p>MySQL执行查询语句的成本分析</p>
 <a id="more"></a>
-<p>MySQL 的查询优化器会比较多种查询方案，得到成本最低的方案，即所谓<strong>执行计划</strong>，之后才会调用存储引擎提供的接口来执行查询，这个过程大致如下：<br>
-1、根据搜索条件，找出所有可能使用的索引（<strong>possible keys</strong>）；<br>
-2、计算全表扫描的代价；<br>
-3、计算使用不同索引执行查询的代价；<br>
-4、对比各种执行方案的代价，找出成本最低的那一个。</p>
-<h2 id="计算代价"><a class="header-anchor" href="#计算代价">¶</a>计算代价</h2>
-<p>1、全表扫描的代价<br>
-全表扫描需要将聚簇索引所有页面加载到内存然后一一匹配，对全表扫描的性能统计涉及到聚簇索引占用的页面数和该表中的记录数，可以使用<code>SHOW TABLE STATUS</code>来统计这个信息。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW TABLE STATUS LIKE &apos;ad_content&apos;;</span><br></pre></td></tr></table></figure>
-<p>结果中的<strong>Rows</strong>表示记录条数，在 MyISAM 中是准确的，而在 InnoDB 中则是一个估计值。因为全表扫描时需要判断每条记录是否满足条件，因此该值能粗略代表对该表执行全表扫描所需的<strong>CPU 成本</strong>。<br>
-<strong>Data_length</strong>表示表占用的存储空间字节数，对于 MyISAM 来说就是数据文件的大小，对于 InnoDB 来说就是聚簇索引占用的存储空间大小。因为默认页面大小为 16KB，因此可以推导出聚簇索引的页面数量是<code>Data_length / 16 / 1024</code>，实际上可以粗略代表对该表执行全表扫描所需的<strong>IO 成本</strong>。<br>
-2、二级索引的代价<br>
-从二级索引中定位数据的 ID，<strong>回表</strong>（到聚簇索引）根据上一步的 ID 值找到完整的记录。<br>
-另外，统计记录数量时，还会用到一个<strong>index dive</strong>的方法（MySQL 自创的一个方法），比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 IN (&apos;aa1&apos;, &apos;aa2&apos;, &apos;aa3&apos;, ... , &apos;zzz&apos;);</span><br></pre></td></tr></table></figure>
-<p>由于 idx_key1 并不是唯一（unique）索引，因此<code>key1='aa1'</code>这些条件并不一定能唯一确定一条记录，查询优化器会先获取索引对应的 B+树的<strong>区间最左记录</strong>和<strong>区间最右记录</strong>，然后估算这两条记录之间有多少条记录，这种方式被称为<strong>index dive</strong>。<br>
-当然<strong>index dive</strong>并不是一定会生效，如果 in 条件中的参数超过了<strong>阈值</strong>就不能生效，这个阈值可以通过<code>SHOW VARIABLES LIKE '%dive%';</code>查到。<br>
-如果因为超过阈值（默认 200）而无法生效，则需要改用所谓的索引统计数据来进行估算，MySQL 也会为表中的每一个索引维护一份统计数据，可以使用<code>show index from 表名</code>来查看，其中有一个比较关键的字段<code>Cardinality</code>表示基数，即索引列中不重复值的个数，计算平均一个值重复次数即<code>Rows / Cardinality</code>，比如表里现在有 100 行数据，表基数为 2，则最终计算出的每个值会有的记录条数就是 50，对于上面那条 sql，如果<code>IN</code>条件中有 10000 个参数，则统计结果约需要回表的记录数就是<code>50 * 10000 = 500000</code>，不过这种方式相对<code>index dive</code>来说虽然简单，但是并不精确。<br>
-3、多个二级索引的代价（索引合并 Index Merge）<br>
-将多个搜索条件用 AND 连接之后，查询优化器还需要判断一下是否满足 Intersection 索引合并的条件，简而言之，如果查询出的记录都是按主键排序的，则可以采用 Intersection 索引合并。<br>
-4、对比多种执行方案，找出成本最低的一种<br>
-查询优化器在统计每种查询方式的代价时都会给一个<strong>代价常量</strong>，用于计算每一种方式的代价值，最后比较选取代价最小的那个。</p>
-<h2 id="连接查询的成本"><a class="header-anchor" href="#连接查询的成本">¶</a>连接查询的成本</h2>
-<h3 id="单表连接"><a class="header-anchor" href="#单表连接">¶</a>单表连接</h3>
-<p>对两表的连接查询来说，查询成本主要包括：<br>
-1、单次查询驱动表的成本；<br>
-2、根据第一步查出的结果（称为<strong>扇出</strong>）多次查询被驱动表的成本。</p>
-<p>所以，判断连接查询成本的方法是计算扇出值的大小：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">连接查询总成本 = 单次访问驱动表的成本 + 驱动表扇出数 x 单次访问被驱动表的成本</span><br></pre></td></tr></table></figure>
+<p>MySQL 的查询优化器会比较多种查询方案，得到成本最低的方案，即所谓<strong>执行计划</strong>，之后才会调用存储引擎提供的接口来执行查询，这个过程大致如下：<br>1、根据搜索条件，找出所有可能使用的索引（<strong>possible keys</strong>）；<br>2、计算全表扫描的代价；<br>3、计算使用不同索引执行查询的代价；<br>4、对比各种执行方案的代价，找出成本最低的那一个。</p>
+<h2 id="计算代价"><a href="#计算代价" class="headerlink" title="计算代价"></a>计算代价</h2><p>1、全表扫描的代价<br>全表扫描需要将聚簇索引所有页面加载到内存然后一一匹配，对全表扫描的性能统计涉及到聚簇索引占用的页面数和该表中的记录数，可以使用<code>SHOW TABLE STATUS</code>来统计这个信息。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW TABLE STATUS LIKE &apos;ad_content&apos;;</span><br></pre></td></tr></table></figure></p>
+<p>结果中的<strong>Rows</strong>表示记录条数，在 MyISAM 中是准确的，而在 InnoDB 中则是一个估计值。因为全表扫描时需要判断每条记录是否满足条件，因此该值能粗略代表对该表执行全表扫描所需的<strong>CPU 成本</strong>。<br><strong>Data_length</strong>表示表占用的存储空间字节数，对于 MyISAM 来说就是数据文件的大小，对于 InnoDB 来说就是聚簇索引占用的存储空间大小。因为默认页面大小为 16KB，因此可以推导出聚簇索引的页面数量是<code>Data_length / 16 / 1024</code>，实际上可以粗略代表对该表执行全表扫描所需的<strong>IO 成本</strong>。<br>2、二级索引的代价<br>从二级索引中定位数据的 ID，<strong>回表</strong>（到聚簇索引）根据上一步的 ID 值找到完整的记录。<br>另外，统计记录数量时，还会用到一个<strong>index dive</strong>的方法（MySQL 自创的一个方法），比如：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 IN (&apos;aa1&apos;, &apos;aa2&apos;, &apos;aa3&apos;, ... , &apos;zzz&apos;);</span><br></pre></td></tr></table></figure></p>
+<p>由于 idx_key1 并不是唯一（unique）索引，因此<code>key1=&#39;aa1&#39;</code>这些条件并不一定能唯一确定一条记录，查询优化器会先获取索引对应的 B+树的<strong>区间最左记录</strong>和<strong>区间最右记录</strong>，然后估算这两条记录之间有多少条记录，这种方式被称为<strong>index dive</strong>。<br>当然<strong>index dive</strong>并不是一定会生效，如果 in 条件中的参数超过了<strong>阈值</strong>就不能生效，这个阈值可以通过<code>SHOW VARIABLES LIKE &#39;%dive%&#39;;</code>查到。<br>如果因为超过阈值（默认 200）而无法生效，则需要改用所谓的索引统计数据来进行估算，MySQL 也会为表中的每一个索引维护一份统计数据，可以使用<code>show index from 表名</code>来查看，其中有一个比较关键的字段<code>Cardinality</code>表示基数，即索引列中不重复值的个数，计算平均一个值重复次数即<code>Rows / Cardinality</code>，比如表里现在有 100 行数据，表基数为 2，则最终计算出的每个值会有的记录条数就是 50，对于上面那条 sql，如果<code>IN</code>条件中有 10000 个参数，则统计结果约需要回表的记录数就是<code>50 * 10000 = 500000</code>，不过这种方式相对<code>index dive</code>来说虽然简单，但是并不精确。<br>3、多个二级索引的代价（索引合并 Index Merge）<br>将多个搜索条件用 AND 连接之后，查询优化器还需要判断一下是否满足 Intersection 索引合并的条件，简而言之，如果查询出的记录都是按主键排序的，则可以采用 Intersection 索引合并。<br>4、对比多种执行方案，找出成本最低的一种<br>查询优化器在统计每种查询方式的代价时都会给一个<strong>代价常量</strong>，用于计算每一种方式的代价值，最后比较选取代价最小的那个。</p>
+<h2 id="连接查询的成本"><a href="#连接查询的成本" class="headerlink" title="连接查询的成本"></a>连接查询的成本</h2><h3 id="单表连接"><a href="#单表连接" class="headerlink" title="单表连接"></a>单表连接</h3><p>对两表的连接查询来说，查询成本主要包括：<br>1、单次查询驱动表的成本；<br>2、根据第一步查出的结果（称为<strong>扇出</strong>）多次查询被驱动表的成本。</p>
+<p>所以，判断连接查询成本的方法是计算扇出值的大小：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">连接查询总成本 = 单次访问驱动表的成本 + 驱动表扇出数 x 单次访问被驱动表的成本</span><br></pre></td></tr></table></figure></p>
 <p>当连接方式为外连接，则驱动表是固定的，因此查询时只要为驱动表和被驱动表选择最优访问方式即可，但是如果是内连接，驱动表和被驱动表的位置是可以互换的，那么优化器会使用索引统计数据来进行比较选择。</p>
-<h3 id="多表连接"><a class="header-anchor" href="#多表连接">¶</a>多表连接</h3>
-<p>如果是 n 张表的内连接，计算的时间复杂度将是单表连接的 n!倍，当然优化器并不是老老实实地这么做：<br>
-1、预先设定最小连接成本，只要少于这个值就采用这种连接方式；<br>
-2、只对<code>optimizer_search_depth</code>张表执行连接顺序成本的分析，这个值是一个系统变量，显然越大则成本分析越精确；<br>
-3、启发式规则：如果满足一些规则则直接不分析，这些规则被称为启发式规则。</p>
+<h3 id="多表连接"><a href="#多表连接" class="headerlink" title="多表连接"></a>多表连接</h3><p>如果是 n 张表的内连接，计算的时间复杂度将是单表连接的 n!倍，当然优化器并不是老老实实地这么做：<br>1、预先设定最小连接成本，只要少于这个值就采用这种连接方式；<br>2、只对<code>optimizer_search_depth</code>张表执行连接顺序成本的分析，这个值是一个系统变量，显然越大则成本分析越精确；<br>3、启发式规则：如果满足一些规则则直接不分析，这些规则被称为启发式规则。</p>
 
       
     </div>
@@ -462,8 +435,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/e5eb81c6.html" rel="next" title="MySQL2_2单表查询">
-                <i class="fa fa-chevron-left"></i> MySQL2_2单表查询
+              <a href="/34a7b29c.html" rel="next" title="MySQL2_3多表查询">
+                <i class="fa fa-chevron-left"></i> MySQL2_3多表查询
               </a>
             
           </div>
@@ -472,8 +445,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/34a7b29c.html" rel="prev" title="MySQL2_3多表查询">
-                MySQL2_3多表查询 <i class="fa fa-chevron-right"></i>
+              <a href="/e5eb81c6.html" rel="prev" title="MySQL2_2单表查询">
+                MySQL2_2单表查询 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -556,7 +529,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">153</span>
+                  <span class="site-state-item-count">159</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -613,7 +586,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#计算代价"><span class="nav-number">1.</span> <span class="nav-text">¶计算代价</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接查询的成本"><span class="nav-number">2.</span> <span class="nav-text">¶连接查询的成本</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#单表连接"><span class="nav-number">2.1.</span> <span class="nav-text">¶单表连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多表连接"><span class="nav-number">2.2.</span> <span class="nav-text">¶多表连接</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#计算代价"><span class="nav-number">1.</span> <span class="nav-text">计算代价</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接查询的成本"><span class="nav-number">2.</span> <span class="nav-text">连接查询的成本</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#单表连接"><span class="nav-number">2.1.</span> <span class="nav-text">单表连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多表连接"><span class="nav-number">2.2.</span> <span class="nav-text">多表连接</span></a></li></ol></li></ol></div>
             
 
           </div>
