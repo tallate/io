@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="在URL中使用查询参数是一种轻量查询（Query-string），一些复杂的查询条件最好还是通过请求体查询组织。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2021-06-14T15:32:02.838Z">
+<meta property="og:updated_time" content="2021-06-14T18:04:25.779Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES3_3URL查询">
 <meta name="twitter:description" content="在URL中使用查询参数是一种轻量查询（Query-string），一些复杂的查询条件最好还是通过请求体查询组织。">
@@ -397,32 +397,64 @@
       
         <p>在URL中使用查询参数是一种轻量查询（Query-string），一些复杂的查询条件最好还是通过请求体查询组织。</p>
 <a id="more"></a>
-<p>当在单一的索引下进行搜索的时候，Elasticsearch 转发请求到索引的每个分片中，可以是主分片也可以是副本分片，然后从每个分片中收集结果。多索引搜索恰好也是用相同的方式工作的——只是会涉及到更多的分片。<br>搜索一个索引有五个主分片和搜索五个索引各有一个分片准确来所说是等价的，因为索引只是一种逻辑结构，实际上处理请求的是分片。<br>搜索有两种形式：Query-string（URI） 和请求体查询。</p>
-<h2 id="URI查询的方式"><a href="#URI查询的方式" class="headerlink" title="URI查询的方式"></a>URI查询的方式</h2><ul>
-<li>q<br>指定查询语句</li>
-<li>df<br>默认字段，不指定时，会对所有字段进行查询</li>
-<li>sort<br>排序</li>
-<li>from, size<br>分页参数</li>
-<li>profile<br>可以用于查看查询是如何被执行的</li>
+<p>当在单一的索引下进行搜索的时候，Elasticsearch 转发请求到索引的每个分片中，可以是主分片也可以是副本分片，然后从每个分片中收集结果。多索引搜索恰好也是用相同的方式工作的——只是会涉及到更多的分片。<br>
+搜索一个索引有五个主分片和搜索五个索引各有一个分片准确来所说是等价的，因为索引只是一种逻辑结构，实际上处理请求的是分片。<br>
+搜索有两种形式：Query-string（URI） 和请求体查询。</p>
+<h2 id="uri查询的方式"><a class="header-anchor" href="#uri查询的方式">¶</a>URI查询的方式</h2>
+<ul>
+<li>q<br>
+指定查询语句</li>
+<li>df<br>
+默认字段，不指定时，会对所有字段进行查询</li>
+<li>sort<br>
+排序</li>
+<li>from, size<br>
+分页参数</li>
+<li>profile<br>
+可以用于查看查询是如何被执行的</li>
 </ul>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">HEAD /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/1</span><br><span class="line">GET /megacorp/employee/_search</span><br><span class="line"># 用q指定查询条件</span><br><span class="line">GET /megacorp/employee/_search?q=last_name:Smith</span><br><span class="line">GET /megacorp/employee/_search?q=+first_name:Jane last_name:Smith</span><br><span class="line">GET /_search?q=mary</span><br><span class="line">GET /_search?q=+name:(mary john) +date:&gt;2014-09-10 +(aggregations geo)</span><br><span class="line">GET /_search 在所有的索引中搜索所有的类型（无条件）</span><br><span class="line">/gb/_search 在 gb 索引中搜索所有的类型（指定索引）</span><br><span class="line">/gb,us/_search 在 gb 和 us 索引中搜索所有的文档（指定多个索引）</span><br><span class="line">/g*,u*/_search 在任何以 g 或者 u 开头的索引中搜索所有的类型（通配符）</span><br><span class="line">/gb/user/_search 在 gb 索引中搜索 user 类型（指定类型）</span><br><span class="line">/gb,us/user,tweet/_search 在 gb 和 us 索引中搜索 user 和 tweet 类型（指定多个类型）</span><br><span class="line">/_all/user,tweet/_search 在所有的索引中搜索 user 和 tweet 类型（指定多个类型但不限制索引）</span><br></pre></td></tr></table></figure>
-<p>可以在请求体中指定profile参数为true来展示查询的过程：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">get /doc/_search?q=name:a</span><br><span class="line">&#123;</span><br><span class="line">  &quot;profile&quot;: &quot;true&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<h2 id="查询条件"><a href="#查询条件" class="headerlink" title="查询条件"></a>查询条件</h2><ul>
+<p>可以在请求体中指定profile参数为true来展示查询的过程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">get /doc/_search?q=name:a</span><br><span class="line">&#123;</span><br><span class="line">  &quot;profile&quot;: &quot;true&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="查询条件"><a class="header-anchor" href="#查询条件">¶</a>查询条件</h2>
+<ul>
 <li>其中 ‘_search’ 表示搜索，默认返回 10 条结果；</li>
 <li>查询本身赋值给了参数 q，查询链接会被 URL 编码，所以可读性会比较差；</li>
-<li>“last_name:Smith”表示 last_name 字段中包含 Smith 的文档，”+last_name:Smith”表示必须与查询条件匹配，”-last_name:Smith”表示一定不与查询条件匹配；<br>至于多个条件存在的情况下，其实不会发生矛盾，”+first_name:Jane -first_name:Jane”可以看成先查出 first_name 包含”Jane”的，再过滤掉；</li>
-<li>区间查询<br>可以用区间表示：<br><code>q=year:{2019 TO 2018}</code><br><code>q=year:[* TO 2018]</code><br>也可以用算数符号来表示：<br><code>q=year:&gt;2010</code><br><code>q=year:(&gt;2010 &amp;&amp; &lt;=2018)</code><br><code>q=year:(+&gt;2010 +&lt;=2018)</code></li>
+<li>“last_name:Smith&quot;表示 last_name 字段中包含 Smith 的文档，”+last_name:Smith&quot;表示必须与查询条件匹配，&quot;-last_name:Smith&quot;表示一定不与查询条件匹配；<br>
+至于多个条件存在的情况下，其实不会发生矛盾，&quot;+first_name:Jane -first_name:Jane&quot;可以看成先查出 first_name 包含&quot;Jane&quot;的，再过滤掉；</li>
+<li>区间查询<br>
+可以用区间表示：<br>
+<code>q=year:{2019 TO 2018}</code><br>
+<code>q=year:[* TO 2018]</code><br>
+也可以用算数符号来表示：<br>
+<code>q=year:&gt;2010</code><br>
+<code>q=year:(&gt;2010 &amp;&amp; &lt;=2018)</code><br>
+<code>q=year:(+&gt;2010 +&lt;=2018)</code></li>
 </ul>
-<h2 id="隐含字段"><a href="#隐含字段" class="headerlink" title="隐含字段"></a>隐含字段</h2><p>当对文档进行索引时，Elasticsearch 取出所有字段的值拼接成一个大的字符串，作为 <code>_all</code> 字段进行索引。</p>
-<h2 id="Query-string-的优点"><a href="#Query-string-的优点" class="headerlink" title="Query-string 的优点"></a>Query-string 的优点</h2><p>简洁</p>
-<h2 id="Query-string-的缺点"><a href="#Query-string-的缺点" class="headerlink" title="Query-string 的缺点"></a>Query-string 的缺点</h2><ul>
+<h2 id="隐含字段"><a class="header-anchor" href="#隐含字段">¶</a>隐含字段</h2>
+<p>当对文档进行索引时，Elasticsearch 取出所有字段的值拼接成一个大的字符串，作为 <code>_all</code> 字段进行索引。</p>
+<h2 id="query-string-的优点"><a class="header-anchor" href="#query-string-的优点">¶</a>Query-string 的优点</h2>
+<p>简洁</p>
+<h2 id="query-string-的缺点"><a class="header-anchor" href="#query-string-的缺点">¶</a>Query-string 的缺点</h2>
+<ul>
 <li>晦涩难懂</li>
 <li>脆弱，小的语法错误就会报错</li>
-<li>效率较低，查询字符串搜索允许任何用户在索引的任意字段上执行可能较慢且重量级的查询，这可能会暴露隐私信息，甚至将集群拖垮<h2 id="搜索返回字段"><a href="#搜索返回字段" class="headerlink" title="搜索返回字段"></a>搜索返回字段</h2>hits：匹配文档总数及所查询结果的前十个文档<br>_score：衡量文档与查询的匹配程度<br>took：整个搜索请求耗费的时间（毫秒）<br>shards：在查询中参与的分片总数，及失败（主分片和副本分片都挂掉）和成功的数量<br>timeout：返回值中的 timed_out 表示查询是否超时， timeout 不是停止执行查询，它仅仅是告知正在协调的节点返回到目前为止收集的结果并且关闭连接。在后台，其他的分片可能仍在执行查询即使是结果已经被发送了。使用超时是因为 SLA(服务等级协议)对你是很重要的，而不是因为想去中止长时间运行的查询。可以在查询条件中指定时间限制：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?timeout=10ms</span><br></pre></td></tr></table></figure>
-</li>
+<li>效率较低，查询字符串搜索允许任何用户在索引的任意字段上执行可能较慢且重量级的查询，这可能会暴露隐私信息，甚至将集群拖垮</li>
 </ul>
-<h2 id="分页"><a href="#分页" class="headerlink" title="分页"></a>分页</h2><p>size：显示应该返回的结果数量，默认是 10<br>from：显示应该跳过的初始结果数量，默认是 0<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?size=5&amp;from=5</span><br></pre></td></tr></table></figure></p>
-<p>考虑到<strong>分页过深（比如请求 10001 到 10010 的数据）</strong>以及<strong>一次请求太多结果</strong>的情况：结果集在返回之前先进行排序，但请记住<strong>一个请求经常跨越多个分片</strong>，每个分片都产生自己的排序结果，这些结果需要进行集中排序以保证整体顺序是正确的。<br>假设在一个有 5 个主分片的索引中搜索。 当我们请求结果的第一页（结果从 1 到 10 ），每一个分片产生前 10 的结果，并且返回给 协调节点 ，协调节点对 50 个结果排序得到全部结果的前 10 个。<br>现在假设我们请求第 1000 页—结果从 10001 到 10010 。所有都以相同的方式工作除了每个分片不得不产生前 10010 个结果以外。 然后协调节点对全部 50050 个结果排序最后丢弃掉这些结果中的 50040 个结果。可以看到，在分布式系统中，对结果排序的成本随分页的深度成指数上升。这就是 web 搜索引擎对<strong>任何查询都不要返回超过 1000 个结果</strong>的原因。</p>
+<h2 id="搜索返回字段"><a class="header-anchor" href="#搜索返回字段">¶</a>搜索返回字段</h2>
+<p>hits：匹配文档总数及所查询结果的前十个文档<br>
+_score：衡量文档与查询的匹配程度<br>
+took：整个搜索请求耗费的时间（毫秒）<br>
+shards：在查询中参与的分片总数，及失败（主分片和副本分片都挂掉）和成功的数量<br>
+timeout：返回值中的 timed_out 表示查询是否超时， timeout 不是停止执行查询，它仅仅是告知正在协调的节点返回到目前为止收集的结果并且关闭连接。在后台，其他的分片可能仍在执行查询即使是结果已经被发送了。使用超时是因为 SLA(服务等级协议)对你是很重要的，而不是因为想去中止长时间运行的查询。可以在查询条件中指定时间限制：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?timeout=10ms</span><br></pre></td></tr></table></figure>
+<h2 id="分页"><a class="header-anchor" href="#分页">¶</a>分页</h2>
+<p>size：显示应该返回的结果数量，默认是 10<br>
+from：显示应该跳过的初始结果数量，默认是 0</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /_search?size=5&amp;from=5</span><br></pre></td></tr></table></figure>
+<p>考虑到<strong>分页过深（比如请求 10001 到 10010 的数据）<strong>以及</strong>一次请求太多结果</strong>的情况：结果集在返回之前先进行排序，但请记住<strong>一个请求经常跨越多个分片</strong>，每个分片都产生自己的排序结果，这些结果需要进行集中排序以保证整体顺序是正确的。<br>
+假设在一个有 5 个主分片的索引中搜索。 当我们请求结果的第一页（结果从 1 到 10 ），每一个分片产生前 10 的结果，并且返回给 协调节点 ，协调节点对 50 个结果排序得到全部结果的前 10 个。<br>
+现在假设我们请求第 1000 页–结果从 10001 到 10010 。所有都以相同的方式工作除了每个分片不得不产生前 10010 个结果以外。 然后协调节点对全部 50050 个结果排序最后丢弃掉这些结果中的 50040 个结果。可以看到，在分布式系统中，对结果排序的成本随分页的深度成指数上升。这就是 web 搜索引擎对<strong>任何查询都不要返回超过 1000 个结果</strong>的原因。</p>
 
       
     </div>
@@ -453,8 +485,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/1c3259ad.html" rel="next" title="ES3_1分布式搜索">
-                <i class="fa fa-chevron-left"></i> ES3_1分布式搜索
+              <a href="/bf6ba1a3.html" rel="next" title="ES2_3文档操作源码分析">
+                <i class="fa fa-chevron-left"></i> ES2_3文档操作源码分析
               </a>
             
           </div>
@@ -463,8 +495,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/bf6ba1a3.html" rel="prev" title="ES2_3文档操作源码分析">
-                ES2_3文档操作源码分析 <i class="fa fa-chevron-right"></i>
+              <a href="/7f45c5bf.html" rel="prev" title="ES1_3映射">
+                ES1_3映射 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -547,7 +579,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">159</span>
+                  <span class="site-state-item-count">161</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -604,7 +636,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#URI查询的方式"><span class="nav-number">1.</span> <span class="nav-text">URI查询的方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询条件"><span class="nav-number">2.</span> <span class="nav-text">查询条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#隐含字段"><span class="nav-number">3.</span> <span class="nav-text">隐含字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Query-string-的优点"><span class="nav-number">4.</span> <span class="nav-text">Query-string 的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Query-string-的缺点"><span class="nav-number">5.</span> <span class="nav-text">Query-string 的缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">6.</span> <span class="nav-text">搜索返回字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页"><span class="nav-number">7.</span> <span class="nav-text">分页</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#uri查询的方式"><span class="nav-number">1.</span> <span class="nav-text">¶URI查询的方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询条件"><span class="nav-number">2.</span> <span class="nav-text">¶查询条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#隐含字段"><span class="nav-number">3.</span> <span class="nav-text">¶隐含字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的优点"><span class="nav-number">4.</span> <span class="nav-text">¶Query-string 的优点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#query-string-的缺点"><span class="nav-number">5.</span> <span class="nav-text">¶Query-string 的缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搜索返回字段"><span class="nav-number">6.</span> <span class="nav-text">¶搜索返回字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分页"><span class="nav-number">7.</span> <span class="nav-text">¶分页</span></a></li></ol></div>
             
 
           </div>

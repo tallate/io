@@ -397,31 +397,59 @@
       
         <p>这篇文档总结ES中的基础数据结构，并介绍如何操作它们。</p>
 <a id="more"></a>
-<h1 id="ES存储的基础概念-索引、映射和文档"><a href="#ES存储的基础概念-索引、映射和文档" class="headerlink" title="ES存储的基础概念 - 索引、映射和文档"></a>ES存储的基础概念 - 索引、映射和文档</h1><p>几个概念的映射关系：<br>Relational DB -&gt; Databases -&gt; Tables -&gt; Rows -&gt; Columns<br>Elasticsearch -&gt; Indices -&gt; Types -&gt; Documents -&gt; Fields</p>
+<h1>ES存储的基础概念 - 索引、映射和文档</h1>
+<p>几个概念的映射关系：<br>
+Relational DB -&gt; Databases -&gt; Tables -&gt; Rows -&gt; Columns<br>
+Elasticsearch -&gt; Indices -&gt; Types -&gt; Documents -&gt; Fields</p>
 <blockquote>
 <p>将 Type 类比为 Table 并不恰当，因为 ES 中一个索引下的多个类型共用相同的空间。</p>
 </blockquote>
-<h1 id="常用操作-索引（Index）"><a href="#常用操作-索引（Index）" class="headerlink" title="常用操作 - 索引（Index）"></a>常用操作 - 索引（Index）</h1><h2 id="索引的定义"><a href="#索引的定义" class="headerlink" title="索引的定义"></a>索引的定义</h2><p>一个<strong>索引(index)</strong>就像是传统关系数据库中的数据库，它是相关文档存储的地方，实际上是组织数据的逻辑<strong>命名空间</strong>。<br>在一个索引中，可以定义一种或多种<strong>类型</strong>。</p>
+<h1>常用操作 - 索引（Index）</h1>
+<h2 id="索引的定义"><a class="header-anchor" href="#索引的定义">¶</a>索引的定义</h2>
+<p>一个<strong>索引(index)<strong>就像是传统关系数据库中的数据库，它是相关文档存储的地方，实际上是组织数据的逻辑</strong>命名空间</strong>。<br>
+在一个索引中，可以定义一种或多种<strong>类型</strong>。</p>
 <ul>
-<li>作为名词，一个 索引 类似于传统关系数据库中的一个 数据库，是一个存储关系型文档的地方；</li>
-<li><p>作为动词，索引一个文档 就是存储一个文档到一个 索引 （名词）中以便它可以被检索和查询到，文档已存在时会被覆盖掉。</p>
+<li>
+<p>作为名词，一个 索引 类似于传统关系数据库中的一个 数据库，是一个存储关系型文档的地方；</p>
 </li>
-<li><p>Index体现了<strong>逻辑空间</strong>的概念，每个索引都有自己的<strong>Mapping</strong>定义，用于定义包含的文档的字段名和字段类型；</p>
+<li>
+<p>作为动词，索引一个文档 就是存储一个文档到一个 索引 （名词）中以便它可以被检索和查询到，文档已存在时会被覆盖掉。</p>
 </li>
-<li>Shard体现了<strong>物理空间</strong>的概念，索引中的数据分散在Shard上。</li>
+<li>
+<p>Index体现了<strong>逻辑空间</strong>的概念，每个索引都有自己的<strong>Mapping</strong>定义，用于定义包含的文档的字段名和字段类型；</p>
+</li>
+<li>
+<p>Shard体现了<strong>物理空间</strong>的概念，索引中的数据分散在Shard上。</p>
+</li>
 </ul>
-<h3 id="倒排索引"><a href="#倒排索引" class="headerlink" title="倒排索引"></a>倒排索引</h3><p>关系型数据库通过增加一个 索引，比如一个 B 树（B-tree）索引 到指定的列上，以便提升数据检索速度。Elasticsearch 和 Lucene 使用了一个叫做 <strong>倒排索引</strong> 的结构来达到相同的目的。<br>倒排索引包含两个部分：</p>
+<h3 id="倒排索引"><a class="header-anchor" href="#倒排索引">¶</a>倒排索引</h3>
+<p>关系型数据库通过增加一个 索引，比如一个 B 树（B-tree）索引 到指定的列上，以便提升数据检索速度。Elasticsearch 和 Lucene 使用了一个叫做 <strong>倒排索引</strong> 的结构来达到相同的目的。<br>
+倒排索引包含两个部分：</p>
 <ul>
-<li>单词词典（Term Dictionary）<br>记录所有文档的单词，记录单词到倒排列表的关联关系<br>单词词典一般比较大，可以通过B+树或哈希拉链法来实现，以实现高性能的插入和查询</li>
-<li>倒排列表（Posting List）记录了单词对应的文档结合，由倒排索引项组成<br>倒排索引项由文档ID、词频TF（该单词在文档中出现的次数，用于相关性评分）、位置Position（单词在文档中分词的位置，用于语句搜索）、偏移Offset（记录单词的开始和结束位置，实现高亮显示）</li>
+<li>单词词典（Term Dictionary）<br>
+记录所有文档的单词，记录单词到倒排列表的关联关系<br>
+单词词典一般比较大，可以通过B+树或哈希拉链法来实现，以实现高性能的插入和查询</li>
+<li>倒排列表（Posting List）记录了单词对应的文档结合，由倒排索引项组成<br>
+倒排索引项由文档ID、词频TF（该单词在文档中出现的次数，用于相关性评分）、位置Position（单词在文档中分词的位置，用于语句搜索）、偏移Offset（记录单词的开始和结束位置，实现高亮显示）</li>
 </ul>
-<h3 id="类型-Type"><a href="#类型-Type" class="headerlink" title="类型 - Type"></a>类型 - Type</h3><p>一个<strong>类型</strong>是索引的一个逻辑上的分类，代表一类相似的文档，类型由 <strong>名称</strong>（比如 user 或 blogpost）和 <strong>映射</strong> 组成。但是<strong>在 ES 6.0.0 以后，这个概念会被废弃</strong>。<br>类型可以很好的抽象划分相似但不相同的数据，但由于 Lucene 的处理方式，类型的使用有些限制。Lucene 没有文档类型的概念，每个文档的类型名被存储在一个叫 _type 的元数据字段上。 当我们要检索某个类型的文档时, Elasticsearch 通过在 _type 字段上使用过滤器限制只返回这个类型的文档。<br>每个 Lucene 索引中的所有字段都包含一个单一的、扁平的模式。一个特定字段可以映射成 string 类型也可以是 number 类型，但是不能两者兼具（比如两个类型都有一个 name 字段，但是他们映射到不同的数据类型）。</p>
-<h2 id="查询索引"><a href="#查询索引" class="headerlink" title="查询索引"></a>查询索引</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">GET _cat/indices</span><br><span class="line"># 查看indices，用do*来前缀匹配</span><br><span class="line">get /_cat/indices/do*?v&amp;s=index</span><br><span class="line"># 查看状态为黄色的索引</span><br><span class="line">get /_cat/indices?v&amp;health=yellow</span><br><span class="line"># 查看索引doc的相关信息</span><br><span class="line">get doc</span><br><span class="line"># 查看索引的文档总数</span><br><span class="line">get doc/_count</span><br></pre></td></tr></table></figure>
-<h2 id="创建"><a href="#创建" class="headerlink" title="创建"></a>创建</h2><p>在 Elasticsearch 中，我们的数据是被存储和索引在 分片 中，而一个索引仅仅是逻辑上的命名空间， 这个命名空间由一个或者多个分片组合在一起。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PUT /megacorp/employee/1</span><br><span class="line">&#123;</span><br><span class="line">    &quot;first_name&quot; : &quot;John&quot;,</span><br><span class="line">    &quot;last_name&quot; : &quot;Smith&quot;,</span><br><span class="line">    &quot;age&quot; : 25,</span><br><span class="line">    &quot;about&quot; : &quot;I love to go rock climbing&quot;,</span><br><span class="line">    &quot;interests&quot;: [ &quot;sports&quot;, &quot;music&quot; ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>第一行指定了索引名/类型名/特定雇员id，其他所有的创建索引、指定每个属性的数据类型等工作都由后台默认设置完成。<br>如果你想禁止自动创建索引，你 可以通过在 config/elasticsearch.yml 的每个节点下添加下面的配置：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">action.auto_create_index: false</span><br></pre></td></tr></table></figure></p>
-<h2 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DELETE /index_one,index_two</span><br><span class="line">DELETE /index_*</span><br></pre></td></tr></table></figure>
-<p>删除所有索引：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DELETE /_all</span><br><span class="line">DELETE /*</span><br></pre></td></tr></table></figure></p>
-<p>如果想要避免意外删除所有数据带来的风险，可以在配置文件 elasticsearch.yml 中加入下面配置来禁止使用_all 和通配符删除索引：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">action.destructive_requires_name: true</span><br></pre></td></tr></table></figure></p>
+<h3 id="类型-type"><a class="header-anchor" href="#类型-type">¶</a>类型 - Type</h3>
+<p>一个<strong>类型</strong>是索引的一个逻辑上的分类，代表一类相似的文档，类型由 <strong>名称</strong>（比如 user 或 blogpost）和 <strong>映射</strong> 组成。但是<strong>在 ES 6.0.0 以后，这个概念会被废弃</strong>。<br>
+类型可以很好的抽象划分相似但不相同的数据，但由于 Lucene 的处理方式，类型的使用有些限制。Lucene 没有文档类型的概念，每个文档的类型名被存储在一个叫 _type 的元数据字段上。 当我们要检索某个类型的文档时, Elasticsearch 通过在 _type 字段上使用过滤器限制只返回这个类型的文档。<br>
+每个 Lucene 索引中的所有字段都包含一个单一的、扁平的模式。一个特定字段可以映射成 string 类型也可以是 number 类型，但是不能两者兼具（比如两个类型都有一个 name 字段，但是他们映射到不同的数据类型）。</p>
+<h2 id="查询索引"><a class="header-anchor" href="#查询索引">¶</a>查询索引</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">GET _cat/indices</span><br><span class="line"># 查看indices，用do*来前缀匹配</span><br><span class="line">get /_cat/indices/do*?v&amp;s=index</span><br><span class="line"># 查看状态为黄色的索引</span><br><span class="line">get /_cat/indices?v&amp;health=yellow</span><br><span class="line"># 查看索引doc的相关信息</span><br><span class="line">get doc</span><br><span class="line"># 查看索引的文档总数</span><br><span class="line">get doc/_count</span><br></pre></td></tr></table></figure>
+<h2 id="创建"><a class="header-anchor" href="#创建">¶</a>创建</h2>
+<p>在 Elasticsearch 中，我们的数据是被存储和索引在 分片 中，而一个索引仅仅是逻辑上的命名空间， 这个命名空间由一个或者多个分片组合在一起。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PUT /megacorp/employee/1</span><br><span class="line">&#123;</span><br><span class="line">    &quot;first_name&quot; : &quot;John&quot;,</span><br><span class="line">    &quot;last_name&quot; : &quot;Smith&quot;,</span><br><span class="line">    &quot;age&quot; : 25,</span><br><span class="line">    &quot;about&quot; : &quot;I love to go rock climbing&quot;,</span><br><span class="line">    &quot;interests&quot;: [ &quot;sports&quot;, &quot;music&quot; ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>第一行指定了索引名/类型名/特定雇员id，其他所有的创建索引、指定每个属性的数据类型等工作都由后台默认设置完成。<br>
+如果你想禁止自动创建索引，你 可以通过在 config/elasticsearch.yml 的每个节点下添加下面的配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">action.auto_create_index: false</span><br></pre></td></tr></table></figure>
+<h2 id="删除"><a class="header-anchor" href="#删除">¶</a>删除</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DELETE /index_one,index_two</span><br><span class="line">DELETE /index_*</span><br></pre></td></tr></table></figure>
+<p>删除所有索引：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DELETE /_all</span><br><span class="line">DELETE /*</span><br></pre></td></tr></table></figure>
+<p>如果想要避免意外删除所有数据带来的风险，可以在配置文件 elasticsearch.yml 中加入下面配置来禁止使用_all 和通配符删除索引：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">action.destructive_requires_name: true</span><br></pre></td></tr></table></figure>
 
       
     </div>
@@ -452,8 +480,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/7f45c5bf.html" rel="next" title="ES1_3映射">
-                <i class="fa fa-chevron-left"></i> ES1_3映射
+              <a href="/8772904b.html" rel="next" title="ES3_2分析">
+                <i class="fa fa-chevron-left"></i> ES3_2分析
               </a>
             
           </div>
@@ -462,8 +490,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/7c45b6f9.html" rel="prev" title="ES2_2分布式文档存储">
-                ES2_2分布式文档存储 <i class="fa fa-chevron-right"></i>
+              <a href="/a26aff96.html" rel="prev" title="ES3_5聚合查询">
+                ES3_5聚合查询 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -546,7 +574,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">159</span>
+                  <span class="site-state-item-count">161</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -603,7 +631,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ES存储的基础概念-索引、映射和文档"><span class="nav-number">1.</span> <span class="nav-text">ES存储的基础概念 - 索引、映射和文档</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#常用操作-索引（Index）"><span class="nav-number">2.</span> <span class="nav-text">常用操作 - 索引（Index）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#索引的定义"><span class="nav-number">2.1.</span> <span class="nav-text">索引的定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#倒排索引"><span class="nav-number">2.1.1.</span> <span class="nav-text">倒排索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类型-Type"><span class="nav-number">2.1.2.</span> <span class="nav-text">类型 - Type</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询索引"><span class="nav-number">2.2.</span> <span class="nav-text">查询索引</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建"><span class="nav-number">2.3.</span> <span class="nav-text">创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#删除"><span class="nav-number">2.4.</span> <span class="nav-text">删除</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">ES存储的基础概念 - 索引、映射和文档</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">常用操作 - 索引（Index）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#索引的定义"><span class="nav-number">2.1.</span> <span class="nav-text">¶索引的定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#倒排索引"><span class="nav-number">2.1.1.</span> <span class="nav-text">¶倒排索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类型-type"><span class="nav-number">2.1.2.</span> <span class="nav-text">¶类型 - Type</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#查询索引"><span class="nav-number">2.2.</span> <span class="nav-text">¶查询索引</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建"><span class="nav-number">2.3.</span> <span class="nav-text">¶创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#删除"><span class="nav-number">2.4.</span> <span class="nav-text">¶删除</span></a></li></ol></li></ol></div>
             
 
           </div>

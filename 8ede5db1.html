@@ -87,12 +87,12 @@
 <meta property="og:site_name" content="Tallate">
 <meta property="og:description" content="搜索源码分析。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="https://tallate.top/imgs/ES/ES的索引和搜索.png">
-<meta property="og:updated_time" content="2021-06-14T15:32:02.862Z">
+<meta property="og:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84%E7%B4%A2%E5%BC%95%E5%92%8C%E6%90%9C%E7%B4%A2.png">
+<meta property="og:updated_time" content="2021-06-14T18:04:25.779Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ES3_6搜索源码分析">
 <meta name="twitter:description" content="搜索源码分析。">
-<meta name="twitter:image" content="https://tallate.top/imgs/ES/ES的索引和搜索.png">
+<meta name="twitter:image" content="https://tallate.top/imgs/ES/ES%E7%9A%84%E7%B4%A2%E5%BC%95%E5%92%8C%E6%90%9C%E7%B4%A2.png">
 
 
 
@@ -399,28 +399,37 @@
       
         <p>搜索源码分析。</p>
 <a id="more"></a>
-<h1 id="Search源码流程"><a href="#Search源码流程" class="headerlink" title="Search源码流程"></a>Search源码流程</h1><p>GET请求只能查询单个文档，通过_index、_type、_id三元组来确定唯一文档。<br>而Search在查到匹配的文档之后，还需要将从多个分片上得到的结果组合成单个排序列表，这个过程在协调节点上执行，被称为<code>query then fetch</code>。</p>
+<h1>Search源码流程</h1>
+<p>GET请求只能查询单个文档，通过_index、_type、_id三元组来确定唯一文档。<br>
+而Search在查到匹配的文档之后，还需要将从多个分片上得到的结果组合成单个排序列表，这个过程在协调节点上执行，被称为<code>query then fetch</code>。</p>
 <ul>
 <li>索引的所有分片（中的某个副本）都需要参与搜索，因为查询的时候不知道文档位于哪个分片；</li>
 <li>协调节点需要将结果合并，再根据ID获取文档内容。</li>
 </ul>
-<h2 id="建立索引和搜索的过程（单机视角）"><a href="#建立索引和搜索的过程（单机视角）" class="headerlink" title="建立索引和搜索的过程（单机视角）"></a>建立索引和搜索的过程（单机视角）</h2><p>ES中的搜索主要分为精确和全文两类：</p>
+<h2 id="建立索引和搜索的过程-单机视角"><a class="header-anchor" href="#建立索引和搜索的过程-单机视角">¶</a>建立索引和搜索的过程（单机视角）</h2>
+<p>ES中的搜索主要分为精确和全文两类：</p>
 <ul>
-<li><strong>精确值</strong>：比如日期、用户ID、IP地址等字段的完全匹配；<br>对精确值的搜索遵循“要么匹配、要么不匹配的原则”。</li>
-<li><strong>全文</strong>：对文本内容的模糊搜索，比如一条日志、邮件的内容等。<br>全文搜索不能确定目标是不是自己要搜索的，而是只能给出一个相似度的评分，评分越高，越有可能是自己要找的文档。</li>
+<li><strong>精确值</strong>：比如日期、用户ID、IP地址等字段的完全匹配；<br>
+对精确值的搜索遵循“要么匹配、要么不匹配的原则”。</li>
+<li><strong>全文</strong>：对文本内容的模糊搜索，比如一条日志、邮件的内容等。<br>
+全文搜索不能确定目标是不是自己要搜索的，而是只能给出一个相似度的评分，评分越高，越有可能是自己要找的文档。</li>
 </ul>
-<p>在ES中执行搜索需要<strong>建立索引</strong>和<strong>执行搜索</strong>这两个步骤：<br><img src="https://tallate.top/imgs/ES/ES的索引和搜索.png" alt="ES的索引和搜索" title="ES的索引和搜索"><br>在ES中建立索引和执行搜索的大致流程如上图所示。</p>
+<p>在ES中执行搜索需要<strong>建立索引</strong>和<strong>执行搜索</strong>这两个步骤：<br>
+<img src="https://tallate.top/imgs/ES/ES%E7%9A%84%E7%B4%A2%E5%BC%95%E5%92%8C%E6%90%9C%E7%B4%A2.png" alt="ES的索引和搜索" title="ES的索引和搜索"><br>
+在ES中建立索引和执行搜索的大致流程如上图所示。</p>
 <blockquote>
 <p>这个过程比较关注单机视角下的文档处理，因此对最后两步的<code>查找匹配文档</code>和<code>相关性得分</code>进行了省略，这部分需要在下面的分布式搜索流程中再作分析。</p>
 </blockquote>
-<h3 id="建立索引"><a href="#建立索引" class="headerlink" title="建立索引"></a>建立索引</h3><p>如果是全文数据，则对文本内容进行分析，这项工作在 ES 中由<strong>分析器</strong>实现。分析器实现如下功能：</p>
+<h3 id="建立索引"><a class="header-anchor" href="#建立索引">¶</a>建立索引</h3>
+<p>如果是全文数据，则对文本内容进行分析，这项工作在 ES 中由<strong>分析器</strong>实现。分析器实现如下功能：</p>
 <ul>
 <li>字符过滤器。主要是对字符串进行预处理，例如，去掉HTML，将&amp;转换成and等。</li>
 <li>分词器（Tokenizer）。将字符串分割为单个词条，例如，根据空格和标点符号分割，输出的词条称为词元（Token）。</li>
 <li>Token过滤器。根据停止词（Stop word）删除词元，例如，and、the等无用词，或者根据同义词表增加词条，例如，jump和leap。</li>
 <li>语言处理。对上一步得到的Token做一些和语言相关的处理，例如，转为小写，以及将单词转换为词根的形式。语言处理组件输出的结果称为词（Term）。分析完毕后，将分析器输出的词（Term）传递给索引组件，生成倒排和正排索引，再存储到文件系统中。</li>
 </ul>
-<h3 id="执行搜索"><a href="#执行搜索" class="headerlink" title="执行搜索"></a>执行搜索</h3><p>搜索依赖Lucene完成，对于全文搜索：</p>
+<h3 id="执行搜索"><a class="header-anchor" href="#执行搜索">¶</a>执行搜索</h3>
+<p>搜索依赖Lucene完成，对于全文搜索：</p>
 <ul>
 <li>对检索字段使用建立索引时相同的分析器进行分析，产生Token列表（词法分析）；</li>
 <li>根据查询语句的语法规则转换成一棵语法树（语法分析）；</li>
@@ -428,24 +437,69 @@
 <li>对匹配到的文档列表进行相关性评分，评分策略一般使用TF/IDF；</li>
 <li>根据评分结果进行排序。</li>
 </ul>
-<h2 id="分布式搜索过程（集群视角）"><a href="#分布式搜索过程（集群视角）" class="headerlink" title="分布式搜索过程（集群视角）"></a>分布式搜索过程（集群视角）</h2><p>ES中的search请求必须询问所请求的索引中的所有分片的某个副本来得到结果。比如一个索引有5个主分片，每个主分片有1个副分片，则一次搜索会访问共5个分片，但并不一定都是主分片。<br>search请求由协调节点接收请求，转发到数据节点查询结果，并最终在协调节点中合并结果返回。<br>搜索相关类：</p>
+<h2 id="分布式搜索过程-集群视角"><a class="header-anchor" href="#分布式搜索过程-集群视角">¶</a>分布式搜索过程（集群视角）</h2>
+<p>ES中的search请求必须询问所请求的索引中的所有分片的某个副本来得到结果。比如一个索引有5个主分片，每个主分片有1个副分片，则一次搜索会访问共5个分片，但并不一定都是主分片。<br>
+search请求由协调节点接收请求，转发到数据节点查询结果，并最终在协调节点中合并结果返回。<br>
+搜索相关类：</p>
 <ul>
 <li>InitialSearchPhase（Query流程）</li>
 <li>FetchSearchPhase（Fatch流程）</li>
 </ul>
 <p>搜索流程中最重要的就是上面两个类，分别负责Query和Fetch流程。</p>
-<h3 id="Query流程"><a href="#Query流程" class="headerlink" title="Query流程"></a>Query流程</h3><p>代码入口：<code>InitialSearchPhase#run</code><br>1、查询广播到索引中每一个分片副本（主分片或副分片）<br>将请求体解析为SearchRequest<br><code>RestSearchAction#prepareRequest</code><br>构建本节点的shard列表和远程节点的shard列表，即<code>localShardsIterator</code>和<code>remoteShardIterators</code>，最终通过。<br><code>TransportSearchAction#executeSearch</code><br>merge过的shard列表传给RestSearchAction的构造<br><code>TransportSearchAction#searchAsyncAction</code><br>遍历所有shard发送请求<br><code>InitialSearchPhase#run</code><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">for (int index = 0; index &lt; maxConcurrentShardRequests; index++) &#123;</span><br><span class="line">    final SearchShardIterator shardRoutings = shardsIts.get(index);</span><br><span class="line">    assert shardRoutings.skip() == false;</span><br><span class="line">    performPhaseOnShard(index, shardRoutings, shardRoutings.nextOrNull());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>最终需要根据执行情况来判断是否要进入到下一阶段。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">executePhaseOnShard(shardIt, shard, new SearchActionListener&lt;FirstResult&gt;(new SearchShardTarget(shard.currentNodeId(),</span><br><span class="line">    shardIt.shardId(), shardIt.getClusterAlias(), shardIt.getOriginalIndices()), shardIndex) &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void innerOnResponse(FirstResult result) &#123;</span><br><span class="line">        maybeFork(thread, () -&gt; onShardResult(result, shardIt));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void onFailure(Exception t) &#123;</span><br><span class="line">        maybeFork(thread, () -&gt; onShardFailure(shardIndex, shard, shard.currentNodeId(), shardIt, t));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">private void onShardResult(FirstResult result, SearchShardIterator shardIt) &#123;</span><br><span class="line">    </span><br><span class="line">    onShardSuccess(result);</span><br><span class="line">    </span><br><span class="line">    successfulShardExecution(shardIt);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private void successfulShardExecution(SearchShardIterator shardsIt) &#123;</span><br><span class="line">    ...</span><br><span class="line">    // 计数器累加</span><br><span class="line">    final int xTotalOps = totalOps.addAndGet(remainingOpsOnIterator);</span><br><span class="line">    // 检查是否收到全部回复</span><br><span class="line">    if (xTotalOps == expectedTotalOps) &#123;</span><br><span class="line">        // 调用executeNextPhase，从而开始执行取回阶段</span><br><span class="line">        onPhaseDone();</span><br><span class="line">    &#125; else if (xTotalOps &gt; expectedTotalOps) &#123;</span><br><span class="line">        throw new AssertionError(&quot;unexpected higher total ops [&quot; + xTotalOps + &quot;] compared to expected [&quot;</span><br><span class="line">            + expectedTotalOps + &quot;]&quot;);</span><br><span class="line">    &#125; else if (shardsIt.skip() == false) &#123;</span><br><span class="line">        maybeExecuteNext();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>2、每个分片在本地执行查询，并使用本地的Term/Document Frequency信息进行打分，添加结果到大小为from+size的本地有序优先队列中；<br>优先队列是一个存有topN匹配文档的有序列表。优先队列大小为分页参数from + size。<br>TODO<br>3、每个分片返回各自优先队列中所有文档的ID和排序值给协调节点，协调节点合并这些值到自己的优先队列中，产生一个全局排序后的列表。<br>为了避免在协调节点中创建的<code>number_of_shards * (from + size)</code>优先队列过大，应尽量控制分页深度。<br>TODO</p>
-<h3 id="Fetch阶段"><a href="#Fetch阶段" class="headerlink" title="Fetch阶段"></a>Fetch阶段</h3><p>Fetch阶段的主要目的是通过文档ID获取完整的文档内容。<br>1、协调节点向相关节点发送GET请求（即根据ID获取文档）；<br>由上面对Query阶段的分析可知收到所有节点的回复后协调节点会触发Fetch流程（<code>executeNextPhase</code>）。<br><code>FetchSearchPhase#run</code><br>遍历查询阶段的shard列表，跳过查询结果为空的shard，对特定目标执行executeFetch获取数据。<br><code>FetchSearchPhase#innerRun</code><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">for (int i = 0; i &lt; docIdsToLoad.length; i++) &#123;</span><br><span class="line">    ...</span><br><span class="line">    SearchShardTarget searchShardTarget = queryResult.getSearchShardTarget();</span><br><span class="line">    Transport.Connection connection = context.getConnection(searchShardTarget.getClusterAlias(),</span><br><span class="line">        searchShardTarget.getNodeId());</span><br><span class="line">    ShardFetchSearchRequest fetchSearchRequest = createFetchRequest(queryResult.queryResult().getRequestId(), i, entry,</span><br><span class="line">        lastEmittedDocPerShard, searchShardTarget.getOriginalIndices());</span><br><span class="line">    executeFetch(i, searchShardTarget, counter, fetchSearchRequest, queryResult.queryResult(),</span><br><span class="line">        connection);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>executeFetch执行查询请求，并在获取后调用countDown。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">private void executeFetch(final int shardIndex, final SearchShardTarget shardTarget,</span><br><span class="line">                          final CountedCollector&lt;FetchSearchResult&gt; counter,</span><br><span class="line">                          final ShardFetchSearchRequest fetchSearchRequest, final QuerySearchResult querySearchResult,</span><br><span class="line">                          final Transport.Connection connection) &#123;</span><br><span class="line">    context.getSearchTransport().sendExecuteFetch(connection, fetchSearchRequest, context.getTask(),</span><br><span class="line">        new SearchActionListener&lt;FetchSearchResult&gt;(shardTarget, shardIndex) &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void innerOnResponse(FetchSearchResult result) &#123;</span><br><span class="line">                counter.onResult(result);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            @Override</span><br><span class="line">            public void onFailure(Exception e) &#123;</span><br><span class="line">                try &#123;</span><br><span class="line">                    logger.debug(() -&gt; new ParameterizedMessage(&quot;[&#123;&#125;] Failed to execute fetch phase&quot;, fetchSearchRequest.id()), e);</span><br><span class="line">                    counter.onFailure(shardIndex, shardTarget, e);</span><br><span class="line">                &#125; finally &#123;</span><br><span class="line">                    // the search context might not be cleared on the node where the fetch was executed for example</span><br><span class="line">                    // because the action was rejected by the thread pool. in this case we need to send a dedicated</span><br><span class="line">                    // request to clear the search context.</span><br><span class="line">                    releaseIrrelevantSearchContext(querySearchResult);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>2、分片所在节点接收到请求后，向协调节点返回数据；<br>3、协调节点等待所有文档获取完毕后，返回给客户端。<br>收集器定义如下，包括收到的shard数据存放在哪里，及收到完成后谁来处理：<br><code>FetchSearchPhase#innerRun</code><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">final CountedCollector&lt;FetchSearchResult&gt; counter = new CountedCollector&lt;&gt;(r -&gt; fetchResults.set(r.getShardIndex(), r),</span><br><span class="line">    docIdsToLoad.length, // we count down every shard in the result no matter if we got any results or not</span><br><span class="line">    finishPhase, context);</span><br></pre></td></tr></table></figure></p>
-<p>每有一个shard执行完毕就执行一次<code>counter.countDown()</code><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">void countDown() &#123;</span><br><span class="line">    assert counter.isCountedDown() == false : &quot;more operations executed than specified&quot;;</span><br><span class="line">    if (counter.countDown()) &#123;</span><br><span class="line">        onFinish.run();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>最后一个执行完毕后，执行finishPhase：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">final Runnable finishPhase = ()</span><br><span class="line">            -&gt; moveToNextPhase(searchPhaseController, scrollId, reducedQueryPhase, queryAndFetchOptimization ?</span><br><span class="line">            queryResults : fetchResults);</span><br></pre></td></tr></table></figure></p>
-<p>moveToNextPhase开始执行下一个阶段，可以看到在FetchSearchPhase的构造函数中构建了下一个需要执行的Phase，即<code>ExpandSearchPhase</code>：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">FetchSearchPhase(InitialSearchPhase.SearchPhaseResults&lt;SearchPhaseResult&gt; resultConsumer,</span><br><span class="line">                 SearchPhaseController searchPhaseController,</span><br><span class="line">                 SearchPhaseContext context) &#123;</span><br><span class="line">    this(resultConsumer, searchPhaseController, context,</span><br><span class="line">        (response, scrollId) -&gt; new ExpandSearchPhase(context, response, // collapse only happens if the request has inner hits</span><br><span class="line">            (finalResponse) -&gt; sendResponsePhase(finalResponse, scrollId, context)));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>4、ExpandSearchPhase<br>判断是否启用字段折叠，然后处理折叠，并将处理后的结果返回给客户端。<br>5、执行完毕后，调用sendResponsePhase回复客户端。</p>
-<h3 id="执行搜索的数据节点流程"><a href="#执行搜索的数据节点流程" class="headerlink" title="执行搜索的数据节点流程"></a>执行搜索的数据节点流程</h3><p>上面Query阶段和Fetch阶段都涉及到搜索流程，Query是根据条件过滤文档，Fetch是根据过滤后的结果取对应的文档内容。<br>1、注册搜索处理器<br><code>SearchTransportService#registerRequestHandler</code><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">org.elasticsearch.action.search.SearchTransportService#registerRequestHandler</span><br></pre></td></tr></table></figure></p>
-<p>2、响应Query请求<br>调用Lucene执行搜索，及聚合结果<br><code>Service#executeQueryPhase</code><br>3、响应Fetch请求<br>即GET操作</p>
+<h3 id="query流程"><a class="header-anchor" href="#query流程">¶</a>Query流程</h3>
+<p>代码入口：<code>InitialSearchPhase#run</code><br>
+1、查询广播到索引中每一个分片副本（主分片或副分片）<br>
+将请求体解析为SearchRequest<br>
+<code>RestSearchAction#prepareRequest</code><br>
+构建本节点的shard列表和远程节点的shard列表，即<code>localShardsIterator</code>和<code>remoteShardIterators</code>，最终通过。<br>
+<code>TransportSearchAction#executeSearch</code><br>
+merge过的shard列表传给RestSearchAction的构造<br>
+<code>TransportSearchAction#searchAsyncAction</code><br>
+遍历所有shard发送请求<br>
+<code>InitialSearchPhase#run</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">for (int index = 0; index &lt; maxConcurrentShardRequests; index++) &#123;</span><br><span class="line">    final SearchShardIterator shardRoutings = shardsIts.get(index);</span><br><span class="line">    assert shardRoutings.skip() == false;</span><br><span class="line">    performPhaseOnShard(index, shardRoutings, shardRoutings.nextOrNull());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最终需要根据执行情况来判断是否要进入到下一阶段。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">executePhaseOnShard(shardIt, shard, new SearchActionListener&lt;FirstResult&gt;(new SearchShardTarget(shard.currentNodeId(),</span><br><span class="line">    shardIt.shardId(), shardIt.getClusterAlias(), shardIt.getOriginalIndices()), shardIndex) &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void innerOnResponse(FirstResult result) &#123;</span><br><span class="line">        maybeFork(thread, () -&gt; onShardResult(result, shardIt));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void onFailure(Exception t) &#123;</span><br><span class="line">        maybeFork(thread, () -&gt; onShardFailure(shardIndex, shard, shard.currentNodeId(), shardIt, t));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">private void onShardResult(FirstResult result, SearchShardIterator shardIt) &#123;</span><br><span class="line">    </span><br><span class="line">    onShardSuccess(result);</span><br><span class="line">    </span><br><span class="line">    successfulShardExecution(shardIt);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private void successfulShardExecution(SearchShardIterator shardsIt) &#123;</span><br><span class="line">    ...</span><br><span class="line">    // 计数器累加</span><br><span class="line">    final int xTotalOps = totalOps.addAndGet(remainingOpsOnIterator);</span><br><span class="line">    // 检查是否收到全部回复</span><br><span class="line">    if (xTotalOps == expectedTotalOps) &#123;</span><br><span class="line">        // 调用executeNextPhase，从而开始执行取回阶段</span><br><span class="line">        onPhaseDone();</span><br><span class="line">    &#125; else if (xTotalOps &gt; expectedTotalOps) &#123;</span><br><span class="line">        throw new AssertionError(&quot;unexpected higher total ops [&quot; + xTotalOps + &quot;] compared to expected [&quot;</span><br><span class="line">            + expectedTotalOps + &quot;]&quot;);</span><br><span class="line">    &#125; else if (shardsIt.skip() == false) &#123;</span><br><span class="line">        maybeExecuteNext();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>2、每个分片在本地执行查询，并使用本地的Term/Document Frequency信息进行打分，添加结果到大小为from+size的本地有序优先队列中；<br>
+优先队列是一个存有topN匹配文档的有序列表。优先队列大小为分页参数from + size。<br>
+TODO<br>
+3、每个分片返回各自优先队列中所有文档的ID和排序值给协调节点，协调节点合并这些值到自己的优先队列中，产生一个全局排序后的列表。<br>
+为了避免在协调节点中创建的<code>number_of_shards * (from + size)</code>优先队列过大，应尽量控制分页深度。<br>
+TODO</p>
+<h3 id="fetch阶段"><a class="header-anchor" href="#fetch阶段">¶</a>Fetch阶段</h3>
+<p>Fetch阶段的主要目的是通过文档ID获取完整的文档内容。<br>
+1、协调节点向相关节点发送GET请求（即根据ID获取文档）；<br>
+由上面对Query阶段的分析可知收到所有节点的回复后协调节点会触发Fetch流程（<code>executeNextPhase</code>）。<br>
+<code>FetchSearchPhase#run</code><br>
+遍历查询阶段的shard列表，跳过查询结果为空的shard，对特定目标执行executeFetch获取数据。<br>
+<code>FetchSearchPhase#innerRun</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">for (int i = 0; i &lt; docIdsToLoad.length; i++) &#123;</span><br><span class="line">    ...</span><br><span class="line">    SearchShardTarget searchShardTarget = queryResult.getSearchShardTarget();</span><br><span class="line">    Transport.Connection connection = context.getConnection(searchShardTarget.getClusterAlias(),</span><br><span class="line">        searchShardTarget.getNodeId());</span><br><span class="line">    ShardFetchSearchRequest fetchSearchRequest = createFetchRequest(queryResult.queryResult().getRequestId(), i, entry,</span><br><span class="line">        lastEmittedDocPerShard, searchShardTarget.getOriginalIndices());</span><br><span class="line">    executeFetch(i, searchShardTarget, counter, fetchSearchRequest, queryResult.queryResult(),</span><br><span class="line">        connection);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>executeFetch执行查询请求，并在获取后调用countDown。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">private void executeFetch(final int shardIndex, final SearchShardTarget shardTarget,</span><br><span class="line">                          final CountedCollector&lt;FetchSearchResult&gt; counter,</span><br><span class="line">                          final ShardFetchSearchRequest fetchSearchRequest, final QuerySearchResult querySearchResult,</span><br><span class="line">                          final Transport.Connection connection) &#123;</span><br><span class="line">    context.getSearchTransport().sendExecuteFetch(connection, fetchSearchRequest, context.getTask(),</span><br><span class="line">        new SearchActionListener&lt;FetchSearchResult&gt;(shardTarget, shardIndex) &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void innerOnResponse(FetchSearchResult result) &#123;</span><br><span class="line">                counter.onResult(result);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            @Override</span><br><span class="line">            public void onFailure(Exception e) &#123;</span><br><span class="line">                try &#123;</span><br><span class="line">                    logger.debug(() -&gt; new ParameterizedMessage(&quot;[&#123;&#125;] Failed to execute fetch phase&quot;, fetchSearchRequest.id()), e);</span><br><span class="line">                    counter.onFailure(shardIndex, shardTarget, e);</span><br><span class="line">                &#125; finally &#123;</span><br><span class="line">                    // the search context might not be cleared on the node where the fetch was executed for example</span><br><span class="line">                    // because the action was rejected by the thread pool. in this case we need to send a dedicated</span><br><span class="line">                    // request to clear the search context.</span><br><span class="line">                    releaseIrrelevantSearchContext(querySearchResult);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>2、分片所在节点接收到请求后，向协调节点返回数据；<br>
+3、协调节点等待所有文档获取完毕后，返回给客户端。<br>
+收集器定义如下，包括收到的shard数据存放在哪里，及收到完成后谁来处理：<br>
+<code>FetchSearchPhase#innerRun</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">final CountedCollector&lt;FetchSearchResult&gt; counter = new CountedCollector&lt;&gt;(r -&gt; fetchResults.set(r.getShardIndex(), r),</span><br><span class="line">    docIdsToLoad.length, // we count down every shard in the result no matter if we got any results or not</span><br><span class="line">    finishPhase, context);</span><br></pre></td></tr></table></figure>
+<p>每有一个shard执行完毕就执行一次<code>counter.countDown()</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">void countDown() &#123;</span><br><span class="line">    assert counter.isCountedDown() == false : &quot;more operations executed than specified&quot;;</span><br><span class="line">    if (counter.countDown()) &#123;</span><br><span class="line">        onFinish.run();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后一个执行完毕后，执行finishPhase：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">final Runnable finishPhase = ()</span><br><span class="line">            -&gt; moveToNextPhase(searchPhaseController, scrollId, reducedQueryPhase, queryAndFetchOptimization ?</span><br><span class="line">            queryResults : fetchResults);</span><br></pre></td></tr></table></figure>
+<p>moveToNextPhase开始执行下一个阶段，可以看到在FetchSearchPhase的构造函数中构建了下一个需要执行的Phase，即<code>ExpandSearchPhase</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">FetchSearchPhase(InitialSearchPhase.SearchPhaseResults&lt;SearchPhaseResult&gt; resultConsumer,</span><br><span class="line">                 SearchPhaseController searchPhaseController,</span><br><span class="line">                 SearchPhaseContext context) &#123;</span><br><span class="line">    this(resultConsumer, searchPhaseController, context,</span><br><span class="line">        (response, scrollId) -&gt; new ExpandSearchPhase(context, response, // collapse only happens if the request has inner hits</span><br><span class="line">            (finalResponse) -&gt; sendResponsePhase(finalResponse, scrollId, context)));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>4、ExpandSearchPhase<br>
+判断是否启用字段折叠，然后处理折叠，并将处理后的结果返回给客户端。<br>
+5、执行完毕后，调用sendResponsePhase回复客户端。</p>
+<h3 id="执行搜索的数据节点流程"><a class="header-anchor" href="#执行搜索的数据节点流程">¶</a>执行搜索的数据节点流程</h3>
+<p>上面Query阶段和Fetch阶段都涉及到搜索流程，Query是根据条件过滤文档，Fetch是根据过滤后的结果取对应的文档内容。<br>
+1、注册搜索处理器<br>
+<code>SearchTransportService#registerRequestHandler</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">org.elasticsearch.action.search.SearchTransportService#registerRequestHandler</span><br></pre></td></tr></table></figure>
+<p>2、响应Query请求<br>
+调用Lucene执行搜索，及聚合结果<br>
+<code>Service#executeQueryPhase</code><br>
+3、响应Fetch请求<br>
+即GET操作</p>
 
       
     </div>
@@ -476,8 +530,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/cca2faf5.html" rel="next" title="ES1_4文档">
-                <i class="fa fa-chevron-left"></i> ES1_4文档
+              <a href="/adab32da.html" rel="next" title="ES3_4请求体查询">
+                <i class="fa fa-chevron-left"></i> ES3_4请求体查询
               </a>
             
           </div>
@@ -486,8 +540,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/1c3259ad.html" rel="prev" title="ES3_1分布式搜索">
-                ES3_1分布式搜索 <i class="fa fa-chevron-right"></i>
+              <a href="/bf6ba1a3.html" rel="prev" title="ES2_3文档操作源码分析">
+                ES2_3文档操作源码分析 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -570,7 +624,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">159</span>
+                  <span class="site-state-item-count">161</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -627,7 +681,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Search源码流程"><span class="nav-number">1.</span> <span class="nav-text">Search源码流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立索引和搜索的过程（单机视角）"><span class="nav-number">1.1.</span> <span class="nav-text">建立索引和搜索的过程（单机视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#建立索引"><span class="nav-number">1.1.1.</span> <span class="nav-text">建立索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索"><span class="nav-number">1.1.2.</span> <span class="nav-text">执行搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索过程（集群视角）"><span class="nav-number">1.2.</span> <span class="nav-text">分布式搜索过程（集群视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Query流程"><span class="nav-number">1.2.1.</span> <span class="nav-text">Query流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Fetch阶段"><span class="nav-number">1.2.2.</span> <span class="nav-text">Fetch阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索的数据节点流程"><span class="nav-number">1.2.3.</span> <span class="nav-text">执行搜索的数据节点流程</span></a></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">Search源码流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立索引和搜索的过程-单机视角"><span class="nav-number">1.1.</span> <span class="nav-text">¶建立索引和搜索的过程（单机视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#建立索引"><span class="nav-number">1.1.1.</span> <span class="nav-text">¶建立索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索"><span class="nav-number">1.1.2.</span> <span class="nav-text">¶执行搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式搜索过程-集群视角"><span class="nav-number">1.2.</span> <span class="nav-text">¶分布式搜索过程（集群视角）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#query流程"><span class="nav-number">1.2.1.</span> <span class="nav-text">¶Query流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fetch阶段"><span class="nav-number">1.2.2.</span> <span class="nav-text">¶Fetch阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行搜索的数据节点流程"><span class="nav-number">1.2.3.</span> <span class="nav-text">¶执行搜索的数据节点流程</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>

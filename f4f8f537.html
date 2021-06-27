@@ -358,7 +358,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  630 字
+                  631 字
                 </span>
               
 
@@ -397,14 +397,21 @@
       
         <p>MySQL使用方法及基本原理</p>
 <a id="more"></a>
-<h1 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h1><h2 id="使用Docker启动"><a href="#使用Docker启动" class="headerlink" title="使用Docker启动"></a>使用Docker启动</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7</span><br></pre></td></tr></table></figure>
-<h1 id="存储引擎"><a href="#存储引擎" class="headerlink" title="存储引擎"></a>存储引擎</h1><h2 id="MyISAM和InnoDB的区别"><a href="#MyISAM和InnoDB的区别" class="headerlink" title="MyISAM和InnoDB的区别"></a>MyISAM和InnoDB的区别</h2><ol>
-<li>MyISAM不支持事务，而InnoDB支持。<br>InnoDB的AUTOCOMMIT默认是打开的，即每条SQL语句会默认被封装成一个事务，自动提交，这样会影响速度，所以最好是把多条SQL语句显示放在begin和commit之间，组成一个事务去提交。</li>
-<li>InnoDB支持数据行锁定，MyISAM不支持行锁定，只支持锁定整个表。即MyISAM同一个表上的读锁和写锁是互斥的，MyISAM并发读写时如果等待队列中既有读请求又有写请求，默认写请求的优先级高，即使读请求先到，所以MyISAM不适合于有大量查询和修改并存的情况，那样查询进程会长时间阻塞。因为MyISAM是锁表，所以某项读操作比较耗时会使其他写进程饿死。<br>InnoDB 是聚集索引，MyISAM 是非聚集索引。聚簇索引的文件存放在主键索引的叶子节点上，因此 InnoDB 必须要有主键，通过主键索引效率很高。但是辅助索引需要两次查询，先查询到主键，然后再通过主键查询到数据。因此，主键不应该过大，因为主键太大，其他索引也都会很大。而 MyISAM 是非聚集索引，数据文件是分离的，索引保存的是数据文件的指针。主键索引和辅助索引是独立的。 4. InnoDB 不保存表</li>
+<h1>启动</h1>
+<h2 id="使用docker启动"><a class="header-anchor" href="#使用docker启动">¶</a>使用Docker启动</h2>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7</span><br></pre></td></tr></table></figure>
+<h1>存储引擎</h1>
+<h2 id="myisam和innodb的区别"><a class="header-anchor" href="#myisam和innodb的区别">¶</a>MyISAM和InnoDB的区别</h2>
+<ol>
+<li>MyISAM不支持事务，而InnoDB支持。<br>
+InnoDB的AUTOCOMMIT默认是打开的，即每条SQL语句会默认被封装成一个事务，自动提交，这样会影响速度，所以最好是把多条SQL语句显示放在begin和commit之间，组成一个事务去提交。</li>
+<li>InnoDB支持数据行锁定，MyISAM不支持行锁定，只支持锁定整个表。即MyISAM同一个表上的读锁和写锁是互斥的，MyISAM并发读写时如果等待队列中既有读请求又有写请求，默认写请求的优先级高，即使读请求先到，所以MyISAM不适合于有大量查询和修改并存的情况，那样查询进程会长时间阻塞。因为MyISAM是锁表，所以某项读操作比较耗时会使其他写进程饿死。<br>
+InnoDB 是聚集索引，MyISAM 是非聚集索引。聚簇索引的文件存放在主键索引的叶子节点上，因此 InnoDB 必须要有主键，通过主键索引效率很高。但是辅助索引需要两次查询，先查询到主键，然后再通过主键查询到数据。因此，主键不应该过大，因为主键太大，其他索引也都会很大。而 MyISAM 是非聚集索引，数据文件是分离的，索引保存的是数据文件的指针。主键索引和辅助索引是独立的。 4. InnoDB 不保存表</li>
 <li>InnoDB支持外键，MyISAM不支持。</li>
 <li>InnoDB的主键范围更大，最大是MyISAM的2倍。</li>
 <li>InnoDB不支持全文索引，而MyISAM支持。全文索引是指对char、varchar和text中的每个词（停用词除外）建立倒排序索引。MyISAM的全文索引其实没啥用，因为它不支持中文分词，必须由使用者分词后加入空格再写到数据表里，而且少于4个汉字的词会和停用词一样被忽略掉。</li>
-<li>InnoDB不保存表的具体行数，执行 select count(*) from table 时需要全表扫描。而MyISAM 用一个变量保存了整个表的行数，执行上述语句时只需要读出该变量即可，速度很快；<br>InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证执行中事务写入的行不能被统计进来。</li>
+<li>InnoDB不保存表的具体行数，执行 select count(*) from table 时需要全表扫描。而MyISAM 用一个变量保存了整个表的行数，执行上述语句时只需要读出该变量即可，速度很快；<br>
+InnoDB不保存具体行数的原因是事务隔离级别的存在需要保证执行中事务写入的行不能被统计进来。</li>
 </ol>
 
       
@@ -436,8 +443,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/3a4761a.html" rel="next" title="MySQL2_1explain">
-                <i class="fa fa-chevron-left"></i> MySQL2_1explain
+              <a href="/87dfb581.html" rel="next" title="算法题复盘">
+                <i class="fa fa-chevron-left"></i> 算法题复盘
               </a>
             
           </div>
@@ -446,8 +453,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/73d751b6.html" rel="prev" title="给博客装上HTTPS">
-                给博客装上HTTPS <i class="fa fa-chevron-right"></i>
+              <a href="/3a4761a.html" rel="prev" title="MySQL2_1explain">
+                MySQL2_1explain <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -530,7 +537,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">159</span>
+                  <span class="site-state-item-count">161</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -587,7 +594,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#启动"><span class="nav-number">1.</span> <span class="nav-text">启动</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用Docker启动"><span class="nav-number">1.1.</span> <span class="nav-text">使用Docker启动</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#存储引擎"><span class="nav-number">2.</span> <span class="nav-text">存储引擎</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MyISAM和InnoDB的区别"><span class="nav-number">2.1.</span> <span class="nav-text">MyISAM和InnoDB的区别</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">1.</span> <span class="nav-text">启动</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用docker启动"><span class="nav-number">1.1.</span> <span class="nav-text">¶使用Docker启动</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#undefined"><span class="nav-number">2.</span> <span class="nav-text">存储引擎</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#myisam和innodb的区别"><span class="nav-number">2.1.</span> <span class="nav-text">¶MyISAM和InnoDB的区别</span></a></li></ol></li></ol></div>
             
 
           </div>
